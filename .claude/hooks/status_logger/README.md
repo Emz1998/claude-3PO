@@ -1,14 +1,17 @@
 # Status Logger
 
-Hook module for logging roadmap item statuses via skill commands.
+Hook module for logging roadmap item statuses via skill commands or direct user prompts.
 
 ## Overview
 
-This module provides PreToolUse hooks that intercept `log:*` skill calls and update the corresponding items in `roadmap.json`.
+This module provides hooks that intercept `log:*` commands and update corresponding items in `roadmap.json`. Supports two trigger methods:
+- **PreToolUse** - Intercepts `Skill` tool calls (e.g., agent uses `/log:task`)
+- **UserPromptSubmit** - Intercepts direct user prompts (e.g., user types `/log:task`)
 
 ## Files
 
-- `dispatcher.py` - Routes skill calls to appropriate logger
+- `dispatcher.py` - Routes Skill tool calls to appropriate logger (PreToolUse)
+- `user_prompt_dispatcher.py` - Routes user prompts to appropriate logger (UserPromptSubmit)
 - `task_logger.py` - Handles `log:task` commands
 - `ac_logger.py` - Handles `log:ac` (acceptance criteria) commands
 - `sc_logger.py` - Handles `log:sc` (success criteria) commands
@@ -53,4 +56,6 @@ This module provides PreToolUse hooks that intercept `log:*` skill calls and upd
 
 ## Hook Registration
 
-Register `dispatcher.py` as a PreToolUse hook for the `Skill` tool in `settings.local.json`.
+In `settings.local.json`:
+- Register `dispatcher.py` as a PreToolUse hook for the `Skill` tool
+- Register `user_prompt_dispatcher.py` as a UserPromptSubmit hook

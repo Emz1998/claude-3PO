@@ -21,7 +21,7 @@ from utils.roadmap import (
     get_incomplete_milestone_deps,
 )
 
-VALID_STATUSES = ["completed", "in_progress", "blocked"]
+VALID_STATUSES = ["not_started", "in_progress", "completed", "blocked"]
 
 
 def parse_args(args_str: str) -> tuple[str, str] | None:
