@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Slash Command Validator
-# UserPromptSubmit hook that validates /log:task, /log:ac, /log:sc commands
+# UserPromptSubmit hook that validates /log:task, /log:ac, /log:sc, /build commands
 
 import sys
 import re
@@ -20,10 +20,13 @@ SC_STATUSES = ["met", "unmet"]
 TASK_PATTERN = re.compile(r"^T\d{3}$")
 AC_PATTERN = re.compile(r"^AC-\d{3}$")
 SC_PATTERN = re.compile(r"^SC-\d{3}$")
+MILESTONE_PATTERN = re.compile(r"^MS-\d{3}$")
 
 # Command patterns
 LOG_COMMAND_WITH_ARGS = re.compile(r"^/log:(task|ac|sc)\s+(.+)$", re.IGNORECASE)
 LOG_COMMAND_NO_ARGS = re.compile(r"^/log:(task|ac|sc)\s*$", re.IGNORECASE)
+BUILD_COMMAND_WITH_ARGS = re.compile(r"^/build\s+(.+)$", re.IGNORECASE)
+BUILD_COMMAND_NO_ARGS = re.compile(r"^/build\s*$", re.IGNORECASE)
 
 # Command configurations
 COMMAND_CONFIG: dict[str, dict[str, object]] = {
@@ -104,6 +107,17 @@ def validate_command_args(command_type: str, args: str) -> None:
     sys.exit(0)
 
 
+def validate_build_args(args: str) -> None:
+    """Validate args for /build command. Blocks if invalid."""
+    args = args.strip()
+    if not MILESTONE_PATTERN.match(args):
+        block_response(
+            f"Invalid argument: '{args}'. Expected format: MS-NNN (e.g., MS-001)"
+        )
+    # Args are valid, allow the command to proceed
+    sys.exit(0)
+
+
 def main() -> None:
     input_data = read_stdin_json()
     if not input_data:
@@ -127,14 +141,23 @@ def main() -> None:
 
     # Match /log:* command with args
     match = LOG_COMMAND_WITH_ARGS.match(prompt)
-    if not match:
+    if match:
+        command_type = match.group(1).lower()
+        args = match.group(2).strip()
+        validate_command_args(command_type, args)
+
+    # Check for /build command without args (allow it)
+    if BUILD_COMMAND_NO_ARGS.match(prompt):
         sys.exit(0)
 
-    command_type = match.group(1).lower()
-    args = match.group(2).strip()
+    # Check for /build command with args (validate MS-NNN format)
+    build_match = BUILD_COMMAND_WITH_ARGS.match(prompt)
+    if build_match:
+        args = build_match.group(1).strip()
+        validate_build_args(args)
 
-    # Validate args
-    validate_command_args(command_type, args)
+    # No matching command, allow prompt to proceed
+    sys.exit(0)
 
 
 if __name__ == "__main__":

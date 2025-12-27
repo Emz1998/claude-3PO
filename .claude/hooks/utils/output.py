@@ -43,3 +43,8 @@ def block_response(reason: str) -> NoReturn:
     """Output error to stderr and exit 2 (blocking)."""
     print(reason, file=sys.stderr)
     sys.exit(2)
+
+
+def continue_response() -> None:
+    """Output continue signal for SubagentStop."""
+    print(json.dumps({"continue": True}))

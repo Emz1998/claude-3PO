@@ -1,369 +1,1101 @@
 
 {
-    "session_id": "a8d467b8-fae7-47d7-bf26-fd0ee9ce74c3",
-    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/a8d467b8-fae7-47d7-bf26-fd0ee9ce74c3.jsonl",
+    "session_id": "98014915-9fdb-4f2d-9ba3-05d815477ccc",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/98014915-9fdb-4f2d-9ba3-05d815477ccc.jsonl",
     "cwd": "/home/emhar/avaris-ai",
     "permission_mode": "bypassPermissions",
-    "hook_event_name": "PreToolUse",
-    "tool_name": "Task",
-    "tool_input": {
-        "description": "Test writing git status to prompt.md",
-        "prompt": "Test writing to the file prompt.md with the current git status as content. \n\nSteps:\n1. Run `git status` to get the current status\n2. Write the git status output to `/home/emhar/avaris-ai/prompt.md`\n3. Verify the file was written successfully\n\nThis is a test of the write functionality.",
-        "subagent_type": "version-manager"
-    },
-    "tool_use_id": "toolu_01HzDqBWKjLRkduQev6UQJrr"
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "ae3073e",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-ae3073e.jsonl"
 }
 {
-    "session_id": "a8d467b8-fae7-47d7-bf26-fd0ee9ce74c3",
-    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/a8d467b8-fae7-47d7-bf26-fd0ee9ce74c3.jsonl",
+    "session_id": "98014915-9fdb-4f2d-9ba3-05d815477ccc",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/98014915-9fdb-4f2d-9ba3-05d815477ccc.jsonl",
     "cwd": "/home/emhar/avaris-ai",
     "permission_mode": "bypassPermissions",
-    "hook_event_name": "PreToolUse",
-    "tool_name": "Bash",
-    "tool_input": {
-        "command": "git status",
-        "description": "Get current git status"
-    },
-    "tool_use_id": "toolu_01Cy5QbhYXvmHMREMGGukzvL"
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a2b447c",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a2b447c.jsonl"
 }
 {
-    "session_id": "a8d467b8-fae7-47d7-bf26-fd0ee9ce74c3",
-    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/a8d467b8-fae7-47d7-bf26-fd0ee9ce74c3.jsonl",
+    "session_id": "368590ad-71d0-4027-aafc-c62894d4ef3a",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/368590ad-71d0-4027-aafc-c62894d4ef3a.jsonl",
     "cwd": "/home/emhar/avaris-ai",
-    "permission_mode": "bypassPermissions",
-    "hook_event_name": "PreToolUse",
-    "tool_name": "Read",
-    "tool_input": {
-        "file_path": "/home/emhar/avaris-ai/prompt.md"
-    },
-    "tool_use_id": "toolu_01HtrRmLKzK7EpsJqPT7Lfmw"
+    "permission_mode": "default",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a7e233b",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a7e233b.jsonl"
 }
 {
-    "session_id": "a8d467b8-fae7-47d7-bf26-fd0ee9ce74c3",
-    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/a8d467b8-fae7-47d7-bf26-fd0ee9ce74c3.jsonl",
+    "session_id": "368590ad-71d0-4027-aafc-c62894d4ef3a",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/368590ad-71d0-4027-aafc-c62894d4ef3a.jsonl",
     "cwd": "/home/emhar/avaris-ai",
-    "permission_mode": "bypassPermissions",
-    "hook_event_name": "PreToolUse",
-    "tool_name": "Write",
-    "tool_input": {
-        "file_path": "/home/emhar/avaris-ai/prompt.md",
-        "content": "On branch main\nYour branch is ahead of 'origin/main' by 2 commits.\n  (use \"git push\" to publish your local commits)\n\nChanges not staged for commit:\n  (use \"git add/rm <file>...\" to update what will be committed)\n  (use \"git restore <file>...\" to discard changes in working directory)\n\tdeleted:    .claude/commands/ai-discuss.md\n\tmodified:   .claude/commands/discuss.md\n\tdeleted:    .claude/hooks/cache copy.json\n\tmodified:   .claude/hooks/cache.json\n\tdeleted:    .claude/hooks/project_status/README.md\n\tdeleted:    .claude/hooks/project_status/__init__.py\n\tdeleted:    .claude/hooks/project_status/__pycache__/__init__.cpython-312.pyc\n\tdeleted:    .claude/hooks/project_status/__pycache__/cli.cpython-312.pyc\n\tdeleted:    .claude/hooks/project_status/__pycache__/project_status.cpython-312.pyc\n\tdeleted:    .claude/hooks/project_status/__pycache__/schema.cpython-312.pyc\n\tdeleted:    .claude/hooks/project_status/cli.py\n\tdeleted:    .claude/hooks/project_status/project_status.py\n\tdeleted:    .claude/hooks/project_status/schema.py\n\tdeleted:    .claude/hooks/project_status/status_test.json\n\tdeleted:    .claude/hooks/scripts/__init__.py\n\tdeleted:    .claude/hooks/scripts/__pycache__/__init__.cpython-312.pyc\n\tdeleted:    .claude/hooks/scripts/__pycache__/activate.cpython-312.pyc\n\tdeleted:    .claude/hooks/scripts/__pycache__/block_coding.cpython-312.pyc\n\tdeleted:    .claude/hooks/scripts/__pycache__/block_stoppage.cpython-312.pyc\n\tdeleted:    .claude/hooks/scripts/__pycache__/check_cmd_activation.cpython-312.pyc\n\tdeleted:    .claude/hooks/scripts/__pycache__/checklist.cpython-312.pyc\n\tdeleted:    .claude/hooks/scripts/__pycache__/context_injector.cpython-312.pyc\n\tdeleted:    .claude/hooks/scripts/__pycache__/deactivate.cpython-312.pyc\n\tdeleted:    .claude/hooks/scripts/__pycache__/phase_guard.cpython-312.pyc\n\tdeleted:    .claude/hooks/scripts/__pycache__/phase_transition_guard.cpython-312.pyc\n\tdeleted:    .claude/hooks/scripts/__pycache__/phase_validation.cpython-312.pyc\n\tdeleted:    .claude/hooks/scripts/__pycache__/reset.cpython-312.pyc\n\tdeleted:    .claude/hooks/scripts/__pycache__/reset_cache.cpython-312.pyc\n\tdeleted:    .claude/hooks/scripts/__pycache__/security.cpython-312.pyc\n\tdeleted:    .claude/hooks/scripts/__pycache__/set_next_phase.cpython-312.pyc\n\tdeleted:    .claude/hooks/scripts/__pycache__/set_session_id.cpython-312.pyc\n\tdeleted:    .claude/hooks/scripts/__pycache__/subagent_order_validation.cpython-312.pyc\n\tdeleted:    .claude/hooks/scripts/__pycache__/validate_flow.cpython-312.pyc\n\tdeleted:    .claude/hooks/scripts/__pycache__/validate_invocations.cpython-312.pyc\n\tdeleted:    .claude/hooks/scripts/__pycache__/validate_work.cpython-312.pyc\n\tdeleted:    .claude/hooks/scripts/activate.py\n\tdeleted:    .claude/hooks/scripts/checklist.py\n\tdeleted:    .claude/hooks/scripts/config_hooks.py\n\tdeleted:    .claude/hooks/scripts/context_injector.py\n\tdeleted:    .claude/hooks/scripts/phase_guard.py\n\tdeleted:    .claude/hooks/scripts/phase_transition_guard.py\n\tdeleted:    .claude/hooks/scripts/phase_validation.py\n\tdeleted:    .claude/hooks/scripts/prompt_refiner.py\n\tdeleted:    .claude/hooks/scripts/reset_cache.py\n\tdeleted:    .claude/hooks/scripts/security.py\n\tdeleted:    .claude/hooks/scripts/set_next_phase.py\n\tdeleted:    .claude/hooks/scripts/set_next_subagent.py\n\tdeleted:    .claude/hooks/scripts/set_session_id.py\n\tdeleted:    .claude/hooks/scripts/set_status.py\n\tdeleted:    .claude/hooks/scripts/subagent_order_validation.py\n\tdeleted:    .claude/hooks/scripts/test.py\n\tdeleted:    .claude/hooks/scripts/trigger_point.py\n\tdeleted:    .claude/hooks/scripts/validate_invocations.py\n\tdeleted:    .claude/hooks/scripts/validate_work.py\n\tdeleted:    .claude/hooks/tests/conftest.py\n\tmodified:   .claude/hooks/tests/pre_tool/test.py\n\tdeleted:    .claude/hooks/tests/test_modes.py\n\tdeleted:    .claude/hooks/tests/test_security.py\n\tdeleted:    .claude/hooks/tests/test_utils.py\n\tmodified:   pre_tool_test.log\n\tmodified:   prompt.md\n\nUntracked files:\n  (use \"git add <file>...\" to include in what will be committed)\n\t.claude/commands/visionize.md\n\t.claude/hooks/guardrails/\n\nno changes added to commit (use \"git add\" and/or \"git commit -a\")\n"
-    },
-    "tool_use_id": "toolu_01SS6iPTQUhGMtCJVYJPnabW"
+    "permission_mode": "default",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "aa6ddd2",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-aa6ddd2.jsonl"
 }
 {
-    "session_id": "a8d467b8-fae7-47d7-bf26-fd0ee9ce74c3",
-    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/a8d467b8-fae7-47d7-bf26-fd0ee9ce74c3.jsonl",
+    "session_id": "368590ad-71d0-4027-aafc-c62894d4ef3a",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/368590ad-71d0-4027-aafc-c62894d4ef3a.jsonl",
     "cwd": "/home/emhar/avaris-ai",
     "permission_mode": "bypassPermissions",
-    "hook_event_name": "PreToolUse",
-    "tool_name": "Bash",
-    "tool_input": {
-        "command": "git status /home/emhar/avaris-ai/prompt.md",
-        "description": "Verify prompt.md file status after write"
-    },
-    "tool_use_id": "toolu_01LPdnCPvrGYtM39GWS9A1Ny"
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "add01d2",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-add01d2.jsonl"
 }
 {
-    "session_id": "1ab68142-7da4-4bc6-906a-00b87fac2e60",
-    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/1ab68142-7da4-4bc6-906a-00b87fac2e60.jsonl",
+    "session_id": "368590ad-71d0-4027-aafc-c62894d4ef3a",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/368590ad-71d0-4027-aafc-c62894d4ef3a.jsonl",
     "cwd": "/home/emhar/avaris-ai",
     "permission_mode": "bypassPermissions",
-    "hook_event_name": "PreToolUse",
-    "tool_name": "Skill",
-    "tool_input": {
-        "skill": "hooks-management",
-        "args": "revise this hook. This must check for \"Task\" matcher first to detect version manager subagent via subagent_type. Then use the cache to track any subsequent pretool event to validate if tool use is appropriate. Then detect if subagent is done by checking using Subagent_Stop. If stop any tools that has been blocked during subagent run can be re allowed"
-    },
-    "tool_use_id": "toolu_01Lnxyk9k9cEd8qwQSwLpwf5"
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": true,
+    "agent_id": "add01d2",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-add01d2.jsonl"
 }
 {
-    "session_id": "1ab68142-7da4-4bc6-906a-00b87fac2e60",
-    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/1ab68142-7da4-4bc6-906a-00b87fac2e60.jsonl",
+    "session_id": "368590ad-71d0-4027-aafc-c62894d4ef3a",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/368590ad-71d0-4027-aafc-c62894d4ef3a.jsonl",
     "cwd": "/home/emhar/avaris-ai",
     "permission_mode": "bypassPermissions",
-    "hook_event_name": "PreToolUse",
-    "tool_name": "Glob",
-    "tool_input": {
-        "pattern": ".claude/hooks/**/*.py"
-    },
-    "tool_use_id": "toolu_01U3ggQ9oPMXxShTRdDEXGAP"
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": true,
+    "agent_id": "add01d2",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-add01d2.jsonl"
 }
 {
-    "session_id": "1ab68142-7da4-4bc6-906a-00b87fac2e60",
-    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/1ab68142-7da4-4bc6-906a-00b87fac2e60.jsonl",
+    "session_id": "368590ad-71d0-4027-aafc-c62894d4ef3a",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/368590ad-71d0-4027-aafc-c62894d4ef3a.jsonl",
     "cwd": "/home/emhar/avaris-ai",
     "permission_mode": "bypassPermissions",
-    "hook_event_name": "PreToolUse",
-    "tool_name": "Read",
-    "tool_input": {
-        "file_path": "/home/emhar/avaris-ai/.claude/skills/hooks-management/references/hooks.md"
-    },
-    "tool_use_id": "toolu_019Lm7RBCgqPzbWF2M4XfTKf"
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": true,
+    "agent_id": "add01d2",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-add01d2.jsonl"
 }
 {
-    "session_id": "1ab68142-7da4-4bc6-906a-00b87fac2e60",
-    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/1ab68142-7da4-4bc6-906a-00b87fac2e60.jsonl",
+    "session_id": "c02135af-6720-4431-b45c-0b61362b7f18",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/c02135af-6720-4431-b45c-0b61362b7f18.jsonl",
     "cwd": "/home/emhar/avaris-ai",
-    "permission_mode": "bypassPermissions",
-    "hook_event_name": "PreToolUse",
-    "tool_name": "Read",
-    "tool_input": {
-        "file_path": "/home/emhar/avaris-ai/.claude/skills/hooks-management/references/input-patterns.md"
-    },
-    "tool_use_id": "toolu_0179WScC4R6CESW8Te8fBx3D"
+    "permission_mode": "default",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a25ffa0",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a25ffa0.jsonl"
 }
 {
-    "session_id": "d75cc338-90fd-4467-b817-71e12b4673bf",
-    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/d75cc338-90fd-4467-b817-71e12b4673bf.jsonl",
+    "session_id": "c02135af-6720-4431-b45c-0b61362b7f18",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/c02135af-6720-4431-b45c-0b61362b7f18.jsonl",
     "cwd": "/home/emhar/avaris-ai",
-    "permission_mode": "bypassPermissions",
-    "hook_event_name": "PreToolUse",
-    "tool_name": "Skill",
-    "tool_input": {
-        "skill": "hooks-management",
-        "args": "revise this hook. This must check for \"Task\" matcher first to detect version manager subagent via subagent_type. Then use the cache to track any subsequent pretool event to validate if tool use is appropriate. Then detect if subagent is done by checking using Subagent_Stop. If stop any tools that has been blocked during subagent run can be re allowed"
-    },
-    "tool_use_id": "toolu_01Puier4vs9hBpqMcKqnfr4i"
+    "permission_mode": "default",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "af778dc",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-af778dc.jsonl"
 }
 {
-    "session_id": "d75cc338-90fd-4467-b817-71e12b4673bf",
-    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/d75cc338-90fd-4467-b817-71e12b4673bf.jsonl",
+    "session_id": "a5994417-39c8-44c0-a30c-b7e2a009a172",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/a5994417-39c8-44c0-a30c-b7e2a009a172.jsonl",
     "cwd": "/home/emhar/avaris-ai",
-    "permission_mode": "bypassPermissions",
-    "hook_event_name": "PreToolUse",
-    "tool_name": "Glob",
-    "tool_input": {
-        "pattern": ".claude/hooks/**/*.py"
-    },
-    "tool_use_id": "toolu_01RgBM3RfadTBtMci9MaYZT6"
+    "permission_mode": "default",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a134336",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a134336.jsonl"
 }
 {
-    "session_id": "d75cc338-90fd-4467-b817-71e12b4673bf",
-    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/d75cc338-90fd-4467-b817-71e12b4673bf.jsonl",
+    "session_id": "a5994417-39c8-44c0-a30c-b7e2a009a172",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/a5994417-39c8-44c0-a30c-b7e2a009a172.jsonl",
     "cwd": "/home/emhar/avaris-ai",
-    "permission_mode": "bypassPermissions",
-    "hook_event_name": "PreToolUse",
-    "tool_name": "Read",
-    "tool_input": {
-        "file_path": "/home/emhar/avaris-ai/.claude/skills/hooks-management/references/hooks.md"
-    },
-    "tool_use_id": "toolu_01MespAPyQZCn1KJfbfgiFhh"
+    "permission_mode": "default",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a117eb3",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a117eb3.jsonl"
 }
 {
-    "session_id": "d75cc338-90fd-4467-b817-71e12b4673bf",
-    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/d75cc338-90fd-4467-b817-71e12b4673bf.jsonl",
+    "session_id": "98014915-9fdb-4f2d-9ba3-05d815477ccc",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/98014915-9fdb-4f2d-9ba3-05d815477ccc.jsonl",
     "cwd": "/home/emhar/avaris-ai",
     "permission_mode": "bypassPermissions",
-    "hook_event_name": "PreToolUse",
-    "tool_name": "Read",
-    "tool_input": {
-        "file_path": "/home/emhar/avaris-ai/.claude/skills/hooks-management/references/input-patterns.md"
-    },
-    "tool_use_id": "toolu_01BythB2vCKiS8xkWiu182iD"
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a476ee2",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a476ee2.jsonl"
 }
 {
-    "session_id": "d75cc338-90fd-4467-b817-71e12b4673bf",
-    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/d75cc338-90fd-4467-b817-71e12b4673bf.jsonl",
+    "session_id": "69d7b78c-98bf-40c0-a946-180bfa610b9a",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/69d7b78c-98bf-40c0-a946-180bfa610b9a.jsonl",
     "cwd": "/home/emhar/avaris-ai",
-    "permission_mode": "bypassPermissions",
-    "hook_event_name": "PreToolUse",
-    "tool_name": "Read",
-    "tool_input": {
-        "file_path": "/home/emhar/avaris-ai/.claude/hooks/guardrails/version_manager_guardrail.py"
-    },
-    "tool_use_id": "toolu_015DmMDarVtsP9JaPH2UUUeY"
+    "permission_mode": "default",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "aec31a4",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-aec31a4.jsonl"
 }
 {
-    "session_id": "d75cc338-90fd-4467-b817-71e12b4673bf",
-    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/d75cc338-90fd-4467-b817-71e12b4673bf.jsonl",
+    "session_id": "69d7b78c-98bf-40c0-a946-180bfa610b9a",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/69d7b78c-98bf-40c0-a946-180bfa610b9a.jsonl",
     "cwd": "/home/emhar/avaris-ai",
-    "permission_mode": "bypassPermissions",
-    "hook_event_name": "PreToolUse",
-    "tool_name": "Read",
-    "tool_input": {
-        "file_path": "/home/emhar/avaris-ai/.claude/hooks/utils/cache.py"
-    },
-    "tool_use_id": "toolu_017NaQBESAxQUXG5DTfBhCbP"
+    "permission_mode": "default",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "af9bbdf",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-af9bbdf.jsonl"
 }
 {
-    "session_id": "d75cc338-90fd-4467-b817-71e12b4673bf",
-    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/d75cc338-90fd-4467-b817-71e12b4673bf.jsonl",
+    "session_id": "88d30400-5150-47a3-b114-0efb84fe780e",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/88d30400-5150-47a3-b114-0efb84fe780e.jsonl",
     "cwd": "/home/emhar/avaris-ai",
-    "permission_mode": "bypassPermissions",
-    "hook_event_name": "PreToolUse",
-    "tool_name": "Read",
-    "tool_input": {
-        "file_path": "/home/emhar/avaris-ai/.claude/settings.local.json"
-    },
-    "tool_use_id": "toolu_01MfSNdcZqVj8AhuQwDbY36q"
+    "permission_mode": "default",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a399f96",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a399f96.jsonl"
 }
 {
-    "session_id": "d75cc338-90fd-4467-b817-71e12b4673bf",
-    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/d75cc338-90fd-4467-b817-71e12b4673bf.jsonl",
+    "session_id": "88d30400-5150-47a3-b114-0efb84fe780e",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/88d30400-5150-47a3-b114-0efb84fe780e.jsonl",
     "cwd": "/home/emhar/avaris-ai",
-    "permission_mode": "bypassPermissions",
-    "hook_event_name": "PreToolUse",
-    "tool_name": "Read",
-    "tool_input": {
-        "file_path": "/home/emhar/avaris-ai/.claude/hooks/cache.json"
-    },
-    "tool_use_id": "toolu_01Hyo5AuidtvzbSTHPhLKJKS"
+    "permission_mode": "default",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a42973e",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a42973e.jsonl"
 }
 {
-    "session_id": "d75cc338-90fd-4467-b817-71e12b4673bf",
-    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/d75cc338-90fd-4467-b817-71e12b4673bf.jsonl",
+    "session_id": "88d30400-5150-47a3-b114-0efb84fe780e",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/88d30400-5150-47a3-b114-0efb84fe780e.jsonl",
     "cwd": "/home/emhar/avaris-ai",
     "permission_mode": "bypassPermissions",
-    "hook_event_name": "PreToolUse",
-    "tool_name": "Read",
-    "tool_input": {
-        "file_path": "/home/emhar/avaris-ai/.claude/hooks/utils/__init__.py"
-    },
-    "tool_use_id": "toolu_01AKWrEfyB6S1aGjDvDsdwXN"
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "aa962cc",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-aa962cc.jsonl"
 }
 {
-    "session_id": "d75cc338-90fd-4467-b817-71e12b4673bf",
-    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/d75cc338-90fd-4467-b817-71e12b4673bf.jsonl",
+    "session_id": "88d30400-5150-47a3-b114-0efb84fe780e",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/88d30400-5150-47a3-b114-0efb84fe780e.jsonl",
     "cwd": "/home/emhar/avaris-ai",
     "permission_mode": "bypassPermissions",
-    "hook_event_name": "PreToolUse",
-    "tool_name": "Read",
-    "tool_input": {
-        "file_path": "/home/emhar/avaris-ai/.claude/hooks/utils/output.py"
-    },
-    "tool_use_id": "toolu_01CzgWxrjb44JsXJ7aZMGK6i"
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a8b473c",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a8b473c.jsonl"
 }
 {
-    "session_id": "d75cc338-90fd-4467-b817-71e12b4673bf",
-    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/d75cc338-90fd-4467-b817-71e12b4673bf.jsonl",
+    "session_id": "88d30400-5150-47a3-b114-0efb84fe780e",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/88d30400-5150-47a3-b114-0efb84fe780e.jsonl",
     "cwd": "/home/emhar/avaris-ai",
     "permission_mode": "bypassPermissions",
-    "hook_event_name": "PreToolUse",
-    "tool_name": "Write",
-    "tool_input": {
-        "file_path": "/home/emhar/avaris-ai/.claude/hooks/guardrails/version_manager_guardrail.py",
-        "content": "#!/usr/bin/env python3\n\"\"\"\nGuardrail hook for version-manager subagent.\n\nThis hook operates across multiple events:\n- PreToolUse (Task matcher): Detects version-manager subagent start, activates guardrail\n- PreToolUse (Write|Edit|MultiEdit|Bash): Validates tool use during active guardrail\n- SubagentStop: Detects subagent completion, deactivates guardrail\n\nBlocks during active guardrail:\n- Write, Edit, MultiEdit tools\n- Bash commands outside safe git operations\n\"\"\"\nimport re\nimport sys\nfrom pathlib import Path\n\nsys.path.insert(0, str(Path(__file__).parent.parent))\n\nfrom utils import read_stdin_json, get_cache, set_cache, load_cache, write_cache, block_response\n\n# Target subagent this guardrail applies to\nTARGET_SUBAGENT = \"version-manager\"\n\n# Cache key for guardrail state\nGUARDRAIL_CACHE_KEY = \"version_manager_guardrail_active\"\n\n# Tools that are completely blocked during guardrail\nBLOCKED_TOOLS = {\"Write\", \"Edit\", \"MultiEdit\"}\n\n# Safe git command patterns (whitelist approach)\nSAFE_GIT_PATTERNS = [\n    r\"^git\\s+status\\b\",\n    r\"^git\\s+log\\b\",\n    r\"^git\\s+diff\\b\",\n    r\"^git\\s+branch\\b\",\n    r\"^git\\s+show\\b\",\n    r\"^git\\s+ls-files\\b\",\n    r\"^git\\s+rev-parse\\b\",\n    r\"^git\\s+remote\\b\",\n    r\"^git\\s+config\\b\",\n    r\"^git\\s+fetch\\b\",\n    r\"^git\\s+pull\\b\",\n    r\"^git\\s+add\\b\",\n    r\"^git\\s+commit\\b\",\n    r\"^git\\s+push\\b\",\n    r\"^git\\s+checkout\\b\",\n    r\"^git\\s+switch\\b\",\n    r\"^git\\s+merge\\b\",\n    r\"^git\\s+rebase\\b\",\n    r\"^git\\s+tag\\b\",\n    r\"^git\\s+stash\\b\",\n    r\"^git\\s+cherry-pick\\b\",\n    r\"^git\\s+reset\\b\",\n    r\"^git\\s+restore\\b\",\n    r\"^git\\s+clean\\b\",\n    r\"^git\\s+describe\\b\",\n    r\"^git\\s+shortlog\\b\",\n    r\"^git\\s+blame\\b\",\n    r\"^git\\s+grep\\b\",\n]\n\n\ndef is_guardrail_active() -> bool:\n    \"\"\"Check if version-manager guardrail is currently active.\"\"\"\n    return get_cache(GUARDRAIL_CACHE_KEY) is True\n\n\ndef activate_guardrail() -> None:\n    \"\"\"Activate the version-manager guardrail in cache.\"\"\"\n    cache = load_cache()\n    cache[GUARDRAIL_CACHE_KEY] = True\n    write_cache(cache)\n\n\ndef deactivate_guardrail() -> None:\n    \"\"\"Deactivate the version-manager guardrail in cache.\"\"\"\n    cache = load_cache()\n    cache[GUARDRAIL_CACHE_KEY] = False\n    write_cache(cache)\n\n\ndef is_safe_git_command(command: str) -> bool:\n    \"\"\"Check if command is a safe git operation.\"\"\"\n    if not command:\n        return False\n    command = command.strip()\n    for pattern in SAFE_GIT_PATTERNS:\n        if re.match(pattern, command, re.IGNORECASE):\n            return True\n    return False\n\n\ndef handle_task_pretool(input_data: dict) -> None:\n    \"\"\"\n    Handle PreToolUse for Task tool.\n    Detects version-manager subagent start and activates guardrail.\n    \"\"\"\n    tool_input = input_data.get(\"tool_input\", {})\n    subagent_type = tool_input.get(\"subagent_type\", \"\")\n\n    if subagent_type == TARGET_SUBAGENT:\n        activate_guardrail()\n\n\ndef handle_tool_pretool(input_data: dict) -> None:\n    \"\"\"\n    Handle PreToolUse for Write|Edit|MultiEdit|Bash tools.\n    Validates tool use if guardrail is active.\n    \"\"\"\n    if not is_guardrail_active():\n        return\n\n    tool_name = input_data.get(\"tool_name\", \"\")\n    tool_input = input_data.get(\"tool_input\", {})\n\n    # Block Write/Edit/MultiEdit tools entirely\n    if tool_name in BLOCKED_TOOLS:\n        block_response(\n            f\"GUARDRAIL: {tool_name} tool is blocked for version-manager subagent. \"\n            \"This subagent is restricted to git operations only.\"\n        )\n\n    # For Bash, only allow safe git commands\n    if tool_name == \"Bash\":\n        command = tool_input.get(\"command\", \"\")\n        if not is_safe_git_command(command):\n            block_response(\n                f\"GUARDRAIL: Bash command blocked for version-manager subagent. \"\n                f\"Only safe git commands are allowed. Attempted: {command[:100]}\"\n            )\n\n\ndef handle_subagent_stop(input_data: dict) -> None:\n    \"\"\"\n    Handle SubagentStop event.\n    Deactivates guardrail when version-manager subagent completes.\n    \"\"\"\n    if is_guardrail_active():\n        deactivate_guardrail()\n\n\ndef main() -> None:\n    \"\"\"Entry point for the hook.\"\"\"\n    input_data = read_stdin_json()\n    if not input_data:\n        sys.exit(0)\n\n    hook_event = input_data.get(\"hook_event_name\", \"\")\n    tool_name = input_data.get(\"tool_name\", \"\")\n\n    # Route to appropriate handler based on event type\n    if hook_event == \"PreToolUse\":\n        if tool_name == \"Task\":\n            handle_task_pretool(input_data)\n        else:\n            handle_tool_pretool(input_data)\n    elif hook_event == \"SubagentStop\":\n        handle_subagent_stop(input_data)\n\n    sys.exit(0)\n\n\nif __name__ == \"__main__\":\n    main()\n"
-    },
-    "tool_use_id": "toolu_01BBMM2ZHc8xWKpXLtCSZHVe"
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "af82a4d",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-af82a4d.jsonl"
 }
 {
-    "session_id": "d75cc338-90fd-4467-b817-71e12b4673bf",
-    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/d75cc338-90fd-4467-b817-71e12b4673bf.jsonl",
+    "session_id": "88d30400-5150-47a3-b114-0efb84fe780e",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/88d30400-5150-47a3-b114-0efb84fe780e.jsonl",
     "cwd": "/home/emhar/avaris-ai",
     "permission_mode": "bypassPermissions",
-    "hook_event_name": "PreToolUse",
-    "tool_name": "Edit",
-    "tool_input": {
-        "file_path": "/home/emhar/avaris-ai/.claude/settings.local.json",
-        "old_string": "  \"hooks\": {\n    \"PreToolUse\": [\n      {\n        \"matcher\": \"Skill\",\n        \"hooks\": [\n          {\n            \"type\": \"command\",\n            \"command\": \"python \\\"$CLAUDE_PROJECT_DIR/.claude/hooks/status_logger/dispatcher.py\\\"\",\n            \"timeout\": 30\n          }\n        ]\n      },\n      {\n        \"matcher\": \"Bash\",\n        \"hooks\": [\n          {\n            \"type\": \"command\",\n            \"command\": \"python \\\"$CLAUDE_PROJECT_DIR/.claude/hooks/security/security.py\\\"\",\n            \"timeout\": 30\n          }\n        ]\n      },\n      {\n        \"matcher\": \"Write|Edit|MultiEdit|Bash\",\n        \"hooks\": [\n          {\n            \"type\": \"command\",\n            \"command\": \"python \\\"$CLAUDE_PROJECT_DIR/.claude/hooks/guardrails/version_manager_guardrail.py\\\"\",\n            \"timeout\": 30\n          }\n        ]\n      }\n    ],\n    \"Stop\": [\n      {\n        \"hooks\": [\n          {\n            \"type\": \"command\",\n            \"command\": \"python \\\"$CLAUDE_PROJECT_DIR/.claude/hooks/workflow/stop_guard.py\\\"\",\n            \"timeout\": 30\n          }\n        ]\n      }\n    ]\n  },",
-        "new_string": "  \"hooks\": {\n    \"PreToolUse\": [\n      {\n        \"matcher\": \"Skill\",\n        \"hooks\": [\n          {\n            \"type\": \"command\",\n            \"command\": \"python \\\"$CLAUDE_PROJECT_DIR/.claude/hooks/status_logger/dispatcher.py\\\"\",\n            \"timeout\": 30\n          }\n        ]\n      },\n      {\n        \"matcher\": \"Bash\",\n        \"hooks\": [\n          {\n            \"type\": \"command\",\n            \"command\": \"python \\\"$CLAUDE_PROJECT_DIR/.claude/hooks/security/security.py\\\"\",\n            \"timeout\": 30\n          }\n        ]\n      },\n      {\n        \"matcher\": \"Task\",\n        \"hooks\": [\n          {\n            \"type\": \"command\",\n            \"command\": \"python \\\"$CLAUDE_PROJECT_DIR/.claude/hooks/guardrails/version_manager_guardrail.py\\\"\",\n            \"timeout\": 30\n          }\n        ]\n      },\n      {\n        \"matcher\": \"Write|Edit|MultiEdit|Bash\",\n        \"hooks\": [\n          {\n            \"type\": \"command\",\n            \"command\": \"python \\\"$CLAUDE_PROJECT_DIR/.claude/hooks/guardrails/version_manager_guardrail.py\\\"\",\n            \"timeout\": 30\n          }\n        ]\n      }\n    ],\n    \"Stop\": [\n      {\n        \"hooks\": [\n          {\n            \"type\": \"command\",\n            \"command\": \"python \\\"$CLAUDE_PROJECT_DIR/.claude/hooks/workflow/stop_guard.py\\\"\",\n            \"timeout\": 30\n          }\n        ]\n      }\n    ],\n    \"SubagentStop\": [\n      {\n        \"hooks\": [\n          {\n            \"type\": \"command\",\n            \"command\": \"python \\\"$CLAUDE_PROJECT_DIR/.claude/hooks/guardrails/version_manager_guardrail.py\\\"\",\n            \"timeout\": 30\n          }\n        ]\n      }\n    ]\n  },"
-    },
-    "tool_use_id": "toolu_014fwoBBUaEnjXuPSsNyzDCF"
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a2202ea",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a2202ea.jsonl"
 }
 {
-    "session_id": "d75cc338-90fd-4467-b817-71e12b4673bf",
-    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/d75cc338-90fd-4467-b817-71e12b4673bf.jsonl",
+    "session_id": "88d30400-5150-47a3-b114-0efb84fe780e",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/88d30400-5150-47a3-b114-0efb84fe780e.jsonl",
     "cwd": "/home/emhar/avaris-ai",
     "permission_mode": "bypassPermissions",
-    "hook_event_name": "PreToolUse",
-    "tool_name": "Edit",
-    "tool_input": {
-        "file_path": "/home/emhar/avaris-ai/.claude/hooks/guardrails/version_manager_guardrail.py",
-        "old_string": "from utils import read_stdin_json, get_cache, set_cache, load_cache, write_cache, block_response",
-        "new_string": "from utils import read_stdin_json, get_cache, load_cache, write_cache, block_response"
-    },
-    "tool_use_id": "toolu_01LECAd5pxLLrcwRaX9tBFjn"
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a198ca4",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a198ca4.jsonl"
 }
 {
-    "session_id": "d75cc338-90fd-4467-b817-71e12b4673bf",
-    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/d75cc338-90fd-4467-b817-71e12b4673bf.jsonl",
+    "session_id": "88d30400-5150-47a3-b114-0efb84fe780e",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/88d30400-5150-47a3-b114-0efb84fe780e.jsonl",
     "cwd": "/home/emhar/avaris-ai",
     "permission_mode": "bypassPermissions",
-    "hook_event_name": "PreToolUse",
-    "tool_name": "Edit",
-    "tool_input": {
-        "file_path": "/home/emhar/avaris-ai/.claude/hooks/guardrails/version_manager_guardrail.py",
-        "old_string": "def handle_subagent_stop(input_data: dict) -> None:\n    \"\"\"\n    Handle SubagentStop event.\n    Deactivates guardrail when version-manager subagent completes.\n    \"\"\"\n    if is_guardrail_active():\n        deactivate_guardrail()",
-        "new_string": "def handle_subagent_stop() -> None:\n    \"\"\"\n    Handle SubagentStop event.\n    Deactivates guardrail when version-manager subagent completes.\n    \"\"\"\n    if is_guardrail_active():\n        deactivate_guardrail()"
-    },
-    "tool_use_id": "toolu_01HBBHKHL2ujsB6ytuHiYTDS"
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "adfe12a",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-adfe12a.jsonl"
 }
 {
-    "session_id": "d75cc338-90fd-4467-b817-71e12b4673bf",
-    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/d75cc338-90fd-4467-b817-71e12b4673bf.jsonl",
+    "session_id": "88d30400-5150-47a3-b114-0efb84fe780e",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/88d30400-5150-47a3-b114-0efb84fe780e.jsonl",
     "cwd": "/home/emhar/avaris-ai",
     "permission_mode": "bypassPermissions",
-    "hook_event_name": "PreToolUse",
-    "tool_name": "Edit",
-    "tool_input": {
-        "file_path": "/home/emhar/avaris-ai/.claude/hooks/guardrails/version_manager_guardrail.py",
-        "old_string": "    elif hook_event == \"SubagentStop\":\n        handle_subagent_stop(input_data)",
-        "new_string": "    elif hook_event == \"SubagentStop\":\n        handle_subagent_stop()"
-    },
-    "tool_use_id": "toolu_012T1RGmTctNLNcijrr9cgdd"
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a33bbd9",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a33bbd9.jsonl"
 }
 {
-    "session_id": "d75cc338-90fd-4467-b817-71e12b4673bf",
-    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/d75cc338-90fd-4467-b817-71e12b4673bf.jsonl",
+    "session_id": "88d30400-5150-47a3-b114-0efb84fe780e",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/88d30400-5150-47a3-b114-0efb84fe780e.jsonl",
     "cwd": "/home/emhar/avaris-ai",
     "permission_mode": "bypassPermissions",
-    "hook_event_name": "PreToolUse",
-    "tool_name": "Bash",
-    "tool_input": {
-        "command": "echo '{\"hook_event_name\": \"PreToolUse\", \"tool_name\": \"Task\", \"tool_input\": {\"subagent_type\": \"version-manager\", \"prompt\": \"test\"}}' | python .claude/hooks/guardrails/version_manager_guardrail.py && echo \"Exit code: $?\"",
-        "description": "Test hook with Task tool for version-manager"
-    },
-    "tool_use_id": "toolu_01P5WyzwjwcGVWmq1pKgeBSN"
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "ae7a212",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-ae7a212.jsonl"
 }
 {
-    "session_id": "d75cc338-90fd-4467-b817-71e12b4673bf",
-    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/d75cc338-90fd-4467-b817-71e12b4673bf.jsonl",
+    "session_id": "88d30400-5150-47a3-b114-0efb84fe780e",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/88d30400-5150-47a3-b114-0efb84fe780e.jsonl",
     "cwd": "/home/emhar/avaris-ai",
     "permission_mode": "bypassPermissions",
-    "hook_event_name": "PreToolUse",
-    "tool_name": "Bash",
-    "tool_input": {
-        "command": "cat .claude/hooks/cache.json | grep version_manager",
-        "description": "Check if guardrail was activated in cache"
-    },
-    "tool_use_id": "toolu_01J3VDEtEiNuwBKeBo1vZCEL"
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "aaa2aa0",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-aaa2aa0.jsonl"
 }
 {
-    "session_id": "d75cc338-90fd-4467-b817-71e12b4673bf",
-    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/d75cc338-90fd-4467-b817-71e12b4673bf.jsonl",
+    "session_id": "88d30400-5150-47a3-b114-0efb84fe780e",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/88d30400-5150-47a3-b114-0efb84fe780e.jsonl",
     "cwd": "/home/emhar/avaris-ai",
     "permission_mode": "bypassPermissions",
-    "hook_event_name": "PreToolUse",
-    "tool_name": "Read",
-    "tool_input": {
-        "file_path": "/home/emhar/avaris-ai/.claude/hooks/cache.json"
-    },
-    "tool_use_id": "toolu_01VjjdukViacVbaYV7nLJkaD"
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": true,
+    "agent_id": "aaa2aa0",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-aaa2aa0.jsonl"
 }
 {
-    "session_id": "d75cc338-90fd-4467-b817-71e12b4673bf",
-    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/d75cc338-90fd-4467-b817-71e12b4673bf.jsonl",
+    "session_id": "88d30400-5150-47a3-b114-0efb84fe780e",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/88d30400-5150-47a3-b114-0efb84fe780e.jsonl",
     "cwd": "/home/emhar/avaris-ai",
     "permission_mode": "bypassPermissions",
-    "hook_event_name": "PreToolUse",
-    "tool_name": "Write",
-    "tool_input": {
-        "file_path": "/home/emhar/avaris-ai/.claude/hooks/cache.json",
-        "content": "{\n  \"block_stoppage\": {\n    \"condition\": false,\n    \"reason\": \"Phase transition allowed\"\n  },\n  \"phases_completed\": [],\n  \"skills_triggered\": [],\n  \"subagents_triggered\": [],\n  \"active_subagent\": \"\",\n  \"current_phase\": \"explore\",\n  \"current_subagent\": \"\",\n  \"is_active\": false,\n  \"retrigger_flag\": 0,\n  \"version_manager_guardrail_active\": false\n}\n"
-    },
-    "tool_use_id": "toolu_01VUFPcoMsg6MKTUhHMzHR4t"
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": true,
+    "agent_id": "aaa2aa0",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-aaa2aa0.jsonl"
 }
 {
-    "session_id": "d75cc338-90fd-4467-b817-71e12b4673bf",
-    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/d75cc338-90fd-4467-b817-71e12b4673bf.jsonl",
+    "session_id": "88d30400-5150-47a3-b114-0efb84fe780e",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/88d30400-5150-47a3-b114-0efb84fe780e.jsonl",
     "cwd": "/home/emhar/avaris-ai",
     "permission_mode": "bypassPermissions",
-    "hook_event_name": "PreToolUse",
-    "tool_name": "Bash",
-    "tool_input": {
-        "command": "echo '{\"hook_event_name\": \"SubagentStop\", \"session_id\": \"test\"}' | python .claude/hooks/guardrails/version_manager_guardrail.py && echo \"Exit code: $?\"",
-        "description": "Test SubagentStop to deactivate guardrail"
-    },
-    "tool_use_id": "toolu_01K6eiK51nV7SsCQuKRjXuHt"
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": true,
+    "agent_id": "aaa2aa0",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-aaa2aa0.jsonl"
+}
+{
+    "session_id": "88d30400-5150-47a3-b114-0efb84fe780e",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/88d30400-5150-47a3-b114-0efb84fe780e.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": true,
+    "agent_id": "aaa2aa0",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-aaa2aa0.jsonl"
+}
+{
+    "session_id": "88d30400-5150-47a3-b114-0efb84fe780e",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/88d30400-5150-47a3-b114-0efb84fe780e.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": true,
+    "agent_id": "aaa2aa0",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-aaa2aa0.jsonl"
+}
+{
+    "session_id": "88d30400-5150-47a3-b114-0efb84fe780e",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/88d30400-5150-47a3-b114-0efb84fe780e.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": true,
+    "agent_id": "aaa2aa0",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-aaa2aa0.jsonl"
+}
+{
+    "session_id": "88d30400-5150-47a3-b114-0efb84fe780e",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/88d30400-5150-47a3-b114-0efb84fe780e.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": true,
+    "agent_id": "aaa2aa0",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-aaa2aa0.jsonl"
+}
+{
+    "session_id": "88d30400-5150-47a3-b114-0efb84fe780e",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/88d30400-5150-47a3-b114-0efb84fe780e.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": true,
+    "agent_id": "aaa2aa0",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-aaa2aa0.jsonl"
+}
+{
+    "session_id": "88d30400-5150-47a3-b114-0efb84fe780e",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/88d30400-5150-47a3-b114-0efb84fe780e.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": true,
+    "agent_id": "aaa2aa0",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-aaa2aa0.jsonl"
+}
+{
+    "session_id": "88d30400-5150-47a3-b114-0efb84fe780e",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/88d30400-5150-47a3-b114-0efb84fe780e.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": true,
+    "agent_id": "aaa2aa0",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-aaa2aa0.jsonl"
+}
+{
+    "session_id": "88d30400-5150-47a3-b114-0efb84fe780e",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/88d30400-5150-47a3-b114-0efb84fe780e.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": true,
+    "agent_id": "aaa2aa0",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-aaa2aa0.jsonl"
+}
+{
+    "session_id": "88d30400-5150-47a3-b114-0efb84fe780e",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/88d30400-5150-47a3-b114-0efb84fe780e.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": true,
+    "agent_id": "aaa2aa0",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-aaa2aa0.jsonl"
+}
+{
+    "session_id": "88d30400-5150-47a3-b114-0efb84fe780e",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/88d30400-5150-47a3-b114-0efb84fe780e.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": true,
+    "agent_id": "aaa2aa0",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-aaa2aa0.jsonl"
+}
+{
+    "session_id": "88d30400-5150-47a3-b114-0efb84fe780e",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/88d30400-5150-47a3-b114-0efb84fe780e.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": true,
+    "agent_id": "aaa2aa0",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-aaa2aa0.jsonl"
+}
+{
+    "session_id": "88d30400-5150-47a3-b114-0efb84fe780e",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/88d30400-5150-47a3-b114-0efb84fe780e.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": true,
+    "agent_id": "aaa2aa0",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-aaa2aa0.jsonl"
+}
+{
+    "session_id": "88d30400-5150-47a3-b114-0efb84fe780e",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/88d30400-5150-47a3-b114-0efb84fe780e.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": true,
+    "agent_id": "aaa2aa0",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-aaa2aa0.jsonl"
+}
+{
+    "session_id": "88d30400-5150-47a3-b114-0efb84fe780e",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/88d30400-5150-47a3-b114-0efb84fe780e.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": true,
+    "agent_id": "aaa2aa0",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-aaa2aa0.jsonl"
+}
+{
+    "session_id": "88d30400-5150-47a3-b114-0efb84fe780e",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/88d30400-5150-47a3-b114-0efb84fe780e.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": true,
+    "agent_id": "aaa2aa0",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-aaa2aa0.jsonl"
+}
+{
+    "session_id": "88d30400-5150-47a3-b114-0efb84fe780e",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/88d30400-5150-47a3-b114-0efb84fe780e.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": true,
+    "agent_id": "aaa2aa0",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-aaa2aa0.jsonl"
+}
+{
+    "session_id": "88d30400-5150-47a3-b114-0efb84fe780e",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/88d30400-5150-47a3-b114-0efb84fe780e.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": true,
+    "agent_id": "aaa2aa0",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-aaa2aa0.jsonl"
+}
+{
+    "session_id": "88d30400-5150-47a3-b114-0efb84fe780e",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/88d30400-5150-47a3-b114-0efb84fe780e.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": true,
+    "agent_id": "aaa2aa0",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-aaa2aa0.jsonl"
+}
+{
+    "session_id": "88d30400-5150-47a3-b114-0efb84fe780e",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/88d30400-5150-47a3-b114-0efb84fe780e.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": true,
+    "agent_id": "aaa2aa0",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-aaa2aa0.jsonl"
+}
+{
+    "session_id": "88d30400-5150-47a3-b114-0efb84fe780e",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/88d30400-5150-47a3-b114-0efb84fe780e.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": true,
+    "agent_id": "aaa2aa0",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-aaa2aa0.jsonl"
+}
+{
+    "session_id": "88d30400-5150-47a3-b114-0efb84fe780e",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/88d30400-5150-47a3-b114-0efb84fe780e.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a5a5091",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a5a5091.jsonl"
+}
+{
+    "session_id": "88d30400-5150-47a3-b114-0efb84fe780e",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/88d30400-5150-47a3-b114-0efb84fe780e.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a27cfc2",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a27cfc2.jsonl"
+}
+{
+    "session_id": "88d30400-5150-47a3-b114-0efb84fe780e",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/88d30400-5150-47a3-b114-0efb84fe780e.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a2e2370",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a2e2370.jsonl"
+}
+{
+    "session_id": "88d30400-5150-47a3-b114-0efb84fe780e",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/88d30400-5150-47a3-b114-0efb84fe780e.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": true,
+    "agent_id": "a2e2370",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a2e2370.jsonl"
+}
+{
+    "session_id": "88d30400-5150-47a3-b114-0efb84fe780e",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/88d30400-5150-47a3-b114-0efb84fe780e.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": true,
+    "agent_id": "a2e2370",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a2e2370.jsonl"
+}
+{
+    "session_id": "88d30400-5150-47a3-b114-0efb84fe780e",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/88d30400-5150-47a3-b114-0efb84fe780e.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": true,
+    "agent_id": "a2e2370",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a2e2370.jsonl"
+}
+{
+    "session_id": "88d30400-5150-47a3-b114-0efb84fe780e",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/88d30400-5150-47a3-b114-0efb84fe780e.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": true,
+    "agent_id": "a2e2370",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a2e2370.jsonl"
+}
+{
+    "session_id": "88d30400-5150-47a3-b114-0efb84fe780e",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/88d30400-5150-47a3-b114-0efb84fe780e.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a95e947",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a95e947.jsonl"
+}
+{
+    "session_id": "88d30400-5150-47a3-b114-0efb84fe780e",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/88d30400-5150-47a3-b114-0efb84fe780e.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": true,
+    "agent_id": "a95e947",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a95e947.jsonl"
+}
+{
+    "session_id": "88d30400-5150-47a3-b114-0efb84fe780e",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/88d30400-5150-47a3-b114-0efb84fe780e.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": true,
+    "agent_id": "a95e947",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a95e947.jsonl"
+}
+{
+    "session_id": "88d30400-5150-47a3-b114-0efb84fe780e",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/88d30400-5150-47a3-b114-0efb84fe780e.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": true,
+    "agent_id": "a95e947",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a95e947.jsonl"
+}
+{
+    "session_id": "88d30400-5150-47a3-b114-0efb84fe780e",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/88d30400-5150-47a3-b114-0efb84fe780e.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": true,
+    "agent_id": "a95e947",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a95e947.jsonl"
+}
+{
+    "session_id": "88d30400-5150-47a3-b114-0efb84fe780e",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/88d30400-5150-47a3-b114-0efb84fe780e.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": true,
+    "agent_id": "a95e947",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a95e947.jsonl"
+}
+{
+    "session_id": "88d30400-5150-47a3-b114-0efb84fe780e",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/88d30400-5150-47a3-b114-0efb84fe780e.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a7c1ded",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a7c1ded.jsonl"
+}
+{
+    "session_id": "88d30400-5150-47a3-b114-0efb84fe780e",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/88d30400-5150-47a3-b114-0efb84fe780e.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": true,
+    "agent_id": "a7c1ded",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a7c1ded.jsonl"
+}
+{
+    "session_id": "88d30400-5150-47a3-b114-0efb84fe780e",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/88d30400-5150-47a3-b114-0efb84fe780e.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": true,
+    "agent_id": "a7c1ded",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a7c1ded.jsonl"
+}
+{
+    "session_id": "88d30400-5150-47a3-b114-0efb84fe780e",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/88d30400-5150-47a3-b114-0efb84fe780e.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": true,
+    "agent_id": "a7c1ded",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a7c1ded.jsonl"
+}
+{
+    "session_id": "b6526fb7-45b0-41b1-9e12-5c5143204932",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/b6526fb7-45b0-41b1-9e12-5c5143204932.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "default",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a38610c",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a38610c.jsonl"
+}
+{
+    "session_id": "88d30400-5150-47a3-b114-0efb84fe780e",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/88d30400-5150-47a3-b114-0efb84fe780e.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "default",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a7cafa0",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a7cafa0.jsonl"
+}
+{
+    "session_id": "88d30400-5150-47a3-b114-0efb84fe780e",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/88d30400-5150-47a3-b114-0efb84fe780e.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "default",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": true,
+    "agent_id": "a38610c",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a38610c.jsonl"
+}
+{
+    "session_id": "88d30400-5150-47a3-b114-0efb84fe780e",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/88d30400-5150-47a3-b114-0efb84fe780e.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "default",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": true,
+    "agent_id": "a38610c",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a38610c.jsonl"
+}
+{
+    "session_id": "88d30400-5150-47a3-b114-0efb84fe780e",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/88d30400-5150-47a3-b114-0efb84fe780e.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "default",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": true,
+    "agent_id": "a38610c",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a38610c.jsonl"
+}
+{
+    "session_id": "88d30400-5150-47a3-b114-0efb84fe780e",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/88d30400-5150-47a3-b114-0efb84fe780e.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "default",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": true,
+    "agent_id": "a38610c",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a38610c.jsonl"
+}
+{
+    "session_id": "88d30400-5150-47a3-b114-0efb84fe780e",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/88d30400-5150-47a3-b114-0efb84fe780e.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "default",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": true,
+    "agent_id": "a7cafa0",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a7cafa0.jsonl"
+}
+{
+    "session_id": "88d30400-5150-47a3-b114-0efb84fe780e",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/88d30400-5150-47a3-b114-0efb84fe780e.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "ac8be99",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-ac8be99.jsonl"
+}
+{
+    "session_id": "88d30400-5150-47a3-b114-0efb84fe780e",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/88d30400-5150-47a3-b114-0efb84fe780e.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": true,
+    "agent_id": "ac8be99",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-ac8be99.jsonl"
+}
+{
+    "session_id": "88d30400-5150-47a3-b114-0efb84fe780e",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/88d30400-5150-47a3-b114-0efb84fe780e.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": true,
+    "agent_id": "ac8be99",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-ac8be99.jsonl"
+}
+{
+    "session_id": "88d30400-5150-47a3-b114-0efb84fe780e",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/88d30400-5150-47a3-b114-0efb84fe780e.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": true,
+    "agent_id": "ac8be99",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-ac8be99.jsonl"
+}
+{
+    "session_id": "88d30400-5150-47a3-b114-0efb84fe780e",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/88d30400-5150-47a3-b114-0efb84fe780e.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a414ca8",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a414ca8.jsonl"
+}
+{
+    "session_id": "88d30400-5150-47a3-b114-0efb84fe780e",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/88d30400-5150-47a3-b114-0efb84fe780e.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": true,
+    "agent_id": "a414ca8",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a414ca8.jsonl"
+}
+{
+    "session_id": "88d30400-5150-47a3-b114-0efb84fe780e",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/88d30400-5150-47a3-b114-0efb84fe780e.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a49b3e0",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a49b3e0.jsonl"
+}
+{
+    "session_id": "88d30400-5150-47a3-b114-0efb84fe780e",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/88d30400-5150-47a3-b114-0efb84fe780e.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": true,
+    "agent_id": "a49b3e0",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a49b3e0.jsonl"
+}
+{
+    "session_id": "08841ab1-917d-4fbc-8ea4-48c240fa27bf",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/08841ab1-917d-4fbc-8ea4-48c240fa27bf.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "ad71690",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-ad71690.jsonl"
+}
+{
+    "session_id": "08841ab1-917d-4fbc-8ea4-48c240fa27bf",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/08841ab1-917d-4fbc-8ea4-48c240fa27bf.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "aa70ad3",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-aa70ad3.jsonl"
+}
+{
+    "session_id": "08841ab1-917d-4fbc-8ea4-48c240fa27bf",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/08841ab1-917d-4fbc-8ea4-48c240fa27bf.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a8b8bf4",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a8b8bf4.jsonl"
+}
+{
+    "session_id": "0d6319d3-bee6-44fc-9c03-4ffc5d3ba040",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/0d6319d3-bee6-44fc-9c03-4ffc5d3ba040.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "default",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "afc2b04",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-afc2b04.jsonl"
+}
+{
+    "session_id": "0d6319d3-bee6-44fc-9c03-4ffc5d3ba040",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/0d6319d3-bee6-44fc-9c03-4ffc5d3ba040.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "default",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a7e0cc8",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a7e0cc8.jsonl"
+}
+{
+    "session_id": "0d6319d3-bee6-44fc-9c03-4ffc5d3ba040",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/0d6319d3-bee6-44fc-9c03-4ffc5d3ba040.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a42b61f",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a42b61f.jsonl"
+}
+{
+    "session_id": "0d6319d3-bee6-44fc-9c03-4ffc5d3ba040",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/0d6319d3-bee6-44fc-9c03-4ffc5d3ba040.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": true,
+    "agent_id": "a42b61f",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a42b61f.jsonl"
+}
+{
+    "session_id": "0d6319d3-bee6-44fc-9c03-4ffc5d3ba040",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/0d6319d3-bee6-44fc-9c03-4ffc5d3ba040.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a42f8ba",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a42f8ba.jsonl"
+}
+{
+    "session_id": "0d6319d3-bee6-44fc-9c03-4ffc5d3ba040",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/0d6319d3-bee6-44fc-9c03-4ffc5d3ba040.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": true,
+    "agent_id": "a42f8ba",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a42f8ba.jsonl"
+}
+{
+    "session_id": "0d6319d3-bee6-44fc-9c03-4ffc5d3ba040",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/0d6319d3-bee6-44fc-9c03-4ffc5d3ba040.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "af25232",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-af25232.jsonl"
+}
+{
+    "session_id": "0d6319d3-bee6-44fc-9c03-4ffc5d3ba040",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/0d6319d3-bee6-44fc-9c03-4ffc5d3ba040.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": true,
+    "agent_id": "af25232",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-af25232.jsonl"
+}
+{
+    "session_id": "0d6319d3-bee6-44fc-9c03-4ffc5d3ba040",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/0d6319d3-bee6-44fc-9c03-4ffc5d3ba040.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": true,
+    "agent_id": "af25232",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-af25232.jsonl"
+}
+{
+    "session_id": "0d6319d3-bee6-44fc-9c03-4ffc5d3ba040",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/0d6319d3-bee6-44fc-9c03-4ffc5d3ba040.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a67a2ed",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a67a2ed.jsonl"
+}
+{
+    "session_id": "0d6319d3-bee6-44fc-9c03-4ffc5d3ba040",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/0d6319d3-bee6-44fc-9c03-4ffc5d3ba040.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": true,
+    "agent_id": "a67a2ed",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a67a2ed.jsonl"
+}
+{
+    "session_id": "0d6319d3-bee6-44fc-9c03-4ffc5d3ba040",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/0d6319d3-bee6-44fc-9c03-4ffc5d3ba040.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": true,
+    "agent_id": "a67a2ed",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a67a2ed.jsonl"
+}
+{
+    "session_id": "0d6319d3-bee6-44fc-9c03-4ffc5d3ba040",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/0d6319d3-bee6-44fc-9c03-4ffc5d3ba040.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a4d41e4",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a4d41e4.jsonl"
+}
+{
+    "session_id": "0d6319d3-bee6-44fc-9c03-4ffc5d3ba040",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/0d6319d3-bee6-44fc-9c03-4ffc5d3ba040.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": true,
+    "agent_id": "a4d41e4",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a4d41e4.jsonl"
+}
+{
+    "session_id": "0d6319d3-bee6-44fc-9c03-4ffc5d3ba040",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/0d6319d3-bee6-44fc-9c03-4ffc5d3ba040.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": true,
+    "agent_id": "a4d41e4",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a4d41e4.jsonl"
+}
+{
+    "session_id": "0d6319d3-bee6-44fc-9c03-4ffc5d3ba040",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/0d6319d3-bee6-44fc-9c03-4ffc5d3ba040.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "af8f623",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-af8f623.jsonl"
+}
+{
+    "session_id": "0d6319d3-bee6-44fc-9c03-4ffc5d3ba040",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/0d6319d3-bee6-44fc-9c03-4ffc5d3ba040.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a54a81e",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a54a81e.jsonl"
+}
+{
+    "session_id": "0d6319d3-bee6-44fc-9c03-4ffc5d3ba040",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/0d6319d3-bee6-44fc-9c03-4ffc5d3ba040.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a92c949",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a92c949.jsonl"
+}
+{
+    "session_id": "0d6319d3-bee6-44fc-9c03-4ffc5d3ba040",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/0d6319d3-bee6-44fc-9c03-4ffc5d3ba040.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "aaeb306",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-aaeb306.jsonl"
+}
+{
+    "session_id": "0d6319d3-bee6-44fc-9c03-4ffc5d3ba040",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/0d6319d3-bee6-44fc-9c03-4ffc5d3ba040.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": true,
+    "agent_id": "aaeb306",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-aaeb306.jsonl"
+}
+{
+    "session_id": "0d6319d3-bee6-44fc-9c03-4ffc5d3ba040",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/0d6319d3-bee6-44fc-9c03-4ffc5d3ba040.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a515bdf",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a515bdf.jsonl"
+}
+{
+    "session_id": "b1a8ff73-b6a5-4e29-ad76-ab08d2c1e4ae",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/b1a8ff73-b6a5-4e29-ad76-ab08d2c1e4ae.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "default",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a343acc",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a343acc.jsonl"
+}
+{
+    "session_id": "b1a8ff73-b6a5-4e29-ad76-ab08d2c1e4ae",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/b1a8ff73-b6a5-4e29-ad76-ab08d2c1e4ae.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "default",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a185434",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a185434.jsonl"
+}
+{
+    "session_id": "2ead2a36-1200-4224-82c7-541bc2ec29b3",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/2ead2a36-1200-4224-82c7-541bc2ec29b3.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "default",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a5690b2",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a5690b2.jsonl"
+}
+{
+    "session_id": "2ead2a36-1200-4224-82c7-541bc2ec29b3",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/2ead2a36-1200-4224-82c7-541bc2ec29b3.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "default",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a6e89ff",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a6e89ff.jsonl"
+}
+{
+    "session_id": "2ead2a36-1200-4224-82c7-541bc2ec29b3",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/2ead2a36-1200-4224-82c7-541bc2ec29b3.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "ad9b29d",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-ad9b29d.jsonl"
 }

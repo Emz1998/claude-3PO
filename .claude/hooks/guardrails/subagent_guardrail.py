@@ -16,6 +16,7 @@ from utils import (  # type: ignore
     GuardrailConfig,
     GuardrailRunner,
     block_response,
+    continue_response,
     get_cache,
     load_cache,
     write_cache,
@@ -67,7 +68,9 @@ GUARDRAIL_CONFIGS: dict[str, GuardrailConfig] = {
         target_subagent="codebase-explorer",
         cache_key="codebase_explorer_guardrail_active",
         guarded_tools={"Write", "Edit"},
-        path_validator=create_session_file_validator("codebase-status", "codebase-status"),
+        path_validator=create_session_file_validator(
+            "codebase-status", "codebase-status"
+        ),
     ),
     "fullstack-developer": GuardrailConfig(
         target_subagent="fullstack-developer",
@@ -149,6 +152,24 @@ def get_current_task_status() -> tuple[str | None, str | None]:
     return task_id, task.get("status", "not_started")
 
 
+def get_task_status_by_id(task_id: str) -> str | None:
+    """Get task status by specific task ID. Returns status or None."""
+    version = get_current_version()
+    if not version:
+        return None
+
+    roadmap_path = get_roadmap_path(version)
+    roadmap = load_roadmap(roadmap_path)
+    if not roadmap:
+        return None
+
+    _, _, task = find_task_in_roadmap(roadmap, task_id)
+    if not task:
+        return None
+
+    return task.get("status", "not_started")
+
+
 def is_build_active() -> bool:
     """Check if /build skill is currently active."""
     return get_cache("build_skill_active") is True
@@ -159,6 +180,7 @@ class ConsolidatedGuardrailRunner:
 
     ACTIVE_SUBAGENT_KEY = "active_subagent"
     ENGINEER_ACTIVE_KEY = "engineer_task_logger_guardrail_active"
+    ENGINEER_ASSIGNED_TASK_KEY = "engineer_assigned_task"
 
     def get_active_subagent(self) -> str | None:
         """Get the currently active subagent type."""
@@ -190,11 +212,14 @@ class ConsolidatedGuardrailRunner:
     def activate_engineer_guardrail(self) -> None:
         cache = load_cache()
         cache[self.ENGINEER_ACTIVE_KEY] = True
+        task_id, _ = get_current_task_status()
+        cache[self.ENGINEER_ASSIGNED_TASK_KEY] = task_id
         write_cache(cache)
 
     def deactivate_engineer_guardrail(self) -> None:
         cache = load_cache()
         cache[self.ENGINEER_ACTIVE_KEY] = False
+        cache[self.ENGINEER_ASSIGNED_TASK_KEY] = None
         write_cache(cache)
 
     def handle_task_pretool(self, input_data: dict) -> None:
@@ -249,6 +274,7 @@ class ConsolidatedGuardrailRunner:
         # Handle Bash tool with unsafe command blocking
         if tool_name == "Bash" and config.block_unsafe_bash:
             from utils import is_safe_git_command  # type: ignore
+
             command = tool_input.get("command", "")
             if not is_safe_git_command(command):
                 block_response(
@@ -271,15 +297,23 @@ class ConsolidatedGuardrailRunner:
         tool_name = input_data.get("tool_name", "")
         tool_input = input_data.get("tool_input", {})
 
-        # Allow log:task skill to pass through
+        # Check current task status from roadmap
+        task_id, status = get_current_task_status()
+
+        # If task is completed, block ALL tools - subagent must stop immediately
+        if status == "completed":
+            block_response(
+                f"GUARDRAIL: {tool_name} blocked. "
+                f"Task '{task_id}' is completed. Subagent must stop now."
+            )
+
+        # Allow log:task skill to pass through (only when task is not completed)
         if tool_name == "Skill":
             skill_name = tool_input.get("skill", "")
             if skill_name == "log:task":
                 return
 
-        # Check current task status from roadmap
-        task_id, status = get_current_task_status()
-
+        # Block other tools if task is not in_progress
         if status != "in_progress":
             block_response(
                 f"GUARDRAIL: {tool_name} blocked. "
@@ -287,26 +321,43 @@ class ConsolidatedGuardrailRunner:
                 "Use: /log:task <task-id> in_progress"
             )
 
-    def handle_subagent_stop(self, input_data: dict) -> None:
+    def handle_subagent_stop(self, _input_data: dict) -> None:
         """Handle SubagentStop event."""
-        # Deactivate the current subagent guardrail
-        self.deactivate()
-
-        # Handle engineer guardrail - check if task is completed
+        # Check engineer guardrail BEFORE deactivating
         if self.is_engineer_agent_active():
-            task_id, status = get_current_task_status()
+            # Use the assigned task ID (stored at activation) not the current one
+            # This prevents race condition when task completes and roadmap auto-advances
+            assigned_task_id = get_cache(self.ENGINEER_ASSIGNED_TASK_KEY)
+            if assigned_task_id:
+                status = get_task_status_by_id(assigned_task_id)
+            else:
+                # Fallback to current task if no assigned task stored
+                assigned_task_id, status = get_current_task_status()
 
             if status != "completed":
-                # Block stoppage with exit code 2
+                # Block stoppage - do NOT deactivate yet
                 block_response(
-                    f"GUARDRAIL: Cannot stop. Task '{task_id}' must be 'completed' first "
-                    f"(current: '{status}'). Use: /log:task <task-id> completed"
+                    json.dumps(
+                        {
+                            "decision": "block",
+                            "stopReason": f"GUARDRAIL: Cannot stop. Task '{assigned_task_id}' must be 'completed' first "
+                            f"(current: '{status}'). Use: /log:task {assigned_task_id} completed",
+                        }
+                    )
                 )
-
+            self.deactivate()
             self.deactivate_engineer_guardrail()
+            sys.exit(0)
 
     def run(self) -> None:
         input_data = read_stdin_json()
+        # input_data = {
+        #     "hook_event_name": "SubagentStop",
+        #     "tool_name": "Task",
+        #     "tool_input": {
+        #         "subagent_type": "test-engineer",
+        #     },
+        # }
         if not input_data:
             sys.exit(0)
 

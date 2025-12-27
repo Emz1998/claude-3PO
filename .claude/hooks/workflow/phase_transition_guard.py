@@ -97,6 +97,10 @@ def validate_phase_transition(hook_input: dict) -> None:
     if not get_cache("build_skill_active"):
         sys.exit(0)
 
+    # Bypass for subagents - only main agent is subject to phase transitions
+    if get_cache("active_subagent") or get_cache("engineer_task_logger_guardrail_active"):
+        sys.exit(0)
+
     tool_name = hook_input.get("tool_name", "")
     tool_input = hook_input.get("tool_input", {})
     print(tool_input)
