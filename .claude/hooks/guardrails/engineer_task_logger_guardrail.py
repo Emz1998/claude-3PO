@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 # Engineer Task Logger Guardrail
-# Blocks implementation tools until task is logged as "in_progress"
+# Blocks tools until current task is in_progress, prevents stop until completed
 
+import json
 import sys
 from pathlib import Path
 
@@ -14,6 +15,10 @@ from utils import (  # type: ignore
     get_cache,
     load_cache,
     write_cache,
+    get_current_version,
+    get_roadmap_path,
+    load_roadmap,
+    find_task_in_roadmap,
 )
 
 ENGINEER_AGENTS = {
@@ -26,28 +31,34 @@ ENGINEER_AGENTS = {
 }
 
 
+def get_current_task_status() -> tuple[str | None, str | None]:
+    """Get current task ID and status from roadmap. Returns (task_id, status)."""
+    version = get_current_version()
+    if not version:
+        return None, None
+
+    roadmap_path = get_roadmap_path(version)
+    roadmap = load_roadmap(roadmap_path)
+    if not roadmap:
+        return None, None
+
+    current = roadmap.get("current", {})
+    task_id = current.get("task")
+    if not task_id:
+        return None, None
+
+    _, _, task = find_task_in_roadmap(roadmap, task_id)
+    if not task:
+        return task_id, None
+
+    return task_id, task.get("status", "not_started")
+
+
 class EngineerTaskLoggerRunner(GuardrailRunner):
-    """Extended runner that requires task logging before implementation."""
+    """Extended runner that checks roadmap status for task progression."""
 
     def __init__(self, config: GuardrailConfig):
         super().__init__(config)
-        self.task_logged_key = "engineer_task_logged"
-
-    def is_task_logged(self) -> bool:
-        return get_cache(self.task_logged_key) is True
-
-    def set_task_logged(self, value: bool) -> None:
-        cache = load_cache()
-        cache[self.task_logged_key] = value
-        write_cache(cache)
-
-    def activate(self) -> None:
-        super().activate()
-        self.set_task_logged(False)
-
-    def deactivate(self) -> None:
-        super().deactivate()
-        self.set_task_logged(False)
 
     def handle_task_pretool(self, input_data: dict) -> None:
         """Activate guardrail when any engineer subagent is spawned."""
@@ -63,21 +74,61 @@ class EngineerTaskLoggerRunner(GuardrailRunner):
         tool_name = input_data.get("tool_name", "")
         tool_input = input_data.get("tool_input", {})
 
-        # Check for log:task with in_progress - allow and mark logged
+        # Allow log:task skill to pass through
         if tool_name == "Skill":
             skill_name = tool_input.get("skill", "")
-            args = tool_input.get("args", "")
-            if skill_name == "log:task" and "in_progress" in args:
-                self.set_task_logged(True)
-            return
+            if skill_name == "log:task":
+                return
 
-        # Block ALL tools if task not logged
-        if not self.is_task_logged():
+        # Check current task status from roadmap
+        task_id, status = get_current_task_status()
+
+        if status != "in_progress":
             block_response(
                 f"GUARDRAIL: {tool_name} blocked. "
-                "Engineer subagents must log task as 'in_progress' before any tool use. "
+                f"Current task '{task_id}' must be 'in_progress' first (current: '{status}'). "
                 "Use: /log:task <task-id> in_progress"
             )
+
+    def handle_subagent_stop(self, input_data: dict) -> None:
+        if not self.is_active():
+            return
+
+        # Check if current task is completed
+        task_id, status = get_current_task_status()
+
+        if status != "completed":
+            # Output continue: true to prevent stoppage
+            print(json.dumps({"continue": True}))
+            print(
+                f"GUARDRAIL: Cannot stop. Task '{task_id}' must be 'completed' first "
+                f"(current: '{status}'). Use: /log:task <task-id> completed",
+                file=sys.stderr
+            )
+            sys.exit(0)
+
+        # Task is completed, allow stop and deactivate
+        self.deactivate()
+
+    def run(self) -> None:
+        from utils import read_stdin_json  # type: ignore
+
+        input_data = read_stdin_json()
+        if not input_data:
+            sys.exit(0)
+
+        hook_event = input_data.get("hook_event_name", "")
+        tool_name = input_data.get("tool_name", "")
+
+        if hook_event == "PreToolUse":
+            if tool_name == "Task":
+                self.handle_task_pretool(input_data)
+            else:
+                self.handle_tool_pretool(input_data)
+        elif hook_event == "SubagentStop":
+            self.handle_subagent_stop(input_data)
+
+        sys.exit(0)
 
 
 config = GuardrailConfig(

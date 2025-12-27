@@ -157,7 +157,56 @@ python3 .claude/scripts/roadmap_status/roadmap_status.py SC-002 unmet
 - Auto-resolves parent milestones and phases
 - Updates current pointer and summary counts
 
-#### 8. roadmap_to_markdown.py
+#### 8. roadmap_query.py
+
+**Purpose**: Query roadmap.json for project status, phases, milestones, tasks, AC, and SC
+
+```bash
+# Query types
+python3 .claude/scripts/roadmap_status/roadmap_query.py todo         # Tasks with full context
+python3 .claude/scripts/roadmap_status/roadmap_query.py version      # Project version info
+python3 .claude/scripts/roadmap_status/roadmap_query.py current      # Current focus
+python3 .claude/scripts/roadmap_status/roadmap_query.py phases       # List all phases
+python3 .claude/scripts/roadmap_status/roadmap_query.py milestones   # List all milestones
+python3 .claude/scripts/roadmap_status/roadmap_query.py tasks        # List all tasks
+python3 .claude/scripts/roadmap_status/roadmap_query.py blockers     # Show blockers
+
+# Filtered queries
+python3 .claude/scripts/roadmap_status/roadmap_query.py milestones PH-001   # Milestones in phase
+python3 .claude/scripts/roadmap_status/roadmap_query.py tasks MS-001        # Tasks in milestone
+python3 .claude/scripts/roadmap_status/roadmap_query.py acs T001            # ACs for task
+python3 .claude/scripts/roadmap_status/roadmap_query.py scs MS-001          # SCs for milestone
+
+# Specific item queries
+python3 .claude/scripts/roadmap_status/roadmap_query.py PH-001   # Phase details
+python3 .claude/scripts/roadmap_status/roadmap_query.py MS-001   # Milestone details
+python3 .claude/scripts/roadmap_status/roadmap_query.py T001     # Task details
+python3 .claude/scripts/roadmap_status/roadmap_query.py AC-001   # AC details
+python3 .claude/scripts/roadmap_status/roadmap_query.py SC-001   # SC details
+```
+
+**Query Types**:
+
+- `todo` - Current tasks with full context (phase, milestone, feature, deps, ACs, SCs)
+- `version` - Project version and summary
+- `current` - Current phase/milestone/task focus
+- `phases` - List all phases with completion status
+- `milestones` - List all milestones (optional: filter by phase ID)
+- `tasks` - List all tasks (optional: filter by milestone ID)
+- `acs` - List acceptance criteria (optional: filter by task ID)
+- `scs` - List success criteria (optional: filter by milestone ID)
+- `blockers` - Blocked tasks and unmet criteria
+- `metadata` - Roadmap metadata
+
+**Specific ID Queries**:
+
+- `PH-XXX` - Phase details (e.g., PH-001)
+- `MS-XXX` - Milestone details (e.g., MS-001)
+- `TXXX` - Task details (e.g., T001)
+- `AC-XXX` - Acceptance criteria details (e.g., AC-001)
+- `SC-XXX` - Success criteria details (e.g., SC-001)
+
+#### 9. roadmap_to_markdown.py
 
 **Purpose**: Convert project roadmap JSON to markdown format
 
@@ -176,7 +225,7 @@ python3 .claude/scripts/roadmap_to_markdown.py -i path/to/roadmap.json -o path/t
 
 ### VS Code Setup Scripts
 
-#### 9. init_tasks_json.py
+#### 10. init_tasks_json.py
 
 **Purpose**: Initialize VS Code tasks.json with Claude Code launcher tasks
 
@@ -206,7 +255,7 @@ python3 .claude/scripts/vscode_setup/init_tasks_json.py --no-auto-run
 - `--dry-run` - Print content without writing
 - `--milestones` - JSON array of milestones for worktree creation
 
-#### 10. cleanup_worktrees.py
+#### 11. cleanup_worktrees.py
 
 **Purpose**: Delete all git worktrees and their associated milestone branches
 
@@ -232,7 +281,7 @@ python3 .claude/scripts/vscode_setup/cleanup_worktrees.py --branches-only
 
 ### Setup Scripts
 
-#### 11. setup-yolo-aliases.sh
+#### 12. setup-yolo-aliases.sh
 
 **Purpose**: Configure shell aliases for quick Claude commands
 

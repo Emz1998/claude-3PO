@@ -27,6 +27,12 @@ from .guardrail_base import (
     create_pattern_validator,
     create_extension_blocker,
 )
+from .roadmap import (
+    get_current_version,
+    get_roadmap_path,
+    load_roadmap,
+    find_task_in_roadmap,
+)
 
 __all__ = [
     # Input/Output
@@ -74,4 +80,9 @@ __all__ = [
     "create_session_file_validator",
     "create_pattern_validator",
     "create_extension_blocker",
+    # Roadmap
+    "get_current_version",
+    "get_roadmap_path",
+    "load_roadmap",
+    "find_task_in_roadmap",
 ]

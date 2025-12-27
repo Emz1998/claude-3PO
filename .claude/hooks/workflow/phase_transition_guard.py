@@ -27,11 +27,13 @@ def track_phases(phase: str) -> None:
 
 
 DEFAULT_PHASES = [
+    "roadmap:query",
     "explore",
     "discuss",
     "plan",
     "code",
-    "log:task",
+    "log:sc",
+    "log:milestone",
 ]
 
 
