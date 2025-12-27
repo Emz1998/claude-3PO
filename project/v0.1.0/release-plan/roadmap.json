@@ -2,7 +2,7 @@
   "name": "Avaris - NBA Betting Analytics Platform",
   "version": "0.1.0",
   "target_release": "2025-01-15",
-  "status": "not_started",
+  "status": "in_progress",
   "phases": [
     {
       "id": "PH-001",
@@ -18,29 +18,29 @@
           "dependencies": [],
           "success_criteria": [
             {
-              "id_reference": "SC-001",
-              "status": "met"
+              "id": "SC-001",
+              "status": "unmet"
             }
           ],
           "tasks": [
             {
               "id": "T001",
               "description": "Initialize Next.js 15.1 project with TypeScript strict mode",
-              "status": "completed",
+              "status": "in_progress",
               "parallel": false,
               "owner": "fullstack-developer",
               "dependencies": [],
               "acceptance_criteria": [
                 {
-                  "id_reference": "AC-001",
-                  "status": "met"
+                  "id": "AC-001",
+                  "status": "unmet"
                 }
               ]
             },
             {
               "id": "T002",
               "description": "Configure Tailwind CSS v4 with design tokens from ui-ux specs",
-              "status": "in_progress",
+              "status": "not_started",
               "parallel": true,
               "owner": "frontend-engineer",
               "dependencies": [
@@ -48,15 +48,15 @@
               ],
               "acceptance_criteria": [
                 {
-                  "id_reference": "AC-002",
-                  "status": "met"
+                  "id": "AC-002",
+                  "status": "unmet"
                 }
               ]
             },
             {
               "id": "T003",
               "description": "Set up Python ML environment with XGBoost, Pandas, nba_api",
-              "status": "in_progress",
+              "status": "not_started",
               "parallel": true,
               "owner": "backend-engineer",
               "dependencies": [
@@ -65,8 +65,8 @@
               ],
               "acceptance_criteria": [
                 {
-                  "id_reference": "AC-003",
-                  "status": "met"
+                  "id": "AC-003",
+                  "status": "unmet"
                 }
               ]
             }
@@ -77,13 +77,13 @@
           "feature": "F001",
           "name": "Data Models and TypeScript Interfaces",
           "goal": "Core data structures defined for predictions, teams, and games",
-          "status": "in_progress",
+          "status": "not_started",
           "dependencies": [
             "MS-001"
           ],
           "success_criteria": [
             {
-              "id_reference": "SC-002",
+              "id": "SC-002",
               "status": "unmet"
             }
           ],
@@ -91,13 +91,13 @@
             {
               "id": "T004",
               "description": "Create Prediction TypeScript interface with moneyline and future spread/totals fields",
-              "status": "in_progress",
+              "status": "not_started",
               "parallel": false,
               "owner": "fullstack-developer",
               "dependencies": [],
               "acceptance_criteria": [
                 {
-                  "id_reference": "AC-004",
+                  "id": "AC-004",
                   "status": "unmet"
                 }
               ]
@@ -111,7 +111,7 @@
               "dependencies": [],
               "acceptance_criteria": [
                 {
-                  "id_reference": "AC-005",
+                  "id": "AC-005",
                   "status": "unmet"
                 }
               ]
@@ -125,7 +125,7 @@
               "dependencies": [],
               "acceptance_criteria": [
                 {
-                  "id_reference": "AC-006",
+                  "id": "AC-006",
                   "status": "unmet"
                 }
               ]
@@ -150,7 +150,7 @@
           ],
           "success_criteria": [
             {
-              "id_reference": "SC-001",
+              "id": "SC-001",
               "status": "unmet"
             }
           ],
@@ -164,11 +164,11 @@
               "dependencies": [],
               "acceptance_criteria": [
                 {
-                  "id_reference": "AC-001",
+                  "id": "AC-001",
                   "status": "unmet"
                 },
                 {
-                  "id_reference": "AC-002",
+                  "id": "AC-002",
                   "status": "unmet"
                 }
               ]
@@ -184,7 +184,7 @@
               ],
               "acceptance_criteria": [
                 {
-                  "id_reference": "AC-007",
+                  "id": "AC-007",
                   "status": "unmet"
                 }
               ]
@@ -200,7 +200,7 @@
               ],
               "acceptance_criteria": [
                 {
-                  "id_reference": "AC-008",
+                  "id": "AC-008",
                   "status": "unmet"
                 }
               ]
@@ -218,7 +218,7 @@
           ],
           "success_criteria": [
             {
-              "id_reference": "SC-003",
+              "id": "SC-003",
               "status": "unmet"
             }
           ],
@@ -232,11 +232,11 @@
               "dependencies": [],
               "acceptance_criteria": [
                 {
-                  "id_reference": "AC-003",
+                  "id": "AC-003",
                   "status": "unmet"
                 },
                 {
-                  "id_reference": "AC-004",
+                  "id": "AC-004",
                   "status": "unmet"
                 }
               ]
@@ -252,7 +252,7 @@
               ],
               "acceptance_criteria": [
                 {
-                  "id_reference": "AC-009",
+                  "id": "AC-009",
                   "status": "unmet"
                 }
               ]
@@ -271,7 +271,7 @@
           ],
           "success_criteria": [
             {
-              "id_reference": "SC-002",
+              "id": "SC-002",
               "status": "unmet"
             }
           ],
@@ -285,11 +285,11 @@
               "dependencies": [],
               "acceptance_criteria": [
                 {
-                  "id_reference": "AC-005",
+                  "id": "AC-005",
                   "status": "unmet"
                 },
                 {
-                  "id_reference": "AC-006",
+                  "id": "AC-006",
                   "status": "unmet"
                 }
               ]
@@ -305,7 +305,7 @@
               ],
               "acceptance_criteria": [
                 {
-                  "id_reference": "AC-010",
+                  "id": "AC-010",
                   "status": "unmet"
                 }
               ]
@@ -321,7 +321,7 @@
               ],
               "acceptance_criteria": [
                 {
-                  "id_reference": "AC-011",
+                  "id": "AC-011",
                   "status": "unmet"
                 }
               ]
@@ -346,7 +346,7 @@
           ],
           "success_criteria": [
             {
-              "id_reference": "SC-004",
+              "id": "SC-004",
               "status": "unmet"
             }
           ],
@@ -360,7 +360,7 @@
               "dependencies": [],
               "acceptance_criteria": [
                 {
-                  "id_reference": "AC-012",
+                  "id": "AC-012",
                   "status": "unmet"
                 }
               ]
@@ -374,7 +374,7 @@
               "dependencies": [],
               "acceptance_criteria": [
                 {
-                  "id_reference": "AC-013",
+                  "id": "AC-013",
                   "status": "unmet"
                 }
               ]
@@ -388,7 +388,7 @@
               "dependencies": [],
               "acceptance_criteria": [
                 {
-                  "id_reference": "AC-014",
+                  "id": "AC-014",
                   "status": "unmet"
                 }
               ]
@@ -404,7 +404,7 @@
               ],
               "acceptance_criteria": [
                 {
-                  "id_reference": "AC-015",
+                  "id": "AC-015",
                   "status": "unmet"
                 }
               ]
@@ -422,7 +422,7 @@
           ],
           "success_criteria": [
             {
-              "id_reference": "SC-004",
+              "id": "SC-004",
               "status": "unmet"
             }
           ],
@@ -436,11 +436,11 @@
               "dependencies": [],
               "acceptance_criteria": [
                 {
-                  "id_reference": "AC-007",
+                  "id": "AC-007",
                   "status": "unmet"
                 },
                 {
-                  "id_reference": "AC-008",
+                  "id": "AC-008",
                   "status": "unmet"
                 }
               ]
@@ -456,7 +456,7 @@
               ],
               "acceptance_criteria": [
                 {
-                  "id_reference": "AC-016",
+                  "id": "AC-016",
                   "status": "unmet"
                 }
               ]
@@ -472,7 +472,7 @@
               ],
               "acceptance_criteria": [
                 {
-                  "id_reference": "AC-017",
+                  "id": "AC-017",
                   "status": "unmet"
                 }
               ]
@@ -490,7 +490,7 @@
           ],
           "success_criteria": [
             {
-              "id_reference": "SC-006",
+              "id": "SC-006",
               "status": "unmet"
             }
           ],
@@ -504,11 +504,11 @@
               "dependencies": [],
               "acceptance_criteria": [
                 {
-                  "id_reference": "AC-009",
+                  "id": "AC-009",
                   "status": "unmet"
                 },
                 {
-                  "id_reference": "AC-010",
+                  "id": "AC-010",
                   "status": "unmet"
                 }
               ]
@@ -524,7 +524,7 @@
               ],
               "acceptance_criteria": [
                 {
-                  "id_reference": "AC-018",
+                  "id": "AC-018",
                   "status": "unmet"
                 }
               ]
@@ -540,7 +540,7 @@
               ],
               "acceptance_criteria": [
                 {
-                  "id_reference": "AC-019",
+                  "id": "AC-019",
                   "status": "unmet"
                 }
               ]
@@ -558,7 +558,7 @@
           ],
           "success_criteria": [
             {
-              "id_reference": "SC-006",
+              "id": "SC-006",
               "status": "unmet"
             }
           ],
@@ -572,11 +572,11 @@
               "dependencies": [],
               "acceptance_criteria": [
                 {
-                  "id_reference": "AC-011",
+                  "id": "AC-011",
                   "status": "unmet"
                 },
                 {
-                  "id_reference": "AC-012",
+                  "id": "AC-012",
                   "status": "unmet"
                 }
               ]
@@ -592,7 +592,7 @@
               ],
               "acceptance_criteria": [
                 {
-                  "id_reference": "AC-020",
+                  "id": "AC-020",
                   "status": "unmet"
                 }
               ]
@@ -617,7 +617,7 @@
           ],
           "success_criteria": [
             {
-              "id_reference": "SC-007",
+              "id": "SC-007",
               "status": "unmet"
             }
           ],
@@ -631,7 +631,7 @@
               "dependencies": [],
               "acceptance_criteria": [
                 {
-                  "id_reference": "AC-021",
+                  "id": "AC-021",
                   "status": "unmet"
                 }
               ]
@@ -645,7 +645,7 @@
               "dependencies": [],
               "acceptance_criteria": [
                 {
-                  "id_reference": "AC-022",
+                  "id": "AC-022",
                   "status": "unmet"
                 }
               ]
@@ -662,7 +662,7 @@
               ],
               "acceptance_criteria": [
                 {
-                  "id_reference": "AC-023",
+                  "id": "AC-023",
                   "status": "unmet"
                 }
               ]
@@ -678,7 +678,7 @@
               ],
               "acceptance_criteria": [
                 {
-                  "id_reference": "AC-024",
+                  "id": "AC-024",
                   "status": "unmet"
                 }
               ]
@@ -703,7 +703,7 @@
           ],
           "success_criteria": [
             {
-              "id_reference": "SC-008",
+              "id": "SC-008",
               "status": "unmet"
             }
           ],
@@ -717,7 +717,7 @@
               "dependencies": [],
               "acceptance_criteria": [
                 {
-                  "id_reference": "AC-025",
+                  "id": "AC-025",
                   "status": "unmet"
                 }
               ]
@@ -731,7 +731,7 @@
               "dependencies": [],
               "acceptance_criteria": [
                 {
-                  "id_reference": "AC-026",
+                  "id": "AC-026",
                   "status": "unmet"
                 }
               ]
@@ -745,7 +745,7 @@
               "dependencies": [],
               "acceptance_criteria": [
                 {
-                  "id_reference": "AC-027",
+                  "id": "AC-027",
                   "status": "unmet"
                 }
               ]
@@ -761,7 +761,7 @@
               ],
               "acceptance_criteria": [
                 {
-                  "id_reference": "AC-028",
+                  "id": "AC-028",
                   "status": "unmet"
                 }
               ]
@@ -780,7 +780,7 @@
           ],
           "success_criteria": [
             {
-              "id_reference": "SC-009",
+              "id": "SC-009",
               "status": "unmet"
             }
           ],
@@ -794,7 +794,7 @@
               "dependencies": [],
               "acceptance_criteria": [
                 {
-                  "id_reference": "AC-029",
+                  "id": "AC-029",
                   "status": "unmet"
                 }
               ]
@@ -810,7 +810,7 @@
               ],
               "acceptance_criteria": [
                 {
-                  "id_reference": "AC-030",
+                  "id": "AC-030",
                   "status": "unmet"
                 }
               ]
@@ -826,7 +826,7 @@
               ],
               "acceptance_criteria": [
                 {
-                  "id_reference": "AC-031",
+                  "id": "AC-031",
                   "status": "unmet"
                 }
               ]
@@ -842,7 +842,7 @@
               ],
               "acceptance_criteria": [
                 {
-                  "id_reference": "AC-032",
+                  "id": "AC-032",
                   "status": "unmet"
                 }
               ]
@@ -861,7 +861,7 @@
           ],
           "success_criteria": [
             {
-              "id_reference": "SC-010",
+              "id": "SC-010",
               "status": "unmet"
             }
           ],
@@ -875,7 +875,7 @@
               "dependencies": [],
               "acceptance_criteria": [
                 {
-                  "id_reference": "AC-033",
+                  "id": "AC-033",
                   "status": "unmet"
                 }
               ]
@@ -889,7 +889,7 @@
               "dependencies": [],
               "acceptance_criteria": [
                 {
-                  "id_reference": "AC-034",
+                  "id": "AC-034",
                   "status": "unmet"
                 }
               ]
@@ -903,7 +903,7 @@
               "dependencies": [],
               "acceptance_criteria": [
                 {
-                  "id_reference": "AC-035",
+                  "id": "AC-035",
                   "status": "unmet"
                 }
               ]
@@ -919,7 +919,7 @@
               ],
               "acceptance_criteria": [
                 {
-                  "id_reference": "AC-036",
+                  "id": "AC-036",
                   "status": "unmet"
                 }
               ]
@@ -935,7 +935,7 @@
               ],
               "acceptance_criteria": [
                 {
-                  "id_reference": "AC-037",
+                  "id": "AC-037",
                   "status": "unmet"
                 }
               ]
@@ -960,7 +960,7 @@
           ],
           "success_criteria": [
             {
-              "id_reference": "SC-003",
+              "id": "SC-003",
               "status": "unmet"
             }
           ],
@@ -974,7 +974,7 @@
               "dependencies": [],
               "acceptance_criteria": [
                 {
-                  "id_reference": "AC-038",
+                  "id": "AC-038",
                   "status": "unmet"
                 }
               ]
@@ -988,7 +988,7 @@
               "dependencies": [],
               "acceptance_criteria": [
                 {
-                  "id_reference": "AC-039",
+                  "id": "AC-039",
                   "status": "unmet"
                 }
               ]
@@ -1005,7 +1005,7 @@
               ],
               "acceptance_criteria": [
                 {
-                  "id_reference": "AC-040",
+                  "id": "AC-040",
                   "status": "unmet"
                 }
               ]
@@ -1023,7 +1023,7 @@
           ],
           "success_criteria": [
             {
-              "id_reference": "SC-005",
+              "id": "SC-005",
               "status": "unmet"
             }
           ],
@@ -1037,7 +1037,7 @@
               "dependencies": [],
               "acceptance_criteria": [
                 {
-                  "id_reference": "AC-041",
+                  "id": "AC-041",
                   "status": "unmet"
                 }
               ]
@@ -1051,7 +1051,7 @@
               "dependencies": [],
               "acceptance_criteria": [
                 {
-                  "id_reference": "AC-042",
+                  "id": "AC-042",
                   "status": "unmet"
                 }
               ]
@@ -1067,7 +1067,7 @@
               ],
               "acceptance_criteria": [
                 {
-                  "id_reference": "AC-043",
+                  "id": "AC-043",
                   "status": "unmet"
                 }
               ]
@@ -1086,7 +1086,7 @@
           ],
           "success_criteria": [
             {
-              "id_reference": "SC-011",
+              "id": "SC-011",
               "status": "unmet"
             }
           ],
@@ -1100,7 +1100,7 @@
               "dependencies": [],
               "acceptance_criteria": [
                 {
-                  "id_reference": "AC-044",
+                  "id": "AC-044",
                   "status": "unmet"
                 }
               ]
@@ -1114,7 +1114,7 @@
               "dependencies": [],
               "acceptance_criteria": [
                 {
-                  "id_reference": "AC-045",
+                  "id": "AC-045",
                   "status": "unmet"
                 }
               ]
@@ -1131,7 +1131,7 @@
               ],
               "acceptance_criteria": [
                 {
-                  "id_reference": "AC-046",
+                  "id": "AC-046",
                   "status": "unmet"
                 }
               ]
@@ -1145,7 +1145,7 @@
               "dependencies": [],
               "acceptance_criteria": [
                 {
-                  "id_reference": "AC-047",
+                  "id": "AC-047",
                   "status": "unmet"
                 }
               ]
@@ -1170,7 +1170,7 @@
           ],
           "success_criteria": [
             {
-              "id_reference": "SC-012",
+              "id": "SC-012",
               "status": "unmet"
             }
           ],
@@ -1184,7 +1184,7 @@
               "dependencies": [],
               "acceptance_criteria": [
                 {
-                  "id_reference": "AC-048",
+                  "id": "AC-048",
                   "status": "unmet"
                 }
               ]
@@ -1198,7 +1198,7 @@
               "dependencies": [],
               "acceptance_criteria": [
                 {
-                  "id_reference": "AC-049",
+                  "id": "AC-049",
                   "status": "unmet"
                 }
               ]
@@ -1212,7 +1212,7 @@
               "dependencies": [],
               "acceptance_criteria": [
                 {
-                  "id_reference": "AC-050",
+                  "id": "AC-050",
                   "status": "unmet"
                 }
               ]
@@ -1228,7 +1228,7 @@
               ],
               "acceptance_criteria": [
                 {
-                  "id_reference": "AC-051",
+                  "id": "AC-051",
                   "status": "unmet"
                 }
               ]
@@ -1247,7 +1247,7 @@
           ],
           "success_criteria": [
             {
-              "id_reference": "SC-006",
+              "id": "SC-006",
               "status": "unmet"
             }
           ],
@@ -1261,7 +1261,7 @@
               "dependencies": [],
               "acceptance_criteria": [
                 {
-                  "id_reference": "AC-052",
+                  "id": "AC-052",
                   "status": "unmet"
                 }
               ]
@@ -1277,7 +1277,7 @@
               ],
               "acceptance_criteria": [
                 {
-                  "id_reference": "AC-053",
+                  "id": "AC-053",
                   "status": "unmet"
                 }
               ]
@@ -1293,7 +1293,7 @@
               ],
               "acceptance_criteria": [
                 {
-                  "id_reference": "AC-054",
+                  "id": "AC-054",
                   "status": "unmet"
                 }
               ]
@@ -1306,7 +1306,7 @@
   "current": {
     "phase": "PH-001",
     "milestone": "MS-001",
-    "task": "T002"
+    "task": "T001"
   },
   "summary": {
     "phases": {
@@ -1321,12 +1321,12 @@
     },
     "tasks": {
       "total": 60,
-      "pending": 59,
-      "completed": 1
+      "pending": 60,
+      "completed": 0
     }
   },
   "metadata": {
-    "last_updated": "2025-12-27T02:30:46.280680+00:00",
+    "last_updated": "2025-12-27T02:39:29.158738+00:00",
     "schema_version": "1.0.0"
   }
 }

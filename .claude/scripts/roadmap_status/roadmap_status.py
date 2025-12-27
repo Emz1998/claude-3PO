@@ -96,8 +96,7 @@ def find_ac_in_roadmap(roadmap: dict, ac_id: str) -> tuple[dict | None, dict | N
             for task in tasks:
                 acceptance_criteria = task.get("acceptance_criteria", [])
                 for ac in acceptance_criteria:
-                    id_reference = ac.get("id_reference", "")
-                    if ac_id == id_reference:
+                    if ac_id == ac.get("id", ""):
                         return task, ac
     return None, None
 
@@ -110,8 +109,7 @@ def find_sc_in_roadmap(roadmap: dict, sc_id: str) -> tuple[dict | None, dict | N
         for milestone in milestones:
             success_criteria = milestone.get("success_criteria", [])
             for sc in success_criteria:
-                id_reference = sc.get("id_reference", "")
-                if sc_id == id_reference:
+                if sc_id == sc.get("id", ""):
                     return milestone, sc
     return None, None
 
@@ -154,7 +152,7 @@ def get_unmet_acs(task: dict) -> list[str]:
     unmet = []
     for ac in task.get("acceptance_criteria", []):
         if ac.get("status") != "met":
-            unmet.append(ac.get("id_reference", "unknown"))
+            unmet.append(ac.get("id", "unknown"))
     return unmet
 
 
@@ -163,7 +161,7 @@ def get_unmet_scs(milestone: dict) -> list[str]:
     unmet = []
     for sc in milestone.get("success_criteria", []):
         if sc.get("status") != "met":
-            unmet.append(sc.get("id_reference", "unknown"))
+            unmet.append(sc.get("id", "unknown"))
     return unmet
 
 
@@ -209,6 +207,26 @@ def any_milestone_in_progress(phase: dict) -> bool:
     """Check if any milestone in a phase is in_progress."""
     milestones = phase.get("milestones", [])
     return any(ms.get("status") == "in_progress" for ms in milestones)
+
+
+def resolve_project_status(roadmap: dict) -> str | None:
+    """Auto-resolve project status based on phases."""
+    phases = roadmap.get("phases", [])
+    current_status = roadmap.get("status", "not_started")
+
+    all_completed = all(p.get("status") == "completed" for p in phases) if phases else False
+    any_in_progress = any(p.get("status") == "in_progress" for p in phases)
+
+    if current_status != "completed" and all_completed:
+        roadmap["status"] = "completed"
+        return "Project status auto-resolved to 'completed'"
+    elif current_status in ("not_started", "pending") and any_in_progress:
+        roadmap["status"] = "in_progress"
+        return "Project status auto-resolved to 'in_progress'"
+    elif current_status == "completed" and not all_completed:
+        roadmap["status"] = "in_progress"
+        return "Project status reverted to 'in_progress'"
+    return None
 
 
 def resolve_milestones_and_phases(roadmap: dict) -> list[str]:
@@ -381,13 +399,17 @@ def update_summary(roadmap: dict) -> None:
 
 
 def run_auto_resolver(version: str) -> tuple[bool, list[str]]:
-    """Run the auto-resolver for milestones and phases."""
+    """Run the auto-resolver for milestones, phases, and project status."""
     roadmap_path = get_roadmap_path(version)
     roadmap = load_roadmap(roadmap_path)
     if roadmap is None:
         return False, [f"Could not load roadmap from: {roadmap_path}"]
 
     resolutions = resolve_milestones_and_phases(roadmap)
+
+    project_msg = resolve_project_status(roadmap)
+    if project_msg:
+        resolutions.append(project_msg)
 
     current_msg = update_current_pointer(roadmap)
     if current_msg:
