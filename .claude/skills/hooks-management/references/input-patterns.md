@@ -515,15 +515,16 @@ All tool events share a common structure with additional tool-specific fields.
 
 **Note:** ExitPlanMode typically triggers a PermissionRequest before execution.
 
-### SlashCommand Tool
+### Skill Tool
 
 **PreToolUse Input:**
 
 ```json
 {
-  "tool_name": "SlashCommand",
+  "tool_name": "Skill",
   "tool_input": {
-    "command": "/git:commit"
+    "skill": "log:task",
+    "args": "T001 in_progress" # Optional: leave empty if no arguments are needed
   }
 }
 ```

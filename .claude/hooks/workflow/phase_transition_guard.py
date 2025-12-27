@@ -32,6 +32,7 @@ DEFAULT_PHASES = [
     "discuss",
     "plan",
     "code",
+    "log:task",
     "log:sc",
     "log:milestone",
 ]

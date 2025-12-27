@@ -1,0 +1,166 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(uv run .claude/scripts/hooks_toggler/activate_hooks.py)",
+      "Bash(uv run .claude/scripts/hooks_toggler/deactivate_hooks.py)",
+      "Skill(skills-creator)",
+      "Skill(skills-creator:*)"
+    ],
+    "deny": [
+      "Bash(rm -rf /)",
+      "Bash(mkfs:*)",
+      "Bash(fdisk:*)",
+      "Bash(dd:*)",
+      "Bash(format:*)",
+      "Bash(chmod -R 000 /)",
+      "Bash(chown -R root /)",
+      "Bash(sudo rm -rf /)",
+      "Bash(sudo dd:*)",
+      "Bash(sudo mkfs:*)",
+      "Bash(sudo fdisk:*)",
+      "Bash(sudo format:*)",
+      "Bash(shutdown:*)",
+      "Bash(reboot:*)",
+      "Bash(halt:*)",
+      "Bash(init 0)",
+      "Bash(init 6)",
+      "Bash(systemctl poweroff)",
+      "Bash(systemctl reboot)",
+      "Bash(systemctl halt)",
+      "Bash(sudo shutdown:*)",
+      "Bash(sudo reboot:*)",
+      "Bash(sudo halt:*)",
+      "Bash(sudo init 0)",
+      "Bash(sudo init 6)",
+      "Bash(sudo systemctl poweroff)",
+      "Bash(sudo systemctl reboot)",
+      "Bash(sudo systemctl halt)"
+    ],
+    "ask": [
+      "ExitPlanMode"
+    ]
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "sequentialthinking",
+    "mcp-server-firecrawl",
+    "playwright",
+    "context7",
+    "shadcn",
+    "zen"
+  ],
+  "hooks": {
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/guardrails/subagent_guardrail.py\"",
+            "timeout": 30
+          }
+        ]
+      },
+      {
+        "matcher": "Skill",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/status_logger/dispatcher.py\"",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/workflow/build_trigger.py\"",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/workflow/phase_transition_guard.py\"",
+            "timeout": 30
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/security/security.py\"",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/workflow/stop_guard.py\"",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/guardrails/subagent_guardrail.py\"",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/context/roadmap_context.py\"",
+            "timeout": 30
+          }
+        ]
+      }, 
+      {
+        "matcher": "clear|startup",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/workflow/delete_cache.py\"",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/workflow/user_build_trigger.py\"",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/workflow/phase_transition_guard.py\"",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/status_logger/user_prompt_dispatcher.py\"",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "bash /$CLAUDE_PROJECT_DIR/.claude/statusline-git-format.sh"
+  },
+  "outputStyle": "default",
+  "spinnerTipsEnabled": true
+}

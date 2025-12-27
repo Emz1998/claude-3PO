@@ -1,38 +1,44 @@
 # Guardrails Hooks
 
-PreToolUse hooks that control subagent permissions and tool access.
+Consolidated PreToolUse hook that controls subagent permissions and tool access.
+
+**Constraint:** Only runs when `/build` skill is active (`build_skill_active: true` in cache).
 
 ## Architecture
 
-Each guardrail uses `GuardrailConfig` and `GuardrailRunner` from utils:
+Single entry point `subagent_guardrail.py` handles all subagent guardrails using a registry pattern.
 
 ```python
-from utils import GuardrailConfig, GuardrailRunner, create_session_file_validator
-
-config = GuardrailConfig(
-    target_subagent="agent-name",
-    cache_key="agent_guardrail_active",
-    guarded_tools={"Write", "Edit"},
-    path_validator=create_session_file_validator("subfolder", "prefix"),
-)
-
-if __name__ == "__main__":
-    GuardrailRunner(config).run()
+# Registry of all guardrail configurations
+GUARDRAIL_CONFIGS: dict[str, GuardrailConfig] = {
+    "code-reviewer": GuardrailConfig(...),
+    "codebase-explorer": GuardrailConfig(...),
+    # ... more configs
+}
 ```
 
-## Available Guardrails
+## Subagent Configurations
 
-- `code_reviewer_guardrail.py` - Limits code-reviewer to revision files
-- `codebase_explorer_guardrail.py` - Limits explorer to explore files
-- `engineer_task_logger_guardrail.py` - Blocks implementation tools until task logged as in_progress
-- `fullstack_developer_guardrail.py` - Controls developer tool access
-- `gemini_manager_guardrail.py` - External AI manager controls
-- `gpt_manager_guardrail.py` - External AI manager controls
-- `plan_consultant_guardrail.py` - Limits to plan files
-- `planner_guardrail.py` - Strategic planner controls
-- `project_manager_guardrail.py` - Project manager controls
-- `test_engineer_guardrail.py` - Test engineer controls
-- `version_manager_guardrail.py` - Version control limits
+| Subagent | Guarded Tools | Path/Skill Restrictions |
+|----------|---------------|-------------------------|
+| code-reviewer | Write, Edit | revisions/{date}_{session}.md |
+| codebase-explorer | Write, Edit | codebase-status/{date}_{session}.md |
+| fullstack-developer | Write, Edit | Blocks .md except README.md |
+| gemini-manager | Write, Edit | decisions/, only discuss:gemini skill |
+| gpt-manager | Write, Edit | decisions/, only discuss:gpt skill |
+| plan-consultant | Write, Edit | decisions/ |
+| planning-specialist | Write, Edit | plans/plan_{date}_{session}.md |
+| project-manager | Blocks Write, Edit | only log:ac, log:sc, log:task skills |
+| test-engineer | Write, Edit | test files only (*.test.ts, __tests__/) |
+| version-manager | Blocks Write, Edit, MultiEdit | safe git commands only |
+
+## Engineer Task Logger
+
+Engineer agents (backend-engineer, frontend-engineer, fullstack-developer, html-prototyper, react-prototyper, test-engineer) have additional restrictions:
+
+- **Block tools** until current task is `in_progress` in roadmap
+- **Prevent stop** until current task is `completed` in roadmap
+- Allows `/log:task` skill to update task status
 
 ## GuardrailConfig Options
 
@@ -51,3 +57,26 @@ if __name__ == "__main__":
 - `create_session_file_validator(subfolder, prefix)` - Session-specific files
 - `create_pattern_validator(patterns, allow_match, error_msg)` - Regex-based
 - `create_extension_blocker(ext, except_files)` - Block by extension
+
+## Usage
+
+Hook registered in `.claude/settings.json`:
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "command": "python3 .claude/hooks/guardrails/subagent_guardrail.py",
+        "timeout": 5000
+      }
+    ],
+    "SubagentStop": [
+      {
+        "command": "python3 .claude/hooks/guardrails/subagent_guardrail.py",
+        "timeout": 5000
+      }
+    ]
+  }
+}
+```
