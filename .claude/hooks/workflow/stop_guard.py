@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Block stoppage if /build skill is active and milestone is not completed."""
+"""Block stoppage if /build skill is active and milestone is in_progress."""
 
 import json
 import sys
@@ -85,12 +85,12 @@ def main() -> None:
             deactivate_build_skill()
             allow_stoppage()
 
-        # Check if current milestone is completed
+        # Only block if milestone is in_progress (active work happening)
         milestone_status = milestone.get("status", "pending")
-        if milestone_status != "completed":
+        if milestone_status == "in_progress":
             reason = (
                 f"Cannot stop. Current milestone '{current_milestone_id}' "
-                f"is '{milestone_status}'. Complete the milestone before stopping."
+                f"is 'in_progress'. Complete the milestone before stopping."
             )
             block_stoppage(reason)
 

@@ -25,6 +25,14 @@ Hook scripts for enforcing workflow phases and subagent ordering in the implemen
 - Enforces sequential subagent invocation order
 - Blocks backwards transitions and skipping
 
+**user_build_trigger.py**
+
+- Hook Event: `UserPromptSubmit`
+- Activates build skill when user types `/build` or `/implement`
+- Counts milestones in current phase from roadmap.json
+- Initializes `.vscode/tasks.json` with matching Claude launcher count
+- Launches new VS Code window (`code -n`) after initialization
+
 **context_injector.py**
 
 - Hook Event: `SessionStart`
@@ -43,6 +51,16 @@ Hook scripts for enforcing workflow phases and subagent ordering in the implemen
 - Utility script (not a hook)
 - Resets workflow cache to default state
 - Run manually: `python3 reset_cache.py`
+
+**reset_roadmap.py**
+
+- Utility script (not a hook)
+- Resets roadmap.json to default state with all items pending
+- Resets all phases, milestones, tasks to `not_started`
+- Resets all acceptance/success criteria to `unmet`
+- Resets `current` pointer to first task
+- Recalculates summary counts
+- Run manually: `python3 reset_roadmap.py`
 
 ## Phase Order
 

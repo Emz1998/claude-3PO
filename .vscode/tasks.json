@@ -2,32 +2,32 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "Launch Claude 1",
+      "label": "Launch Claude - MS-001",
       "type": "shell",
-      "command": "claude",
-      "runOptions": {
-        "runOn": "folderOpen"
-      },
+      "command": "cd /home/emhar/avaris-ai/worktrees/MS-001_project-setup-and-configuration && claude",
       "presentation": {
         "reveal": "always",
         "panel": "new"
       },
       "isBackground": true,
-      "problemMatcher": []
+      "problemMatcher": [],
+      "runOptions": {
+        "runOn": "folderOpen"
+      }
     },
     {
-      "label": "Launch Claude 2",
+      "label": "Launch Claude - MS-002",
       "type": "shell",
-      "command": "claude",
-      "runOptions": {
-        "runOn": "folderOpen"
-      },
+      "command": "cd /home/emhar/avaris-ai/worktrees/MS-002_data-models-and-typescript-interfaces && claude",
       "presentation": {
         "reveal": "always",
         "panel": "new"
       },
       "isBackground": true,
-      "problemMatcher": []
+      "problemMatcher": [],
+      "runOptions": {
+        "runOn": "folderOpen"
+      }
     }
   ]
 }

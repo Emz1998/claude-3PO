@@ -119,7 +119,45 @@ python3 .claude/scripts/prd_generator/prd_to_markdown.py -t path/to/templates
 
 ### Roadmap Scripts
 
-#### 7. roadmap_to_markdown.py
+#### 7. roadmap_status.py
+
+**Purpose**: Update task, acceptance criteria (AC), or success criteria (SC) status in roadmap.json
+
+```bash
+# Task status updates
+python3 .claude/scripts/roadmap_status/roadmap_status.py T001 in_progress
+python3 .claude/scripts/roadmap_status/roadmap_status.py T002 completed
+python3 .claude/scripts/roadmap_status/roadmap_status.py T003 blocked
+python3 .claude/scripts/roadmap_status/roadmap_status.py T001 not_started
+
+# Acceptance criteria status updates
+python3 .claude/scripts/roadmap_status/roadmap_status.py AC-001 met
+python3 .claude/scripts/roadmap_status/roadmap_status.py AC-002 unmet
+
+# Success criteria status updates
+python3 .claude/scripts/roadmap_status/roadmap_status.py SC-001 met
+python3 .claude/scripts/roadmap_status/roadmap_status.py SC-002 unmet
+```
+
+**Positional Arguments**:
+
+- `item_id` - Item ID in one of these formats:
+  - Task: `TXXX` (e.g., T001, T002)
+  - Acceptance Criteria: `AC-XXX` (e.g., AC-001, AC-002)
+  - Success Criteria: `SC-XXX` (e.g., SC-001, SC-002)
+- `status` - New status based on item type:
+  - Task: `not_started`, `in_progress`, `completed`, `blocked`
+  - AC/SC: `met`, `unmet`
+
+**Features**:
+
+- Auto-detects item type from ID format
+- Validates status based on item type
+- For tasks: checks dependencies before `in_progress`, checks ACs before `completed`
+- Auto-resolves parent milestones and phases
+- Updates current pointer and summary counts
+
+#### 8. roadmap_to_markdown.py
 
 **Purpose**: Convert project roadmap JSON to markdown format
 
@@ -136,9 +174,65 @@ python3 .claude/scripts/roadmap_to_markdown.py -i path/to/roadmap.json -o path/t
 - `-i, --input` - Input JSON file path (default: `.claude/skills/project-management/references/schema.json`)
 - `-o, --output` - Output markdown file path (default: `project/product/product.md`)
 
+### VS Code Setup Scripts
+
+#### 9. init_tasks_json.py
+
+**Purpose**: Initialize VS Code tasks.json with Claude Code launcher tasks
+
+```bash
+# Default: creates .vscode/tasks.json with 2 Claude launchers
+python3 .claude/scripts/vscode_setup/init_tasks_json.py
+
+# Create 3 Claude launcher tasks
+python3 .claude/scripts/vscode_setup/init_tasks_json.py -n 3
+
+# Preview without writing
+python3 .claude/scripts/vscode_setup/init_tasks_json.py --dry-run
+
+# Force overwrite existing file
+python3 .claude/scripts/vscode_setup/init_tasks_json.py -f
+
+# Disable auto-run on folder open
+python3 .claude/scripts/vscode_setup/init_tasks_json.py --no-auto-run
+```
+
+**Options**:
+
+- `-n, --num-tasks` - Number of Claude launcher tasks (default: 2)
+- `-o, --output` - Output path (default: `.vscode/tasks.json`)
+- `--no-auto-run` - Disable automatic run on folder open
+- `-f, --force` - Overwrite without prompting
+- `--dry-run` - Print content without writing
+- `--milestones` - JSON array of milestones for worktree creation
+
+#### 10. cleanup_worktrees.py
+
+**Purpose**: Delete all git worktrees and their associated milestone branches
+
+```bash
+# Preview what would be deleted
+python3 .claude/scripts/vscode_setup/cleanup_worktrees.py --dry-run
+
+# Delete all milestone worktrees and branches
+python3 .claude/scripts/vscode_setup/cleanup_worktrees.py
+
+# Force delete even with uncommitted changes
+python3 .claude/scripts/vscode_setup/cleanup_worktrees.py -f
+
+# Only delete branches (keep worktree directories)
+python3 .claude/scripts/vscode_setup/cleanup_worktrees.py --branches-only
+```
+
+**Options**:
+
+- `-f, --force` - Force remove even with uncommitted changes
+- `--dry-run` - Show what would be deleted without deleting
+- `--branches-only` - Only delete branches, skip worktree removal
+
 ### Setup Scripts
 
-#### 7. setup-yolo-aliases.sh
+#### 11. setup-yolo-aliases.sh
 
 **Purpose**: Configure shell aliases for quick Claude commands
 
@@ -196,4 +290,4 @@ If scripts fail to execute:
 
 ---
 
-_Last updated: 2025-12-14_
+_Last updated: 2025-12-26_
