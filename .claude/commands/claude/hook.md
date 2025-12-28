@@ -5,6 +5,8 @@ argument-hint: <requirements>
 model: opus
 ---
 
-<instruction> Use `hooks-management` skills to create or update hooks based on the requirements: $ARGUMENTS</instruction>
+**Instruction**: Use `/hooks-management` skill to create or update hooks based on the requirements: $ARGUMENTS
 
-<rule>`hooks-management` skill MUST be used for this task.</rule>
+**Rule**: `/hooks-management` skill MUST be used for this task.
+
+**Important**: Do not skip skill usage.

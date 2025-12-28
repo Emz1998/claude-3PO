@@ -10,7 +10,7 @@ model: opus
 
 ## Context
 
-- Workflow (Skills): `/explore` → `/research` → `/plan` → `/prototype` → `/code` -> `/log:task`
+- Workflow (Skills): `roadmap:query` → `/explore` → `/discuss` → `/plan` → `/prototype` → `/code` -> `/log:task`
 
 ## Instructions
 

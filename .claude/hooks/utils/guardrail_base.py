@@ -18,6 +18,12 @@ from .roadmap import (
 from .blockers import is_safe_git_command
 
 
+def get_folder_name(item_id: str, item_name: str) -> str:
+    """Get folder name in format ID_description (e.g., PH-001_phase-name)."""
+    slug = re.sub(r"[^a-zA-Z0-9]+", "-", item_name.lower()).strip("-")
+    return f"{item_id}_{slug}"
+
+
 def get_milestone_folder_name(roadmap: dict, milestone_id: str) -> str | None:
     """Get milestone folder name in format MS-NNN_description."""
     _, milestone = find_milestone_in_roadmap(roadmap, milestone_id)
@@ -27,35 +33,55 @@ def get_milestone_folder_name(roadmap: dict, milestone_id: str) -> str | None:
     ms_name = milestone.get("name", "")
     if not ms_id:
         return None
-    slug = re.sub(r"[^a-zA-Z0-9]+", "-", ms_name.lower()).strip("-")
-    return f"{ms_id}_{slug}"
+    return get_folder_name(ms_id, ms_name)
 
 
-def get_milestone_context() -> tuple[str, str, str] | tuple[None, None, str]:
-    """Get version, milestone folder, and session_id. Returns error message if any."""
+def get_phase_folder_name(roadmap: dict, phase_id: str) -> str | None:
+    """Get phase folder name in format PH-NNN_description."""
+    phases = roadmap.get("phases", [])
+    for phase in phases:
+        if phase.get("id") == phase_id:
+            ph_id = phase.get("id", "")
+            ph_name = phase.get("name", "")
+            if not ph_id:
+                return None
+            return get_folder_name(ph_id, ph_name)
+    return None
+
+
+def get_milestone_context() -> tuple[str, str, str, str] | tuple[None, None, None, str]:
+    """Get version, phase folder, milestone folder, and session_id. Returns error message if any."""
     version = get_current_version()
     if not version:
-        return None, None, "Could not determine current version"
+        return None, None, None, "Could not determine current version"
 
     roadmap_path = get_roadmap_path(version)
     roadmap = load_roadmap(roadmap_path)
     if not roadmap:
-        return None, None, f"Could not load roadmap from {roadmap_path}"
+        return None, None, None, f"Could not load roadmap from {roadmap_path}"
 
     current = roadmap.get("current", {})
+    phase_id = current.get("phase")
     milestone_id = current.get("milestone")
+
+    if not phase_id:
+        return None, None, None, "No current phase set in roadmap"
     if not milestone_id:
-        return None, None, "No current milestone set in roadmap"
+        return None, None, None, "No current milestone set in roadmap"
+
+    phase_folder = get_phase_folder_name(roadmap, phase_id)
+    if not phase_folder:
+        return None, None, None, f"Could not find phase {phase_id}"
 
     milestone_folder = get_milestone_folder_name(roadmap, milestone_id)
     if not milestone_folder:
-        return None, None, f"Could not find milestone {milestone_id}"
+        return None, None, None, f"Could not find milestone {milestone_id}"
 
     session_id = get_cache("session_id") or ""
     if not session_id:
-        return None, None, "No session_id in cache"
+        return None, None, None, "No session_id in cache"
 
-    return version, milestone_folder, session_id
+    return version, phase_folder, milestone_folder, session_id
 
 
 class GuardrailConfig:
@@ -186,11 +212,11 @@ def create_directory_validator(
     """Create a validator that allows writes to a specific milestone subfolder."""
 
     def validator(file_path: str) -> tuple[bool, str]:
-        version, milestone_folder, error_or_session = get_milestone_context()
+        version, phase_folder, milestone_folder, error_or_session = get_milestone_context()
         if version is None:
             return False, error_or_session
 
-        allowed_path = f"project/{version}/phases/milestones/{milestone_folder}/{subfolder}/"
+        allowed_path = f"project/{version}/{phase_folder}/{milestone_folder}/{subfolder}/"
         if allowed_path in file_path:
             return True, ""
         return False, f"Only allowed path: {allowed_path}"
@@ -204,18 +230,19 @@ def create_session_file_validator(
     """Create a validator for session-specific files with date pattern."""
 
     def validator(file_path: str) -> tuple[bool, str]:
-        version, milestone_folder, error_or_session = get_milestone_context()
+        version, phase_folder, milestone_folder, error_or_session = get_milestone_context()
         if version is None:
             return False, error_or_session
 
         session_id = error_or_session
         date_pattern = r"\d{4}-\d{2}-\d{2}"
         version_escaped = re.escape(version)
+        phase_escaped = re.escape(phase_folder)
         milestone_escaped = re.escape(milestone_folder)
         session_escaped = re.escape(session_id)
 
         pattern = (
-            rf"project/{version_escaped}/phases/milestones/"
+            rf"project/{version_escaped}/{phase_escaped}/"
             rf"{milestone_escaped}/{subfolder}/"
             rf"{file_prefix}_{date_pattern}_{session_escaped}\.md$"
         )
@@ -225,7 +252,7 @@ def create_session_file_validator(
 
         today = datetime.now().strftime("%Y-%m-%d")
         expected = (
-            f"project/{version}/phases/milestones/{milestone_folder}/{subfolder}/"
+            f"project/{version}/{phase_folder}/{milestone_folder}/{subfolder}/"
             f"{file_prefix}_{today}_{session_id}.md"
         )
         return False, f"Expected: {expected}"

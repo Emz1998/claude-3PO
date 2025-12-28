@@ -56,8 +56,10 @@ Shared utilities for all hook scripts.
 **guardrail_base.py**
 - `GuardrailConfig` - Configuration for guardrails
 - `GuardrailRunner` - Execute guardrail logic
+- `get_folder_name(id, name)` - Format folder name as ID_slug
+- `get_phase_folder_name(roadmap, id)` - Format phase folder
 - `get_milestone_folder_name(roadmap, id)` - Format milestone folder
-- `get_milestone_context()` - Get version, milestone, session
+- `get_milestone_context()` - Get version, phase, milestone, session
 - `create_directory_validator(subfolder)` - Directory path validator
 - `create_session_file_validator(subfolder, prefix)` - Session file validator
 - `create_pattern_validator(patterns, allow, msg)` - Regex validator

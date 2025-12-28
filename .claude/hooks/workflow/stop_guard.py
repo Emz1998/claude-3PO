@@ -8,8 +8,8 @@ from typing import NoReturn
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from utils import read_stdin_json, get_cache, load_cache, write_cache
-from utils.roadmap import (
+from utils import read_stdin_json, get_cache, load_cache, write_cache  # type: ignore
+from utils.roadmap import (  # type: ignore
     find_milestone_in_roadmap,
     get_current_version,
     get_roadmap_path,
