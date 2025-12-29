@@ -1,4 +1,4 @@
-# Status JSON Template Schema
+# Status JSON Template Schema (v1.0)
 
 Schema for `project/status.json` - single source of truth for project progress tracking.
 

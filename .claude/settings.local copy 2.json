@@ -53,10 +53,11 @@
   "hooks": {
     "PreToolUse": [
       {
+        "matcher": "Task",
         "hooks": [
           {
             "type": "command",
-            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/guardrails/subagent_guardrail.py\"",
+            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/guardrails/codebase_explorer.py\"",
             "timeout": 30
           }
         ]
@@ -66,17 +67,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/status_logger/dispatcher.py\"",
+            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/input_validation/skill_args_validator.py\"",
             "timeout": 30
           },
           {
             "type": "command",
             "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/workflow/build_trigger.py\"",
-            "timeout": 30
-          },
-          {
-            "type": "command",
-            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/workflow/phase_transition_guard.py\"",
             "timeout": 30
           }
         ]
@@ -87,6 +83,28 @@
           {
             "type": "command",
             "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/security/security.py\"",
+            "timeout": 30
+          }
+        ]
+      },
+      {
+        "matcher": "Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/tests/test.py\"",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/tests/test.py\"",
             "timeout": 30
           }
         ]
@@ -112,18 +130,18 @@
             "timeout": 30
           }
         ]
-      }
-    ],
-    "SessionStart": [
+      },
       {
         "hooks": [
           {
             "type": "command",
-            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/context/roadmap_context.py\"",
+            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/tests/test.py\"",
             "timeout": 30
           }
         ]
-      }, 
+      }
+    ],
+    "SessionStart": [
       {
         "matcher": "clear|startup",
         "hooks": [
@@ -145,12 +163,7 @@
           },
           {
             "type": "command",
-            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/workflow/phase_transition_guard.py\"",
-            "timeout": 30
-          },
-          {
-            "type": "command",
-            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/status_logger/user_prompt_dispatcher.py\"",
+            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/input_validation/slash_command_validator.py\"",
             "timeout": 30
           }
         ]

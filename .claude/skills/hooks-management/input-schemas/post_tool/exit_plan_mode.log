@@ -1,0 +1,15 @@
+{
+    "session_id": "28968090-bb09-4f41-ba89-dcd86921b98f",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/28968090-bb09-4f41-ba89-dcd86921b98f.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "default",
+    "hook_event_name": "PostToolUse",
+    "tool_name": "ExitPlanMode",
+    "tool_input": {},
+    "tool_response": {
+        "plan": null,
+        "isAgent": false,
+        "filePath": "/home/emhar/.claude/plans/dapper-wishing-koala.md"
+    },
+    "tool_use_id": "toolu_01Ro4V4TxkscNMwNf2TGp35p"
+}

@@ -1,0 +1,14 @@
+{
+    "session_id": "5ed5ca29-e42e-4ef6-9d59-b7883d5a3f5f",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/5ed5ca29-e42e-4ef6-9d59-b7883d5a3f5f.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Edit",
+    "tool_input": {
+        "file_path": "/home/emhar/avaris-ai/status-json-template.md",
+        "old_string": "# Status JSON Template Schema",
+        "new_string": "# Status JSON Template Schema (v1.0)"
+    },
+    "tool_use_id": "toolu_01WY4r5Rtf4pN9Lje3Gt5w6D"
+}

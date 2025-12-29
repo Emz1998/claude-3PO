@@ -1,0 +1,8 @@
+{
+    "session_id": "a499e088-d35b-4be0-a3cc-1e9452f5fa1c",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/a499e088-d35b-4be0-a3cc-1e9452f5fa1c.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "Stop",
+    "stop_hook_active": false
+}

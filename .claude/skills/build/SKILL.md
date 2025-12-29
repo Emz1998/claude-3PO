@@ -1,5 +1,5 @@
 ---
-name: implement
+name: build
 description: Implement the current task in the roadmap by delegating to the appropriate subagent
 ---
 

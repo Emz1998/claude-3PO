@@ -1,0 +1,20 @@
+{
+    "session_id": "28968090-bb09-4f41-ba89-dcd86921b98f",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/28968090-bb09-4f41-ba89-dcd86921b98f.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PostToolUse",
+    "tool_name": "LSP",
+    "tool_input": {
+        "operation": "documentSymbol",
+        "filePath": "/home/emhar/avaris-ai/.claude/hooks/tests/post_tool_test.py",
+        "line": 1,
+        "character": 1
+    },
+    "tool_response": {
+        "operation": "documentSymbol",
+        "result": "No LSP server available for file type: .py",
+        "filePath": "/home/emhar/avaris-ai/.claude/hooks/tests/post_tool_test.py"
+    },
+    "tool_use_id": "toolu_01UWnbKo9xkvfa861bfBro9C"
+}

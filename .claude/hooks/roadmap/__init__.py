@@ -4,7 +4,6 @@ from .resolver import (
     resolve_milestones_and_phases,
     update_current_pointer,
     update_summary,
-    run_auto_resolver,
 )
 from .roadmap import (
     # Type aliases

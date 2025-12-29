@@ -7,9 +7,9 @@ from typing import Any
 CACHE_PATH = Path(".claude/hooks/cache.json")
 
 
-def load_cache():
+def load_cache(file_path: Path = CACHE_PATH) -> dict:
     try:
-        cache = json.loads(CACHE_PATH.read_text())
+        cache = json.loads(file_path.read_text())
         return cache
     except (json.JSONDecodeError, FileNotFoundError):
         return {}
@@ -31,24 +31,22 @@ def write_cache(cache: dict) -> None:
         raise
 
 
-def get_cache(key: str):
+def get_cache(key: str, cache: dict = load_cache()) -> Any:
     """Get value from shared cache. Returns None if not found."""
     if not key:
         raise ValueError("Cache key is required")
     try:
-        cache = load_cache()
         return cache.get(key)
     except (json.JSONDecodeError, FileNotFoundError):
         return None
 
 
-def set_cache(key: str, value: Any) -> None:
+def set_cache(key: str, value: Any, cache: dict = load_cache()) -> None:
     """Set value in shared cache with namespace isolation."""
     if not key:
         print("Cache key is required")
         return
 
-    cache = load_cache()
     if key not in cache:
         print(f"Cache key {key} not found")
         return
@@ -57,10 +55,9 @@ def set_cache(key: str, value: Any) -> None:
     write_cache(cache)
 
 
-def append_to_cache_list(key: str, value: Any) -> None:
+def append_to_cache_list(key: str, value: Any, cache: dict = load_cache()) -> None:
     """Append value to a list in cache."""
     try:
-        cache = load_cache()
         if type(cache.get(key)) is not list:
             raise ValueError(f"Cache key {key} is not a list")
         cache[key].append(value)

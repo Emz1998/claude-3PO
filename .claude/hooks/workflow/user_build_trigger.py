@@ -17,8 +17,8 @@ from utils.roadmap import (  # type: ignore
 )
 
 # Command patterns that activate the stop guard
-BUILD_COMMANDS = {"/build", "/implement"}
-BUILD_SKILL_CACHE_KEY = "build_skill_active"
+BUILD_COMMANDS = {"/implement"}
+BUILD_SKILL_CACHE_KEY = "is_implement_active"
 
 
 def activate_build_skill() -> None:
@@ -59,7 +59,9 @@ def get_current_phase_milestones() -> list[dict[str, str]]:
 def init_tasks_json_with_worktrees(milestones: list[dict[str, str]]) -> None:
     """Initialize VS Code tasks.json with worktrees for each milestone."""
     project_dir = Path(__file__).parent.parent.parent.parent
-    script_path = project_dir / ".claude" / "scripts" / "vscode_setup" / "init_tasks_json.py"
+    script_path = (
+        project_dir / ".claude" / "scripts" / "vscode_setup" / "init_tasks_json.py"
+    )
 
     if not script_path.exists():
         return

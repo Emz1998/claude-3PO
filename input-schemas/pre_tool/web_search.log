@@ -1,0 +1,12 @@
+{
+    "session_id": "28968090-bb09-4f41-ba89-dcd86921b98f",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/28968090-bb09-4f41-ba89-dcd86921b98f.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "WebSearch",
+    "tool_input": {
+        "query": "React 19 features 2025"
+    },
+    "tool_use_id": "toolu_01HWMYniVCmfcZKonBa1Pugu"
+}

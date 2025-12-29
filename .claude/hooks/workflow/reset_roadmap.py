@@ -28,13 +28,18 @@ def reset_roadmap() -> None:
     try:
         version = get_current_version()
         if not version:
-            print("Error: Could not retrieve current_version from PRD.json", file=sys.stderr)
+            print(
+                "Error: Could not retrieve current_version from PRD.json",
+                file=sys.stderr,
+            )
             sys.exit(1)
 
         roadmap_path = get_roadmap_path(version)
         roadmap = load_roadmap(roadmap_path)
         if roadmap is None:
-            print(f"Error: Could not load roadmap from: {roadmap_path}", file=sys.stderr)
+            print(
+                f"Error: Could not load roadmap from: {roadmap_path}", file=sys.stderr
+            )
             sys.exit(1)
 
         # Reset project-level status
@@ -71,8 +76,16 @@ def reset_roadmap() -> None:
         # Reset current pointer to first task
         if phases:
             first_phase = phases[0]
-            first_milestone = first_phase.get("milestones", [{}])[0] if first_phase.get("milestones") else {}
-            first_task = first_milestone.get("tasks", [{}])[0] if first_milestone.get("tasks") else {}
+            first_milestone = (
+                first_phase.get("milestones", [{}])[0]
+                if first_phase.get("milestones")
+                else {}
+            )
+            first_task = (
+                first_milestone.get("tasks", [{}])[0]
+                if first_milestone.get("tasks")
+                else {}
+            )
 
             roadmap["current"] = {
                 "phase": first_phase.get("id", ""),

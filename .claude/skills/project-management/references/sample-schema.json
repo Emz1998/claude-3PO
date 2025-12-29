@@ -121,6 +121,7 @@
       "id": "PH-002",
       "name": "Build - Feature Development",
       "status": "in_progress",
+      "checkpoint": false,
       "milestones": [
         {
           "id": "MS-003",
