@@ -10,9 +10,9 @@ model: sonnet
 
 ## Workflow
 
-- Invoke `codebase-explorer` agent to analyze the codebase for context: $ARGUMENTS
-- Revise the quality of the exploration report
-- Iterate and re-invoke the `codebase-explorer` agent until the exploration report is satisfactory
+1. Invoke @agent-codebase-explorer subagent to analyze the codebase for context: $ARGUMENTS
+2. Revise the quality of the exploration report
+3. Iterate and re-invoke the @agent-codebase-explorer subagent until the exploration report is satisfactory
 
 ## Subagent Prompts
 

@@ -1,1041 +1,2285 @@
 {
-  "current_version": "v0.1.0",
-  "stable_version": "v1.0.0",
-  "overview": {
-    "name": "Avaris - NBA Betting Analytics Platform",
-    "type": "web-application",
-    "elevator_pitch": "A transparent, data-driven NBA game prediction service using XGBoost machine learning to deliver daily picks with verifiable track records, starting as an ad-supported blog and evolving into a premium subscription platform.",
-    "industry_problem": "Sports betting markets are saturated with tout services making questionable claims without transparent track records. Casual and serious bettors lack access to reliable, data-driven predictions with accountability. Existing prediction services either hide their historical performance or cherry-pick winning streaks.",
-    "solutions": [
-      "Build XGBoost ML model trained on NBA Stats API data for game outcome predictions",
-      "Launch ad-supported blog with daily predictions in SEO-optimized article format",
-      "Display transparent performance dashboard showing win rate, ROI, and historical results",
-      "Automate daily prediction pipeline using scheduled jobs for fresh picks each morning",
-      "Transition to subscription model once 55%+ win rate threshold is achieved",
-      "Develop desktop prediction bot application for premium programmatic access",
-      "Provide tiered service for casual bettors (free moneyline) and serious bettors (premium spreads/totals)"
+    "current_version": "v0.1.0",
+    "stable_version": "v1.0.0",
+    "overview": {
+        "name": "Avaris - NBA Betting Analytics Platform",
+        "type": "web-application",
+        "elevator_pitch": "A transparent, data-driven NBA game prediction service powered by XGBoost machine learning, delivering daily picks with verifiable track records through an ad-supported blog that evolves into a premium subscription platform with automated prediction tools.",
+        "industry_problem": "Sports betting markets are saturated with tout services making questionable claims without transparent track records. Casual and serious bettors lack access to reliable, data-driven predictions with accountability. Existing prediction services hide their historical performance or cherry-pick winning streaks to mislead users.",
+        "solutions": [
+            "Build XGBoost machine learning model trained on NBA Stats API data to predict game outcomes",
+            "Launch ad-supported blog with daily game predictions in SEO-optimized article format",
+            "Display transparent performance dashboard showing win rate, ROI, and complete historical results",
+            "Automate daily prediction pipeline using scheduled jobs to generate fresh picks each morning",
+            "Transition to subscription model once proven performance threshold (55%+ win rate) is achieved",
+            "Develop desktop prediction bot application for premium users to access predictions programmatically",
+            "Provide tiered service serving both casual bettors (free moneyline picks) and serious bettors (premium spreads and totals)"
+        ],
+        "goals": [
+            "Achieve 55%+ win rate over 100+ predictions to beat break-even threshold",
+            "Build transparent track record through publicly displayed historical performance",
+            "Launch MVP ad-supported blog with daily picks and performance dashboard",
+            "Generate 5k+ monthly visitors through SEO and content marketing",
+            "Reach $1k-5k monthly recurring revenue from ads and early subscribers within 12 months",
+            "Develop subscription tiers with premium features (spreads, totals, API access)"
+        ]
+    },
+    "versions": [
+        {
+            "version": "v0.1.0",
+            "release_date": "2025-01-15",
+            "status": "not_started",
+            "features": [
+                {
+                    "id": "F001",
+                    "name": "NBA Data Pipeline Foundation",
+                    "description": "Establish core data infrastructure for fetching, storing, and managing NBA statistics from the NBA Stats API. This forms the foundation for all ML predictions.",
+                    "user_stories": [
+                        {
+                            "id": "US-001",
+                            "title": "Fetch Current Season Team Stats",
+                            "story": "As a system, I want to fetch current season team statistics from NBA Stats API, so that the ML model has up-to-date data for predictions.",
+                            "acceptance_criteria": [
+                                {
+                                    "id": "AC-001",
+                                    "criteria": "Given the data pipeline is running, when a fetch job executes, then team statistics for the current season are retrieved and stored in Parquet format."
+                                },
+                                {
+                                    "id": "AC-002",
+                                    "criteria": "Given the NBA Stats API is rate-limited, when requests exceed limits, then the system implements exponential backoff and retries."
+                                }
+                            ]
+                        },
+                        {
+                            "id": "US-002",
+                            "title": "Fetch Player Statistics",
+                            "story": "As a system, I want to fetch player-level statistics including injuries and rest days, so that predictions account for roster availability.",
+                            "acceptance_criteria": [
+                                {
+                                    "id": "AC-003",
+                                    "criteria": "Given the data pipeline runs, when player data is fetched, then key player stats (points, assists, rebounds, usage rate) are stored."
+                                },
+                                {
+                                    "id": "AC-004",
+                                    "criteria": "Given injury data is available, when player status changes, then the system updates injury flags within 24 hours."
+                                }
+                            ]
+                        },
+                        {
+                            "id": "US-003",
+                            "title": "Store Historical Data",
+                            "story": "As a system, I want to store historical game data from past seasons, so that the ML model can be trained and backtested.",
+                            "acceptance_criteria": [
+                                {
+                                    "id": "AC-005",
+                                    "criteria": "Given historical data is requested, when the pipeline runs, then game results from 2022-23 and 2023-24 seasons are stored."
+                                },
+                                {
+                                    "id": "AC-006",
+                                    "criteria": "Given data is stored in Parquet files, when queried, then data retrieval completes in under 2 seconds for any query."
+                                }
+                            ]
+                        }
+                    ],
+                    "requirements": {
+                        "functional": [
+                            {
+                                "id": "FR-001",
+                                "description": "System shall fetch team statistics including win rates, point differentials, offensive/defensive ratings from NBA Stats API."
+                            },
+                            {
+                                "id": "FR-002",
+                                "description": "System shall fetch player statistics including key metrics, injury reports, and rest days."
+                            },
+                            {
+                                "id": "FR-003",
+                                "description": "System shall store all data in Parquet file format for efficient querying."
+                            },
+                            {
+                                "id": "FR-004",
+                                "description": "System shall implement rate limiting and retry logic for API calls."
+                            }
+                        ],
+                        "non_functional": [
+                            {
+                                "id": "NFR-001",
+                                "description": "Data pipeline shall complete daily refresh within 30 minutes."
+                            },
+                            {
+                                "id": "NFR-002",
+                                "description": "System shall handle API rate limits gracefully without data loss."
+                            }
+                        ]
+                    },
+                    "dependencies": [
+                        {
+                            "id": "D001",
+                            "dependency": "NBA Stats API",
+                            "assumption": "API remains free and accessible with documented rate limits."
+                        },
+                        {
+                            "id": "D002",
+                            "dependency": "Python Runtime",
+                            "assumption": "Python 3.11+ is available for data processing scripts."
+                        }
+                    ],
+                    "risks": [
+                        {
+                            "id": "R001",
+                            "title": "NBA Stats API Rate Limiting",
+                            "overview": "The NBA Stats API may impose strict rate limits that slow data collection.",
+                            "impact": "Data freshness may be compromised, affecting prediction accuracy.",
+                            "probability": "High",
+                            "mitigation": "Implement caching, batch requests during off-peak hours, and store data locally to minimize API calls."
+                        },
+                        {
+                            "id": "R002",
+                            "title": "API Schema Changes",
+                            "overview": "NBA Stats API may change response schemas without notice.",
+                            "impact": "Data pipeline breaks, requiring immediate fixes.",
+                            "probability": "Medium",
+                            "mitigation": "Implement schema validation and alerting for unexpected response formats."
+                        }
+                    ],
+                    "success_criteria": [
+                        {
+                            "id": "SC-001",
+                            "title": "Data Pipeline Operational",
+                            "description": "Data pipeline successfully fetches and stores team and player data daily."
+                        },
+                        {
+                            "id": "SC-002",
+                            "title": "Historical Data Available",
+                            "description": "At least 2 full seasons of historical game data are stored and queryable."
+                        },
+                        {
+                            "id": "SC-003",
+                            "title": "Data Freshness Maintained",
+                            "description": "Data is updated within 24 hours of latest NBA games being played."
+                        }
+                    ]
+                },
+                {
+                    "id": "F002",
+                    "name": "XGBoost Model Training Infrastructure",
+                    "description": "Build the machine learning infrastructure for training, evaluating, and versioning XGBoost models for game outcome prediction.",
+                    "user_stories": [
+                        {
+                            "id": "US-004",
+                            "title": "Train XGBoost Model",
+                            "story": "As a data scientist, I want to train an XGBoost model on historical NBA data, so that the system can predict game outcomes.",
+                            "acceptance_criteria": [
+                                {
+                                    "id": "AC-007",
+                                    "criteria": "Given historical data is available, when training is initiated, then an XGBoost model is trained with specified hyperparameters."
+                                },
+                                {
+                                    "id": "AC-008",
+                                    "criteria": "Given training completes, when the model is saved, then model artifacts and metadata are stored with version information."
+                                }
+                            ]
+                        },
+                        {
+                            "id": "US-005",
+                            "title": "Feature Engineering Pipeline",
+                            "story": "As a data scientist, I want automated feature engineering, so that raw data is transformed into predictive features.",
+                            "acceptance_criteria": [
+                                {
+                                    "id": "AC-009",
+                                    "criteria": "Given raw game data, when feature engineering runs, then team performance metrics (L5, L10 form) are calculated."
+                                },
+                                {
+                                    "id": "AC-010",
+                                    "criteria": "Given situational data, when features are generated, then home/away splits, back-to-back flags, and travel distance are computed."
+                                }
+                            ]
+                        },
+                        {
+                            "id": "US-006",
+                            "title": "Model Evaluation",
+                            "story": "As a data scientist, I want to evaluate model performance with cross-validation, so that I can assess prediction accuracy.",
+                            "acceptance_criteria": [
+                                {
+                                    "id": "AC-011",
+                                    "criteria": "Given a trained model, when evaluation runs, then accuracy, log loss, and calibration metrics are computed."
+                                },
+                                {
+                                    "id": "AC-012",
+                                    "criteria": "Given evaluation results, when metrics are reported, then win rate percentage is clearly displayed."
+                                }
+                            ]
+                        }
+                    ],
+                    "requirements": {
+                        "functional": [
+                            {
+                                "id": "FR-005",
+                                "description": "System shall train XGBoost models using team performance, player stats, and situational features."
+                            },
+                            {
+                                "id": "FR-006",
+                                "description": "System shall generate features including recent form (L5, L10), home/away splits, and back-to-back indicators."
+                            },
+                            {
+                                "id": "FR-007",
+                                "description": "System shall evaluate models using time-series cross-validation."
+                            },
+                            {
+                                "id": "FR-008",
+                                "description": "System shall version and store trained models with metadata."
+                            }
+                        ],
+                        "non_functional": [
+                            {
+                                "id": "NFR-003",
+                                "description": "Model training shall complete within 10 minutes on standard hardware."
+                            },
+                            {
+                                "id": "NFR-004",
+                                "description": "Feature engineering shall process a full season of data in under 5 minutes."
+                            }
+                        ]
+                    },
+                    "dependencies": [
+                        {
+                            "id": "D003",
+                            "dependency": "XGBoost Library",
+                            "assumption": "XGBoost Python library is stable and maintained."
+                        },
+                        {
+                            "id": "D004",
+                            "dependency": "F001 - NBA Data Pipeline",
+                            "assumption": "Data pipeline provides clean, structured data for training."
+                        }
+                    ],
+                    "risks": [
+                        {
+                            "id": "R003",
+                            "title": "Model Overfitting",
+                            "overview": "Model may overfit to historical patterns that do not generalize.",
+                            "impact": "Poor prediction accuracy on new games.",
+                            "probability": "Medium",
+                            "mitigation": "Use time-series cross-validation and regularization parameters."
+                        },
+                        {
+                            "id": "R004",
+                            "title": "Insufficient Predictive Signal",
+                            "overview": "Available features may not provide enough signal to beat 55% accuracy.",
+                            "impact": "Product cannot launch if accuracy threshold is not met.",
+                            "probability": "Medium",
+                            "mitigation": "Iterate on feature engineering and explore additional data sources."
+                        }
+                    ],
+                    "success_criteria": [
+                        {
+                            "id": "SC-004",
+                            "title": "Model Training Functional",
+                            "description": "XGBoost model trains successfully on historical data."
+                        },
+                        {
+                            "id": "SC-005",
+                            "title": "Feature Pipeline Complete",
+                            "description": "All planned feature categories are implemented and tested."
+                        },
+                        {
+                            "id": "SC-006",
+                            "title": "Evaluation Metrics Available",
+                            "description": "Model evaluation produces accuracy, log loss, and calibration metrics."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "version": "v0.2.0",
+            "release_date": "2025-02-01",
+            "status": "not_started",
+            "features": [
+                {
+                    "id": "F003",
+                    "name": "Model Backtesting Framework",
+                    "description": "Implement comprehensive backtesting to validate model performance on historical seasons before live deployment.",
+                    "user_stories": [
+                        {
+                            "id": "US-007",
+                            "title": "Backtest on Historical Seasons",
+                            "story": "As a data scientist, I want to backtest the model on 2022-23 and 2023-24 seasons, so that I can validate it does not overfit.",
+                            "acceptance_criteria": [
+                                {
+                                    "id": "AC-013",
+                                    "criteria": "Given trained model, when backtesting runs, then predictions are generated for each game in test seasons."
+                                },
+                                {
+                                    "id": "AC-014",
+                                    "criteria": "Given backtest results, when analysis completes, then win rate, ROI, and maximum drawdown are calculated."
+                                }
+                            ]
+                        },
+                        {
+                            "id": "US-008",
+                            "title": "Generate Backtest Reports",
+                            "story": "As a product owner, I want detailed backtest reports, so that I can assess readiness for launch.",
+                            "acceptance_criteria": [
+                                {
+                                    "id": "AC-015",
+                                    "criteria": "Given backtest completes, when report is generated, then monthly performance breakdown is included."
+                                },
+                                {
+                                    "id": "AC-016",
+                                    "criteria": "Given backtest report, when reviewed, then confidence intervals for win rate are displayed."
+                                }
+                            ]
+                        }
+                    ],
+                    "requirements": {
+                        "functional": [
+                            {
+                                "id": "FR-009",
+                                "description": "System shall simulate predictions on historical seasons without data leakage."
+                            },
+                            {
+                                "id": "FR-010",
+                                "description": "System shall calculate ROI assuming standard -110 betting odds."
+                            },
+                            {
+                                "id": "FR-011",
+                                "description": "System shall generate monthly and seasonal performance reports."
+                            }
+                        ],
+                        "non_functional": [
+                            {
+                                "id": "NFR-005",
+                                "description": "Backtesting a full season shall complete within 5 minutes."
+                            }
+                        ]
+                    },
+                    "dependencies": [
+                        {
+                            "id": "D005",
+                            "dependency": "F002 - XGBoost Model",
+                            "assumption": "Trained model is available for backtesting."
+                        }
+                    ],
+                    "risks": [
+                        {
+                            "id": "R005",
+                            "title": "Data Leakage in Backtesting",
+                            "overview": "Improper backtesting may use future information, inflating results.",
+                            "impact": "False confidence in model performance.",
+                            "probability": "Medium",
+                            "mitigation": "Implement strict temporal splits and code review for data leakage."
+                        }
+                    ],
+                    "success_criteria": [
+                        {
+                            "id": "SC-007",
+                            "title": "Backtest Validation Complete",
+                            "description": "Model achieves 55%+ win rate on held-out historical seasons."
+                        },
+                        {
+                            "id": "SC-008",
+                            "title": "No Data Leakage Detected",
+                            "description": "Code review confirms no future data is used in predictions."
+                        }
+                    ]
+                },
+                {
+                    "id": "F004",
+                    "name": "Paper Trading System",
+                    "description": "Run live predictions without publishing to validate model performance on current season before public launch.",
+                    "user_stories": [
+                        {
+                            "id": "US-009",
+                            "title": "Generate Daily Paper Predictions",
+                            "story": "As a system, I want to generate predictions for today's games, so that performance can be tracked privately.",
+                            "acceptance_criteria": [
+                                {
+                                    "id": "AC-017",
+                                    "criteria": "Given games are scheduled for today, when prediction job runs, then predictions are generated and stored."
+                                },
+                                {
+                                    "id": "AC-018",
+                                    "criteria": "Given predictions exist, when games complete, then actual results are recorded and accuracy updated."
+                                }
+                            ]
+                        },
+                        {
+                            "id": "US-010",
+                            "title": "Track Paper Trading Performance",
+                            "story": "As a product owner, I want to track paper trading performance over time, so that I can decide when to launch publicly.",
+                            "acceptance_criteria": [
+                                {
+                                    "id": "AC-019",
+                                    "criteria": "Given paper trading data, when dashboard is viewed, then cumulative win rate and ROI are displayed."
+                                },
+                                {
+                                    "id": "AC-020",
+                                    "criteria": "Given 50+ predictions, when analysis runs, then statistical confidence in win rate is calculated."
+                                }
+                            ]
+                        }
+                    ],
+                    "requirements": {
+                        "functional": [
+                            {
+                                "id": "FR-012",
+                                "description": "System shall generate predictions for all games each day automatically."
+                            },
+                            {
+                                "id": "FR-013",
+                                "description": "System shall record prediction results after games complete."
+                            },
+                            {
+                                "id": "FR-014",
+                                "description": "System shall provide paper trading dashboard showing running performance."
+                            }
+                        ],
+                        "non_functional": [
+                            {
+                                "id": "NFR-006",
+                                "description": "Daily predictions shall be generated by 10 AM ET before lines move significantly."
+                            }
+                        ]
+                    },
+                    "dependencies": [
+                        {
+                            "id": "D006",
+                            "dependency": "F001 - NBA Data Pipeline",
+                            "assumption": "Fresh data is available for daily predictions."
+                        },
+                        {
+                            "id": "D007",
+                            "dependency": "F002 - XGBoost Model",
+                            "assumption": "Trained model is deployed for inference."
+                        }
+                    ],
+                    "risks": [
+                        {
+                            "id": "R006",
+                            "title": "Paper vs Live Performance Gap",
+                            "overview": "Paper trading may not reflect real-world conditions.",
+                            "impact": "Live performance may differ from paper results.",
+                            "probability": "Low",
+                            "mitigation": "Paper trade for extended period (4+ weeks) before launch."
+                        }
+                    ],
+                    "success_criteria": [
+                        {
+                            "id": "SC-009",
+                            "title": "Paper Trading Operational",
+                            "description": "System generates and tracks predictions daily without manual intervention."
+                        },
+                        {
+                            "id": "SC-010",
+                            "title": "Launch Threshold Met",
+                            "description": "Paper trading achieves 55%+ win rate over 50+ predictions."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "version": "v0.3.0",
+            "release_date": "2025-02-15",
+            "status": "not_started",
+            "features": [
+                {
+                    "id": "F005",
+                    "name": "Next.js Blog Foundation",
+                    "description": "Build the core Next.js application infrastructure for the prediction blog, including routing, layouts, and basic pages.",
+                    "user_stories": [
+                        {
+                            "id": "US-011",
+                            "title": "View Homepage with Today's Picks",
+                            "story": "As a visitor, I want to see today's picks prominently on the homepage, so that I can quickly access current predictions.",
+                            "acceptance_criteria": [
+                                {
+                                    "id": "AC-021",
+                                    "criteria": "Given I visit the homepage, when the page loads, then today's game predictions are displayed with probability percentages."
+                                },
+                                {
+                                    "id": "AC-022",
+                                    "criteria": "Given no games are scheduled today, when I visit the homepage, then a message indicates no games and shows next game date."
+                                }
+                            ]
+                        },
+                        {
+                            "id": "US-012",
+                            "title": "Navigate Blog Structure",
+                            "story": "As a visitor, I want clear navigation to browse predictions by date, so that I can find historical picks.",
+                            "acceptance_criteria": [
+                                {
+                                    "id": "AC-023",
+                                    "criteria": "Given I am on any page, when I use the navigation, then I can access homepage, archives, and about sections."
+                                },
+                                {
+                                    "id": "AC-024",
+                                    "criteria": "Given I visit the archives, when I select a date, then predictions for that date are displayed."
+                                }
+                            ]
+                        }
+                    ],
+                    "requirements": {
+                        "functional": [
+                            {
+                                "id": "FR-015",
+                                "description": "System shall display today's predictions on the homepage with team names and probability percentages."
+                            },
+                            {
+                                "id": "FR-016",
+                                "description": "System shall provide navigation to homepage, archives, and about pages."
+                            },
+                            {
+                                "id": "FR-017",
+                                "description": "System shall support responsive design for desktop and mobile viewing."
+                            }
+                        ],
+                        "non_functional": [
+                            {
+                                "id": "NFR-007",
+                                "description": "Homepage shall load in under 2 seconds on desktop connections."
+                            },
+                            {
+                                "id": "NFR-008",
+                                "description": "Site shall achieve 90+ Lighthouse performance score."
+                            }
+                        ]
+                    },
+                    "dependencies": [
+                        {
+                            "id": "D008",
+                            "dependency": "Next.js Framework",
+                            "assumption": "Next.js 14+ with App Router is used."
+                        },
+                        {
+                            "id": "D009",
+                            "dependency": "React 19",
+                            "assumption": "React 19 stable release is available."
+                        },
+                        {
+                            "id": "D010",
+                            "dependency": "Tailwind CSS v4",
+                            "assumption": "Tailwind v4 is stable and documented."
+                        }
+                    ],
+                    "risks": [
+                        {
+                            "id": "R007",
+                            "title": "Framework Version Instability",
+                            "overview": "New versions of Next.js, React 19, or Tailwind v4 may have bugs.",
+                            "impact": "Development delays due to framework issues.",
+                            "probability": "Low",
+                            "mitigation": "Pin versions and monitor release notes for breaking changes."
+                        }
+                    ],
+                    "success_criteria": [
+                        {
+                            "id": "SC-011",
+                            "title": "Homepage Functional",
+                            "description": "Homepage displays today's picks with proper formatting."
+                        },
+                        {
+                            "id": "SC-012",
+                            "title": "Navigation Complete",
+                            "description": "All core navigation links are functional."
+                        },
+                        {
+                            "id": "SC-013",
+                            "title": "Performance Target Met",
+                            "description": "Lighthouse performance score is 90+."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "version": "v0.4.0",
+            "release_date": "2025-03-01",
+            "status": "not_started",
+            "features": [
+                {
+                    "id": "F006",
+                    "name": "MDX Daily Picks Pages",
+                    "description": "Implement SEO-optimized daily prediction pages using MDX format for automated content generation.",
+                    "user_stories": [
+                        {
+                            "id": "US-013",
+                            "title": "View Game Prediction Page",
+                            "story": "As a visitor, I want to view detailed prediction pages for each game, so that I can understand the analysis behind picks.",
+                            "acceptance_criteria": [
+                                {
+                                    "id": "AC-025",
+                                    "criteria": "Given a game prediction page exists, when I visit the URL, then team matchup, prediction, and probability are displayed."
+                                },
+                                {
+                                    "id": "AC-026",
+                                    "criteria": "Given the page loads, when I scroll, then key factors influencing the prediction are shown."
+                                }
+                            ]
+                        },
+                        {
+                            "id": "US-014",
+                            "title": "Find Predictions via Search Engines",
+                            "story": "As a potential user, I want to find prediction pages through search engines, so that I discover the service organically.",
+                            "acceptance_criteria": [
+                                {
+                                    "id": "AC-027",
+                                    "criteria": "Given prediction pages are published, when indexed by search engines, then pages appear for '[Team A] vs [Team B] prediction' queries."
+                                },
+                                {
+                                    "id": "AC-028",
+                                    "criteria": "Given a prediction page, when viewed, then proper meta tags (title, description, Open Graph) are present."
+                                }
+                            ]
+                        }
+                    ],
+                    "requirements": {
+                        "functional": [
+                            {
+                                "id": "FR-018",
+                                "description": "System shall generate MDX files for each daily prediction automatically."
+                            },
+                            {
+                                "id": "FR-019",
+                                "description": "Prediction pages shall include team matchup, prediction pick, probability percentage, and key factors."
+                            },
+                            {
+                                "id": "FR-020",
+                                "description": "Pages shall have SEO-optimized URLs in format /predictions/[date]/[team-a]-vs-[team-b]."
+                            },
+                            {
+                                "id": "FR-021",
+                                "description": "Pages shall include proper meta tags for search engine and social media optimization."
+                            }
+                        ],
+                        "non_functional": [
+                            {
+                                "id": "NFR-009",
+                                "description": "MDX generation shall complete within 5 minutes for all daily games."
+                            },
+                            {
+                                "id": "NFR-010",
+                                "description": "Generated pages shall pass Google Search Console validation."
+                            }
+                        ]
+                    },
+                    "dependencies": [
+                        {
+                            "id": "D011",
+                            "dependency": "F005 - Next.js Blog Foundation",
+                            "assumption": "Blog infrastructure is ready for MDX integration."
+                        },
+                        {
+                            "id": "D012",
+                            "dependency": "F004 - Paper Trading System",
+                            "assumption": "Daily predictions are generated and available."
+                        }
+                    ],
+                    "risks": [
+                        {
+                            "id": "R008",
+                            "title": "SEO Ranking Competition",
+                            "overview": "Established sports betting sites dominate search rankings.",
+                            "impact": "Organic traffic growth may be slower than expected.",
+                            "probability": "High",
+                            "mitigation": "Focus on long-tail keywords and unique value proposition (transparent track record)."
+                        }
+                    ],
+                    "success_criteria": [
+                        {
+                            "id": "SC-014",
+                            "title": "MDX Generation Automated",
+                            "description": "Daily prediction pages are auto-generated without manual intervention."
+                        },
+                        {
+                            "id": "SC-015",
+                            "title": "Pages SEO Optimized",
+                            "description": "All pages pass SEO audit with proper meta tags and structured data."
+                        }
+                    ]
+                },
+                {
+                    "id": "F007",
+                    "name": "Performance Dashboard",
+                    "description": "Public-facing dashboard displaying historical prediction performance including win rate, ROI, and recent results.",
+                    "user_stories": [
+                        {
+                            "id": "US-015",
+                            "title": "View Overall Performance",
+                            "story": "As a visitor, I want to see overall prediction performance metrics, so that I can evaluate the service's track record.",
+                            "acceptance_criteria": [
+                                {
+                                    "id": "AC-029",
+                                    "criteria": "Given I visit the performance dashboard, when the page loads, then overall win rate and total predictions are displayed."
+                                },
+                                {
+                                    "id": "AC-030",
+                                    "criteria": "Given performance data exists, when displayed, then ROI percentage assuming standard betting is shown."
+                                }
+                            ]
+                        },
+                        {
+                            "id": "US-016",
+                            "title": "View Recent Results",
+                            "story": "As a visitor, I want to see recent prediction results, so that I can verify current performance.",
+                            "acceptance_criteria": [
+                                {
+                                    "id": "AC-031",
+                                    "criteria": "Given recent predictions exist, when I view the dashboard, then last 10 predictions with outcomes are displayed."
+                                },
+                                {
+                                    "id": "AC-032",
+                                    "criteria": "Given a prediction result, when displayed, then team names, pick, and win/loss indicator are shown."
+                                }
+                            ]
+                        },
+                        {
+                            "id": "US-017",
+                            "title": "View Monthly Breakdown",
+                            "story": "As a visitor, I want to see monthly performance breakdown, so that I can assess consistency.",
+                            "acceptance_criteria": [
+                                {
+                                    "id": "AC-033",
+                                    "criteria": "Given multiple months of data exist, when I view monthly breakdown, then win rate per month is displayed."
+                                },
+                                {
+                                    "id": "AC-034",
+                                    "criteria": "Given monthly data, when displayed, then trends are visualized (chart or graph)."
+                                }
+                            ]
+                        }
+                    ],
+                    "requirements": {
+                        "functional": [
+                            {
+                                "id": "FR-022",
+                                "description": "Dashboard shall display overall win rate, total predictions, and ROI."
+                            },
+                            {
+                                "id": "FR-023",
+                                "description": "Dashboard shall show last 10 prediction results with outcomes."
+                            },
+                            {
+                                "id": "FR-024",
+                                "description": "Dashboard shall provide monthly performance breakdown."
+                            },
+                            {
+                                "id": "FR-025",
+                                "description": "Dashboard shall visualize performance trends over time."
+                            }
+                        ],
+                        "non_functional": [
+                            {
+                                "id": "NFR-011",
+                                "description": "Dashboard shall update within 1 hour of game completion."
+                            },
+                            {
+                                "id": "NFR-012",
+                                "description": "Dashboard shall load in under 3 seconds."
+                            }
+                        ]
+                    },
+                    "dependencies": [
+                        {
+                            "id": "D013",
+                            "dependency": "F004 - Paper Trading System",
+                            "assumption": "Historical prediction data is available for display."
+                        },
+                        {
+                            "id": "D014",
+                            "dependency": "F005 - Next.js Blog Foundation",
+                            "assumption": "Blog infrastructure supports dashboard pages."
+                        }
+                    ],
+                    "risks": [
+                        {
+                            "id": "R009",
+                            "title": "Performance Below Expectations",
+                            "overview": "Public dashboard may show poor performance during bad streaks.",
+                            "impact": "Trust and credibility damaged during losing periods.",
+                            "probability": "Medium",
+                            "mitigation": "Emphasize long-term performance and statistical variance in dashboard copy."
+                        }
+                    ],
+                    "success_criteria": [
+                        {
+                            "id": "SC-016",
+                            "title": "Dashboard Displays Metrics",
+                            "description": "All required performance metrics are visible and accurate."
+                        },
+                        {
+                            "id": "SC-017",
+                            "title": "Data Updates Automatically",
+                            "description": "Dashboard reflects latest results within 1 hour of game completion."
+                        },
+                        {
+                            "id": "SC-018",
+                            "title": "Performance Load Time Met",
+                            "description": "Dashboard loads within 3 seconds."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "version": "v0.5.0",
+            "release_date": "2025-03-15",
+            "status": "not_started",
+            "features": [
+                {
+                    "id": "F008",
+                    "name": "Automated Prediction Pipeline",
+                    "description": "Implement end-to-end automation for daily predictions using scheduled jobs (cron/GitHub Actions).",
+                    "user_stories": [
+                        {
+                            "id": "US-018",
+                            "title": "Automatic Daily Predictions",
+                            "story": "As a system operator, I want predictions generated automatically each morning, so that no manual intervention is required.",
+                            "acceptance_criteria": [
+                                {
+                                    "id": "AC-035",
+                                    "criteria": "Given it is a game day, when the scheduled job runs, then predictions are generated for all games."
+                                },
+                                {
+                                    "id": "AC-036",
+                                    "criteria": "Given predictions are generated, when the job completes, then MDX files are created and committed to repository."
+                                }
+                            ]
+                        },
+                        {
+                            "id": "US-019",
+                            "title": "Automatic Result Recording",
+                            "story": "As a system, I want game results recorded automatically, so that performance tracking stays current.",
+                            "acceptance_criteria": [
+                                {
+                                    "id": "AC-037",
+                                    "criteria": "Given games have completed, when the results job runs, then outcomes are fetched and recorded."
+                                },
+                                {
+                                    "id": "AC-038",
+                                    "criteria": "Given results are recorded, when dashboard data updates, then win/loss status is accurate."
+                                }
+                            ]
+                        },
+                        {
+                            "id": "US-020",
+                            "title": "Pipeline Failure Alerting",
+                            "story": "As a system operator, I want to be alerted if the pipeline fails, so that issues can be addressed quickly.",
+                            "acceptance_criteria": [
+                                {
+                                    "id": "AC-039",
+                                    "criteria": "Given a pipeline step fails, when failure is detected, then an email or Slack notification is sent."
+                                },
+                                {
+                                    "id": "AC-040",
+                                    "criteria": "Given an alert is sent, when reviewed, then error details and failing step are included."
+                                }
+                            ]
+                        }
+                    ],
+                    "requirements": {
+                        "functional": [
+                            {
+                                "id": "FR-026",
+                                "description": "System shall run prediction pipeline daily at 8 AM ET via scheduled job."
+                            },
+                            {
+                                "id": "FR-027",
+                                "description": "System shall automatically commit generated MDX files to repository."
+                            },
+                            {
+                                "id": "FR-028",
+                                "description": "System shall fetch and record game results daily after games complete."
+                            },
+                            {
+                                "id": "FR-029",
+                                "description": "System shall send alerts on pipeline failures via email or Slack."
+                            }
+                        ],
+                        "non_functional": [
+                            {
+                                "id": "NFR-013",
+                                "description": "Pipeline shall complete within 30 minutes of scheduled start time."
+                            },
+                            {
+                                "id": "NFR-014",
+                                "description": "Pipeline shall achieve 99% uptime over 30-day rolling period."
+                            }
+                        ]
+                    },
+                    "dependencies": [
+                        {
+                            "id": "D015",
+                            "dependency": "GitHub Actions",
+                            "assumption": "GitHub Actions is available for scheduling and execution."
+                        },
+                        {
+                            "id": "D016",
+                            "dependency": "F001, F002, F006",
+                            "assumption": "Data pipeline, model, and MDX generation are functional."
+                        }
+                    ],
+                    "risks": [
+                        {
+                            "id": "R010",
+                            "title": "Pipeline Reliability",
+                            "overview": "External dependencies (API, GitHub Actions) may cause failures.",
+                            "impact": "Predictions not published, damaging user trust.",
+                            "probability": "Medium",
+                            "mitigation": "Implement retries, fallback mechanisms, and comprehensive alerting."
+                        }
+                    ],
+                    "success_criteria": [
+                        {
+                            "id": "SC-019",
+                            "title": "Pipeline Runs Daily",
+                            "description": "Automated pipeline executes daily without manual intervention."
+                        },
+                        {
+                            "id": "SC-020",
+                            "title": "Alerts Functional",
+                            "description": "Failure alerts are received within 5 minutes of pipeline error."
+                        },
+                        {
+                            "id": "SC-021",
+                            "title": "Uptime Target Met",
+                            "description": "Pipeline achieves 99% uptime over first 30 days."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "version": "v0.6.0",
+            "release_date": "2025-04-01",
+            "status": "not_started",
+            "features": [
+                {
+                    "id": "F009",
+                    "name": "Google AdSense Integration",
+                    "description": "Integrate Google AdSense for ad monetization on the blog.",
+                    "user_stories": [
+                        {
+                            "id": "US-021",
+                            "title": "Display Ads on Pages",
+                            "story": "As a site owner, I want ads displayed on blog pages, so that the site generates ad revenue.",
+                            "acceptance_criteria": [
+                                {
+                                    "id": "AC-041",
+                                    "criteria": "Given AdSense is integrated, when a visitor loads a page, then ads are displayed in designated slots."
+                                },
+                                {
+                                    "id": "AC-042",
+                                    "criteria": "Given ads are displayed, when viewed, then ads do not obstruct primary content."
+                                }
+                            ]
+                        },
+                        {
+                            "id": "US-022",
+                            "title": "Non-Intrusive Ad Placement",
+                            "story": "As a visitor, I want ads that do not interfere with content consumption, so that my experience is not degraded.",
+                            "acceptance_criteria": [
+                                {
+                                    "id": "AC-043",
+                                    "criteria": "Given ads are displayed, when I read prediction content, then ads are placed in sidebar or between sections."
+                                },
+                                {
+                                    "id": "AC-044",
+                                    "criteria": "Given I am on mobile, when viewing the page, then ads are appropriately sized and positioned."
+                                }
+                            ]
+                        }
+                    ],
+                    "requirements": {
+                        "functional": [
+                            {
+                                "id": "FR-030",
+                                "description": "System shall integrate Google AdSense code on all blog pages."
+                            },
+                            {
+                                "id": "FR-031",
+                                "description": "Ad placements shall be in sidebar and between content sections."
+                            },
+                            {
+                                "id": "FR-032",
+                                "description": "System shall support responsive ad units for mobile and desktop."
+                            }
+                        ],
+                        "non_functional": [
+                            {
+                                "id": "NFR-015",
+                                "description": "Ad loading shall not increase page load time by more than 500ms."
+                            },
+                            {
+                                "id": "NFR-016",
+                                "description": "Ads shall comply with Google AdSense policies."
+                            }
+                        ]
+                    },
+                    "dependencies": [
+                        {
+                            "id": "D017",
+                            "dependency": "Google AdSense Account",
+                            "assumption": "AdSense account is approved and active."
+                        },
+                        {
+                            "id": "D018",
+                            "dependency": "F005 - Next.js Blog Foundation",
+                            "assumption": "Blog pages are ready for ad integration."
+                        }
+                    ],
+                    "risks": [
+                        {
+                            "id": "R011",
+                            "title": "AdSense Approval Delay",
+                            "overview": "Google AdSense approval may take time or be rejected.",
+                            "impact": "Monetization delayed, affecting revenue targets.",
+                            "probability": "Medium",
+                            "mitigation": "Submit for approval early; have alternative ad networks as backup."
+                        },
+                        {
+                            "id": "R012",
+                            "title": "Low Ad Revenue Initially",
+                            "overview": "Low traffic means low ad revenue at launch.",
+                            "impact": "Revenue targets may not be met initially.",
+                            "probability": "High",
+                            "mitigation": "Focus on traffic growth through SEO and content marketing."
+                        }
+                    ],
+                    "success_criteria": [
+                        {
+                            "id": "SC-022",
+                            "title": "Ads Displaying Correctly",
+                            "description": "Ads appear on all blog pages without layout issues."
+                        },
+                        {
+                            "id": "SC-023",
+                            "title": "AdSense Approved",
+                            "description": "Google AdSense account is approved and generating impressions."
+                        },
+                        {
+                            "id": "SC-024",
+                            "title": "Performance Impact Minimal",
+                            "description": "Page load time increase is under 500ms with ads."
+                        }
+                    ]
+                },
+                {
+                    "id": "F010",
+                    "name": "MVP Public Launch",
+                    "description": "Official public launch of the ad-supported prediction blog after achieving performance threshold.",
+                    "user_stories": [
+                        {
+                            "id": "US-023",
+                            "title": "Access Public Blog",
+                            "story": "As a visitor, I want to access the publicly available prediction blog, so that I can use the service.",
+                            "acceptance_criteria": [
+                                {
+                                    "id": "AC-045",
+                                    "criteria": "Given the site is launched, when I visit the URL, then the homepage loads with today's picks."
+                                },
+                                {
+                                    "id": "AC-046",
+                                    "criteria": "Given I am a search engine user, when I search for predictions, then relevant pages may appear in results."
+                                }
+                            ]
+                        },
+                        {
+                            "id": "US-024",
+                            "title": "Trust Through Transparency",
+                            "story": "As a visitor, I want to see the full track record including losses, so that I can trust the service is honest.",
+                            "acceptance_criteria": [
+                                {
+                                    "id": "AC-047",
+                                    "criteria": "Given I visit the performance dashboard, when viewing results, then all predictions including losses are displayed."
+                                },
+                                {
+                                    "id": "AC-048",
+                                    "criteria": "Given the track record, when reviewed, then no cherry-picking or hidden results are evident."
+                                }
+                            ]
+                        }
+                    ],
+                    "requirements": {
+                        "functional": [
+                            {
+                                "id": "FR-033",
+                                "description": "Site shall be deployed to production hosting environment."
+                            },
+                            {
+                                "id": "FR-034",
+                                "description": "All core features (homepage, predictions, dashboard) shall be functional."
+                            },
+                            {
+                                "id": "FR-035",
+                                "description": "Site shall have proper domain and SSL certificate."
+                            }
+                        ],
+                        "non_functional": [
+                            {
+                                "id": "NFR-017",
+                                "description": "Site shall achieve 99.5% uptime."
+                            },
+                            {
+                                "id": "NFR-018",
+                                "description": "Site shall handle at least 1000 concurrent visitors."
+                            }
+                        ]
+                    },
+                    "dependencies": [
+                        {
+                            "id": "D019",
+                            "dependency": "F005-F009",
+                            "assumption": "All MVP features are complete and tested."
+                        },
+                        {
+                            "id": "D020",
+                            "dependency": "Domain and Hosting",
+                            "assumption": "Domain is registered and hosting provider selected."
+                        }
+                    ],
+                    "risks": [
+                        {
+                            "id": "R013",
+                            "title": "Launch Performance Issues",
+                            "overview": "Unexpected traffic or bugs may cause issues at launch.",
+                            "impact": "Poor first impression, user loss.",
+                            "probability": "Medium",
+                            "mitigation": "Soft launch to limited audience first; monitor closely."
+                        }
+                    ],
+                    "success_criteria": [
+                        {
+                            "id": "SC-025",
+                            "title": "Site Live and Accessible",
+                            "description": "Site is publicly accessible at production domain."
+                        },
+                        {
+                            "id": "SC-026",
+                            "title": "Core Features Functional",
+                            "description": "All MVP features work correctly in production."
+                        },
+                        {
+                            "id": "SC-027",
+                            "title": "Performance Threshold Met",
+                            "description": "Model has achieved 55%+ win rate over 50+ predictions before launch."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "version": "v0.7.0",
+            "release_date": "2025-05-01",
+            "status": "not_started",
+            "features": [
+                {
+                    "id": "F011",
+                    "name": "Email Newsletter System",
+                    "description": "Build email capture and daily newsletter delivery for owned audience building.",
+                    "user_stories": [
+                        {
+                            "id": "US-025",
+                            "title": "Subscribe to Newsletter",
+                            "story": "As a visitor, I want to subscribe to the daily picks newsletter, so that I receive predictions in my inbox.",
+                            "acceptance_criteria": [
+                                {
+                                    "id": "AC-049",
+                                    "criteria": "Given I am on the homepage, when I enter my email and submit, then I am subscribed to the newsletter."
+                                },
+                                {
+                                    "id": "AC-050",
+                                    "criteria": "Given I subscribe, when confirmation is sent, then I receive a welcome email."
+                                }
+                            ]
+                        },
+                        {
+                            "id": "US-026",
+                            "title": "Receive Daily Picks Email",
+                            "story": "As a subscriber, I want to receive daily picks via email, so that I don't have to visit the site.",
+                            "acceptance_criteria": [
+                                {
+                                    "id": "AC-051",
+                                    "criteria": "Given I am subscribed, when picks are published, then I receive an email with today's predictions."
+                                },
+                                {
+                                    "id": "AC-052",
+                                    "criteria": "Given the email is received, when I read it, then team matchups and predictions are clearly formatted."
+                                }
+                            ]
+                        },
+                        {
+                            "id": "US-027",
+                            "title": "Unsubscribe from Newsletter",
+                            "story": "As a subscriber, I want to easily unsubscribe, so that I can stop receiving emails.",
+                            "acceptance_criteria": [
+                                {
+                                    "id": "AC-053",
+                                    "criteria": "Given I receive a newsletter email, when I click unsubscribe, then I am removed from the list."
+                                },
+                                {
+                                    "id": "AC-054",
+                                    "criteria": "Given I unsubscribe, when confirmed, then I no longer receive newsletter emails."
+                                }
+                            ]
+                        }
+                    ],
+                    "requirements": {
+                        "functional": [
+                            {
+                                "id": "FR-036",
+                                "description": "System shall provide email subscription form on homepage and prediction pages."
+                            },
+                            {
+                                "id": "FR-037",
+                                "description": "System shall send daily newsletter with predictions each morning."
+                            },
+                            {
+                                "id": "FR-038",
+                                "description": "System shall support double opt-in for subscriptions."
+                            },
+                            {
+                                "id": "FR-039",
+                                "description": "System shall include one-click unsubscribe in all emails."
+                            }
+                        ],
+                        "non_functional": [
+                            {
+                                "id": "NFR-019",
+                                "description": "Newsletter delivery shall complete within 1 hour of predictions being published."
+                            },
+                            {
+                                "id": "NFR-020",
+                                "description": "Email deliverability shall exceed 95%."
+                            }
+                        ]
+                    },
+                    "dependencies": [
+                        {
+                            "id": "D021",
+                            "dependency": "Email Service Provider",
+                            "assumption": "Email service (e.g., Resend, SendGrid) is configured."
+                        },
+                        {
+                            "id": "D022",
+                            "dependency": "F008 - Automated Pipeline",
+                            "assumption": "Daily predictions trigger newsletter sending."
+                        }
+                    ],
+                    "risks": [
+                        {
+                            "id": "R014",
+                            "title": "Email Deliverability Issues",
+                            "overview": "Emails may be marked as spam or not delivered.",
+                            "impact": "Subscriber engagement drops.",
+                            "probability": "Medium",
+                            "mitigation": "Use reputable ESP, implement SPF/DKIM, warm up sending domain."
+                        }
+                    ],
+                    "success_criteria": [
+                        {
+                            "id": "SC-028",
+                            "title": "Subscription Functional",
+                            "description": "Users can successfully subscribe and receive welcome email."
+                        },
+                        {
+                            "id": "SC-029",
+                            "title": "Daily Newsletter Delivered",
+                            "description": "Newsletter is sent daily with predictions to all subscribers."
+                        },
+                        {
+                            "id": "SC-030",
+                            "title": "Deliverability Target Met",
+                            "description": "Email deliverability exceeds 95%."
+                        }
+                    ]
+                },
+                {
+                    "id": "F012",
+                    "name": "Social Media Integration",
+                    "description": "Add social sharing capabilities and automated posting to Twitter/X for audience growth.",
+                    "user_stories": [
+                        {
+                            "id": "US-028",
+                            "title": "Share Predictions on Social",
+                            "story": "As a visitor, I want to share predictions on social media, so that I can discuss with friends.",
+                            "acceptance_criteria": [
+                                {
+                                    "id": "AC-055",
+                                    "criteria": "Given I am on a prediction page, when I click share, then I can share to Twitter/X with pre-filled text."
+                                },
+                                {
+                                    "id": "AC-056",
+                                    "criteria": "Given I share to social media, when the post is created, then it includes a link back to the prediction page."
+                                }
+                            ]
+                        },
+                        {
+                            "id": "US-029",
+                            "title": "Auto-Post Daily Picks",
+                            "story": "As a site owner, I want daily picks auto-posted to Twitter/X, so that social followers are notified.",
+                            "acceptance_criteria": [
+                                {
+                                    "id": "AC-057",
+                                    "criteria": "Given predictions are published, when the pipeline completes, then a summary tweet is posted."
+                                },
+                                {
+                                    "id": "AC-058",
+                                    "criteria": "Given a tweet is posted, when viewed, then it includes game count and link to homepage."
+                                }
+                            ]
+                        }
+                    ],
+                    "requirements": {
+                        "functional": [
+                            {
+                                "id": "FR-040",
+                                "description": "Prediction pages shall include social share buttons for Twitter/X."
+                            },
+                            {
+                                "id": "FR-041",
+                                "description": "System shall auto-post daily picks summary to Twitter/X."
+                            },
+                            {
+                                "id": "FR-042",
+                                "description": "Social posts shall use Open Graph meta tags for rich previews."
+                            }
+                        ],
+                        "non_functional": [
+                            {
+                                "id": "NFR-021",
+                                "description": "Auto-posts shall occur within 15 minutes of predictions being published."
+                            }
+                        ]
+                    },
+                    "dependencies": [
+                        {
+                            "id": "D023",
+                            "dependency": "Twitter/X API Access",
+                            "assumption": "Twitter/X developer account with posting permissions."
+                        }
+                    ],
+                    "risks": [
+                        {
+                            "id": "R015",
+                            "title": "Twitter API Changes",
+                            "overview": "Twitter/X API pricing or access may change.",
+                            "impact": "Auto-posting feature may break or become expensive.",
+                            "probability": "Medium",
+                            "mitigation": "Design for manual fallback; monitor API status."
+                        }
+                    ],
+                    "success_criteria": [
+                        {
+                            "id": "SC-031",
+                            "title": "Share Buttons Functional",
+                            "description": "Social share buttons work correctly on all prediction pages."
+                        },
+                        {
+                            "id": "SC-032",
+                            "title": "Auto-Posting Active",
+                            "description": "Daily picks are automatically posted to Twitter/X."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "version": "v0.8.0",
+            "release_date": "2025-06-01",
+            "status": "not_started",
+            "features": [
+                {
+                    "id": "F013",
+                    "name": "Supabase User Authentication",
+                    "description": "Implement user authentication using Supabase for future premium features.",
+                    "user_stories": [
+                        {
+                            "id": "US-030",
+                            "title": "Create User Account",
+                            "story": "As a visitor, I want to create an account, so that I can access member features in the future.",
+                            "acceptance_criteria": [
+                                {
+                                    "id": "AC-059",
+                                    "criteria": "Given I am on the signup page, when I submit email and password, then my account is created."
+                                },
+                                {
+                                    "id": "AC-060",
+                                    "criteria": "Given I sign up, when account is created, then I receive a verification email."
+                                }
+                            ]
+                        },
+                        {
+                            "id": "US-031",
+                            "title": "Login to Account",
+                            "story": "As a registered user, I want to log in, so that I can access my account.",
+                            "acceptance_criteria": [
+                                {
+                                    "id": "AC-061",
+                                    "criteria": "Given I have an account, when I enter valid credentials, then I am logged in."
+                                },
+                                {
+                                    "id": "AC-062",
+                                    "criteria": "Given I am logged in, when I view the site, then my logged-in status is indicated."
+                                }
+                            ]
+                        },
+                        {
+                            "id": "US-032",
+                            "title": "Password Reset",
+                            "story": "As a user, I want to reset my password if forgotten, so that I can regain account access.",
+                            "acceptance_criteria": [
+                                {
+                                    "id": "AC-063",
+                                    "criteria": "Given I forgot my password, when I request reset, then I receive a reset email."
+                                },
+                                {
+                                    "id": "AC-064",
+                                    "criteria": "Given I receive reset email, when I set new password, then I can log in with new password."
+                                }
+                            ]
+                        }
+                    ],
+                    "requirements": {
+                        "functional": [
+                            {
+                                "id": "FR-043",
+                                "description": "System shall support email/password authentication via Supabase."
+                            },
+                            {
+                                "id": "FR-044",
+                                "description": "System shall require email verification for new accounts."
+                            },
+                            {
+                                "id": "FR-045",
+                                "description": "System shall support password reset via email."
+                            },
+                            {
+                                "id": "FR-046",
+                                "description": "System shall maintain secure session management."
+                            }
+                        ],
+                        "non_functional": [
+                            {
+                                "id": "NFR-022",
+                                "description": "Authentication flows shall complete in under 3 seconds."
+                            },
+                            {
+                                "id": "NFR-023",
+                                "description": "Password storage shall use bcrypt with appropriate cost factor."
+                            }
+                        ]
+                    },
+                    "dependencies": [
+                        {
+                            "id": "D024",
+                            "dependency": "Supabase",
+                            "assumption": "Supabase project is configured with auth enabled."
+                        }
+                    ],
+                    "risks": [
+                        {
+                            "id": "R016",
+                            "title": "Authentication Security",
+                            "overview": "Security vulnerabilities in auth implementation.",
+                            "impact": "User accounts compromised.",
+                            "probability": "Low",
+                            "mitigation": "Use Supabase built-in auth; follow security best practices."
+                        }
+                    ],
+                    "success_criteria": [
+                        {
+                            "id": "SC-033",
+                            "title": "Registration Functional",
+                            "description": "Users can successfully create and verify accounts."
+                        },
+                        {
+                            "id": "SC-034",
+                            "title": "Login Functional",
+                            "description": "Users can log in and out successfully."
+                        },
+                        {
+                            "id": "SC-035",
+                            "title": "Password Reset Works",
+                            "description": "Users can reset passwords via email."
+                        }
+                    ]
+                },
+                {
+                    "id": "F014",
+                    "name": "User Profile Management",
+                    "description": "Allow users to manage their profile and preferences.",
+                    "user_stories": [
+                        {
+                            "id": "US-033",
+                            "title": "View Profile",
+                            "story": "As a logged-in user, I want to view my profile, so that I can see my account information.",
+                            "acceptance_criteria": [
+                                {
+                                    "id": "AC-065",
+                                    "criteria": "Given I am logged in, when I visit my profile, then I see my email and account creation date."
+                                }
+                            ]
+                        },
+                        {
+                            "id": "US-034",
+                            "title": "Update Email Preferences",
+                            "story": "As a user, I want to manage email preferences, so that I control what emails I receive.",
+                            "acceptance_criteria": [
+                                {
+                                    "id": "AC-066",
+                                    "criteria": "Given I am on profile settings, when I toggle newsletter preference, then my preference is saved."
+                                },
+                                {
+                                    "id": "AC-067",
+                                    "criteria": "Given I opt out of newsletter, when next newsletter sends, then I do not receive it."
+                                }
+                            ]
+                        }
+                    ],
+                    "requirements": {
+                        "functional": [
+                            {
+                                "id": "FR-047",
+                                "description": "System shall provide user profile page showing account details."
+                            },
+                            {
+                                "id": "FR-048",
+                                "description": "System shall allow users to update email notification preferences."
+                            }
+                        ],
+                        "non_functional": [
+                            {
+                                "id": "NFR-024",
+                                "description": "Profile page shall load in under 2 seconds."
+                            }
+                        ]
+                    },
+                    "dependencies": [
+                        {
+                            "id": "D025",
+                            "dependency": "F013 - User Authentication",
+                            "assumption": "Authentication system is functional."
+                        }
+                    ],
+                    "risks": [],
+                    "success_criteria": [
+                        {
+                            "id": "SC-036",
+                            "title": "Profile Page Accessible",
+                            "description": "Logged-in users can view their profile."
+                        },
+                        {
+                            "id": "SC-037",
+                            "title": "Preferences Saveable",
+                            "description": "Email preferences can be updated and are respected."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "version": "v0.9.0",
+            "release_date": "2025-07-01",
+            "status": "not_started",
+            "features": [
+                {
+                    "id": "F015",
+                    "name": "Stripe Payment Integration",
+                    "description": "Integrate Stripe for subscription payment processing.",
+                    "user_stories": [
+                        {
+                            "id": "US-035",
+                            "title": "Subscribe to Premium",
+                            "story": "As a user, I want to subscribe to premium tier, so that I can access advanced predictions.",
+                            "acceptance_criteria": [
+                                {
+                                    "id": "AC-068",
+                                    "criteria": "Given I am logged in, when I select premium subscription, then I am directed to Stripe checkout."
+                                },
+                                {
+                                    "id": "AC-069",
+                                    "criteria": "Given I complete payment, when checkout succeeds, then my account is upgraded to premium."
+                                }
+                            ]
+                        },
+                        {
+                            "id": "US-036",
+                            "title": "Manage Subscription",
+                            "story": "As a subscriber, I want to manage my subscription, so that I can cancel or change plans.",
+                            "acceptance_criteria": [
+                                {
+                                    "id": "AC-070",
+                                    "criteria": "Given I am a premium user, when I visit subscription settings, then I can view my plan details."
+                                },
+                                {
+                                    "id": "AC-071",
+                                    "criteria": "Given I want to cancel, when I initiate cancellation, then my subscription is cancelled at period end."
+                                }
+                            ]
+                        },
+                        {
+                            "id": "US-037",
+                            "title": "View Payment History",
+                            "story": "As a subscriber, I want to see payment history, so that I can track my spending.",
+                            "acceptance_criteria": [
+                                {
+                                    "id": "AC-072",
+                                    "criteria": "Given I am subscribed, when I view payment history, then past invoices are displayed."
+                                }
+                            ]
+                        }
+                    ],
+                    "requirements": {
+                        "functional": [
+                            {
+                                "id": "FR-049",
+                                "description": "System shall integrate Stripe for subscription payments."
+                            },
+                            {
+                                "id": "FR-050",
+                                "description": "System shall support monthly subscription billing."
+                            },
+                            {
+                                "id": "FR-051",
+                                "description": "System shall provide subscription management portal."
+                            },
+                            {
+                                "id": "FR-052",
+                                "description": "System shall handle webhook events for subscription lifecycle."
+                            }
+                        ],
+                        "non_functional": [
+                            {
+                                "id": "NFR-025",
+                                "description": "Payment processing shall be PCI compliant via Stripe."
+                            },
+                            {
+                                "id": "NFR-026",
+                                "description": "Subscription status updates shall occur within 5 minutes of payment events."
+                            }
+                        ]
+                    },
+                    "dependencies": [
+                        {
+                            "id": "D026",
+                            "dependency": "Stripe Account",
+                            "assumption": "Stripe account is verified and products configured."
+                        },
+                        {
+                            "id": "D027",
+                            "dependency": "F013 - User Authentication",
+                            "assumption": "Users are authenticated before subscribing."
+                        }
+                    ],
+                    "risks": [
+                        {
+                            "id": "R017",
+                            "title": "Payment Failures",
+                            "overview": "Users may experience payment failures.",
+                            "impact": "Lost revenue and frustrated users.",
+                            "probability": "Low",
+                            "mitigation": "Implement retry logic and clear error messaging."
+                        }
+                    ],
+                    "success_criteria": [
+                        {
+                            "id": "SC-038",
+                            "title": "Checkout Functional",
+                            "description": "Users can complete subscription checkout via Stripe."
+                        },
+                        {
+                            "id": "SC-039",
+                            "title": "Subscription Status Accurate",
+                            "description": "User subscription status updates correctly after payment."
+                        },
+                        {
+                            "id": "SC-040",
+                            "title": "Cancellation Works",
+                            "description": "Users can cancel subscriptions through the portal."
+                        }
+                    ]
+                },
+                {
+                    "id": "F016",
+                    "name": "Premium Spread and Totals Predictions",
+                    "description": "Add spread and totals predictions as premium-only features.",
+                    "user_stories": [
+                        {
+                            "id": "US-038",
+                            "title": "View Spread Predictions",
+                            "story": "As a premium user, I want to see spread predictions, so that I can bet against the spread.",
+                            "acceptance_criteria": [
+                                {
+                                    "id": "AC-073",
+                                    "criteria": "Given I am premium, when I view a prediction, then spread prediction is displayed."
+                                },
+                                {
+                                    "id": "AC-074",
+                                    "criteria": "Given I am free user, when I view a prediction, then spread prediction is locked/blurred."
+                                }
+                            ]
+                        },
+                        {
+                            "id": "US-039",
+                            "title": "View Totals Predictions",
+                            "story": "As a premium user, I want to see over/under predictions, so that I can bet on totals.",
+                            "acceptance_criteria": [
+                                {
+                                    "id": "AC-075",
+                                    "criteria": "Given I am premium, when I view a prediction, then over/under prediction is displayed."
+                                },
+                                {
+                                    "id": "AC-076",
+                                    "criteria": "Given I am free user, when I view a prediction, then totals prediction is locked/blurred."
+                                }
+                            ]
+                        }
+                    ],
+                    "requirements": {
+                        "functional": [
+                            {
+                                "id": "FR-053",
+                                "description": "System shall generate spread predictions using enhanced model."
+                            },
+                            {
+                                "id": "FR-054",
+                                "description": "System shall generate over/under predictions for game totals."
+                            },
+                            {
+                                "id": "FR-055",
+                                "description": "System shall gate spread and totals predictions behind premium subscription."
+                            }
+                        ],
+                        "non_functional": [
+                            {
+                                "id": "NFR-027",
+                                "description": "Premium predictions shall be generated alongside moneyline predictions."
+                            }
+                        ]
+                    },
+                    "dependencies": [
+                        {
+                            "id": "D028",
+                            "dependency": "F002 - XGBoost Model",
+                            "assumption": "Model can be extended for spread and totals predictions."
+                        },
+                        {
+                            "id": "D029",
+                            "dependency": "F015 - Stripe Integration",
+                            "assumption": "Subscription status determines feature access."
+                        }
+                    ],
+                    "risks": [
+                        {
+                            "id": "R018",
+                            "title": "Spread Model Accuracy",
+                            "overview": "Spread predictions may not achieve same accuracy as moneyline.",
+                            "impact": "Premium value proposition weakened.",
+                            "probability": "Medium",
+                            "mitigation": "Backtest thoroughly before launch; be transparent about different accuracy."
+                        }
+                    ],
+                    "success_criteria": [
+                        {
+                            "id": "SC-041",
+                            "title": "Spread Predictions Generated",
+                            "description": "Spread predictions are generated daily for premium users."
+                        },
+                        {
+                            "id": "SC-042",
+                            "title": "Totals Predictions Generated",
+                            "description": "Over/under predictions are generated daily for premium users."
+                        },
+                        {
+                            "id": "SC-043",
+                            "title": "Feature Gating Works",
+                            "description": "Free users cannot access premium predictions."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "version": "v0.10.0",
+            "release_date": "2025-08-01",
+            "status": "not_started",
+            "features": [
+                {
+                    "id": "F017",
+                    "name": "Prediction API for Premium Users",
+                    "description": "Provide API access for power users to retrieve predictions programmatically.",
+                    "user_stories": [
+                        {
+                            "id": "US-040",
+                            "title": "Generate API Key",
+                            "story": "As a premium user, I want to generate an API key, so that I can access predictions programmatically.",
+                            "acceptance_criteria": [
+                                {
+                                    "id": "AC-077",
+                                    "criteria": "Given I am premium, when I visit API settings, then I can generate an API key."
+                                },
+                                {
+                                    "id": "AC-078",
+                                    "criteria": "Given I generate a key, when displayed, then I can copy it to clipboard."
+                                }
+                            ]
+                        },
+                        {
+                            "id": "US-041",
+                            "title": "Fetch Predictions via API",
+                            "story": "As a developer, I want to fetch predictions via API, so that I can integrate with my tools.",
+                            "acceptance_criteria": [
+                                {
+                                    "id": "AC-079",
+                                    "criteria": "Given I have an API key, when I call /api/predictions, then I receive today's predictions in JSON."
+                                },
+                                {
+                                    "id": "AC-080",
+                                    "criteria": "Given I call the API, when response returns, then it includes moneyline, spread, and totals predictions."
+                                }
+                            ]
+                        },
+                        {
+                            "id": "US-042",
+                            "title": "API Rate Limiting",
+                            "story": "As a system, I want to rate limit API requests, so that resources are not abused.",
+                            "acceptance_criteria": [
+                                {
+                                    "id": "AC-081",
+                                    "criteria": "Given a user makes many requests, when rate limit exceeded, then 429 response is returned."
+                                },
+                                {
+                                    "id": "AC-082",
+                                    "criteria": "Given rate limit is enforced, when user waits, then requests succeed again."
+                                }
+                            ]
+                        }
+                    ],
+                    "requirements": {
+                        "functional": [
+                            {
+                                "id": "FR-056",
+                                "description": "System shall allow premium users to generate API keys."
+                            },
+                            {
+                                "id": "FR-057",
+                                "description": "API shall return predictions in JSON format."
+                            },
+                            {
+                                "id": "FR-058",
+                                "description": "API shall include all prediction types (moneyline, spread, totals)."
+                            },
+                            {
+                                "id": "FR-059",
+                                "description": "API shall enforce rate limits per user."
+                            }
+                        ],
+                        "non_functional": [
+                            {
+                                "id": "NFR-028",
+                                "description": "API response time shall be under 500ms."
+                            },
+                            {
+                                "id": "NFR-029",
+                                "description": "Rate limit shall be 100 requests per hour per user."
+                            }
+                        ]
+                    },
+                    "dependencies": [
+                        {
+                            "id": "D030",
+                            "dependency": "F015 - Stripe Integration",
+                            "assumption": "Premium status determines API access."
+                        },
+                        {
+                            "id": "D031",
+                            "dependency": "F016 - Premium Predictions",
+                            "assumption": "All prediction types are available."
+                        }
+                    ],
+                    "risks": [
+                        {
+                            "id": "R019",
+                            "title": "API Abuse",
+                            "overview": "Users may share API keys or exceed intended usage.",
+                            "impact": "Server resources strained.",
+                            "probability": "Medium",
+                            "mitigation": "Implement rate limiting and key rotation capabilities."
+                        }
+                    ],
+                    "success_criteria": [
+                        {
+                            "id": "SC-044",
+                            "title": "API Key Generation Works",
+                            "description": "Premium users can generate and manage API keys."
+                        },
+                        {
+                            "id": "SC-045",
+                            "title": "API Returns Predictions",
+                            "description": "API endpoint returns predictions in correct JSON format."
+                        },
+                        {
+                            "id": "SC-046",
+                            "title": "Rate Limiting Enforced",
+                            "description": "Excessive requests are rate limited with appropriate response."
+                        }
+                    ]
+                },
+                {
+                    "id": "F018",
+                    "name": "Early Access Predictions",
+                    "description": "Provide premium users with early access to predictions before public release.",
+                    "user_stories": [
+                        {
+                            "id": "US-043",
+                            "title": "View Early Predictions",
+                            "story": "As a premium user, I want early access to predictions, so that I can bet before lines move.",
+                            "acceptance_criteria": [
+                                {
+                                    "id": "AC-083",
+                                    "criteria": "Given I am premium, when predictions are generated, then I see them 2 hours before free users."
+                                },
+                                {
+                                    "id": "AC-084",
+                                    "criteria": "Given early access period, when I view predictions, then 'Early Access' badge is displayed."
+                                }
+                            ]
+                        },
+                        {
+                            "id": "US-044",
+                            "title": "Email Early Predictions",
+                            "story": "As a premium subscriber, I want early predictions emailed, so that I'm notified immediately.",
+                            "acceptance_criteria": [
+                                {
+                                    "id": "AC-085",
+                                    "criteria": "Given I am premium with newsletter enabled, when predictions generate, then I receive email 2 hours before free users."
+                                }
+                            ]
+                        }
+                    ],
+                    "requirements": {
+                        "functional": [
+                            {
+                                "id": "FR-060",
+                                "description": "System shall release predictions to premium users 2 hours before free users."
+                            },
+                            {
+                                "id": "FR-061",
+                                "description": "System shall mark early access predictions with visual indicator."
+                            },
+                            {
+                                "id": "FR-062",
+                                "description": "System shall send early access email to premium subscribers."
+                            }
+                        ],
+                        "non_functional": [
+                            {
+                                "id": "NFR-030",
+                                "description": "Early access timing shall be accurate within 5 minutes."
+                            }
+                        ]
+                    },
+                    "dependencies": [
+                        {
+                            "id": "D032",
+                            "dependency": "F015 - Stripe Integration",
+                            "assumption": "Premium status determines early access."
+                        },
+                        {
+                            "id": "D033",
+                            "dependency": "F011 - Email Newsletter",
+                            "assumption": "Newsletter infrastructure supports timed sending."
+                        }
+                    ],
+                    "risks": [],
+                    "success_criteria": [
+                        {
+                            "id": "SC-047",
+                            "title": "Early Access Timing Accurate",
+                            "description": "Premium users see predictions 2 hours before free users."
+                        },
+                        {
+                            "id": "SC-048",
+                            "title": "Early Email Sent",
+                            "description": "Premium subscribers receive early access email."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "version": "v1.0.0",
+            "release_date": "2025-09-01",
+            "status": "not_started",
+            "features": [
+                {
+                    "id": "F019",
+                    "name": "Desktop Prediction Bot Application",
+                    "description": "Downloadable desktop application that provides automated prediction access similar to sneaker bots.",
+                    "user_stories": [
+                        {
+                            "id": "US-045",
+                            "title": "Download Prediction Bot",
+                            "story": "As a premium user, I want to download the prediction bot, so that I can run it locally.",
+                            "acceptance_criteria": [
+                                {
+                                    "id": "AC-086",
+                                    "criteria": "Given I am premium, when I visit downloads page, then I can download the bot for my OS."
+                                },
+                                {
+                                    "id": "AC-087",
+                                    "criteria": "Given I download the bot, when I run it, then it prompts for API key authentication."
+                                }
+                            ]
+                        },
+                        {
+                            "id": "US-046",
+                            "title": "Receive Desktop Notifications",
+                            "story": "As a bot user, I want desktop notifications when predictions are ready, so that I'm alerted immediately.",
+                            "acceptance_criteria": [
+                                {
+                                    "id": "AC-088",
+                                    "criteria": "Given the bot is running, when new predictions are available, then a desktop notification appears."
+                                },
+                                {
+                                    "id": "AC-089",
+                                    "criteria": "Given I click the notification, when the app opens, then today's predictions are displayed."
+                                }
+                            ]
+                        },
+                        {
+                            "id": "US-047",
+                            "title": "View Predictions in Bot",
+                            "story": "As a bot user, I want to view predictions in the desktop app, so that I don't need to visit the website.",
+                            "acceptance_criteria": [
+                                {
+                                    "id": "AC-090",
+                                    "criteria": "Given the bot is authenticated, when I open it, then today's predictions are displayed."
+                                },
+                                {
+                                    "id": "AC-091",
+                                    "criteria": "Given predictions are shown, when I view details, then all prediction types are visible."
+                                }
+                            ]
+                        }
+                    ],
+                    "requirements": {
+                        "functional": [
+                            {
+                                "id": "FR-063",
+                                "description": "System shall provide downloadable desktop application for Windows and macOS."
+                            },
+                            {
+                                "id": "FR-064",
+                                "description": "Bot shall authenticate using API key."
+                            },
+                            {
+                                "id": "FR-065",
+                                "description": "Bot shall display desktop notifications for new predictions."
+                            },
+                            {
+                                "id": "FR-066",
+                                "description": "Bot shall display all prediction types with probabilities."
+                            },
+                            {
+                                "id": "FR-067",
+                                "description": "Bot shall auto-update when new versions are available."
+                            }
+                        ],
+                        "non_functional": [
+                            {
+                                "id": "NFR-031",
+                                "description": "Bot shall use minimal system resources (under 100MB RAM)."
+                            },
+                            {
+                                "id": "NFR-032",
+                                "description": "Bot shall start up in under 5 seconds."
+                            }
+                        ]
+                    },
+                    "dependencies": [
+                        {
+                            "id": "D034",
+                            "dependency": "Electron or Tauri",
+                            "assumption": "Desktop framework is selected and configured."
+                        },
+                        {
+                            "id": "D035",
+                            "dependency": "F017 - Prediction API",
+                            "assumption": "API is available for bot to fetch predictions."
+                        }
+                    ],
+                    "risks": [
+                        {
+                            "id": "R020",
+                            "title": "Cross-Platform Compatibility",
+                            "overview": "Desktop app may have issues on different OS versions.",
+                            "impact": "Support burden increases.",
+                            "probability": "Medium",
+                            "mitigation": "Thorough testing on target platforms; provide clear system requirements."
+                        },
+                        {
+                            "id": "R021",
+                            "title": "Distribution and Updates",
+                            "overview": "Managing desktop app distribution and updates is complex.",
+                            "impact": "Users may run outdated versions.",
+                            "probability": "Medium",
+                            "mitigation": "Implement auto-update mechanism; notify users of available updates."
+                        }
+                    ],
+                    "success_criteria": [
+                        {
+                            "id": "SC-049",
+                            "title": "Bot Downloadable",
+                            "description": "Premium users can download bot for Windows and macOS."
+                        },
+                        {
+                            "id": "SC-050",
+                            "title": "Authentication Works",
+                            "description": "Bot authenticates using API key successfully."
+                        },
+                        {
+                            "id": "SC-051",
+                            "title": "Notifications Functional",
+                            "description": "Desktop notifications appear when predictions are ready."
+                        },
+                        {
+                            "id": "SC-052",
+                            "title": "Predictions Display",
+                            "description": "All prediction types are viewable in the bot."
+                        }
+                    ]
+                },
+                {
+                    "id": "F020",
+                    "name": "V1.0 Stable Release",
+                    "description": "Official stable release with full feature set including ad-supported free tier and premium subscription with bot.",
+                    "user_stories": [
+                        {
+                            "id": "US-048",
+                            "title": "Access Complete Platform",
+                            "story": "As a user, I want access to the complete prediction platform, so that I have all features available.",
+                            "acceptance_criteria": [
+                                {
+                                    "id": "AC-092",
+                                    "criteria": "Given v1.0 is released, when I visit the site, then all documented features are available."
+                                },
+                                {
+                                    "id": "AC-093",
+                                    "criteria": "Given I am a free user, when I use the site, then moneyline predictions and performance dashboard are accessible."
+                                },
+                                {
+                                    "id": "AC-094",
+                                    "criteria": "Given I am premium, when I use the platform, then all features including bot are accessible."
+                                }
+                            ]
+                        },
+                        {
+                            "id": "US-049",
+                            "title": "Reliable Performance",
+                            "story": "As a user, I want reliable service performance, so that I can depend on daily predictions.",
+                            "acceptance_criteria": [
+                                {
+                                    "id": "AC-095",
+                                    "criteria": "Given the platform is live, when I access it, then uptime exceeds 99.5%."
+                                },
+                                {
+                                    "id": "AC-096",
+                                    "criteria": "Given predictions are published, when I view them, then accuracy continues to exceed 55% threshold."
+                                }
+                            ]
+                        }
+                    ],
+                    "requirements": {
+                        "functional": [
+                            {
+                                "id": "FR-068",
+                                "description": "All features from v0.1.0 through v0.10.0 shall be complete and tested."
+                            },
+                            {
+                                "id": "FR-069",
+                                "description": "Documentation shall be complete for all features."
+                            },
+                            {
+                                "id": "FR-070",
+                                "description": "Free and premium tiers shall have clear feature differentiation."
+                            }
+                        ],
+                        "non_functional": [
+                            {
+                                "id": "NFR-033",
+                                "description": "Platform shall achieve 99.5% uptime."
+                            },
+                            {
+                                "id": "NFR-034",
+                                "description": "Prediction accuracy shall maintain 55%+ win rate."
+                            },
+                            {
+                                "id": "NFR-035",
+                                "description": "Platform shall support 10,000+ monthly active users."
+                            }
+                        ]
+                    },
+                    "dependencies": [
+                        {
+                            "id": "D036",
+                            "dependency": "All v0.x Features",
+                            "assumption": "All features from previous versions are complete."
+                        }
+                    ],
+                    "risks": [
+                        {
+                            "id": "R022",
+                            "title": "Market Competition",
+                            "overview": "Competitors may launch similar transparent prediction services.",
+                            "impact": "Market differentiation reduced.",
+                            "probability": "Medium",
+                            "mitigation": "Build brand and community; continue innovation on features."
+                        }
+                    ],
+                    "success_criteria": [
+                        {
+                            "id": "SC-053",
+                            "title": "All Features Complete",
+                            "description": "All planned features are implemented and tested."
+                        },
+                        {
+                            "id": "SC-054",
+                            "title": "Performance Targets Met",
+                            "description": "Model maintains 55%+ win rate; uptime exceeds 99.5%."
+                        },
+                        {
+                            "id": "SC-055",
+                            "title": "Revenue Generation",
+                            "description": "Platform generates $1k+ MRR from ads and subscriptions."
+                        },
+                        {
+                            "id": "SC-056",
+                            "title": "User Growth",
+                            "description": "Platform achieves 5k+ monthly visitors."
+                        }
+                    ]
+                }
+            ]
+        }
     ],
-    "goals": [
-      "Achieve 55%+ win rate over 100+ predictions to beat break-even threshold",
-      "Build transparent track record through publicly displayed historical performance",
-      "Launch MVP ad-supported blog with daily picks and performance dashboard",
-      "Generate 5k+ monthly visitors through SEO and content marketing",
-      "Reach $1k-5k MRR from ads and early subscribers within 12 months",
-      "Develop subscription tiers with premium features (spreads, totals, API access)"
-    ]
-  },
-  "versions": [
-    {
-      "version": "v0.1.0",
-      "release_date": "2025-01-15",
-      "status": "not_started",
-      "features": [
-        {
-          "id": "F001",
-          "name": "NBA Data Pipeline",
-          "description": "Automated data ingestion system that fetches team stats, player stats, game schedules, and historical data from the NBA Stats API. Stores data in Parquet files for efficient ML training and inference.",
-          "user_stories": [
-            {
-              "id": "US-001",
-              "title": "Fetch Team Performance Data",
-              "story": "As a data engineer, I want to automatically fetch current team statistics from NBA API, so that the model has up-to-date team performance metrics for predictions.",
-              "acceptance_criteria": [
-                {
-                  "id": "AC-001",
-                  "criteria": "Given the pipeline runs daily, when it fetches team stats, then all 30 NBA teams have updated win rates, point differentials, and offensive/defensive ratings."
-                },
-                {
-                  "id": "AC-002",
-                  "criteria": "Given API rate limits exist, when fetching data, then the pipeline respects rate limits and implements exponential backoff."
-                }
-              ]
-            },
-            {
-              "id": "US-002",
-              "title": "Fetch Player Statistics",
-              "story": "As a data engineer, I want to collect key player statistics and injury reports, so that the model can factor in player availability and performance.",
-              "acceptance_criteria": [
-                {
-                  "id": "AC-003",
-                  "criteria": "Given a game is scheduled, when the pipeline runs, then it retrieves stats for all rostered players on both teams."
-                },
-                {
-                  "id": "AC-004",
-                  "criteria": "Given injury data is available, when processing player data, then injury status is captured and stored."
-                }
-              ]
-            },
-            {
-              "id": "US-003",
-              "title": "Store Historical Data",
-              "story": "As a data engineer, I want to store historical game results and statistics in Parquet format, so that the model can be trained on past seasons.",
-              "acceptance_criteria": [
-                {
-                  "id": "AC-005",
-                  "criteria": "Given historical data is fetched, when stored, then data is partitioned by season in Parquet format."
-                },
-                {
-                  "id": "AC-006",
-                  "criteria": "Given 2022-23 and 2023-24 seasons, when backfilling data, then all regular season games are captured with complete statistics."
-                }
-              ]
-            }
-          ],
-          "requirements": {
-            "functional": [
-              {
-                "id": "FR-001",
-                "description": "Pipeline fetches team standings, records, and conference rankings daily."
-              },
-              {
-                "id": "FR-002",
-                "description": "Pipeline fetches player per-game stats, usage rates, and plus/minus metrics."
-              },
-              {
-                "id": "FR-003",
-                "description": "Pipeline fetches upcoming game schedules with home/away designations."
-              },
-              {
-                "id": "FR-004",
-                "description": "Pipeline stores all data in Parquet files with date-based partitioning."
-              },
-              {
-                "id": "FR-005",
-                "description": "Pipeline logs all fetch operations and errors for debugging."
-              }
-            ],
-            "non_functional": [
-              {
-                "id": "NFR-001",
-                "description": "Pipeline completes daily data refresh within 30 minutes."
-              },
-              {
-                "id": "NFR-002",
-                "description": "Pipeline handles API failures gracefully with retry logic."
-              },
-              {
-                "id": "NFR-003",
-                "description": "Data storage uses less than 1GB for current season data."
-              }
-            ]
-          },
-          "dependencies": [
-            {
-              "id": "D001",
-              "dependency": "NBA Stats API (stats.nba.com)",
-              "assumption": "API remains publicly accessible with rate limiting."
-            },
-            {
-              "id": "D002",
-              "dependency": "Python nba_api library",
-              "assumption": "Library is maintained and compatible with current API endpoints."
-            }
-          ],
-          "risks": [
-            {
-              "id": "R001",
-              "title": "NBA API Rate Limiting",
-              "overview": "The NBA Stats API may impose strict rate limits or block requests.",
-              "impact": "Data pipeline cannot fetch required statistics, blocking model training.",
-              "probability": "High",
-              "mitigation": "Implement caching, respect rate limits, use exponential backoff, and store data locally to minimize API calls."
-            },
-            {
-              "id": "R002",
-              "title": "API Structure Changes",
-              "overview": "NBA may change API endpoints or response formats without notice.",
-              "impact": "Pipeline breaks and requires code updates to adapt.",
-              "probability": "Medium",
-              "mitigation": "Abstract API calls behind interfaces, implement schema validation, monitor for breaking changes."
-            }
-          ],
-          "success_criteria": [
-            {
-              "id": "SC-001",
-              "title": "Complete Data Coverage",
-              "description": "Pipeline successfully fetches and stores data for all 30 NBA teams and their players."
-            },
-            {
-              "id": "SC-002",
-              "title": "Historical Backfill Complete",
-              "description": "2022-23 and 2023-24 season data is fully backfilled for model training."
-            },
-            {
-              "id": "SC-003",
-              "title": "Reliable Daily Updates",
-              "description": "Pipeline runs successfully for 7 consecutive days without manual intervention."
-            }
-          ]
-        },
-        {
-          "id": "F002",
-          "name": "XGBoost Prediction Model",
-          "description": "Machine learning model using XGBoost to predict NBA game outcomes (moneyline). Trained on historical data with features including team performance, player stats, and situational factors.",
-          "user_stories": [
-            {
-              "id": "US-004",
-              "title": "Train Prediction Model",
-              "story": "As a data scientist, I want to train an XGBoost model on historical NBA data, so that it can predict game winners with measurable accuracy.",
-              "acceptance_criteria": [
-                {
-                  "id": "AC-007",
-                  "criteria": "Given historical data from 2022-24 seasons, when training the model, then cross-validation accuracy exceeds 52% (break-even threshold)."
-                },
-                {
-                  "id": "AC-008",
-                  "criteria": "Given model is trained, when evaluated on holdout set, then log loss and calibration metrics are within acceptable ranges."
-                }
-              ]
-            },
-            {
-              "id": "US-005",
-              "title": "Generate Daily Predictions",
-              "story": "As a system, I want to generate predictions for today's games each morning, so that picks are available before game time.",
-              "acceptance_criteria": [
-                {
-                  "id": "AC-009",
-                  "criteria": "Given games are scheduled today, when inference runs, then each game has a predicted winner with probability percentage."
-                },
-                {
-                  "id": "AC-010",
-                  "criteria": "Given predictions are generated, when stored, then they include game ID, teams, predicted winner, and confidence score."
-                }
-              ]
-            },
-            {
-              "id": "US-006",
-              "title": "Retrain Model Nightly",
-              "story": "As a data scientist, I want the model to retrain nightly with latest results, so that it captures current season dynamics.",
-              "acceptance_criteria": [
-                {
-                  "id": "AC-011",
-                  "criteria": "Given yesterday's games completed, when nightly retraining runs, then new results are incorporated into training data."
-                },
-                {
-                  "id": "AC-012",
-                  "criteria": "Given retraining completes, when new model is deployed, then it replaces the previous model for inference."
-                }
-              ]
-            }
-          ],
-          "requirements": {
-            "functional": [
-              {
-                "id": "FR-006",
-                "description": "Model uses team performance features: win rates, point differentials, offensive/defensive ratings, recent form (L5, L10)."
-              },
-              {
-                "id": "FR-007",
-                "description": "Model uses player features: key player stats, injury status, rest days, usage rates."
-              },
-              {
-                "id": "FR-008",
-                "description": "Model uses situational features: home/away, back-to-backs, travel distance, division matchups."
-              },
-              {
-                "id": "FR-009",
-                "description": "Model outputs predicted winner and win probability for each game."
-              },
-              {
-                "id": "FR-010",
-                "description": "Model retrains nightly with rolling window of current season data."
-              }
-            ],
-            "non_functional": [
-              {
-                "id": "NFR-004",
-                "description": "Model inference completes within 5 seconds for all daily games."
-              },
-              {
-                "id": "NFR-005",
-                "description": "Nightly retraining completes within 15 minutes."
-              },
-              {
-                "id": "NFR-006",
-                "description": "Model achieves 55%+ win rate target over 50+ predictions before public launch."
-              }
-            ]
-          },
-          "dependencies": [
-            {
-              "id": "D003",
-              "dependency": "F001 - NBA Data Pipeline",
-              "assumption": "Data pipeline provides clean, structured data for model training."
-            },
-            {
-              "id": "D004",
-              "dependency": "XGBoost Python library",
-              "assumption": "Library is stable and well-documented for classification tasks."
-            }
-          ],
-          "risks": [
-            {
-              "id": "R003",
-              "title": "Model Underperformance",
-              "overview": "XGBoost model may not achieve 55%+ win rate target.",
-              "impact": "Cannot launch public service without proven performance threshold.",
-              "probability": "Medium",
-              "mitigation": "Iterate on feature engineering, hyperparameter tuning, and ensemble methods. Paper trade extensively before launch."
-            },
-            {
-              "id": "R004",
-              "title": "Overfitting to Historical Data",
-              "overview": "Model may overfit to past seasons and fail on current games.",
-              "impact": "High backtesting accuracy but poor live performance.",
-              "probability": "Medium",
-              "mitigation": "Use time-series cross-validation, rolling window training, and holdout validation on recent games."
-            }
-          ],
-          "success_criteria": [
-            {
-              "id": "SC-004",
-              "title": "Backtesting Performance",
-              "description": "Model achieves 55%+ accuracy on 2023-24 season holdout data."
-            },
-            {
-              "id": "SC-005",
-              "title": "Paper Trading Validation",
-              "description": "Model achieves 55%+ win rate over 50+ live predictions in paper trading mode."
-            },
-            {
-              "id": "SC-006",
-              "title": "Automated Pipeline",
-              "description": "Nightly retraining and daily inference run automatically without intervention."
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "version": "v0.2.0",
-      "release_date": "2025-02-15",
-      "status": "not_started",
-      "features": [
-        {
-          "id": "F003",
-          "name": "Daily Picks Blog",
-          "description": "Next.js blog with auto-generated daily picks articles in SEO-optimized format. Each game gets a dedicated page with prediction, analysis, and historical context.",
-          "user_stories": [
-            {
-              "id": "US-007",
-              "title": "View Today's Picks",
-              "story": "As a visitor, I want to see today's NBA game predictions on the homepage, so that I can quickly access current picks.",
-              "acceptance_criteria": [
-                {
-                  "id": "AC-013",
-                  "criteria": "Given I visit the homepage, when today has scheduled games, then I see a list of all picks with predicted winners and confidence percentages."
-                },
-                {
-                  "id": "AC-014",
-                  "criteria": "Given picks are displayed, when viewing each pick, then I see team names, game time, and predicted winner highlighted."
-                }
-              ]
-            },
-            {
-              "id": "US-008",
-              "title": "Read Game Prediction Article",
-              "story": "As a visitor, I want to read detailed prediction articles for each game, so that I understand the reasoning behind picks.",
-              "acceptance_criteria": [
-                {
-                  "id": "AC-015",
-                  "criteria": "Given I click on a game prediction, when the article loads, then I see matchup analysis, key stats, and prediction rationale."
-                },
-                {
-                  "id": "AC-016",
-                  "criteria": "Given the article is indexed, when searching for '[Team A] vs [Team B] prediction', then the page appears in search results."
-                }
-              ]
-            },
-            {
-              "id": "US-009",
-              "title": "Auto-Generate Daily Articles",
-              "story": "As a content system, I want to automatically generate MDX articles each morning, so that fresh content is ready without manual work.",
-              "acceptance_criteria": [
-                {
-                  "id": "AC-017",
-                  "criteria": "Given predictions are generated, when article generation runs, then each game has an MDX file created with proper frontmatter."
-                },
-                {
-                  "id": "AC-018",
-                  "criteria": "Given articles are generated, when the site builds, then all new articles are accessible at their SEO-friendly URLs."
-                }
-              ]
-            }
-          ],
-          "requirements": {
-            "functional": [
-              {
-                "id": "FR-011",
-                "description": "Homepage displays today's picks with game times, teams, and predictions."
-              },
-              {
-                "id": "FR-012",
-                "description": "Individual game pages follow format: '/predictions/[date]/[team-a]-vs-[team-b]'."
-              },
-              {
-                "id": "FR-013",
-                "description": "Articles include SEO meta tags, structured data, and social sharing cards."
-              },
-              {
-                "id": "FR-014",
-                "description": "Content generation pipeline creates MDX files from prediction data."
-              }
-            ],
-            "non_functional": [
-              {
-                "id": "NFR-007",
-                "description": "Pages load within 2 seconds on 3G connection."
-              },
-              {
-                "id": "NFR-008",
-                "description": "Site achieves 90+ Lighthouse SEO score."
-              },
-              {
-                "id": "NFR-009",
-                "description": "Articles are generated and published by 8 AM ET daily."
-              }
-            ]
-          },
-          "dependencies": [
-            {
-              "id": "D005",
-              "dependency": "F002 - XGBoost Prediction Model",
-              "assumption": "Daily predictions are available for article generation."
-            },
-            {
-              "id": "D006",
-              "dependency": "Next.js with MDX support",
-              "assumption": "Next.js MDX integration works for dynamic content generation."
-            }
-          ],
-          "risks": [
-            {
-              "id": "R005",
-              "title": "SEO Competition",
-              "overview": "Established sports sites may dominate search rankings for game prediction keywords.",
-              "impact": "Organic traffic growth slower than projected.",
-              "probability": "High",
-              "mitigation": "Focus on long-tail keywords, build quality backlinks, emphasize unique transparency angle."
-            }
-          ],
-          "success_criteria": [
-            {
-              "id": "SC-007",
-              "title": "Content Pipeline Active",
-              "description": "Daily articles are auto-generated and published for 14 consecutive days."
-            },
-            {
-              "id": "SC-008",
-              "title": "SEO Indexing",
-              "description": "Google indexes prediction articles within 48 hours of publication."
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "version": "v0.3.0",
-      "release_date": "2025-03-15",
-      "status": "not_started",
-      "features": [
-        {
-          "id": "F004",
-          "name": "Performance Dashboard",
-          "description": "Public dashboard displaying historical prediction performance including win rate, ROI, streak data, and complete pick history. Transparency as competitive advantage.",
-          "user_stories": [
-            {
-              "id": "US-010",
-              "title": "View Overall Performance",
-              "story": "As a visitor, I want to see the overall prediction track record, so that I can evaluate the service's credibility.",
-              "acceptance_criteria": [
-                {
-                  "id": "AC-019",
-                  "criteria": "Given I visit the dashboard, when viewing stats, then I see total picks, wins, losses, win rate percentage, and ROI."
-                },
-                {
-                  "id": "AC-020",
-                  "criteria": "Given historical data exists, when displayed, then all metrics are calculated from verifiable pick history."
-                }
-              ]
-            },
-            {
-              "id": "US-011",
-              "title": "View Recent Results",
-              "story": "As a visitor, I want to see recent prediction results, so that I can assess current model performance.",
-              "acceptance_criteria": [
-                {
-                  "id": "AC-021",
-                  "criteria": "Given recent games completed, when viewing results, then I see last 10 predictions with outcomes marked."
-                },
-                {
-                  "id": "AC-022",
-                  "criteria": "Given a prediction was made, when the game completes, then the result is automatically updated."
-                }
-              ]
-            },
-            {
-              "id": "US-012",
-              "title": "Browse Pick History",
-              "story": "As a visitor, I want to browse complete pick history, so that I can verify no cherry-picking occurred.",
-              "acceptance_criteria": [
-                {
-                  "id": "AC-023",
-                  "criteria": "Given I access pick history, when browsing, then every prediction ever made is listed with date, pick, and outcome."
-                },
-                {
-                  "id": "AC-024",
-                  "criteria": "Given history is public, when filtering by date range, then results show all picks in that period."
-                }
-              ]
-            }
-          ],
-          "requirements": {
-            "functional": [
-              {
-                "id": "FR-015",
-                "description": "Dashboard calculates and displays overall win rate and ROI."
-              },
-              {
-                "id": "FR-016",
-                "description": "Dashboard shows last N predictions with win/loss indicators."
-              },
-              {
-                "id": "FR-017",
-                "description": "Dashboard provides filterable, searchable complete pick history."
-              },
-              {
-                "id": "FR-018",
-                "description": "Results are automatically updated when games complete."
-              }
-            ],
-            "non_functional": [
-              {
-                "id": "NFR-010",
-                "description": "Dashboard loads within 3 seconds with full history."
-              },
-              {
-                "id": "NFR-011",
-                "description": "Historical data is immutable to ensure transparency."
-              }
-            ]
-          },
-          "dependencies": [
-            {
-              "id": "D007",
-              "dependency": "F002 - XGBoost Prediction Model",
-              "assumption": "All predictions are logged with timestamps before games start."
-            },
-            {
-              "id": "D008",
-              "dependency": "Supabase PostgreSQL",
-              "assumption": "Database stores all picks and game outcomes for querying."
-            }
-          ],
-          "risks": [
-            {
-              "id": "R006",
-              "title": "Model Performance Exposure",
-              "overview": "Public dashboard exposes poor performance if model underperforms.",
-              "impact": "Credibility damage if win rate drops below break-even.",
-              "probability": "Medium",
-              "mitigation": "Paper trade extensively before public launch; have minimum performance threshold before going live."
-            }
-          ],
-          "success_criteria": [
-            {
-              "id": "SC-009",
-              "title": "Full Transparency",
-              "description": "100% of predictions are publicly visible with verifiable outcomes."
-            },
-            {
-              "id": "SC-010",
-              "title": "Automated Updates",
-              "description": "Game outcomes update dashboard within 1 hour of game completion."
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "version": "v0.4.0",
-      "release_date": "2025-04-15",
-      "status": "not_started",
-      "features": [
-        {
-          "id": "F005",
-          "name": "Ad Monetization",
-          "description": "Google AdSense integration for initial monetization. Strategic ad placement that balances revenue with user experience.",
-          "user_stories": [
-            {
-              "id": "US-013",
-              "title": "Display Advertisements",
-              "story": "As a site owner, I want to display ads on the site, so that traffic generates revenue.",
-              "acceptance_criteria": [
-                {
-                  "id": "AC-025",
-                  "criteria": "Given AdSense is configured, when pages load, then ads display in designated placements."
-                },
-                {
-                  "id": "AC-026",
-                  "criteria": "Given ads are displayed, when viewing on mobile, then ads are responsive and non-intrusive."
-                }
-              ]
-            }
-          ],
-          "requirements": {
-            "functional": [
-              {
-                "id": "FR-019",
-                "description": "AdSense ads display on homepage, article pages, and dashboard."
-              },
-              {
-                "id": "FR-020",
-                "description": "Ad placements follow Google AdSense policies."
-              }
-            ],
-            "non_functional": [
-              {
-                "id": "NFR-012",
-                "description": "Ads do not degrade page load time by more than 500ms."
-              },
-              {
-                "id": "NFR-013",
-                "description": "Ad density complies with Better Ads Standards."
-              }
-            ]
-          },
-          "dependencies": [
-            {
-              "id": "D009",
-              "dependency": "Google AdSense account approval",
-              "assumption": "Site has sufficient content and traffic for AdSense approval."
-            }
-          ],
-          "risks": [
-            {
-              "id": "R007",
-              "title": "AdSense Rejection",
-              "overview": "Google may reject AdSense application due to content policy concerns with betting content.",
-              "impact": "Primary monetization strategy blocked.",
-              "probability": "Medium",
-              "mitigation": "Position as sports analytics/predictions (not gambling); have backup ad networks identified."
-            }
-          ],
-          "success_criteria": [
-            {
-              "id": "SC-011",
-              "title": "AdSense Approved",
-              "description": "Google AdSense account is approved and ads are serving."
-            },
-            {
-              "id": "SC-012",
-              "title": "Revenue Generation",
-              "description": "Site generates measurable ad revenue within first month of traffic."
-            }
-          ]
-        },
-        {
-          "id": "F006",
-          "name": "Email Newsletter",
-          "description": "Daily email newsletter with picks digest. Builds owned audience for future subscription conversion.",
-          "user_stories": [
-            {
-              "id": "US-014",
-              "title": "Subscribe to Newsletter",
-              "story": "As a visitor, I want to subscribe to daily picks via email, so that I receive predictions in my inbox.",
-              "acceptance_criteria": [
-                {
-                  "id": "AC-027",
-                  "criteria": "Given I enter my email, when I subscribe, then I receive a confirmation email."
-                },
-                {
-                  "id": "AC-028",
-                  "criteria": "Given I am subscribed, when picks are published daily, then I receive an email with today's predictions."
-                }
-              ]
-            },
-            {
-              "id": "US-015",
-              "title": "Manage Subscription",
-              "story": "As a subscriber, I want to unsubscribe easily, so that I control my email preferences.",
-              "acceptance_criteria": [
-                {
-                  "id": "AC-029",
-                  "criteria": "Given I receive a newsletter, when I click unsubscribe, then I am removed from the list."
-                }
-              ]
-            }
-          ],
-          "requirements": {
-            "functional": [
-              {
-                "id": "FR-021",
-                "description": "Email capture form on homepage and article pages."
-              },
-              {
-                "id": "FR-022",
-                "description": "Daily automated email with today's picks sent by 9 AM ET."
-              },
-              {
-                "id": "FR-023",
-                "description": "Unsubscribe link in every email that works immediately."
-              }
-            ],
-            "non_functional": [
-              {
-                "id": "NFR-014",
-                "description": "Email deliverability rate above 95%."
-              },
-              {
-                "id": "NFR-015",
-                "description": "Comply with CAN-SPAM and GDPR requirements."
-              }
-            ]
-          },
-          "dependencies": [
-            {
-              "id": "D010",
-              "dependency": "Email service provider (e.g., Resend, SendGrid)",
-              "assumption": "Email provider supports transactional and marketing emails."
-            }
-          ],
-          "risks": [
-            {
-              "id": "R008",
-              "title": "Spam Filtering",
-              "overview": "Emails may be caught by spam filters, reducing deliverability.",
-              "impact": "Subscribers don't receive picks, reducing engagement.",
-              "probability": "Medium",
-              "mitigation": "Use reputable email provider, implement proper SPF/DKIM/DMARC, warm up IP gradually."
-            }
-          ],
-          "success_criteria": [
-            {
-              "id": "SC-013",
-              "title": "Subscriber Growth",
-              "description": "Acquire 500+ email subscribers within 3 months of launch."
-            },
-            {
-              "id": "SC-014",
-              "title": "Engagement Metrics",
-              "description": "Newsletter open rate above 30%, click rate above 5%."
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "version": "v1.0.0",
-      "release_date": "2025-06-15",
-      "status": "not_started",
-      "features": [
-        {
-          "id": "F007",
-          "name": "User Authentication",
-          "description": "Supabase-based authentication system supporting email/password and social logins. Foundation for premium subscription features.",
-          "user_stories": [
-            {
-              "id": "US-016",
-              "title": "Create Account",
-              "story": "As a visitor, I want to create an account, so that I can access premium features when available.",
-              "acceptance_criteria": [
-                {
-                  "id": "AC-030",
-                  "criteria": "Given I provide email and password, when I sign up, then an account is created and I receive verification email."
-                },
-                {
-                  "id": "AC-031",
-                  "criteria": "Given I have a Google account, when I click sign in with Google, then I am authenticated via OAuth."
-                }
-              ]
-            },
-            {
-              "id": "US-017",
-              "title": "Login to Account",
-              "story": "As a user, I want to log into my account, so that I can access personalized features.",
-              "acceptance_criteria": [
-                {
-                  "id": "AC-032",
-                  "criteria": "Given I have an account, when I enter correct credentials, then I am logged in and redirected."
-                },
-                {
-                  "id": "AC-033",
-                  "criteria": "Given I am logged in, when I return to the site, then my session persists for 7 days."
-                }
-              ]
-            }
-          ],
-          "requirements": {
-            "functional": [
-              {
-                "id": "FR-024",
-                "description": "Support email/password authentication with email verification."
-              },
-              {
-                "id": "FR-025",
-                "description": "Support Google OAuth social login."
-              },
-              {
-                "id": "FR-026",
-                "description": "Password reset flow via email."
-              },
-              {
-                "id": "FR-027",
-                "description": "Session management with secure token handling."
-              }
-            ],
-            "non_functional": [
-              {
-                "id": "NFR-016",
-                "description": "Authentication flows complete within 3 seconds."
-              },
-              {
-                "id": "NFR-017",
-                "description": "Follow OWASP authentication security best practices."
-              }
-            ]
-          },
-          "dependencies": [
-            {
-              "id": "D011",
-              "dependency": "Supabase Auth",
-              "assumption": "Supabase provides reliable auth infrastructure."
-            }
-          ],
-          "risks": [
-            {
-              "id": "R009",
-              "title": "Security Vulnerabilities",
-              "overview": "Authentication system may have security flaws.",
-              "impact": "User accounts compromised, legal and reputation damage.",
-              "probability": "Low",
-              "mitigation": "Use Supabase managed auth, implement security best practices, regular security reviews."
-            }
-          ],
-          "success_criteria": [
-            {
-              "id": "SC-015",
-              "title": "Auth System Live",
-              "description": "Users can create accounts and log in via email or Google."
-            },
-            {
-              "id": "SC-016",
-              "title": "Security Audit Passed",
-              "description": "No critical vulnerabilities in authentication flows."
-            }
-          ]
-        },
-        {
-          "id": "F008",
-          "name": "Subscription Payments",
-          "description": "Stripe integration for premium subscription management. Monthly recurring billing with free tier for moneyline picks.",
-          "user_stories": [
-            {
-              "id": "US-018",
-              "title": "Subscribe to Premium",
-              "story": "As a user, I want to subscribe to a premium plan, so that I can access spreads, totals, and advanced features.",
-              "acceptance_criteria": [
-                {
-                  "id": "AC-034",
-                  "criteria": "Given I am logged in, when I select a premium plan and enter payment, then my subscription is activated."
-                },
-                {
-                  "id": "AC-035",
-                  "criteria": "Given I am subscribed, when I access premium content, then I can view spreads and totals predictions."
-                }
-              ]
-            },
-            {
-              "id": "US-019",
-              "title": "Manage Subscription",
-              "story": "As a subscriber, I want to manage my subscription, so that I can upgrade, downgrade, or cancel.",
-              "acceptance_criteria": [
-                {
-                  "id": "AC-036",
-                  "criteria": "Given I have a subscription, when I access billing settings, then I can view and modify my plan."
-                },
-                {
-                  "id": "AC-037",
-                  "criteria": "Given I cancel, when the billing period ends, then my access reverts to free tier."
-                }
-              ]
-            }
-          ],
-          "requirements": {
-            "functional": [
-              {
-                "id": "FR-028",
-                "description": "Stripe Checkout integration for subscription signup."
-              },
-              {
-                "id": "FR-029",
-                "description": "Customer portal for subscription management."
-              },
-              {
-                "id": "FR-030",
-                "description": "Webhook handling for subscription lifecycle events."
-              },
-              {
-                "id": "FR-031",
-                "description": "Tier-based access control for premium content."
-              }
-            ],
-            "non_functional": [
-              {
-                "id": "NFR-018",
-                "description": "Payment processing completes within 5 seconds."
-              },
-              {
-                "id": "NFR-019",
-                "description": "PCI DSS compliance via Stripe's hosted checkout."
-              }
-            ]
-          },
-          "dependencies": [
-            {
-              "id": "D012",
-              "dependency": "Stripe",
-              "assumption": "Stripe account approved for recurring billing."
-            },
-            {
-              "id": "D013",
-              "dependency": "F007 - User Authentication",
-              "assumption": "Users must be authenticated to subscribe."
-            }
-          ],
-          "risks": [
-            {
-              "id": "R010",
-              "title": "Payment Processing Issues",
-              "overview": "Stripe may flag or restrict account for betting-related content.",
-              "impact": "Cannot process payments, blocking monetization.",
-              "probability": "Low",
-              "mitigation": "Position as sports analytics, review Stripe's acceptable use policy, have backup processor identified."
-            }
-          ],
-          "success_criteria": [
-            {
-              "id": "SC-017",
-              "title": "Payments Processing",
-              "description": "Users can successfully subscribe and make payments via Stripe."
-            },
-            {
-              "id": "SC-018",
-              "title": "MRR Milestone",
-              "description": "Achieve $1k MRR within 3 months of subscription launch."
-            }
-          ]
-        },
-        {
-          "id": "F009",
-          "name": "Premium Predictions (Spreads & Totals)",
-          "description": "Extended prediction coverage for point spreads and over/under totals. Premium-only feature for paying subscribers.",
-          "user_stories": [
-            {
-              "id": "US-020",
-              "title": "View Spread Predictions",
-              "story": "As a premium subscriber, I want to see point spread predictions, so that I can make more informed betting decisions.",
-              "acceptance_criteria": [
-                {
-                  "id": "AC-038",
-                  "criteria": "Given I am a premium subscriber, when I view today's picks, then I see spread predictions alongside moneyline."
-                },
-                {
-                  "id": "AC-039",
-                  "criteria": "Given a spread prediction, when displayed, then it shows predicted spread and confidence level."
-                }
-              ]
-            },
-            {
-              "id": "US-021",
-              "title": "View Totals Predictions",
-              "story": "As a premium subscriber, I want to see over/under predictions, so that I have complete game analysis.",
-              "acceptance_criteria": [
-                {
-                  "id": "AC-040",
-                  "criteria": "Given I am a premium subscriber, when I view picks, then I see over/under predictions with projected total."
-                }
-              ]
-            }
-          ],
-          "requirements": {
-            "functional": [
-              {
-                "id": "FR-032",
-                "description": "Model generates spread predictions with confidence scores."
-              },
-              {
-                "id": "FR-033",
-                "description": "Model generates over/under predictions with projected totals."
-              },
-              {
-                "id": "FR-034",
-                "description": "Premium content gated behind subscription check."
-              }
-            ],
-            "non_functional": [
-              {
-                "id": "NFR-020",
-                "description": "Spread and totals predictions achieve 52%+ accuracy (break-even for standard vig)."
-              }
-            ]
-          },
-          "dependencies": [
-            {
-              "id": "D014",
-              "dependency": "F002 - XGBoost Prediction Model",
-              "assumption": "Model extended to predict spreads and totals."
-            },
-            {
-              "id": "D015",
-              "dependency": "F008 - Subscription Payments",
-              "assumption": "Subscription status determines content access."
-            }
-          ],
-          "risks": [
-            {
-              "id": "R011",
-              "title": "Spread/Totals Model Underperformance",
-              "overview": "Predicting spreads and totals may be harder than moneyline.",
-              "impact": "Premium feature doesn't deliver value, hurting retention.",
-              "probability": "Medium",
-              "mitigation": "Extensive backtesting before launch; clearly communicate that spreads/totals are harder markets."
-            }
-          ],
-          "success_criteria": [
-            {
-              "id": "SC-019",
-              "title": "Premium Predictions Live",
-              "description": "Spread and totals predictions available to premium subscribers."
-            },
-            {
-              "id": "SC-020",
-              "title": "Premium Performance",
-              "description": "Spread predictions achieve 52%+ win rate over first 100 picks."
-            }
-          ]
-        }
-      ]
+    "tech_stack": [
+        "Next.js 14+",
+        "React 19",
+        "TypeScript",
+        "Tailwind CSS v4",
+        "Supabase",
+        "Stripe",
+        "Python 3.11+",
+        "XGBoost",
+        "Parquet",
+        "GitHub Actions",
+        "MDX",
+        "Electron/Tauri"
+    ],
+    "metadata": {
+        "last_updated": "2025-12-28",
+        "updated_by": "Claude AI"
     }
-  ],
-  "tech_stack": [
-    "Next.js 15",
-    "React 19",
-    "TypeScript",
-    "Tailwind CSS v4",
-    "MDX",
-    "Supabase (Auth + PostgreSQL)",
-    "Stripe",
-    "Python 3.11+",
-    "XGBoost",
-    "Pandas",
-    "nba_api",
-    "Parquet",
-    "GitHub Actions (CI/CD)",
-    "Vercel (Hosting)"
-  ],
-  "metadata": {
-    "last_updated": "2025-12-25",
-    "updated_by": "Claude Code"
-  }
 }

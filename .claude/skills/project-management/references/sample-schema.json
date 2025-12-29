@@ -8,6 +8,7 @@
       "id": "PH-001",
       "name": "Foundation - Environment Setup",
       "status": "in_progress",
+      "checkpoint": false,
       "milestones": [
         {
           "id": "MS-001",
@@ -16,9 +17,11 @@
           "goal": "Next.js 15 + React 19 fully configured",
           "status": "completed",
           "dependencies": [],
+          "mcp_servers": [],
           "success_criteria": [
             {
-              "id_reference": "SC-001",
+              "id": "SC-001",
+              "description": "The project is initialized with Next.js 15.1",
               "status": "met"
             }
           ],
@@ -29,14 +32,17 @@
               "status": "completed",
               "parallel": false,
               "owner": "fullstack-developer",
+              "test_strategy": "TDD",
               "dependencies": [],
               "acceptance_criteria": [
                 {
-                  "id_reference": "AC-001",
+                  "id": "AC-001",
+                  "description": "The project is initialized with Next.js 15.1",
                   "status": "met"
                 },
                 {
-                  "id_reference": "AC-002",
+                  "id": "AC-002",
+                  "description": "The project is initialized with TypeScript interfaces for core data structures",
                   "status": "met"
                 }
               ]
@@ -47,10 +53,12 @@
               "status": "completed",
               "parallel": false,
               "owner": "fullstack-developer",
+              "test_strategy": "TDD",
               "dependencies": [],
               "acceptance_criteria": [
                 {
-                  "id_reference": "AC-003",
+                  "id": "AC-003",
+                  "description": "The project is initialized with TypeScript interfaces for core data structures",
                   "status": "met"
                 }
               ]
@@ -64,9 +72,11 @@
           "goal": "Define core type contracts and validation schemas that establish the data structure foundation for features",
           "status": "in_progress",
           "dependencies": [],
+          "mcp_servers": [],
           "success_criteria": [
             {
-              "id_reference": "SC-002",
+              "id": "SC-002",
+              "description": "The project is initialized with TypeScript interfaces for core data structures",
               "status": "unmet"
             }
           ],
@@ -77,10 +87,12 @@
               "status": "in_progress",
               "parallel": false,
               "owner": "fullstack-developer",
+              "test_strategy": "TDD",
               "dependencies": [],
               "acceptance_criteria": [
                 {
-                  "id_reference": "AC-004",
+                  "id": "AC-004",
+                  "description": "The project is initialized with TypeScript interfaces for core data structures",
                   "status": "met"
                 }
               ]
@@ -91,10 +103,12 @@
               "status": "in_progress",
               "parallel": false,
               "owner": "fullstack-developer",
+              "test_strategy": "TDD",
               "dependencies": [],
               "acceptance_criteria": [
                 {
-                  "id_reference": "AC-005",
+                  "id": "AC-005",
+                  "description": "The project is initialized with TypeScript interfaces for core data structures",
                   "status": "met"
                 }
               ]
@@ -114,9 +128,11 @@
           "name": "Feature Development",
           "status": "in_progress",
           "dependencies": [],
+          "mcp_servers": [],
           "success_criteria": [
             {
-              "id_reference": "SC-002",
+              "id": "SC-002",
+              "description": "The project is initialized with TypeScript interfaces for core data structures",
               "status": "met"
             }
           ],
@@ -127,10 +143,12 @@
               "status": "in_progress",
               "parallel": false,
               "owner": "fullstack-developer",
+              "test_strategy": "TDD",
               "dependencies": [],
               "acceptance_criteria": [
                 {
-                  "id_reference": "AC-006",
+                  "id": "AC-006",
+                  "description": "The project is initialized with TypeScript interfaces for core data structures",
                   "status": "met"
                 }
               ]

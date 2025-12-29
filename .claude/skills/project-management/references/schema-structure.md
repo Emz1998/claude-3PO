@@ -41,6 +41,7 @@ Phases run **sequentially**. Order in array determines execution order.
   "id": "PH-NNN",
   "name": "string",
   "status": "string",
+  "checkpoint": "boolean",
   "milestones": []
 }
 ```
@@ -48,6 +49,7 @@ Phases run **sequentially**. Order in array determines execution order.
 - **id**: Unique identifier (pattern: `PH-NNN`)
 - **name**: Phase name
 - **status**: `not_started`, `in_progress`, `completed`
+- **checkpoint**: Set to true for phases that are checkpoints.
 - **milestones**: Milestones within this phase (run in parallel)
 
 ---
@@ -64,6 +66,7 @@ Milestones within a phase run **in parallel**. One feature per milestone (1:1 ma
   "goal": "string",
   "status": "string",
   "dependencies": [],
+  "mcp_servers": [],
   "success_criteria": [],
   "tasks": []
 }
@@ -75,6 +78,7 @@ Milestones within a phase run **in parallel**. One feature per milestone (1:1 ma
 - **goal**: What this milestone achieves
 - **status**: `not_started`, `in_progress`, `completed`
 - **dependencies**: MS-IDs that must complete first
+- **mcp_servers**: List of MCP servers to use for the milestone. If no MCP needed, leave empty.
 - **success_criteria**: Feature-level success verification
 - **tasks**: Tasks to complete this milestone
 
@@ -86,13 +90,15 @@ References SC from product.json. Verifies feature-level outcomes.
 
 ```json
 {
-  "id_reference": "SC-NNN",
-  "status": "met|unmet"
+  "id": "SC-NNN",
+  "description": "string",
+  "status": "string (met|unmet)"
 }
 ```
 
-- **id_reference**: SC-ID from product.json
-- **status**: `met` or `unmet`
+- **id**: SC-NNN format
+- **description**: Description of the success criteria
+- **status**: `met` or `unmet` (string)
 
 ---
 
@@ -105,8 +111,9 @@ Individual work items that satisfy acceptance criteria.
   "id": "TNNN",
   "description": "string",
   "status": "string",
-  "parallel": false,
+  "parallel": "boolean",
   "owner": "string",
+  "test_strategy": "string (TDD|TA)",
   "dependencies": [],
   "acceptance_criteria": []
 }
@@ -115,8 +122,9 @@ Individual work items that satisfy acceptance criteria.
 - **id**: Unique identifier (pattern: `TNNN`)
 - **description**: What the task accomplishes
 - **status**: `not_started`, `in_progress`, `completed`
-- **parallel**: Can run in parallel with other tasks
+- **parallel**: `true` if can run in parallel with other tasks, otherwise `false`
 - **owner**: Agent responsible (from `.claude/agents/engineers/` or `main-agent`)
+- **test_strategy**: `TDD` or `TA` where TDD is Test-Driven Development and TA is Test-After Development.
 - **dependencies**: T-IDs that must complete first
 - **acceptance_criteria**: AC references from product.json
 
@@ -128,7 +136,8 @@ References AC from product.json. Verifies user story behaviors.
 
 ```json
 {
-  "id_reference": "AC-NNN",
+  "id": "AC-NNN",
+  "description": "string",
   "status": "met|unmet"
 }
 ```
@@ -208,20 +217,6 @@ Computed counts updated after every mutation.
 - **Success Criteria**: `SC-NNN` (e.g., SC-001, from product.json)
 - **Acceptance Criteria**: `AC-NNN` (e.g., AC-001, from product.json)
 - **Feature**: `FNNN` (e.g., F001, from product.json)
-
----
-
-## Relationships
-
-```
-product.json                    roadmap.json
-----------------------------------------------
-Feature (FNNN)            ->    Milestone (MS-NNN)
-  - SC (SC-NNN)           ->      - success_criteria.id_reference
-  - User Story (US-NNN)
-       - AC (AC-NNN)      ->    Task (TNNN)
-                                  - acceptance_criteria.id_reference
-```
 
 ---
 

@@ -10,15 +10,15 @@ model: sonnet
 
 ## Workflow
 
-- Invoke `strategic-planner` agent to create the implementation plan
-- Invoke `consulting-expert` agent to review and consult on the plan
-- Report plan summary to user
+1. Invoke @agent-planner subagent to create the implementation plan
+2. Invoke @agent-consultant subagent to review and consult on the plan
+3. Report plan summary to user
 
 ## Subagent Prompts
 
 ### Step 1: Strategic Planner
 
-Delegate to `strategic-planner` with this prompt:
+Delegate to @agent-planner subagent with this prompt:
 
 ```
 Create implementation plan for: $2 - $3
@@ -36,7 +36,7 @@ Output: Create project/[milestone]/plans/plan_[session]_[date].md
 
 ### Step 2: Consulting Expert
 
-Delegate to `consulting-expert` with this prompt:
+Delegate to @agent-consultant subagent with this prompt:
 
 ```
 Review the implementation plan at:

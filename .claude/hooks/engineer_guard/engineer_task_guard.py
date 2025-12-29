@@ -8,7 +8,6 @@ Ensures engineer agents complete their assigned tasks:
 - Allows log:task skill to update task status
 """
 
-import json
 import sys
 from pathlib import Path
 
@@ -24,6 +23,7 @@ from utils import (  # type: ignore
     get_roadmap_path,
     load_roadmap,
     find_task_in_roadmap,
+    log,
 )
 
 ENGINEER_AGENTS = {
@@ -39,6 +39,8 @@ ALLOWED_SKILLS = {"log:task"}
 
 CACHE_KEY = "engineer_guard_active"
 TASK_KEY = "engineer_assigned_task"
+AGENT_ID_KEY = "engineer_assigned_agent"
+SUBAGENT_TYPE_KEY = "engineer_subagent_type"
 
 
 def load_roadmap_data() -> dict | None:
@@ -59,22 +61,48 @@ def get_assigned_task() -> str | None:
     return get_cache(TASK_KEY)
 
 
-def activate() -> None:
-    """Activate guard and store current task."""
+def get_assigned_agent() -> str | None:
+    """Get the assigned agent ID from cache."""
+    return get_cache(AGENT_ID_KEY)
+
+
+def get_subagent_type() -> str | None:
+    """Get the subagent type from cache."""
+    return get_cache(SUBAGENT_TYPE_KEY)
+
+
+def activate(input_data: dict) -> None:
+    """Activate guard and store current task with agent tracking."""
+    tool_input = input_data.get("tool_input") or {}
+    subagent_type = tool_input.get("subagent_type", "")
+    agent_id = input_data.get("tool_use_id", "")
+
     roadmap = load_roadmap_data()
     task_id = roadmap.get("current", {}).get("task") if roadmap else None
+
     cache = load_cache()
     cache[CACHE_KEY] = True
     cache[TASK_KEY] = task_id
+    cache[AGENT_ID_KEY] = agent_id
+    cache[SUBAGENT_TYPE_KEY] = subagent_type
     write_cache(cache)
+
+    log(f"ENGINEER_GUARD: Activated for {subagent_type} (agent={agent_id}, task={task_id})")
 
 
 def deactivate() -> None:
-    """Deactivate guard and clear assigned task."""
+    """Deactivate guard and clear all assigned values."""
+    subagent_type = get_subagent_type()
+    task_id = get_assigned_task()
+
     cache = load_cache()
     cache[CACHE_KEY] = False
     cache[TASK_KEY] = None
+    cache[AGENT_ID_KEY] = None
+    cache[SUBAGENT_TYPE_KEY] = None
     write_cache(cache)
+
+    log(f"ENGINEER_GUARD: Deactivated for {subagent_type} (task={task_id})")
 
 
 def is_build_active() -> bool:
@@ -92,6 +120,7 @@ def get_task_for_check() -> tuple[str | None, str | None]:
     """
     roadmap = load_roadmap_data()
     if not roadmap:
+        log("ENGINEER_GUARD: Failing open - roadmap unavailable")
         return None, None
 
     task_id = get_assigned_task()
@@ -99,10 +128,12 @@ def get_task_for_check() -> tuple[str | None, str | None]:
         task_id = roadmap.get("current", {}).get("task")
 
     if not task_id:
+        log("ENGINEER_GUARD: Failing open - no task ID found")
         return None, None
 
     _, _, task = find_task_in_roadmap(roadmap, task_id)
     if not task:
+        log(f"ENGINEER_GUARD: Failing open - task '{task_id}' not in roadmap")
         return None, None
 
     return task_id, task.get("status", "not_started")
@@ -111,13 +142,13 @@ def get_task_for_check() -> tuple[str | None, str | None]:
 def handle_pretool(input_data: dict) -> None:
     """Handle PreToolUse event."""
     tool_name = input_data.get("tool_name", "")
-    tool_input = input_data.get("tool_input", {})
+    tool_input = input_data.get("tool_input") or {}
 
     # Task spawn - activate guard for engineer agents
     if tool_name == "Task":
         subagent = tool_input.get("subagent_type", "")
         if subagent in ENGINEER_AGENTS:
-            activate()
+            activate(input_data)
         return
 
     if not is_active():
@@ -166,13 +197,8 @@ def handle_stop(_input_data: dict) -> None:
 
     # Block stop - guard remains active until task completes
     block_response(
-        json.dumps({
-            "decision": "block",
-            "stopReason": (
-                f"GUARD: Cannot stop. Task '{task_id}' must be 'completed' "
-                f"(current: '{status}'). Use: /log:task {task_id} completed"
-            ),
-        })
+        f"GUARD: Cannot stop. Task '{task_id}' must be 'completed' "
+        f"(current: '{status}'). Use: /log:task {task_id} completed"
     )
 
 

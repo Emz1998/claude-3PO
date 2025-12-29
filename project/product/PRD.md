@@ -4,8 +4,8 @@
 
 - **Current Version:** v0.1.0
 - **Stable Version:** v1.0.0
-- **Last Updated:** 2025-12-25
-- **Updated By:** Claude Code
+- **Last Updated:** 2025-12-28
+- **Updated By:** Claude AI
 
 ## ID Conventions
 
@@ -30,571 +30,1276 @@
 
 - **Name:** Avaris - NBA Betting Analytics Platform
 - **Type:** web-application
-- **Elevator Pitch:** A transparent, data-driven NBA game prediction service using XGBoost machine learning to deliver daily picks with verifiable track records, starting as an ad-supported blog and evolving into a premium subscription platform.
-- **Industry Problem:** Sports betting markets are saturated with tout services making questionable claims without transparent track records. Casual and serious bettors lack access to reliable, data-driven predictions with accountability. Existing prediction services either hide their historical performance or cherry-pick winning streaks.
+- **Elevator Pitch:** A transparent, data-driven NBA game prediction service powered by XGBoost machine learning, delivering daily picks with verifiable track records through an ad-supported blog that evolves into a premium subscription platform with automated prediction tools.
+- **Industry Problem:** Sports betting markets are saturated with tout services making questionable claims without transparent track records. Casual and serious bettors lack access to reliable, data-driven predictions with accountability. Existing prediction services hide their historical performance or cherry-pick winning streaks to mislead users.
 - **Solutions:**
-  - Build XGBoost ML model trained on NBA Stats API data for game outcome predictions
-  - Launch ad-supported blog with daily predictions in SEO-optimized article format
-  - Display transparent performance dashboard showing win rate, ROI, and historical results
-  - Automate daily prediction pipeline using scheduled jobs for fresh picks each morning
-  - Transition to subscription model once 55%+ win rate threshold is achieved
-  - Develop desktop prediction bot application for premium programmatic access
-  - Provide tiered service for casual bettors (free moneyline) and serious bettors (premium spreads/totals)
+    - Build XGBoost machine learning model trained on NBA Stats API data to predict game outcomes
+  - Launch ad-supported blog with daily game predictions in SEO-optimized article format
+  - Display transparent performance dashboard showing win rate, ROI, and complete historical results
+  - Automate daily prediction pipeline using scheduled jobs to generate fresh picks each morning
+  - Transition to subscription model once proven performance threshold (55%+ win rate) is achieved
+  - Develop desktop prediction bot application for premium users to access predictions programmatically
+  - Provide tiered service serving both casual bettors (free moneyline picks) and serious bettors (premium spreads and totals)
 - **Goals:**
-  - Achieve 55%+ win rate over 100+ predictions to beat break-even threshold
+    - Achieve 55%+ win rate over 100+ predictions to beat break-even threshold
   - Build transparent track record through publicly displayed historical performance
   - Launch MVP ad-supported blog with daily picks and performance dashboard
   - Generate 5k+ monthly visitors through SEO and content marketing
-  - Reach $1k-5k MRR from ads and early subscribers within 12 months
+  - Reach $1k-5k monthly recurring revenue from ads and early subscribers within 12 months
   - Develop subscription tiers with premium features (spreads, totals, API access)
 
 ## Tech Stack
 
-- Next.js 15
+- Next.js 14+
 - React 19
 - TypeScript
 - Tailwind CSS v4
-- MDX
-- Supabase (Auth + PostgreSQL)
+- Supabase
 - Stripe
 - Python 3.11+
 - XGBoost
-- Pandas
-- nba_api
 - Parquet
-- GitHub Actions (CI/CD)
-- Vercel (Hosting)
+- GitHub Actions
+- MDX
+- Electron/Tauri
 
-## Version: v0.1.0 (**MVP**)
+## Version: v0.1.0
 
 - **Release Date:** 2025-01-15
 - **Status:** not_started
 
-### Feature: F001 - NBA Data Pipeline
+### Feature: F001 - NBA Data Pipeline Foundation
 
-**Description:** Automated data ingestion system that fetches team stats, player stats, game schedules, and historical data from the NBA Stats API. Stores data in Parquet files for efficient ML training and inference.
+**Description:** Establish core data infrastructure for fetching, storing, and managing NBA statistics from the NBA Stats API. This forms the foundation for all ML predictions.
 
 **User Stories:**
 
-- **US-001: Fetch Team Performance Data**
+- **US-001: Fetch Current Season Team Stats**
 
-  - Story: As a data engineer, I want to automatically fetch current team statistics from NBA API, so that the model has up-to-date team performance metrics for predictions.
+  - Story: As a system, I want to fetch current season team statistics from NBA Stats API, so that the ML model has up-to-date data for predictions.
   - Acceptance Criteria:
-    - AC-001: Given the pipeline runs daily, when it fetches team stats, then all 30 NBA teams have updated win rates, point differentials, and offensive/defensive ratings.
-    - AC-002: Given API rate limits exist, when fetching data, then the pipeline respects rate limits and implements exponential backoff.
+    - AC-001: Given the data pipeline is running, when a fetch job executes, then team statistics for the current season are retrieved and stored in Parquet format.
+    - AC-002: Given the NBA Stats API is rate-limited, when requests exceed limits, then the system implements exponential backoff and retries.
 
 - **US-002: Fetch Player Statistics**
 
-  - Story: As a data engineer, I want to collect key player statistics and injury reports, so that the model can factor in player availability and performance.
+  - Story: As a system, I want to fetch player-level statistics including injuries and rest days, so that predictions account for roster availability.
   - Acceptance Criteria:
-    - AC-003: Given a game is scheduled, when the pipeline runs, then it retrieves stats for all rostered players on both teams.
-    - AC-004: Given injury data is available, when processing player data, then injury status is captured and stored.
+    - AC-003: Given the data pipeline runs, when player data is fetched, then key player stats (points, assists, rebounds, usage rate) are stored.
+    - AC-004: Given injury data is available, when player status changes, then the system updates injury flags within 24 hours.
 
 - **US-003: Store Historical Data**
 
-  - Story: As a data engineer, I want to store historical game results and statistics in Parquet format, so that the model can be trained on past seasons.
+  - Story: As a system, I want to store historical game data from past seasons, so that the ML model can be trained and backtested.
   - Acceptance Criteria:
-    - AC-005: Given historical data is fetched, when stored, then data is partitioned by season in Parquet format.
-    - AC-006: Given 2022-23 and 2023-24 seasons, when backfilling data, then all regular season games are captured with complete statistics.
+    - AC-005: Given historical data is requested, when the pipeline runs, then game results from 2022-23 and 2023-24 seasons are stored.
+    - AC-006: Given data is stored in Parquet files, when queried, then data retrieval completes in under 2 seconds for any query.
+
 
 **Requirements:**
 
 _Functional:_
 
-- FR-001: Pipeline fetches team standings, records, and conference rankings daily.
-- FR-002: Pipeline fetches player per-game stats, usage rates, and plus/minus metrics.
-- FR-003: Pipeline fetches upcoming game schedules with home/away designations.
-- FR-004: Pipeline stores all data in Parquet files with date-based partitioning.
-- FR-005: Pipeline logs all fetch operations and errors for debugging.
+- FR-001: System shall fetch team statistics including win rates, point differentials, offensive/defensive ratings from NBA Stats API.
+- FR-002: System shall fetch player statistics including key metrics, injury reports, and rest days.
+- FR-003: System shall store all data in Parquet file format for efficient querying.
+- FR-004: System shall implement rate limiting and retry logic for API calls.
 
 _Non-Functional:_
 
-- NFR-001: Pipeline completes daily data refresh within 30 minutes.
-- NFR-002: Pipeline handles API failures gracefully with retry logic.
-- NFR-003: Data storage uses less than 1GB for current season data.
+- NFR-001: Data pipeline shall complete daily refresh within 30 minutes.
+- NFR-002: System shall handle API rate limits gracefully without data loss.
 
 **Dependencies:**
 
-- D001: NBA Stats API (stats.nba.com) - Assumption: API remains publicly accessible with rate limiting.
-- D002: Python nba_api library - Assumption: Library is maintained and compatible with current API endpoints.
+- D001: NBA Stats API - Assumption: API remains free and accessible with documented rate limits.
+- D002: Python Runtime - Assumption: Python 3.11+ is available for data processing scripts.
 
 **Risks:**
 
-- **R001: NBA API Rate Limiting**
+- **R001: NBA Stats API Rate Limiting**
 
-  - Overview: The NBA Stats API may impose strict rate limits or block requests.
-  - Impact: Data pipeline cannot fetch required statistics, blocking model training.
+  - Overview: The NBA Stats API may impose strict rate limits that slow data collection.
+  - Impact: Data freshness may be compromised, affecting prediction accuracy.
   - Probability: High
-  - Mitigation: Implement caching, respect rate limits, use exponential backoff, and store data locally to minimize API calls.
+  - Mitigation: Implement caching, batch requests during off-peak hours, and store data locally to minimize API calls.
 
-- **R002: API Structure Changes**
+- **R002: API Schema Changes**
 
-  - Overview: NBA may change API endpoints or response formats without notice.
-  - Impact: Pipeline breaks and requires code updates to adapt.
+  - Overview: NBA Stats API may change response schemas without notice.
+  - Impact: Data pipeline breaks, requiring immediate fixes.
   - Probability: Medium
-  - Mitigation: Abstract API calls behind interfaces, implement schema validation, monitor for breaking changes.
+  - Mitigation: Implement schema validation and alerting for unexpected response formats.
+
 
 **Success Criteria:**
 
-- SC-001: Complete Data Coverage - Pipeline successfully fetches and stores data for all 30 NBA teams and their players.
-- SC-002: Historical Backfill Complete - 2022-23 and 2023-24 season data is fully backfilled for model training.
-- SC-003: Reliable Daily Updates - Pipeline runs successfully for 7 consecutive days without manual intervention.
+- SC-001: Data Pipeline Operational - Data pipeline successfully fetches and stores team and player data daily.
+- SC-002: Historical Data Available - At least 2 full seasons of historical game data are stored and queryable.
+- SC-003: Data Freshness Maintained - Data is updated within 24 hours of latest NBA games being played.
 
-### Feature: F002 - XGBoost Prediction Model
+### Feature: F002 - XGBoost Model Training Infrastructure
 
-**Description:** Machine learning model using XGBoost to predict NBA game outcomes (moneyline). Trained on historical data with features including team performance, player stats, and situational factors.
+**Description:** Build the machine learning infrastructure for training, evaluating, and versioning XGBoost models for game outcome prediction.
 
 **User Stories:**
 
-- **US-004: Train Prediction Model**
+- **US-004: Train XGBoost Model**
 
-  - Story: As a data scientist, I want to train an XGBoost model on historical NBA data, so that it can predict game winners with measurable accuracy.
+  - Story: As a data scientist, I want to train an XGBoost model on historical NBA data, so that the system can predict game outcomes.
   - Acceptance Criteria:
-    - AC-007: Given historical data from 2022-24 seasons, when training the model, then cross-validation accuracy exceeds 52% (break-even threshold).
-    - AC-008: Given model is trained, when evaluated on holdout set, then log loss and calibration metrics are within acceptable ranges.
+    - AC-007: Given historical data is available, when training is initiated, then an XGBoost model is trained with specified hyperparameters.
+    - AC-008: Given training completes, when the model is saved, then model artifacts and metadata are stored with version information.
 
-- **US-005: Generate Daily Predictions**
+- **US-005: Feature Engineering Pipeline**
 
-  - Story: As a system, I want to generate predictions for today's games each morning, so that picks are available before game time.
+  - Story: As a data scientist, I want automated feature engineering, so that raw data is transformed into predictive features.
   - Acceptance Criteria:
-    - AC-009: Given games are scheduled today, when inference runs, then each game has a predicted winner with probability percentage.
-    - AC-010: Given predictions are generated, when stored, then they include game ID, teams, predicted winner, and confidence score.
+    - AC-009: Given raw game data, when feature engineering runs, then team performance metrics (L5, L10 form) are calculated.
+    - AC-010: Given situational data, when features are generated, then home/away splits, back-to-back flags, and travel distance are computed.
 
-- **US-006: Retrain Model Nightly**
+- **US-006: Model Evaluation**
 
-  - Story: As a data scientist, I want the model to retrain nightly with latest results, so that it captures current season dynamics.
+  - Story: As a data scientist, I want to evaluate model performance with cross-validation, so that I can assess prediction accuracy.
   - Acceptance Criteria:
-    - AC-011: Given yesterday's games completed, when nightly retraining runs, then new results are incorporated into training data.
-    - AC-012: Given retraining completes, when new model is deployed, then it replaces the previous model for inference.
+    - AC-011: Given a trained model, when evaluation runs, then accuracy, log loss, and calibration metrics are computed.
+    - AC-012: Given evaluation results, when metrics are reported, then win rate percentage is clearly displayed.
+
 
 **Requirements:**
 
 _Functional:_
 
-- FR-006: Model uses team performance features: win rates, point differentials, offensive/defensive ratings, recent form (L5, L10).
-- FR-007: Model uses player features: key player stats, injury status, rest days, usage rates.
-- FR-008: Model uses situational features: home/away, back-to-backs, travel distance, division matchups.
-- FR-009: Model outputs predicted winner and win probability for each game.
-- FR-010: Model retrains nightly with rolling window of current season data.
+- FR-005: System shall train XGBoost models using team performance, player stats, and situational features.
+- FR-006: System shall generate features including recent form (L5, L10), home/away splits, and back-to-back indicators.
+- FR-007: System shall evaluate models using time-series cross-validation.
+- FR-008: System shall version and store trained models with metadata.
 
 _Non-Functional:_
 
-- NFR-004: Model inference completes within 5 seconds for all daily games.
-- NFR-005: Nightly retraining completes within 15 minutes.
-- NFR-006: Model achieves 55%+ win rate target over 50+ predictions before public launch.
+- NFR-003: Model training shall complete within 10 minutes on standard hardware.
+- NFR-004: Feature engineering shall process a full season of data in under 5 minutes.
 
 **Dependencies:**
 
-- D003: F001 - NBA Data Pipeline - Assumption: Data pipeline provides clean, structured data for model training.
-- D004: XGBoost Python library - Assumption: Library is stable and well-documented for classification tasks.
+- D003: XGBoost Library - Assumption: XGBoost Python library is stable and maintained.
+- D004: F001 - NBA Data Pipeline - Assumption: Data pipeline provides clean, structured data for training.
 
 **Risks:**
 
-- **R003: Model Underperformance**
+- **R003: Model Overfitting**
 
-  - Overview: XGBoost model may not achieve 55%+ win rate target.
-  - Impact: Cannot launch public service without proven performance threshold.
+  - Overview: Model may overfit to historical patterns that do not generalize.
+  - Impact: Poor prediction accuracy on new games.
   - Probability: Medium
-  - Mitigation: Iterate on feature engineering, hyperparameter tuning, and ensemble methods. Paper trade extensively before launch.
+  - Mitigation: Use time-series cross-validation and regularization parameters.
 
-- **R004: Overfitting to Historical Data**
+- **R004: Insufficient Predictive Signal**
 
-  - Overview: Model may overfit to past seasons and fail on current games.
-  - Impact: High backtesting accuracy but poor live performance.
+  - Overview: Available features may not provide enough signal to beat 55% accuracy.
+  - Impact: Product cannot launch if accuracy threshold is not met.
   - Probability: Medium
-  - Mitigation: Use time-series cross-validation, rolling window training, and holdout validation on recent games.
+  - Mitigation: Iterate on feature engineering and explore additional data sources.
+
 
 **Success Criteria:**
 
-- SC-004: Backtesting Performance - Model achieves 55%+ accuracy on 2023-24 season holdout data.
-- SC-005: Paper Trading Validation - Model achieves 55%+ win rate over 50+ live predictions in paper trading mode.
-- SC-006: Automated Pipeline - Nightly retraining and daily inference run automatically without intervention.
+- SC-004: Model Training Functional - XGBoost model trains successfully on historical data.
+- SC-005: Feature Pipeline Complete - All planned feature categories are implemented and tested.
+- SC-006: Evaluation Metrics Available - Model evaluation produces accuracy, log loss, and calibration metrics.
+
 
 ## Version: v0.2.0
+
+- **Release Date:** 2025-02-01
+- **Status:** not_started
+
+### Feature: F003 - Model Backtesting Framework
+
+**Description:** Implement comprehensive backtesting to validate model performance on historical seasons before live deployment.
+
+**User Stories:**
+
+- **US-007: Backtest on Historical Seasons**
+
+  - Story: As a data scientist, I want to backtest the model on 2022-23 and 2023-24 seasons, so that I can validate it does not overfit.
+  - Acceptance Criteria:
+    - AC-013: Given trained model, when backtesting runs, then predictions are generated for each game in test seasons.
+    - AC-014: Given backtest results, when analysis completes, then win rate, ROI, and maximum drawdown are calculated.
+
+- **US-008: Generate Backtest Reports**
+
+  - Story: As a product owner, I want detailed backtest reports, so that I can assess readiness for launch.
+  - Acceptance Criteria:
+    - AC-015: Given backtest completes, when report is generated, then monthly performance breakdown is included.
+    - AC-016: Given backtest report, when reviewed, then confidence intervals for win rate are displayed.
+
+
+**Requirements:**
+
+_Functional:_
+
+- FR-009: System shall simulate predictions on historical seasons without data leakage.
+- FR-010: System shall calculate ROI assuming standard -110 betting odds.
+- FR-011: System shall generate monthly and seasonal performance reports.
+
+_Non-Functional:_
+
+- NFR-005: Backtesting a full season shall complete within 5 minutes.
+
+**Dependencies:**
+
+- D005: F002 - XGBoost Model - Assumption: Trained model is available for backtesting.
+
+**Risks:**
+
+- **R005: Data Leakage in Backtesting**
+
+  - Overview: Improper backtesting may use future information, inflating results.
+  - Impact: False confidence in model performance.
+  - Probability: Medium
+  - Mitigation: Implement strict temporal splits and code review for data leakage.
+
+
+**Success Criteria:**
+
+- SC-007: Backtest Validation Complete - Model achieves 55%+ win rate on held-out historical seasons.
+- SC-008: No Data Leakage Detected - Code review confirms no future data is used in predictions.
+
+### Feature: F004 - Paper Trading System
+
+**Description:** Run live predictions without publishing to validate model performance on current season before public launch.
+
+**User Stories:**
+
+- **US-009: Generate Daily Paper Predictions**
+
+  - Story: As a system, I want to generate predictions for today's games, so that performance can be tracked privately.
+  - Acceptance Criteria:
+    - AC-017: Given games are scheduled for today, when prediction job runs, then predictions are generated and stored.
+    - AC-018: Given predictions exist, when games complete, then actual results are recorded and accuracy updated.
+
+- **US-010: Track Paper Trading Performance**
+
+  - Story: As a product owner, I want to track paper trading performance over time, so that I can decide when to launch publicly.
+  - Acceptance Criteria:
+    - AC-019: Given paper trading data, when dashboard is viewed, then cumulative win rate and ROI are displayed.
+    - AC-020: Given 50+ predictions, when analysis runs, then statistical confidence in win rate is calculated.
+
+
+**Requirements:**
+
+_Functional:_
+
+- FR-012: System shall generate predictions for all games each day automatically.
+- FR-013: System shall record prediction results after games complete.
+- FR-014: System shall provide paper trading dashboard showing running performance.
+
+_Non-Functional:_
+
+- NFR-006: Daily predictions shall be generated by 10 AM ET before lines move significantly.
+
+**Dependencies:**
+
+- D006: F001 - NBA Data Pipeline - Assumption: Fresh data is available for daily predictions.
+- D007: F002 - XGBoost Model - Assumption: Trained model is deployed for inference.
+
+**Risks:**
+
+- **R006: Paper vs Live Performance Gap**
+
+  - Overview: Paper trading may not reflect real-world conditions.
+  - Impact: Live performance may differ from paper results.
+  - Probability: Low
+  - Mitigation: Paper trade for extended period (4+ weeks) before launch.
+
+
+**Success Criteria:**
+
+- SC-009: Paper Trading Operational - System generates and tracks predictions daily without manual intervention.
+- SC-010: Launch Threshold Met - Paper trading achieves 55%+ win rate over 50+ predictions.
+
+
+## Version: v0.3.0
 
 - **Release Date:** 2025-02-15
 - **Status:** not_started
 
-### Feature: F003 - Daily Picks Blog
+### Feature: F005 - Next.js Blog Foundation
 
-**Description:** Next.js blog with auto-generated daily picks articles in SEO-optimized format. Each game gets a dedicated page with prediction, analysis, and historical context.
+**Description:** Build the core Next.js application infrastructure for the prediction blog, including routing, layouts, and basic pages.
 
 **User Stories:**
 
-- **US-007: View Today's Picks**
+- **US-011: View Homepage with Today's Picks**
 
-  - Story: As a visitor, I want to see today's NBA game predictions on the homepage, so that I can quickly access current picks.
+  - Story: As a visitor, I want to see today's picks prominently on the homepage, so that I can quickly access current predictions.
   - Acceptance Criteria:
-    - AC-013: Given I visit the homepage, when today has scheduled games, then I see a list of all picks with predicted winners and confidence percentages.
-    - AC-014: Given picks are displayed, when viewing each pick, then I see team names, game time, and predicted winner highlighted.
+    - AC-021: Given I visit the homepage, when the page loads, then today's game predictions are displayed with probability percentages.
+    - AC-022: Given no games are scheduled today, when I visit the homepage, then a message indicates no games and shows next game date.
 
-- **US-008: Read Game Prediction Article**
+- **US-012: Navigate Blog Structure**
 
-  - Story: As a visitor, I want to read detailed prediction articles for each game, so that I understand the reasoning behind picks.
+  - Story: As a visitor, I want clear navigation to browse predictions by date, so that I can find historical picks.
   - Acceptance Criteria:
-    - AC-015: Given I click on a game prediction, when the article loads, then I see matchup analysis, key stats, and prediction rationale.
-    - AC-016: Given the article is indexed, when searching for '[Team A] vs [Team B] prediction', then the page appears in search results.
+    - AC-023: Given I am on any page, when I use the navigation, then I can access homepage, archives, and about sections.
+    - AC-024: Given I visit the archives, when I select a date, then predictions for that date are displayed.
 
-- **US-009: Auto-Generate Daily Articles**
-
-  - Story: As a content system, I want to automatically generate MDX articles each morning, so that fresh content is ready without manual work.
-  - Acceptance Criteria:
-    - AC-017: Given predictions are generated, when article generation runs, then each game has an MDX file created with proper frontmatter.
-    - AC-018: Given articles are generated, when the site builds, then all new articles are accessible at their SEO-friendly URLs.
 
 **Requirements:**
 
 _Functional:_
 
-- FR-011: Homepage displays today's picks with game times, teams, and predictions.
-- FR-012: Individual game pages follow format: '/predictions/[date]/[team-a]-vs-[team-b]'.
-- FR-013: Articles include SEO meta tags, structured data, and social sharing cards.
-- FR-014: Content generation pipeline creates MDX files from prediction data.
+- FR-015: System shall display today's predictions on the homepage with team names and probability percentages.
+- FR-016: System shall provide navigation to homepage, archives, and about pages.
+- FR-017: System shall support responsive design for desktop and mobile viewing.
 
 _Non-Functional:_
 
-- NFR-007: Pages load within 2 seconds on 3G connection.
-- NFR-008: Site achieves 90+ Lighthouse SEO score.
-- NFR-009: Articles are generated and published by 8 AM ET daily.
+- NFR-007: Homepage shall load in under 2 seconds on desktop connections.
+- NFR-008: Site shall achieve 90+ Lighthouse performance score.
 
 **Dependencies:**
 
-- D005: F002 - XGBoost Prediction Model - Assumption: Daily predictions are available for article generation.
-- D006: Next.js with MDX support - Assumption: Next.js MDX integration works for dynamic content generation.
+- D008: Next.js Framework - Assumption: Next.js 14+ with App Router is used.
+- D009: React 19 - Assumption: React 19 stable release is available.
+- D010: Tailwind CSS v4 - Assumption: Tailwind v4 is stable and documented.
 
 **Risks:**
 
-- **R005: SEO Competition**
+- **R007: Framework Version Instability**
 
-  - Overview: Established sports sites may dominate search rankings for game prediction keywords.
-  - Impact: Organic traffic growth slower than projected.
-  - Probability: High
-  - Mitigation: Focus on long-tail keywords, build quality backlinks, emphasize unique transparency angle.
+  - Overview: New versions of Next.js, React 19, or Tailwind v4 may have bugs.
+  - Impact: Development delays due to framework issues.
+  - Probability: Low
+  - Mitigation: Pin versions and monitor release notes for breaking changes.
+
 
 **Success Criteria:**
 
-- SC-007: Content Pipeline Active - Daily articles are auto-generated and published for 14 consecutive days.
-- SC-008: SEO Indexing - Google indexes prediction articles within 48 hours of publication.
+- SC-011: Homepage Functional - Homepage displays today's picks with proper formatting.
+- SC-012: Navigation Complete - All core navigation links are functional.
+- SC-013: Performance Target Met - Lighthouse performance score is 90+.
 
-## Version: v0.3.0
+
+## Version: v0.4.0
+
+- **Release Date:** 2025-03-01
+- **Status:** not_started
+
+### Feature: F006 - MDX Daily Picks Pages
+
+**Description:** Implement SEO-optimized daily prediction pages using MDX format for automated content generation.
+
+**User Stories:**
+
+- **US-013: View Game Prediction Page**
+
+  - Story: As a visitor, I want to view detailed prediction pages for each game, so that I can understand the analysis behind picks.
+  - Acceptance Criteria:
+    - AC-025: Given a game prediction page exists, when I visit the URL, then team matchup, prediction, and probability are displayed.
+    - AC-026: Given the page loads, when I scroll, then key factors influencing the prediction are shown.
+
+- **US-014: Find Predictions via Search Engines**
+
+  - Story: As a potential user, I want to find prediction pages through search engines, so that I discover the service organically.
+  - Acceptance Criteria:
+    - AC-027: Given prediction pages are published, when indexed by search engines, then pages appear for '[Team A] vs [Team B] prediction' queries.
+    - AC-028: Given a prediction page, when viewed, then proper meta tags (title, description, Open Graph) are present.
+
+
+**Requirements:**
+
+_Functional:_
+
+- FR-018: System shall generate MDX files for each daily prediction automatically.
+- FR-019: Prediction pages shall include team matchup, prediction pick, probability percentage, and key factors.
+- FR-020: Pages shall have SEO-optimized URLs in format /predictions/[date]/[team-a]-vs-[team-b].
+- FR-021: Pages shall include proper meta tags for search engine and social media optimization.
+
+_Non-Functional:_
+
+- NFR-009: MDX generation shall complete within 5 minutes for all daily games.
+- NFR-010: Generated pages shall pass Google Search Console validation.
+
+**Dependencies:**
+
+- D011: F005 - Next.js Blog Foundation - Assumption: Blog infrastructure is ready for MDX integration.
+- D012: F004 - Paper Trading System - Assumption: Daily predictions are generated and available.
+
+**Risks:**
+
+- **R008: SEO Ranking Competition**
+
+  - Overview: Established sports betting sites dominate search rankings.
+  - Impact: Organic traffic growth may be slower than expected.
+  - Probability: High
+  - Mitigation: Focus on long-tail keywords and unique value proposition (transparent track record).
+
+
+**Success Criteria:**
+
+- SC-014: MDX Generation Automated - Daily prediction pages are auto-generated without manual intervention.
+- SC-015: Pages SEO Optimized - All pages pass SEO audit with proper meta tags and structured data.
+
+### Feature: F007 - Performance Dashboard
+
+**Description:** Public-facing dashboard displaying historical prediction performance including win rate, ROI, and recent results.
+
+**User Stories:**
+
+- **US-015: View Overall Performance**
+
+  - Story: As a visitor, I want to see overall prediction performance metrics, so that I can evaluate the service's track record.
+  - Acceptance Criteria:
+    - AC-029: Given I visit the performance dashboard, when the page loads, then overall win rate and total predictions are displayed.
+    - AC-030: Given performance data exists, when displayed, then ROI percentage assuming standard betting is shown.
+
+- **US-016: View Recent Results**
+
+  - Story: As a visitor, I want to see recent prediction results, so that I can verify current performance.
+  - Acceptance Criteria:
+    - AC-031: Given recent predictions exist, when I view the dashboard, then last 10 predictions with outcomes are displayed.
+    - AC-032: Given a prediction result, when displayed, then team names, pick, and win/loss indicator are shown.
+
+- **US-017: View Monthly Breakdown**
+
+  - Story: As a visitor, I want to see monthly performance breakdown, so that I can assess consistency.
+  - Acceptance Criteria:
+    - AC-033: Given multiple months of data exist, when I view monthly breakdown, then win rate per month is displayed.
+    - AC-034: Given monthly data, when displayed, then trends are visualized (chart or graph).
+
+
+**Requirements:**
+
+_Functional:_
+
+- FR-022: Dashboard shall display overall win rate, total predictions, and ROI.
+- FR-023: Dashboard shall show last 10 prediction results with outcomes.
+- FR-024: Dashboard shall provide monthly performance breakdown.
+- FR-025: Dashboard shall visualize performance trends over time.
+
+_Non-Functional:_
+
+- NFR-011: Dashboard shall update within 1 hour of game completion.
+- NFR-012: Dashboard shall load in under 3 seconds.
+
+**Dependencies:**
+
+- D013: F004 - Paper Trading System - Assumption: Historical prediction data is available for display.
+- D014: F005 - Next.js Blog Foundation - Assumption: Blog infrastructure supports dashboard pages.
+
+**Risks:**
+
+- **R009: Performance Below Expectations**
+
+  - Overview: Public dashboard may show poor performance during bad streaks.
+  - Impact: Trust and credibility damaged during losing periods.
+  - Probability: Medium
+  - Mitigation: Emphasize long-term performance and statistical variance in dashboard copy.
+
+
+**Success Criteria:**
+
+- SC-016: Dashboard Displays Metrics - All required performance metrics are visible and accurate.
+- SC-017: Data Updates Automatically - Dashboard reflects latest results within 1 hour of game completion.
+- SC-018: Performance Load Time Met - Dashboard loads within 3 seconds.
+
+
+## Version: v0.5.0
 
 - **Release Date:** 2025-03-15
 - **Status:** not_started
 
-### Feature: F004 - Performance Dashboard
+### Feature: F008 - Automated Prediction Pipeline
 
-**Description:** Public dashboard displaying historical prediction performance including win rate, ROI, streak data, and complete pick history. Transparency as competitive advantage.
+**Description:** Implement end-to-end automation for daily predictions using scheduled jobs (cron/GitHub Actions).
 
 **User Stories:**
 
-- **US-010: View Overall Performance**
+- **US-018: Automatic Daily Predictions**
 
-  - Story: As a visitor, I want to see the overall prediction track record, so that I can evaluate the service's credibility.
+  - Story: As a system operator, I want predictions generated automatically each morning, so that no manual intervention is required.
   - Acceptance Criteria:
-    - AC-019: Given I visit the dashboard, when viewing stats, then I see total picks, wins, losses, win rate percentage, and ROI.
-    - AC-020: Given historical data exists, when displayed, then all metrics are calculated from verifiable pick history.
+    - AC-035: Given it is a game day, when the scheduled job runs, then predictions are generated for all games.
+    - AC-036: Given predictions are generated, when the job completes, then MDX files are created and committed to repository.
 
-- **US-011: View Recent Results**
+- **US-019: Automatic Result Recording**
 
-  - Story: As a visitor, I want to see recent prediction results, so that I can assess current model performance.
+  - Story: As a system, I want game results recorded automatically, so that performance tracking stays current.
   - Acceptance Criteria:
-    - AC-021: Given recent games completed, when viewing results, then I see last 10 predictions with outcomes marked.
-    - AC-022: Given a prediction was made, when the game completes, then the result is automatically updated.
+    - AC-037: Given games have completed, when the results job runs, then outcomes are fetched and recorded.
+    - AC-038: Given results are recorded, when dashboard data updates, then win/loss status is accurate.
 
-- **US-012: Browse Pick History**
+- **US-020: Pipeline Failure Alerting**
 
-  - Story: As a visitor, I want to browse complete pick history, so that I can verify no cherry-picking occurred.
+  - Story: As a system operator, I want to be alerted if the pipeline fails, so that issues can be addressed quickly.
   - Acceptance Criteria:
-    - AC-023: Given I access pick history, when browsing, then every prediction ever made is listed with date, pick, and outcome.
-    - AC-024: Given history is public, when filtering by date range, then results show all picks in that period.
+    - AC-039: Given a pipeline step fails, when failure is detected, then an email or Slack notification is sent.
+    - AC-040: Given an alert is sent, when reviewed, then error details and failing step are included.
+
 
 **Requirements:**
 
 _Functional:_
 
-- FR-015: Dashboard calculates and displays overall win rate and ROI.
-- FR-016: Dashboard shows last N predictions with win/loss indicators.
-- FR-017: Dashboard provides filterable, searchable complete pick history.
-- FR-018: Results are automatically updated when games complete.
+- FR-026: System shall run prediction pipeline daily at 8 AM ET via scheduled job.
+- FR-027: System shall automatically commit generated MDX files to repository.
+- FR-028: System shall fetch and record game results daily after games complete.
+- FR-029: System shall send alerts on pipeline failures via email or Slack.
 
 _Non-Functional:_
 
-- NFR-010: Dashboard loads within 3 seconds with full history.
-- NFR-011: Historical data is immutable to ensure transparency.
+- NFR-013: Pipeline shall complete within 30 minutes of scheduled start time.
+- NFR-014: Pipeline shall achieve 99% uptime over 30-day rolling period.
 
 **Dependencies:**
 
-- D007: F002 - XGBoost Prediction Model - Assumption: All predictions are logged with timestamps before games start.
-- D008: Supabase PostgreSQL - Assumption: Database stores all picks and game outcomes for querying.
+- D015: GitHub Actions - Assumption: GitHub Actions is available for scheduling and execution.
+- D016: F001, F002, F006 - Assumption: Data pipeline, model, and MDX generation are functional.
 
 **Risks:**
 
-- **R006: Model Performance Exposure**
+- **R010: Pipeline Reliability**
 
-  - Overview: Public dashboard exposes poor performance if model underperforms.
-  - Impact: Credibility damage if win rate drops below break-even.
+  - Overview: External dependencies (API, GitHub Actions) may cause failures.
+  - Impact: Predictions not published, damaging user trust.
   - Probability: Medium
-  - Mitigation: Paper trade extensively before public launch; have minimum performance threshold before going live.
+  - Mitigation: Implement retries, fallback mechanisms, and comprehensive alerting.
+
 
 **Success Criteria:**
 
-- SC-009: Full Transparency - 100% of predictions are publicly visible with verifiable outcomes.
-- SC-010: Automated Updates - Game outcomes update dashboard within 1 hour of game completion.
+- SC-019: Pipeline Runs Daily - Automated pipeline executes daily without manual intervention.
+- SC-020: Alerts Functional - Failure alerts are received within 5 minutes of pipeline error.
+- SC-021: Uptime Target Met - Pipeline achieves 99% uptime over first 30 days.
 
-## Version: v0.4.0
 
-- **Release Date:** 2025-04-15
+## Version: v0.6.0
+
+- **Release Date:** 2025-04-01
 - **Status:** not_started
 
-### Feature: F005 - Ad Monetization
+### Feature: F009 - Google AdSense Integration
 
-**Description:** Google AdSense integration for initial monetization. Strategic ad placement that balances revenue with user experience.
+**Description:** Integrate Google AdSense for ad monetization on the blog.
 
 **User Stories:**
 
-- **US-013: Display Advertisements**
+- **US-021: Display Ads on Pages**
 
-  - Story: As a site owner, I want to display ads on the site, so that traffic generates revenue.
+  - Story: As a site owner, I want ads displayed on blog pages, so that the site generates ad revenue.
   - Acceptance Criteria:
-    - AC-025: Given AdSense is configured, when pages load, then ads display in designated placements.
-    - AC-026: Given ads are displayed, when viewing on mobile, then ads are responsive and non-intrusive.
+    - AC-041: Given AdSense is integrated, when a visitor loads a page, then ads are displayed in designated slots.
+    - AC-042: Given ads are displayed, when viewed, then ads do not obstruct primary content.
+
+- **US-022: Non-Intrusive Ad Placement**
+
+  - Story: As a visitor, I want ads that do not interfere with content consumption, so that my experience is not degraded.
+  - Acceptance Criteria:
+    - AC-043: Given ads are displayed, when I read prediction content, then ads are placed in sidebar or between sections.
+    - AC-044: Given I am on mobile, when viewing the page, then ads are appropriately sized and positioned.
+
 
 **Requirements:**
 
 _Functional:_
 
-- FR-019: AdSense ads display on homepage, article pages, and dashboard.
-- FR-020: Ad placements follow Google AdSense policies.
+- FR-030: System shall integrate Google AdSense code on all blog pages.
+- FR-031: Ad placements shall be in sidebar and between content sections.
+- FR-032: System shall support responsive ad units for mobile and desktop.
 
 _Non-Functional:_
 
-- NFR-012: Ads do not degrade page load time by more than 500ms.
-- NFR-013: Ad density complies with Better Ads Standards.
+- NFR-015: Ad loading shall not increase page load time by more than 500ms.
+- NFR-016: Ads shall comply with Google AdSense policies.
 
 **Dependencies:**
 
-- D009: Google AdSense account approval - Assumption: Site has sufficient content and traffic for AdSense approval.
+- D017: Google AdSense Account - Assumption: AdSense account is approved and active.
+- D018: F005 - Next.js Blog Foundation - Assumption: Blog pages are ready for ad integration.
 
 **Risks:**
 
-- **R007: AdSense Rejection**
+- **R011: AdSense Approval Delay**
 
-  - Overview: Google may reject AdSense application due to content policy concerns with betting content.
-  - Impact: Primary monetization strategy blocked.
+  - Overview: Google AdSense approval may take time or be rejected.
+  - Impact: Monetization delayed, affecting revenue targets.
   - Probability: Medium
-  - Mitigation: Position as sports analytics/predictions (not gambling); have backup ad networks identified.
+  - Mitigation: Submit for approval early; have alternative ad networks as backup.
+
+- **R012: Low Ad Revenue Initially**
+
+  - Overview: Low traffic means low ad revenue at launch.
+  - Impact: Revenue targets may not be met initially.
+  - Probability: High
+  - Mitigation: Focus on traffic growth through SEO and content marketing.
+
 
 **Success Criteria:**
 
-- SC-011: AdSense Approved - Google AdSense account is approved and ads are serving.
-- SC-012: Revenue Generation - Site generates measurable ad revenue within first month of traffic.
+- SC-022: Ads Displaying Correctly - Ads appear on all blog pages without layout issues.
+- SC-023: AdSense Approved - Google AdSense account is approved and generating impressions.
+- SC-024: Performance Impact Minimal - Page load time increase is under 500ms with ads.
 
-### Feature: F006 - Email Newsletter
+### Feature: F010 - MVP Public Launch
 
-**Description:** Daily email newsletter with picks digest. Builds owned audience for future subscription conversion.
+**Description:** Official public launch of the ad-supported prediction blog after achieving performance threshold.
 
 **User Stories:**
 
-- **US-014: Subscribe to Newsletter**
+- **US-023: Access Public Blog**
 
-  - Story: As a visitor, I want to subscribe to daily picks via email, so that I receive predictions in my inbox.
+  - Story: As a visitor, I want to access the publicly available prediction blog, so that I can use the service.
   - Acceptance Criteria:
-    - AC-027: Given I enter my email, when I subscribe, then I receive a confirmation email.
-    - AC-028: Given I am subscribed, when picks are published daily, then I receive an email with today's predictions.
+    - AC-045: Given the site is launched, when I visit the URL, then the homepage loads with today's picks.
+    - AC-046: Given I am a search engine user, when I search for predictions, then relevant pages may appear in results.
 
-- **US-015: Manage Subscription**
+- **US-024: Trust Through Transparency**
 
-  - Story: As a subscriber, I want to unsubscribe easily, so that I control my email preferences.
+  - Story: As a visitor, I want to see the full track record including losses, so that I can trust the service is honest.
   - Acceptance Criteria:
-    - AC-029: Given I receive a newsletter, when I click unsubscribe, then I am removed from the list.
+    - AC-047: Given I visit the performance dashboard, when viewing results, then all predictions including losses are displayed.
+    - AC-048: Given the track record, when reviewed, then no cherry-picking or hidden results are evident.
+
 
 **Requirements:**
 
 _Functional:_
 
-- FR-021: Email capture form on homepage and article pages.
-- FR-022: Daily automated email with today's picks sent by 9 AM ET.
-- FR-023: Unsubscribe link in every email that works immediately.
+- FR-033: Site shall be deployed to production hosting environment.
+- FR-034: All core features (homepage, predictions, dashboard) shall be functional.
+- FR-035: Site shall have proper domain and SSL certificate.
 
 _Non-Functional:_
 
-- NFR-014: Email deliverability rate above 95%.
-- NFR-015: Comply with CAN-SPAM and GDPR requirements.
+- NFR-017: Site shall achieve 99.5% uptime.
+- NFR-018: Site shall handle at least 1000 concurrent visitors.
 
 **Dependencies:**
 
-- D010: Email service provider (e.g., Resend, SendGrid) - Assumption: Email provider supports transactional and marketing emails.
+- D019: F005-F009 - Assumption: All MVP features are complete and tested.
+- D020: Domain and Hosting - Assumption: Domain is registered and hosting provider selected.
 
 **Risks:**
 
-- **R008: Spam Filtering**
+- **R013: Launch Performance Issues**
 
-  - Overview: Emails may be caught by spam filters, reducing deliverability.
-  - Impact: Subscribers don't receive picks, reducing engagement.
+  - Overview: Unexpected traffic or bugs may cause issues at launch.
+  - Impact: Poor first impression, user loss.
   - Probability: Medium
-  - Mitigation: Use reputable email provider, implement proper SPF/DKIM/DMARC, warm up IP gradually.
+  - Mitigation: Soft launch to limited audience first; monitor closely.
+
 
 **Success Criteria:**
 
-- SC-013: Subscriber Growth - Acquire 500+ email subscribers within 3 months of launch.
-- SC-014: Engagement Metrics - Newsletter open rate above 30%, click rate above 5%.
+- SC-025: Site Live and Accessible - Site is publicly accessible at production domain.
+- SC-026: Core Features Functional - All MVP features work correctly in production.
+- SC-027: Performance Threshold Met - Model has achieved 55%+ win rate over 50+ predictions before launch.
+
+
+## Version: v0.7.0
+
+- **Release Date:** 2025-05-01
+- **Status:** not_started
+
+### Feature: F011 - Email Newsletter System
+
+**Description:** Build email capture and daily newsletter delivery for owned audience building.
+
+**User Stories:**
+
+- **US-025: Subscribe to Newsletter**
+
+  - Story: As a visitor, I want to subscribe to the daily picks newsletter, so that I receive predictions in my inbox.
+  - Acceptance Criteria:
+    - AC-049: Given I am on the homepage, when I enter my email and submit, then I am subscribed to the newsletter.
+    - AC-050: Given I subscribe, when confirmation is sent, then I receive a welcome email.
+
+- **US-026: Receive Daily Picks Email**
+
+  - Story: As a subscriber, I want to receive daily picks via email, so that I don't have to visit the site.
+  - Acceptance Criteria:
+    - AC-051: Given I am subscribed, when picks are published, then I receive an email with today's predictions.
+    - AC-052: Given the email is received, when I read it, then team matchups and predictions are clearly formatted.
+
+- **US-027: Unsubscribe from Newsletter**
+
+  - Story: As a subscriber, I want to easily unsubscribe, so that I can stop receiving emails.
+  - Acceptance Criteria:
+    - AC-053: Given I receive a newsletter email, when I click unsubscribe, then I am removed from the list.
+    - AC-054: Given I unsubscribe, when confirmed, then I no longer receive newsletter emails.
+
+
+**Requirements:**
+
+_Functional:_
+
+- FR-036: System shall provide email subscription form on homepage and prediction pages.
+- FR-037: System shall send daily newsletter with predictions each morning.
+- FR-038: System shall support double opt-in for subscriptions.
+- FR-039: System shall include one-click unsubscribe in all emails.
+
+_Non-Functional:_
+
+- NFR-019: Newsletter delivery shall complete within 1 hour of predictions being published.
+- NFR-020: Email deliverability shall exceed 95%.
+
+**Dependencies:**
+
+- D021: Email Service Provider - Assumption: Email service (e.g., Resend, SendGrid) is configured.
+- D022: F008 - Automated Pipeline - Assumption: Daily predictions trigger newsletter sending.
+
+**Risks:**
+
+- **R014: Email Deliverability Issues**
+
+  - Overview: Emails may be marked as spam or not delivered.
+  - Impact: Subscriber engagement drops.
+  - Probability: Medium
+  - Mitigation: Use reputable ESP, implement SPF/DKIM, warm up sending domain.
+
+
+**Success Criteria:**
+
+- SC-028: Subscription Functional - Users can successfully subscribe and receive welcome email.
+- SC-029: Daily Newsletter Delivered - Newsletter is sent daily with predictions to all subscribers.
+- SC-030: Deliverability Target Met - Email deliverability exceeds 95%.
+
+### Feature: F012 - Social Media Integration
+
+**Description:** Add social sharing capabilities and automated posting to Twitter/X for audience growth.
+
+**User Stories:**
+
+- **US-028: Share Predictions on Social**
+
+  - Story: As a visitor, I want to share predictions on social media, so that I can discuss with friends.
+  - Acceptance Criteria:
+    - AC-055: Given I am on a prediction page, when I click share, then I can share to Twitter/X with pre-filled text.
+    - AC-056: Given I share to social media, when the post is created, then it includes a link back to the prediction page.
+
+- **US-029: Auto-Post Daily Picks**
+
+  - Story: As a site owner, I want daily picks auto-posted to Twitter/X, so that social followers are notified.
+  - Acceptance Criteria:
+    - AC-057: Given predictions are published, when the pipeline completes, then a summary tweet is posted.
+    - AC-058: Given a tweet is posted, when viewed, then it includes game count and link to homepage.
+
+
+**Requirements:**
+
+_Functional:_
+
+- FR-040: Prediction pages shall include social share buttons for Twitter/X.
+- FR-041: System shall auto-post daily picks summary to Twitter/X.
+- FR-042: Social posts shall use Open Graph meta tags for rich previews.
+
+_Non-Functional:_
+
+- NFR-021: Auto-posts shall occur within 15 minutes of predictions being published.
+
+**Dependencies:**
+
+- D023: Twitter/X API Access - Assumption: Twitter/X developer account with posting permissions.
+
+**Risks:**
+
+- **R015: Twitter API Changes**
+
+  - Overview: Twitter/X API pricing or access may change.
+  - Impact: Auto-posting feature may break or become expensive.
+  - Probability: Medium
+  - Mitigation: Design for manual fallback; monitor API status.
+
+
+**Success Criteria:**
+
+- SC-031: Share Buttons Functional - Social share buttons work correctly on all prediction pages.
+- SC-032: Auto-Posting Active - Daily picks are automatically posted to Twitter/X.
+
+
+## Version: v0.8.0
+
+- **Release Date:** 2025-06-01
+- **Status:** not_started
+
+### Feature: F013 - Supabase User Authentication
+
+**Description:** Implement user authentication using Supabase for future premium features.
+
+**User Stories:**
+
+- **US-030: Create User Account**
+
+  - Story: As a visitor, I want to create an account, so that I can access member features in the future.
+  - Acceptance Criteria:
+    - AC-059: Given I am on the signup page, when I submit email and password, then my account is created.
+    - AC-060: Given I sign up, when account is created, then I receive a verification email.
+
+- **US-031: Login to Account**
+
+  - Story: As a registered user, I want to log in, so that I can access my account.
+  - Acceptance Criteria:
+    - AC-061: Given I have an account, when I enter valid credentials, then I am logged in.
+    - AC-062: Given I am logged in, when I view the site, then my logged-in status is indicated.
+
+- **US-032: Password Reset**
+
+  - Story: As a user, I want to reset my password if forgotten, so that I can regain account access.
+  - Acceptance Criteria:
+    - AC-063: Given I forgot my password, when I request reset, then I receive a reset email.
+    - AC-064: Given I receive reset email, when I set new password, then I can log in with new password.
+
+
+**Requirements:**
+
+_Functional:_
+
+- FR-043: System shall support email/password authentication via Supabase.
+- FR-044: System shall require email verification for new accounts.
+- FR-045: System shall support password reset via email.
+- FR-046: System shall maintain secure session management.
+
+_Non-Functional:_
+
+- NFR-022: Authentication flows shall complete in under 3 seconds.
+- NFR-023: Password storage shall use bcrypt with appropriate cost factor.
+
+**Dependencies:**
+
+- D024: Supabase - Assumption: Supabase project is configured with auth enabled.
+
+**Risks:**
+
+- **R016: Authentication Security**
+
+  - Overview: Security vulnerabilities in auth implementation.
+  - Impact: User accounts compromised.
+  - Probability: Low
+  - Mitigation: Use Supabase built-in auth; follow security best practices.
+
+
+**Success Criteria:**
+
+- SC-033: Registration Functional - Users can successfully create and verify accounts.
+- SC-034: Login Functional - Users can log in and out successfully.
+- SC-035: Password Reset Works - Users can reset passwords via email.
+
+### Feature: F014 - User Profile Management
+
+**Description:** Allow users to manage their profile and preferences.
+
+**User Stories:**
+
+- **US-033: View Profile**
+
+  - Story: As a logged-in user, I want to view my profile, so that I can see my account information.
+  - Acceptance Criteria:
+    - AC-065: Given I am logged in, when I visit my profile, then I see my email and account creation date.
+
+- **US-034: Update Email Preferences**
+
+  - Story: As a user, I want to manage email preferences, so that I control what emails I receive.
+  - Acceptance Criteria:
+    - AC-066: Given I am on profile settings, when I toggle newsletter preference, then my preference is saved.
+    - AC-067: Given I opt out of newsletter, when next newsletter sends, then I do not receive it.
+
+
+**Requirements:**
+
+_Functional:_
+
+- FR-047: System shall provide user profile page showing account details.
+- FR-048: System shall allow users to update email notification preferences.
+
+_Non-Functional:_
+
+- NFR-024: Profile page shall load in under 2 seconds.
+
+**Dependencies:**
+
+- D025: F013 - User Authentication - Assumption: Authentication system is functional.
+
+**Risks:**
+
+- None
+
+**Success Criteria:**
+
+- SC-036: Profile Page Accessible - Logged-in users can view their profile.
+- SC-037: Preferences Saveable - Email preferences can be updated and are respected.
+
+
+## Version: v0.9.0
+
+- **Release Date:** 2025-07-01
+- **Status:** not_started
+
+### Feature: F015 - Stripe Payment Integration
+
+**Description:** Integrate Stripe for subscription payment processing.
+
+**User Stories:**
+
+- **US-035: Subscribe to Premium**
+
+  - Story: As a user, I want to subscribe to premium tier, so that I can access advanced predictions.
+  - Acceptance Criteria:
+    - AC-068: Given I am logged in, when I select premium subscription, then I am directed to Stripe checkout.
+    - AC-069: Given I complete payment, when checkout succeeds, then my account is upgraded to premium.
+
+- **US-036: Manage Subscription**
+
+  - Story: As a subscriber, I want to manage my subscription, so that I can cancel or change plans.
+  - Acceptance Criteria:
+    - AC-070: Given I am a premium user, when I visit subscription settings, then I can view my plan details.
+    - AC-071: Given I want to cancel, when I initiate cancellation, then my subscription is cancelled at period end.
+
+- **US-037: View Payment History**
+
+  - Story: As a subscriber, I want to see payment history, so that I can track my spending.
+  - Acceptance Criteria:
+    - AC-072: Given I am subscribed, when I view payment history, then past invoices are displayed.
+
+
+**Requirements:**
+
+_Functional:_
+
+- FR-049: System shall integrate Stripe for subscription payments.
+- FR-050: System shall support monthly subscription billing.
+- FR-051: System shall provide subscription management portal.
+- FR-052: System shall handle webhook events for subscription lifecycle.
+
+_Non-Functional:_
+
+- NFR-025: Payment processing shall be PCI compliant via Stripe.
+- NFR-026: Subscription status updates shall occur within 5 minutes of payment events.
+
+**Dependencies:**
+
+- D026: Stripe Account - Assumption: Stripe account is verified and products configured.
+- D027: F013 - User Authentication - Assumption: Users are authenticated before subscribing.
+
+**Risks:**
+
+- **R017: Payment Failures**
+
+  - Overview: Users may experience payment failures.
+  - Impact: Lost revenue and frustrated users.
+  - Probability: Low
+  - Mitigation: Implement retry logic and clear error messaging.
+
+
+**Success Criteria:**
+
+- SC-038: Checkout Functional - Users can complete subscription checkout via Stripe.
+- SC-039: Subscription Status Accurate - User subscription status updates correctly after payment.
+- SC-040: Cancellation Works - Users can cancel subscriptions through the portal.
+
+### Feature: F016 - Premium Spread and Totals Predictions
+
+**Description:** Add spread and totals predictions as premium-only features.
+
+**User Stories:**
+
+- **US-038: View Spread Predictions**
+
+  - Story: As a premium user, I want to see spread predictions, so that I can bet against the spread.
+  - Acceptance Criteria:
+    - AC-073: Given I am premium, when I view a prediction, then spread prediction is displayed.
+    - AC-074: Given I am free user, when I view a prediction, then spread prediction is locked/blurred.
+
+- **US-039: View Totals Predictions**
+
+  - Story: As a premium user, I want to see over/under predictions, so that I can bet on totals.
+  - Acceptance Criteria:
+    - AC-075: Given I am premium, when I view a prediction, then over/under prediction is displayed.
+    - AC-076: Given I am free user, when I view a prediction, then totals prediction is locked/blurred.
+
+
+**Requirements:**
+
+_Functional:_
+
+- FR-053: System shall generate spread predictions using enhanced model.
+- FR-054: System shall generate over/under predictions for game totals.
+- FR-055: System shall gate spread and totals predictions behind premium subscription.
+
+_Non-Functional:_
+
+- NFR-027: Premium predictions shall be generated alongside moneyline predictions.
+
+**Dependencies:**
+
+- D028: F002 - XGBoost Model - Assumption: Model can be extended for spread and totals predictions.
+- D029: F015 - Stripe Integration - Assumption: Subscription status determines feature access.
+
+**Risks:**
+
+- **R018: Spread Model Accuracy**
+
+  - Overview: Spread predictions may not achieve same accuracy as moneyline.
+  - Impact: Premium value proposition weakened.
+  - Probability: Medium
+  - Mitigation: Backtest thoroughly before launch; be transparent about different accuracy.
+
+
+**Success Criteria:**
+
+- SC-041: Spread Predictions Generated - Spread predictions are generated daily for premium users.
+- SC-042: Totals Predictions Generated - Over/under predictions are generated daily for premium users.
+- SC-043: Feature Gating Works - Free users cannot access premium predictions.
+
+
+## Version: v0.10.0
+
+- **Release Date:** 2025-08-01
+- **Status:** not_started
+
+### Feature: F017 - Prediction API for Premium Users
+
+**Description:** Provide API access for power users to retrieve predictions programmatically.
+
+**User Stories:**
+
+- **US-040: Generate API Key**
+
+  - Story: As a premium user, I want to generate an API key, so that I can access predictions programmatically.
+  - Acceptance Criteria:
+    - AC-077: Given I am premium, when I visit API settings, then I can generate an API key.
+    - AC-078: Given I generate a key, when displayed, then I can copy it to clipboard.
+
+- **US-041: Fetch Predictions via API**
+
+  - Story: As a developer, I want to fetch predictions via API, so that I can integrate with my tools.
+  - Acceptance Criteria:
+    - AC-079: Given I have an API key, when I call /api/predictions, then I receive today's predictions in JSON.
+    - AC-080: Given I call the API, when response returns, then it includes moneyline, spread, and totals predictions.
+
+- **US-042: API Rate Limiting**
+
+  - Story: As a system, I want to rate limit API requests, so that resources are not abused.
+  - Acceptance Criteria:
+    - AC-081: Given a user makes many requests, when rate limit exceeded, then 429 response is returned.
+    - AC-082: Given rate limit is enforced, when user waits, then requests succeed again.
+
+
+**Requirements:**
+
+_Functional:_
+
+- FR-056: System shall allow premium users to generate API keys.
+- FR-057: API shall return predictions in JSON format.
+- FR-058: API shall include all prediction types (moneyline, spread, totals).
+- FR-059: API shall enforce rate limits per user.
+
+_Non-Functional:_
+
+- NFR-028: API response time shall be under 500ms.
+- NFR-029: Rate limit shall be 100 requests per hour per user.
+
+**Dependencies:**
+
+- D030: F015 - Stripe Integration - Assumption: Premium status determines API access.
+- D031: F016 - Premium Predictions - Assumption: All prediction types are available.
+
+**Risks:**
+
+- **R019: API Abuse**
+
+  - Overview: Users may share API keys or exceed intended usage.
+  - Impact: Server resources strained.
+  - Probability: Medium
+  - Mitigation: Implement rate limiting and key rotation capabilities.
+
+
+**Success Criteria:**
+
+- SC-044: API Key Generation Works - Premium users can generate and manage API keys.
+- SC-045: API Returns Predictions - API endpoint returns predictions in correct JSON format.
+- SC-046: Rate Limiting Enforced - Excessive requests are rate limited with appropriate response.
+
+### Feature: F018 - Early Access Predictions
+
+**Description:** Provide premium users with early access to predictions before public release.
+
+**User Stories:**
+
+- **US-043: View Early Predictions**
+
+  - Story: As a premium user, I want early access to predictions, so that I can bet before lines move.
+  - Acceptance Criteria:
+    - AC-083: Given I am premium, when predictions are generated, then I see them 2 hours before free users.
+    - AC-084: Given early access period, when I view predictions, then 'Early Access' badge is displayed.
+
+- **US-044: Email Early Predictions**
+
+  - Story: As a premium subscriber, I want early predictions emailed, so that I'm notified immediately.
+  - Acceptance Criteria:
+    - AC-085: Given I am premium with newsletter enabled, when predictions generate, then I receive email 2 hours before free users.
+
+
+**Requirements:**
+
+_Functional:_
+
+- FR-060: System shall release predictions to premium users 2 hours before free users.
+- FR-061: System shall mark early access predictions with visual indicator.
+- FR-062: System shall send early access email to premium subscribers.
+
+_Non-Functional:_
+
+- NFR-030: Early access timing shall be accurate within 5 minutes.
+
+**Dependencies:**
+
+- D032: F015 - Stripe Integration - Assumption: Premium status determines early access.
+- D033: F011 - Email Newsletter - Assumption: Newsletter infrastructure supports timed sending.
+
+**Risks:**
+
+- None
+
+**Success Criteria:**
+
+- SC-047: Early Access Timing Accurate - Premium users see predictions 2 hours before free users.
+- SC-048: Early Email Sent - Premium subscribers receive early access email.
+
 
 ## Version: v1.0.0
 
-- **Release Date:** 2025-06-15
+- **Release Date:** 2025-09-01
 - **Status:** not_started
 
-### Feature: F007 - User Authentication
+### Feature: F019 - Desktop Prediction Bot Application
 
-**Description:** Supabase-based authentication system supporting email/password and social logins. Foundation for premium subscription features.
+**Description:** Downloadable desktop application that provides automated prediction access similar to sneaker bots.
 
 **User Stories:**
 
-- **US-016: Create Account**
+- **US-045: Download Prediction Bot**
 
-  - Story: As a visitor, I want to create an account, so that I can access premium features when available.
+  - Story: As a premium user, I want to download the prediction bot, so that I can run it locally.
   - Acceptance Criteria:
-    - AC-030: Given I provide email and password, when I sign up, then an account is created and I receive verification email.
-    - AC-031: Given I have a Google account, when I click sign in with Google, then I am authenticated via OAuth.
+    - AC-086: Given I am premium, when I visit downloads page, then I can download the bot for my OS.
+    - AC-087: Given I download the bot, when I run it, then it prompts for API key authentication.
 
-- **US-017: Login to Account**
+- **US-046: Receive Desktop Notifications**
 
-  - Story: As a user, I want to log into my account, so that I can access personalized features.
+  - Story: As a bot user, I want desktop notifications when predictions are ready, so that I'm alerted immediately.
   - Acceptance Criteria:
-    - AC-032: Given I have an account, when I enter correct credentials, then I am logged in and redirected.
-    - AC-033: Given I am logged in, when I return to the site, then my session persists for 7 days.
+    - AC-088: Given the bot is running, when new predictions are available, then a desktop notification appears.
+    - AC-089: Given I click the notification, when the app opens, then today's predictions are displayed.
+
+- **US-047: View Predictions in Bot**
+
+  - Story: As a bot user, I want to view predictions in the desktop app, so that I don't need to visit the website.
+  - Acceptance Criteria:
+    - AC-090: Given the bot is authenticated, when I open it, then today's predictions are displayed.
+    - AC-091: Given predictions are shown, when I view details, then all prediction types are visible.
+
 
 **Requirements:**
 
 _Functional:_
 
-- FR-024: Support email/password authentication with email verification.
-- FR-025: Support Google OAuth social login.
-- FR-026: Password reset flow via email.
-- FR-027: Session management with secure token handling.
+- FR-063: System shall provide downloadable desktop application for Windows and macOS.
+- FR-064: Bot shall authenticate using API key.
+- FR-065: Bot shall display desktop notifications for new predictions.
+- FR-066: Bot shall display all prediction types with probabilities.
+- FR-067: Bot shall auto-update when new versions are available.
 
 _Non-Functional:_
 
-- NFR-016: Authentication flows complete within 3 seconds.
-- NFR-017: Follow OWASP authentication security best practices.
+- NFR-031: Bot shall use minimal system resources (under 100MB RAM).
+- NFR-032: Bot shall start up in under 5 seconds.
 
 **Dependencies:**
 
-- D011: Supabase Auth - Assumption: Supabase provides reliable auth infrastructure.
+- D034: Electron or Tauri - Assumption: Desktop framework is selected and configured.
+- D035: F017 - Prediction API - Assumption: API is available for bot to fetch predictions.
 
 **Risks:**
 
-- **R009: Security Vulnerabilities**
+- **R020: Cross-Platform Compatibility**
 
-  - Overview: Authentication system may have security flaws.
-  - Impact: User accounts compromised, legal and reputation damage.
-  - Probability: Low
-  - Mitigation: Use Supabase managed auth, implement security best practices, regular security reviews.
-
-**Success Criteria:**
-
-- SC-015: Auth System Live - Users can create accounts and log in via email or Google.
-- SC-016: Security Audit Passed - No critical vulnerabilities in authentication flows.
-
-### Feature: F008 - Subscription Payments
-
-**Description:** Stripe integration for premium subscription management. Monthly recurring billing with free tier for moneyline picks.
-
-**User Stories:**
-
-- **US-018: Subscribe to Premium**
-
-  - Story: As a user, I want to subscribe to a premium plan, so that I can access spreads, totals, and advanced features.
-  - Acceptance Criteria:
-    - AC-034: Given I am logged in, when I select a premium plan and enter payment, then my subscription is activated.
-    - AC-035: Given I am subscribed, when I access premium content, then I can view spreads and totals predictions.
-
-- **US-019: Manage Subscription**
-
-  - Story: As a subscriber, I want to manage my subscription, so that I can upgrade, downgrade, or cancel.
-  - Acceptance Criteria:
-    - AC-036: Given I have a subscription, when I access billing settings, then I can view and modify my plan.
-    - AC-037: Given I cancel, when the billing period ends, then my access reverts to free tier.
-
-**Requirements:**
-
-_Functional:_
-
-- FR-028: Stripe Checkout integration for subscription signup.
-- FR-029: Customer portal for subscription management.
-- FR-030: Webhook handling for subscription lifecycle events.
-- FR-031: Tier-based access control for premium content.
-
-_Non-Functional:_
-
-- NFR-018: Payment processing completes within 5 seconds.
-- NFR-019: PCI DSS compliance via Stripe's hosted checkout.
-
-**Dependencies:**
-
-- D012: Stripe - Assumption: Stripe account approved for recurring billing.
-- D013: F007 - User Authentication - Assumption: Users must be authenticated to subscribe.
-
-**Risks:**
-
-- **R010: Payment Processing Issues**
-
-  - Overview: Stripe may flag or restrict account for betting-related content.
-  - Impact: Cannot process payments, blocking monetization.
-  - Probability: Low
-  - Mitigation: Position as sports analytics, review Stripe's acceptable use policy, have backup processor identified.
-
-**Success Criteria:**
-
-- SC-017: Payments Processing - Users can successfully subscribe and make payments via Stripe.
-- SC-018: MRR Milestone - Achieve $1k MRR within 3 months of subscription launch.
-
-### Feature: F009 - Premium Predictions (Spreads & Totals)
-
-**Description:** Extended prediction coverage for point spreads and over/under totals. Premium-only feature for paying subscribers.
-
-**User Stories:**
-
-- **US-020: View Spread Predictions**
-
-  - Story: As a premium subscriber, I want to see point spread predictions, so that I can make more informed betting decisions.
-  - Acceptance Criteria:
-    - AC-038: Given I am a premium subscriber, when I view today's picks, then I see spread predictions alongside moneyline.
-    - AC-039: Given a spread prediction, when displayed, then it shows predicted spread and confidence level.
-
-- **US-021: View Totals Predictions**
-
-  - Story: As a premium subscriber, I want to see over/under predictions, so that I have complete game analysis.
-  - Acceptance Criteria:
-    - AC-040: Given I am a premium subscriber, when I view picks, then I see over/under predictions with projected total.
-
-**Requirements:**
-
-_Functional:_
-
-- FR-032: Model generates spread predictions with confidence scores.
-- FR-033: Model generates over/under predictions with projected totals.
-- FR-034: Premium content gated behind subscription check.
-
-_Non-Functional:_
-
-- NFR-020: Spread and totals predictions achieve 52%+ accuracy (break-even for standard vig).
-
-**Dependencies:**
-
-- D014: F002 - XGBoost Prediction Model - Assumption: Model extended to predict spreads and totals.
-- D015: F008 - Subscription Payments - Assumption: Subscription status determines content access.
-
-**Risks:**
-
-- **R011: Spread/Totals Model Underperformance**
-
-  - Overview: Predicting spreads and totals may be harder than moneyline.
-  - Impact: Premium feature doesn't deliver value, hurting retention.
+  - Overview: Desktop app may have issues on different OS versions.
+  - Impact: Support burden increases.
   - Probability: Medium
-  - Mitigation: Extensive backtesting before launch; clearly communicate that spreads/totals are harder markets.
+  - Mitigation: Thorough testing on target platforms; provide clear system requirements.
+
+- **R021: Distribution and Updates**
+
+  - Overview: Managing desktop app distribution and updates is complex.
+  - Impact: Users may run outdated versions.
+  - Probability: Medium
+  - Mitigation: Implement auto-update mechanism; notify users of available updates.
+
 
 **Success Criteria:**
 
-- SC-019: Premium Predictions Live - Spread and totals predictions available to premium subscribers.
-- SC-020: Premium Performance - Spread predictions achieve 52%+ win rate over first 100 picks.
+- SC-049: Bot Downloadable - Premium users can download bot for Windows and macOS.
+- SC-050: Authentication Works - Bot authenticates using API key successfully.
+- SC-051: Notifications Functional - Desktop notifications appear when predictions are ready.
+- SC-052: Predictions Display - All prediction types are viewable in the bot.
+
+### Feature: F020 - V1.0 Stable Release
+
+**Description:** Official stable release with full feature set including ad-supported free tier and premium subscription with bot.
+
+**User Stories:**
+
+- **US-048: Access Complete Platform**
+
+  - Story: As a user, I want access to the complete prediction platform, so that I have all features available.
+  - Acceptance Criteria:
+    - AC-092: Given v1.0 is released, when I visit the site, then all documented features are available.
+    - AC-093: Given I am a free user, when I use the site, then moneyline predictions and performance dashboard are accessible.
+    - AC-094: Given I am premium, when I use the platform, then all features including bot are accessible.
+
+- **US-049: Reliable Performance**
+
+  - Story: As a user, I want reliable service performance, so that I can depend on daily predictions.
+  - Acceptance Criteria:
+    - AC-095: Given the platform is live, when I access it, then uptime exceeds 99.5%.
+    - AC-096: Given predictions are published, when I view them, then accuracy continues to exceed 55% threshold.
+
+
+**Requirements:**
+
+_Functional:_
+
+- FR-068: All features from v0.1.0 through v0.10.0 shall be complete and tested.
+- FR-069: Documentation shall be complete for all features.
+- FR-070: Free and premium tiers shall have clear feature differentiation.
+
+_Non-Functional:_
+
+- NFR-033: Platform shall achieve 99.5% uptime.
+- NFR-034: Prediction accuracy shall maintain 55%+ win rate.
+- NFR-035: Platform shall support 10,000+ monthly active users.
+
+**Dependencies:**
+
+- D036: All v0.x Features - Assumption: All features from previous versions are complete.
+
+**Risks:**
+
+- **R022: Market Competition**
+
+  - Overview: Competitors may launch similar transparent prediction services.
+  - Impact: Market differentiation reduced.
+  - Probability: Medium
+  - Mitigation: Build brand and community; continue innovation on features.
+
+
+**Success Criteria:**
+
+- SC-053: All Features Complete - All planned features are implemented and tested.
+- SC-054: Performance Targets Met - Model maintains 55%+ win rate; uptime exceeds 99.5%.
+- SC-055: Revenue Generation - Platform generates $1k+ MRR from ads and subscriptions.
+- SC-056: User Growth - Platform achieves 5k+ monthly visitors.
+
+

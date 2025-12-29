@@ -19,6 +19,7 @@
           "success_criteria": [
             {
               "id": "SC-001",
+              "description": "All tasks in this milestone are completed",
               "status": "unmet"
             }
           ],
@@ -30,9 +31,11 @@
               "parallel": false,
               "owner": "fullstack-developer",
               "dependencies": [],
+              "test_strategy": "tdd",
               "acceptance_criteria": [
                 {
                   "id": "AC-001",
+                  "description": "Next.js 15.1 project is initialized with TypeScript strict mode",
                   "status": "unmet"
                 }
               ]
@@ -49,6 +52,7 @@
               "acceptance_criteria": [
                 {
                   "id": "AC-002",
+                  "description": "Tailwind CSS v4 is configured with design tokens from ui-ux specs",
                   "status": "unmet"
                 }
               ]
@@ -66,6 +70,7 @@
               "acceptance_criteria": [
                 {
                   "id": "AC-003",
+                  "description": "Python ML environment is set up with XGBoost, Pandas, nba_api",
                   "status": "unmet"
                 }
               ]
@@ -98,6 +103,7 @@
               "acceptance_criteria": [
                 {
                   "id": "AC-004",
+                  "description": "Prediction TypeScript interface is created with moneyline and future spread/totals fields",
                   "status": "unmet"
                 }
               ]
@@ -112,6 +118,7 @@
               "acceptance_criteria": [
                 {
                   "id": "AC-005",
+                  "description": "User and Subscription TypeScript interfaces are created",
                   "status": "unmet"
                 }
               ]
@@ -126,6 +133,7 @@
               "acceptance_criteria": [
                 {
                   "id": "AC-006",
+                  "description": "NBA Team and Game TypeScript interfaces are created with validation",
                   "status": "unmet"
                 }
               ]
@@ -165,10 +173,12 @@
               "acceptance_criteria": [
                 {
                   "id": "AC-001",
+                  "description": "fetch_team_stats function is implemented with exponential backoff",
                   "status": "unmet"
                 },
                 {
                   "id": "AC-002",
+                  "description": "data transformation pipeline for team stats to Parquet is created",
                   "status": "unmet"
                 }
               ]
@@ -185,6 +195,7 @@
               "acceptance_criteria": [
                 {
                   "id": "AC-007",
+                  "description": "unit tests for team stats fetching and transformation are written",
                   "status": "unmet"
                 }
               ]
@@ -201,6 +212,7 @@
               "acceptance_criteria": [
                 {
                   "id": "AC-008",
+                  "description": "fetch_player_stats function is implemented with injury data capture",
                   "status": "unmet"
                 }
               ]
@@ -233,10 +245,12 @@
               "acceptance_criteria": [
                 {
                   "id": "AC-003",
+                  "description": "fetch_player_stats function is implemented with injury data capture",
                   "status": "unmet"
                 },
                 {
                   "id": "AC-004",
+                  "description": "data transformation pipeline for player stats to Parquet is created",
                   "status": "unmet"
                 }
               ]
@@ -253,6 +267,7 @@
               "acceptance_criteria": [
                 {
                   "id": "AC-009",
+                  "description": "player data transformation and storage in Parquet is created",
                   "status": "unmet"
                 }
               ]
@@ -286,10 +301,12 @@
               "acceptance_criteria": [
                 {
                   "id": "AC-005",
+                  "description": "historical game data fetcher with season partitioning is implemented",
                   "status": "unmet"
                 },
                 {
                   "id": "AC-006",
+                  "description": "data transformation pipeline for historical game data to Parquet is created",
                   "status": "unmet"
                 }
               ]
@@ -306,6 +323,7 @@
               "acceptance_criteria": [
                 {
                   "id": "AC-010",
+                  "description": "backfill for 2022-23 and 2023-24 seasons is run",
                   "status": "unmet"
                 }
               ]
@@ -322,6 +340,7 @@
               "acceptance_criteria": [
                 {
                   "id": "AC-011",
+                  "description": "validation for backfilled data completeness and quality is done",
                   "status": "unmet"
                 }
               ]
@@ -361,6 +380,7 @@
               "acceptance_criteria": [
                 {
                   "id": "AC-012",
+                  "description": "team performance features (win rate, point differential, ratings) are implemented",
                   "status": "unmet"
                 }
               ]
@@ -375,6 +395,7 @@
               "acceptance_criteria": [
                 {
                   "id": "AC-013",
+                  "description": "player features (key stats, injury status, rest days) are implemented",
                   "status": "unmet"
                 }
               ]
@@ -389,6 +410,7 @@
               "acceptance_criteria": [
                 {
                   "id": "AC-014",
+                  "description": "situational features (home/away, back-to-backs, travel) are implemented",
                   "status": "unmet"
                 }
               ]
@@ -405,6 +427,7 @@
               "acceptance_criteria": [
                 {
                   "id": "AC-015",
+                  "description": "rolling window features (L5, L10 game performance) are implemented",
                   "status": "unmet"
                 }
               ]
@@ -437,10 +460,12 @@
               "acceptance_criteria": [
                 {
                   "id": "AC-007",
+                  "description": "train_model function is implemented with time-series cross-validation",
                   "status": "unmet"
                 },
                 {
                   "id": "AC-008",
+                  "description": "Platt scaling for probability calibration is implemented",
                   "status": "unmet"
                 }
               ]
@@ -457,7 +482,8 @@
               "acceptance_criteria": [
                 {
                   "id": "AC-016",
-                  "status": "unmet"
+                  "description": "initial model is trained on 2022-24 season data and validated on holdout",
+                        "status": "unmet"
                 }
               ]
             },
@@ -473,6 +499,7 @@
               "acceptance_criteria": [
                 {
                   "id": "AC-017",
+                  "description": "initial model is trained on 2022-24 season data and validated on holdout",
                   "status": "unmet"
                 }
               ]
@@ -505,10 +532,12 @@
               "acceptance_criteria": [
                 {
                   "id": "AC-009",
+                  "description": "generate_predictions function is implemented for daily game inference",
                   "status": "unmet"
                 },
                 {
                   "id": "AC-010",
+                  "description": "confidence scoring (low/medium/high based on probability) is implemented",
                   "status": "unmet"
                 }
               ]
@@ -525,6 +554,7 @@
               "acceptance_criteria": [
                 {
                   "id": "AC-018",
+                  "description": "confidence scoring (low/medium/high based on probability) is implemented",
                   "status": "unmet"
                 }
               ]
@@ -541,6 +571,7 @@
               "acceptance_criteria": [
                 {
                   "id": "AC-019",
+                  "description": "JSON output format for frontend consumption is created",
                   "status": "unmet"
                 }
               ]
@@ -573,10 +604,12 @@
               "acceptance_criteria": [
                 {
                   "id": "AC-011",
+                  "description": "nightly retraining script with rolling window is implemented",
                   "status": "unmet"
                 },
                 {
                   "id": "AC-012",
+                  "description": "GitHub Actions workflow for daily pipeline (6 AM EST) is created",
                   "status": "unmet"
                 }
               ]

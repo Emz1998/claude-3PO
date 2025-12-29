@@ -146,6 +146,11 @@
                             "id": "SC-002",
                             "title": "Success Criteria 2",
                             "description": "The system will be able to make predictions on NBA games."
+                        },
+                        {
+                            "id": "SC-003",
+                            "title": "Success Criteria 3",
+                            "description": "The system will be able to store the predictions in the database."
                         }
                     ]
                 }

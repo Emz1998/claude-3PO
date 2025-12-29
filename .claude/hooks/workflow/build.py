@@ -2,26 +2,20 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from utils import read_stdin_json, get_cache, set_cache
-from validate_invocations import track_subagents  # type: ignore
+from utils import read_stdin_json, get_cache, set_cache  # type: ignore
+from roadmap import get_current_task_test_strategy  # type: ignore
 
 
 DEFAULT_SUBAGENTS = [
     "codebase-explorer",
-    "research-specialist",
-    "research-consultant",
-    "strategic-planner",
-    "plan-consultant",
-    "test-manager",
+    "planner",
+    "consultant",
+    "test-engineer",
+    "version-manager",
+    "fullstack-developer",
     "code-reviewer",
-    "code-specialist",
     "version-manager",
 ]
-
-test_input = {
-    "tool_name": "Task",
-    "tool_input": {"subagent_type": "code-reviewer"},
-}
 
 
 def get_reasons(next_subagent: str) -> dict[str, str]:
@@ -68,12 +62,17 @@ def is_next_subagent_valid(
     return False
 
 
-def validate_subagent_order():
+def validate_subagent_order(subagents: list[str] = DEFAULT_SUBAGENTS):
+    need_troubleshoot = True
+
     hook_input = read_stdin_json()
     next_subagent = hook_input.get("tool_input", "").get("subagent_type", "")
 
     # Check if the next Subagent is valid
-    if not is_next_subagent_valid(next_subagent):
+
+    if need_troubleshoot:
+        sys.exit(0)
+    if not is_next_subagent_valid(next_subagent, subagents):
         sys.exit(2)
 
     # Set new current subagent
@@ -83,4 +82,9 @@ def validate_subagent_order():
 
 
 if __name__ == "__main__":
-    validate_subagent_order()
+    (
+        DEFAULT_SUBAGENTS.insert(3, "test-engineer")
+        if get_current_task_test_strategy() == "tdd"
+        else None
+    )
+    print(DEFAULT_SUBAGENTS)

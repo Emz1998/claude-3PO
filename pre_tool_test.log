@@ -1879,3 +1879,553 @@
     "agent_id": "a19d895",
     "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a19d895.jsonl"
 }
+{
+    "session_id": "24b6e98a-f54e-4b1a-af80-3c5b4d5fd327",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/24b6e98a-f54e-4b1a-af80-3c5b4d5fd327.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a5b55bf",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a5b55bf.jsonl"
+}
+{
+    "session_id": "f1caa70a-cdda-425a-a9e0-b1eff92330b7",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/f1caa70a-cdda-425a-a9e0-b1eff92330b7.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "default",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a2c0c51",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a2c0c51.jsonl"
+}
+{
+    "session_id": "f1caa70a-cdda-425a-a9e0-b1eff92330b7",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/f1caa70a-cdda-425a-a9e0-b1eff92330b7.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "default",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a61c72b",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a61c72b.jsonl"
+}
+{
+    "session_id": "652339f2-f280-4639-b8de-a57bdbf83cf5",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/652339f2-f280-4639-b8de-a57bdbf83cf5.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "default",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "aafe961",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-aafe961.jsonl"
+}
+{
+    "session_id": "652339f2-f280-4639-b8de-a57bdbf83cf5",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/652339f2-f280-4639-b8de-a57bdbf83cf5.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "default",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a34f949",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a34f949.jsonl"
+}
+{
+    "session_id": "2283c7ce-9355-4b73-8e37-6b9a664aff64",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/2283c7ce-9355-4b73-8e37-6b9a664aff64.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "default",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "af4c062",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-af4c062.jsonl"
+}
+{
+    "session_id": "2283c7ce-9355-4b73-8e37-6b9a664aff64",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/2283c7ce-9355-4b73-8e37-6b9a664aff64.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "default",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "ad02383",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-ad02383.jsonl"
+}
+{
+    "session_id": "a0cba658-323f-4dfe-a1d6-b641364701b4",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/a0cba658-323f-4dfe-a1d6-b641364701b4.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "default",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a50c60f",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a50c60f.jsonl"
+}
+{
+    "session_id": "a0cba658-323f-4dfe-a1d6-b641364701b4",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/a0cba658-323f-4dfe-a1d6-b641364701b4.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "default",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "ae7b699",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-ae7b699.jsonl"
+}
+{
+    "session_id": "a0cba658-323f-4dfe-a1d6-b641364701b4",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/a0cba658-323f-4dfe-a1d6-b641364701b4.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a7e653f",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a7e653f.jsonl"
+}
+{
+    "session_id": "a0cba658-323f-4dfe-a1d6-b641364701b4",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/a0cba658-323f-4dfe-a1d6-b641364701b4.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a970394",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a970394.jsonl"
+}
+{
+    "session_id": "a0cba658-323f-4dfe-a1d6-b641364701b4",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/a0cba658-323f-4dfe-a1d6-b641364701b4.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "ab10423",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-ab10423.jsonl"
+}
+{
+    "session_id": "a0cba658-323f-4dfe-a1d6-b641364701b4",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/a0cba658-323f-4dfe-a1d6-b641364701b4.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a2637f0",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a2637f0.jsonl"
+}
+{
+    "session_id": "a0cba658-323f-4dfe-a1d6-b641364701b4",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/a0cba658-323f-4dfe-a1d6-b641364701b4.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "ae9239a",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-ae9239a.jsonl"
+}
+{
+    "session_id": "a0cba658-323f-4dfe-a1d6-b641364701b4",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/a0cba658-323f-4dfe-a1d6-b641364701b4.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a1a8beb",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a1a8beb.jsonl"
+}
+{
+    "session_id": "a0cba658-323f-4dfe-a1d6-b641364701b4",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/a0cba658-323f-4dfe-a1d6-b641364701b4.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "ad69e2f",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-ad69e2f.jsonl"
+}
+{
+    "session_id": "a0cba658-323f-4dfe-a1d6-b641364701b4",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/a0cba658-323f-4dfe-a1d6-b641364701b4.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a37fd55",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a37fd55.jsonl"
+}
+{
+    "session_id": "a0cba658-323f-4dfe-a1d6-b641364701b4",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/a0cba658-323f-4dfe-a1d6-b641364701b4.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a51911f",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a51911f.jsonl"
+}
+{
+    "session_id": "a0cba658-323f-4dfe-a1d6-b641364701b4",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/a0cba658-323f-4dfe-a1d6-b641364701b4.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a1c494f",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a1c494f.jsonl"
+}
+{
+    "session_id": "a0cba658-323f-4dfe-a1d6-b641364701b4",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/a0cba658-323f-4dfe-a1d6-b641364701b4.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a8fd260",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a8fd260.jsonl"
+}
+{
+    "session_id": "a0cba658-323f-4dfe-a1d6-b641364701b4",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/a0cba658-323f-4dfe-a1d6-b641364701b4.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a24edfd",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a24edfd.jsonl"
+}
+{
+    "session_id": "a0cba658-323f-4dfe-a1d6-b641364701b4",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/a0cba658-323f-4dfe-a1d6-b641364701b4.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "aca6abf",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-aca6abf.jsonl"
+}
+{
+    "session_id": "f38a4d39-cb5d-4aad-a68c-d9cd022a3a9b",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/f38a4d39-cb5d-4aad-a68c-d9cd022a3a9b.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a9cafc7",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a9cafc7.jsonl"
+}
+{
+    "session_id": "f38a4d39-cb5d-4aad-a68c-d9cd022a3a9b",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/f38a4d39-cb5d-4aad-a68c-d9cd022a3a9b.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "ad2ed38",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-ad2ed38.jsonl"
+}
+{
+    "session_id": "4f5dd1b7-6f24-4d70-81cd-035381a97edd",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/4f5dd1b7-6f24-4d70-81cd-035381a97edd.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "default",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a43da58",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a43da58.jsonl"
+}
+{
+    "session_id": "4f5dd1b7-6f24-4d70-81cd-035381a97edd",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/4f5dd1b7-6f24-4d70-81cd-035381a97edd.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "default",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a130e4c",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a130e4c.jsonl"
+}
+{
+    "session_id": "4f5dd1b7-6f24-4d70-81cd-035381a97edd",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/4f5dd1b7-6f24-4d70-81cd-035381a97edd.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "ac9c36d",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-ac9c36d.jsonl"
+}
+{
+    "session_id": "4f5dd1b7-6f24-4d70-81cd-035381a97edd",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/4f5dd1b7-6f24-4d70-81cd-035381a97edd.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a6244fc",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a6244fc.jsonl"
+}
+{
+    "session_id": "4f5dd1b7-6f24-4d70-81cd-035381a97edd",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/4f5dd1b7-6f24-4d70-81cd-035381a97edd.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a890789",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a890789.jsonl"
+}
+{
+    "session_id": "4f5dd1b7-6f24-4d70-81cd-035381a97edd",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/4f5dd1b7-6f24-4d70-81cd-035381a97edd.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "aab8e52",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-aab8e52.jsonl"
+}
+{
+    "session_id": "c3f7a380-6844-4870-8b3b-3c268f0eb8b2",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/c3f7a380-6844-4870-8b3b-3c268f0eb8b2.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "default",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "af90137",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-af90137.jsonl"
+}
+{
+    "session_id": "c3f7a380-6844-4870-8b3b-3c268f0eb8b2",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/c3f7a380-6844-4870-8b3b-3c268f0eb8b2.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "default",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "aa5a7a5",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-aa5a7a5.jsonl"
+}
+{
+    "session_id": "c3f7a380-6844-4870-8b3b-3c268f0eb8b2",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/c3f7a380-6844-4870-8b3b-3c268f0eb8b2.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "ad33ec3",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-ad33ec3.jsonl"
+}
+{
+    "session_id": "62aa1931-283b-4448-8d90-39fb2d5f01c5",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/62aa1931-283b-4448-8d90-39fb2d5f01c5.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "default",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a18f5e5",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a18f5e5.jsonl"
+}
+{
+    "session_id": "62aa1931-283b-4448-8d90-39fb2d5f01c5",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/62aa1931-283b-4448-8d90-39fb2d5f01c5.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "default",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a197da7",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a197da7.jsonl"
+}
+{
+    "session_id": "94257342-4a8a-4d34-b047-fbf20807241b",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/94257342-4a8a-4d34-b047-fbf20807241b.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "default",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a2b3042",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a2b3042.jsonl"
+}
+{
+    "session_id": "94257342-4a8a-4d34-b047-fbf20807241b",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/94257342-4a8a-4d34-b047-fbf20807241b.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "default",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a2fabbd",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a2fabbd.jsonl"
+}
+{
+    "session_id": "94257342-4a8a-4d34-b047-fbf20807241b",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/94257342-4a8a-4d34-b047-fbf20807241b.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a8936bc",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a8936bc.jsonl"
+}
+{
+    "session_id": "589941ca-514d-472a-bd06-20deab402858",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/589941ca-514d-472a-bd06-20deab402858.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "afbd9ac",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-afbd9ac.jsonl"
+}
+{
+    "session_id": "589941ca-514d-472a-bd06-20deab402858",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/589941ca-514d-472a-bd06-20deab402858.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a083860",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a083860.jsonl"
+}
+{
+    "session_id": "94469dc8-262f-45c1-9985-175b2af3e031",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/94469dc8-262f-45c1-9985-175b2af3e031.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "aa1ca4b",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-aa1ca4b.jsonl"
+}
+{
+    "session_id": "94469dc8-262f-45c1-9985-175b2af3e031",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/94469dc8-262f-45c1-9985-175b2af3e031.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a949703",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a949703.jsonl"
+}
+{
+    "session_id": "94469dc8-262f-45c1-9985-175b2af3e031",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/94469dc8-262f-45c1-9985-175b2af3e031.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a774637",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a774637.jsonl"
+}
+{
+    "session_id": "94469dc8-262f-45c1-9985-175b2af3e031",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/94469dc8-262f-45c1-9985-175b2af3e031.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "afe2e73",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-afe2e73.jsonl"
+}
+{
+    "session_id": "94469dc8-262f-45c1-9985-175b2af3e031",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/94469dc8-262f-45c1-9985-175b2af3e031.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a244d07",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a244d07.jsonl"
+}
+{
+    "session_id": "94469dc8-262f-45c1-9985-175b2af3e031",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/94469dc8-262f-45c1-9985-175b2af3e031.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "ac5b5cc",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-ac5b5cc.jsonl"
+}
+{
+    "session_id": "94469dc8-262f-45c1-9985-175b2af3e031",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/94469dc8-262f-45c1-9985-175b2af3e031.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a8f8e61",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a8f8e61.jsonl"
+}
+{
+    "session_id": "94469dc8-262f-45c1-9985-175b2af3e031",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/94469dc8-262f-45c1-9985-175b2af3e031.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a539c72",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a539c72.jsonl"
+}
+{
+    "session_id": "94469dc8-262f-45c1-9985-175b2af3e031",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/94469dc8-262f-45c1-9985-175b2af3e031.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a769f77",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a769f77.jsonl"
+}
+{
+    "session_id": "bd49fe0f-0a21-433b-8a81-908e021ff7fa",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/bd49fe0f-0a21-433b-8a81-908e021ff7fa.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "default",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a9ceefa",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a9ceefa.jsonl"
+}
+{
+    "session_id": "bd49fe0f-0a21-433b-8a81-908e021ff7fa",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/bd49fe0f-0a21-433b-8a81-908e021ff7fa.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "default",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a9ef1d4",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a9ef1d4.jsonl"
+}
+{
+    "session_id": "94469dc8-262f-45c1-9985-175b2af3e031",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/94469dc8-262f-45c1-9985-175b2af3e031.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "ac42824",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-ac42824.jsonl"
+}
+{
+    "session_id": "94469dc8-262f-45c1-9985-175b2af3e031",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/94469dc8-262f-45c1-9985-175b2af3e031.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a7dee77",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a7dee77.jsonl"
+}
+{
+    "session_id": "15be3652-0166-448c-9d4b-fe5a6176ac07",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/15be3652-0166-448c-9d4b-fe5a6176ac07.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "default",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "a18b2cd",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-a18b2cd.jsonl"
+}
+{
+    "session_id": "15be3652-0166-448c-9d4b-fe5a6176ac07",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/15be3652-0166-448c-9d4b-fe5a6176ac07.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "default",
+    "hook_event_name": "SubagentStop",
+    "stop_hook_active": false,
+    "agent_id": "abb8461",
+    "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-abb8461.jsonl"
+}
