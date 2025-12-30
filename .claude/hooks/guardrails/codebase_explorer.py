@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """
-Engineer task completion guard.
+Codebase explorer dependency guard.
 
-Ensures engineer agents complete their assigned tasks:
-- Blocks tools until task is in_progress
-- Prevents SubagentStop until task is completed
-- Allows log:task skill to update task status
+Ensures dependencies are met before allowing Task tool usage:
+1. implement skill must be triggered and active
+2. The todo file must be read first
+
+Tracks state via PostToolUse events and blocks PreToolUse when deps unmet.
 """
 
 import sys
@@ -21,67 +22,117 @@ from utils import (  # type: ignore
     set_cache,
     read_stdin_json,
     get_current_version,
-    get_roadmap_path,
-    load_roadmap,
-    find_task_in_roadmap,
     log,
 )
 
-from roadmap import get_current_phase, get_current_milestone
+from roadmap import get_current_phase_full_name, get_current_milestone_full_name  # type: ignore
 
-TODO_FILE_PATH = f"project/{get_current_version()}/{get_current_phase()}/{get_current_milestone()}/todos/todos_{datetime.now().strftime('%Y-%m-%d')}_{get_cache('session_id')}.md"
 CACHE_PATH = Path(".claude/hooks/cache/codebase_explorer_cache.json")
 
-test = {
-    "hook_event_name": "PreToolUse",
+test_input_data: dict = {
+    "hook_event_name": "PostToolUse",
     "tool_name": "Read",
     "tool_input": {
-        "file_path": TODO_FILE_PATH,
+        "file_path": f"/home/emhar/.claude/projects/{get_current_version()}/{get_current_phase_full_name()}/{get_current_milestone_full_name()}/todos/todos_{datetime.now().strftime("%Y-%m-%d")}_{get_cache("session_id")}.md",
     },
 }
 
 
+def get_todo_file_path() -> str:
+    """Generate the todo file path for current session."""
+    version = get_current_version()
+    phase = get_current_phase_full_name()
+    milestone = get_current_milestone_full_name()
+    session_id = get_cache("session_id")
+    date_str = datetime.now().strftime("%Y-%m-%d")
+    absolute_path = Path(".claude/projects").absolute()
+    print(absolute_path)
+    return f"/home/emhar/.claude/projects/{version}/{phase}/{milestone}/todos/todos_{date_str}_{session_id}.md"
+
+
 def is_implement_active(cache: dict) -> bool:
-    """Check if codebase explorer is active."""
-    return get_cache("is_implement_active", cache) is True
+    """Check if implement skill is triggered and active."""
+    return cache.get("is_implement_active", False)
+
+
+def has_read_todo_file(cache: dict) -> bool:
+    """Check if todo file has been read."""
+    return cache.get("has_read_todo_file") is True
+
+
+def check_dependencies(cache: dict) -> tuple[bool, str]:
+    """
+    Check if all dependencies are met.
+
+    Returns:
+        tuple[bool, str]: (all_met, error_message)
+    """
+    todo_path = get_todo_file_path()
+
+    # Dependency 1: implement must be active
+    if not is_implement_active(cache):
+        return False, "DEPENDENCY: implement skill must be triggered first."
+
+    # Dependency 2: todo file must be read
+    if not has_read_todo_file(cache):
+        return (
+            False,
+            f"DEPENDENCY: You must read the todo file ({todo_path}) before using the Task tool.",
+        )
+
+    return True, ""
+
+
+def handle_post_tool_use(tool_name: str, tool_input: dict, cache: dict) -> None:
+    """Track state after tool execution."""
+    todo_path = get_todo_file_path()
+
+    if tool_name == "Read":
+        file_path = tool_input.get("file_path", "")
+        # Check if the read file matches the todo file path
+        if file_path == todo_path:
+            cache["has_read_todo_file"] = True
+            set_cache("has_read_todo_file", True)
+            log(f"[codebase_explorer] Todo file read: {file_path}")
+
+    if tool_name == "Task":
+        subagent = tool_input.get("subagent_type", "")
+        cache["last_agent_used"] = subagent
+        set_cache("last_agent_used", subagent)
+
+
+def handle_pre_tool_use(tool_name: str, tool_input: dict, cache: dict) -> None:
+    """Check dependencies before tool execution."""
+    # Only check dependencies for Task tool
+    if tool_name != "Task":
+        return
+
+    deps_met, error_msg = check_dependencies(cache)
+    if not deps_met:
+        block_response(error_msg)
 
 
 def main() -> None:
     """Main entry point."""
-    input_data = {
-        "hook_event_name": "PreToolUse",
-        "tool_name": "Read",
-        "tool_input": {
-            "file_path": TODO_FILE_PATH,
-        },
-    }
-
+    input_data = test_input_data
     cache = load_cache(CACHE_PATH)
-    if not input_data:
-        sys.exit(0)
 
+    # Skip if implement is not active (this hook only applies during /implement workflow)
     if not is_implement_active(cache):
-        print("Proceeding...")
+        print("Implement is not active")
         sys.exit(0)
 
     hook_event = input_data.get("hook_event_name", "")
     tool_name = input_data.get("tool_name", "")
+    tool_input = input_data.get("tool_input", {})
 
     if hook_event == "PostToolUse":
-        if tool_name == "Task":
-            subagent = input_data.get("tool_input", {}).get("subagent_type", "")
-            set_cache("last_agent_used", subagent, cache)
-        if tool_name == "Read":
-            file_path = input_data.get("tool_input", {}).get("file_path", "")
-            if TODO_FILE_PATH in file_path:
-                set_cache("has_read_todo_file", True, cache)
+        handle_post_tool_use(tool_name, tool_input, cache)
 
-    if hook_event == "PreToolUse":
-        if tool_name == "Task":
-            if not get_cache("has_read_todo_file", cache):
-                block_response(
-                    f"You must read the todo file ({TODO_FILE_PATH}) before using the Task tool."
-                )
+    elif hook_event == "PreToolUse":
+        handle_pre_tool_use(tool_name, tool_input, cache)
+
+    sys.exit(0)
 
 
 if __name__ == "__main__":

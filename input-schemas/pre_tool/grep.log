@@ -1,14 +1,14 @@
 {
-    "session_id": "5ed5ca29-e42e-4ef6-9d59-b7883d5a3f5f",
-    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/5ed5ca29-e42e-4ef6-9d59-b7883d5a3f5f.jsonl",
+    "session_id": "55e03575-bd44-43b2-bcb2-2214bad7a612",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/55e03575-bd44-43b2-bcb2-2214bad7a612.jsonl",
     "cwd": "/home/emhar/avaris-ai",
     "permission_mode": "bypassPermissions",
     "hook_event_name": "PreToolUse",
     "tool_name": "Grep",
     "tool_input": {
-        "pattern": "subagent_stop",
-        "path": ".claude/settings.local.json",
-        "output_mode": "content"
+        "pattern": "from.*checklist|import checklist|ChecklistCounter|ProjectStatus|SectionExtractor|ChecklistValidator",
+        "path": "/home/emhar/avaris-ai/.claude",
+        "output_mode": "files_with_matches"
     },
-    "tool_use_id": "toolu_01DJYj2pLJF7qksMhoNrotTH"
+    "tool_use_id": "toolu_01TXFaxYPEBmkvjc8L8Z3Dhb"
 }

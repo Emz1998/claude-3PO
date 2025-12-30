@@ -1,13 +1,13 @@
 {
-    "session_id": "9e127b6f-d67f-49a2-bafe-96c127765603",
-    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/9e127b6f-d67f-49a2-bafe-96c127765603.jsonl",
+    "session_id": "55e03575-bd44-43b2-bcb2-2214bad7a612",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/55e03575-bd44-43b2-bcb2-2214bad7a612.jsonl",
     "cwd": "/home/emhar/avaris-ai",
-    "permission_mode": "default",
+    "permission_mode": "bypassPermissions",
     "hook_event_name": "PreToolUse",
     "tool_name": "Bash",
     "tool_input": {
-        "command": "echo \"Testing permission request\"",
-        "description": "Test permission request trigger"
+        "command": "python -c \"from .claude.hooks.utils import read_file, write_file, extract_slash_command_name, load_json\" 2>&1 || python -c \"import sys; sys.path.insert(0, '.claude/hooks'); from utils import read_file, write_file, extract_slash_command_name, load_json; print('All imports successful')\"",
+        "description": "Verify utils imports work"
     },
-    "tool_use_id": "toolu_01RjDLj6QNc84qcw6tHyEDPN"
+    "tool_use_id": "toolu_01QeWtdvyfTKpmN8aMymh2re"
 }

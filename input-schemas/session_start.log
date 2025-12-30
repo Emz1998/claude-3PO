@@ -1,6 +1,6 @@
 {
-    "session_id": "0f83f668-71fc-44cb-a8ec-379a00ead35e",
-    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/0f83f668-71fc-44cb-a8ec-379a00ead35e.jsonl",
+    "session_id": "55e03575-bd44-43b2-bcb2-2214bad7a612",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/55e03575-bd44-43b2-bcb2-2214bad7a612.jsonl",
     "cwd": "/home/emhar/avaris-ai",
     "hook_event_name": "SessionStart",
     "source": "startup"

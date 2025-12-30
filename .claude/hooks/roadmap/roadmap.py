@@ -451,6 +451,13 @@ def get_current_phase() -> dict | None:
     return find_phase_in_roadmap(roadmap, phase_id)
 
 
+def get_current_phase_full_name() -> str | None:
+    """Get the current phase full name from roadmap. Returns phase full name or None."""
+    phase = get_current_phase()
+    full_name = f"{phase.get('id')}_[{phase.get('name')}]" if phase else None
+    return full_name
+
+
 def get_current_task_id() -> str | None:
     """Get the current task ID from roadmap. Returns task ID or None."""
     task = get_current_task()
@@ -461,6 +468,15 @@ def get_current_milestone_id() -> str | None:
     """Get the current milestone ID from roadmap. Returns milestone ID or None."""
     milestone = get_current_milestone()
     return milestone.get("id") if milestone else None
+
+
+def get_current_milestone_full_name() -> str | None:
+    """Get the current milestone full name from roadmap. Returns milestone full name or None."""
+    milestone = get_current_milestone()
+    full_name = (
+        f"{milestone.get('id')}_[{milestone.get('name')}]" if milestone else None
+    )
+    return full_name
 
 
 def get_current_phase_id() -> str | None:

@@ -65,7 +65,9 @@ from .roadmap import (
     # Current pointer utilities
     get_current_task_id,
     get_current_milestone_id,
+    get_current_milestone_full_name,
     get_current_phase_id,
+    get_current_phase_full_name,
     get_current_task,
     get_current_milestone,
     get_current_phase,
@@ -123,7 +125,6 @@ __all__ = [
     "resolve_milestones_and_phases",
     "update_current_pointer",
     "update_summary",
-    "run_auto_resolver",
     # Query utilities
     "get_tdd_tasks",
     "get_ta_tasks",
@@ -137,7 +138,9 @@ __all__ = [
     # Current pointer utilities
     "get_current_task_id",
     "get_current_milestone_id",
+    "get_current_milestone_full_name",
     "get_current_phase_id",
+    "get_current_phase_full_name",
     "get_current_task",
     "get_current_milestone",
     "get_current_phase",
