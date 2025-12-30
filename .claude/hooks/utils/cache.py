@@ -15,22 +15,6 @@ def load_cache(file_path: Path = CACHE_PATH) -> dict:
         return {}
 
 
-def write_cache(cache: dict) -> None:
-    """Write cache atomically using temp file to prevent corruption."""
-    CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
-
-    # Write to temp file first, then atomic rename
-    fd, temp_path = tempfile.mkstemp(dir=CACHE_PATH.parent, suffix=".tmp")
-    try:
-        with os.fdopen(fd, "w") as f:
-            json.dump(cache, f, indent=2)
-        os.replace(temp_path, CACHE_PATH)
-    except Exception:
-        if os.path.exists(temp_path):
-            os.unlink(temp_path)
-        raise
-
-
 def get_cache(key: str, cache: dict = load_cache()) -> Any:
     """Get value from shared cache. Returns None if not found."""
     if not key:
@@ -39,6 +23,11 @@ def get_cache(key: str, cache: dict = load_cache()) -> Any:
         return cache.get(key)
     except (json.JSONDecodeError, FileNotFoundError):
         return None
+
+
+def write_cache(cache: dict, cache_path: Path = CACHE_PATH) -> None:
+    """Write cache to file."""
+    cache_path.write_text(json.dumps(cache, indent=2))
 
 
 def set_cache(key: str, value: Any, cache: dict = load_cache()) -> None:
@@ -55,7 +44,7 @@ def set_cache(key: str, value: Any, cache: dict = load_cache()) -> None:
     write_cache(cache)
 
 
-def append_to_cache_list(key: str, value: Any, cache: dict = load_cache()) -> None:
+def append_cache(key: str, value: Any, cache: dict = load_cache()) -> None:
     """Append value to a list in cache."""
     try:
         if type(cache.get(key)) is not list:
