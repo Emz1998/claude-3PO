@@ -7,7 +7,8 @@ from .output import (
     print_and_exit,
     continue_response,
 )
-from .cache import get_cache, set_cache, write_cache, load_cache, append_to_cache_list
+from .cache import get_cache, set_cache, write_cache, load_cache, append_cache
+from .json import read_stdin_json
 
 from .parsers import extract_slash_command_name
 
@@ -45,13 +46,10 @@ __all__ = [
     "set_cache",
     "write_cache",
     "load_cache",
-    "append_to_cache_list",
+    "append_cache",
     # Files
     "read_file",
     "write_file",
-    "read_json",
-    "write_json",
-    "output_json",
     "extract_slash_command_name",
     "FileReadError",
     # JSON handler

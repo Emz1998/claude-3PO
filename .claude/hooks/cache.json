@@ -1,4 +1,7 @@
 {
-  "is_implement_active": true,
-  "last_agent_used": "codebase-explorer"
+  "implement_workflow_active": false,
+  "implement_workflow_state": "IMPLEMENT_ACTIVE",
+  "implement_todo_path": null,
+  "implement_coding_mode": "default",
+  "implement_coding_step": 0
 }

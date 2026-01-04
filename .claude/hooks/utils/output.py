@@ -2,6 +2,7 @@ import json
 import sys
 from typing import NoReturn
 
+
 def log(msg: str) -> None:
     """Print to stderr for hook system visibility."""
     print(msg, file=sys.stderr, flush=True)

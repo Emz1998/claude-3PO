@@ -7,7 +7,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from utils import add_context, get_status, read_stdin_json, set_status  # type: ignore
-from roadmap import (  # type: ignore
+from roadmap.utils import (  # type: ignore
     get_current_task_id,
     get_current_milestone_id,
     get_current_phase_id,

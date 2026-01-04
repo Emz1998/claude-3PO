@@ -17,6 +17,78 @@ TASK_PATTERN = r"^T\d{3}$"
 AC_PATTERN = r"^AC-\d{3}$"
 SC_PATTERN = r"^SC-\d{3}$"
 
+# Range patterns for batch processing
+TASK_RANGE_PATTERN = r"^T(\d{3})-T(\d{3})$"
+AC_RANGE_PATTERN = r"^AC-(\d{3})-AC-(\d{3})$"
+SC_RANGE_PATTERN = r"^SC-(\d{3})-SC-(\d{3})$"
+
+
+def detect_item_type(item_id: str) -> str | None:
+    """Detect the type of item based on its ID pattern."""
+    if re.match(TASK_PATTERN, item_id):
+        return "task"
+    elif re.match(AC_PATTERN, item_id):
+        return "ac"
+    elif re.match(SC_PATTERN, item_id):
+        return "sc"
+    return None
+
+
+def expand_range(range_str: str) -> list[str] | None:
+    """Expand range like T001-T007 to [T001, T002, ..., T007]."""
+    range_str = range_str.upper()
+
+    if match := re.match(TASK_RANGE_PATTERN, range_str):
+        start, end = int(match.group(1)), int(match.group(2))
+        if start > end:
+            return None
+        return [f"T{i:03d}" for i in range(start, end + 1)]
+
+    if match := re.match(AC_RANGE_PATTERN, range_str):
+        start, end = int(match.group(1)), int(match.group(2))
+        if start > end:
+            return None
+        return [f"AC-{i:03d}" for i in range(start, end + 1)]
+
+    if match := re.match(SC_RANGE_PATTERN, range_str):
+        start, end = int(match.group(1)), int(match.group(2))
+        if start > end:
+            return None
+        return [f"SC-{i:03d}" for i in range(start, end + 1)]
+
+    return None
+
+
+def parse_item_input(items: list[str]) -> list[str]:
+    """Parse and expand item input (handles ranges, commas, spaces)."""
+    result = []
+    for item in items:
+        # Handle comma-separated within a single arg
+        parts = [p.strip() for p in item.split(",") if p.strip()]
+        for part in parts:
+            expanded = expand_range(part)
+            if expanded:
+                result.extend(expanded)
+            else:
+                result.append(part.upper())
+    return result
+
+
+def validate_same_type(item_ids: list[str]) -> tuple[bool, str | None]:
+    """Ensure all items are the same type."""
+    if not item_ids:
+        return False, "No items provided"
+
+    types = [detect_item_type(item_id) for item_id in item_ids]
+    if None in types:
+        invalid = [item_ids[i] for i, t in enumerate(types) if t is None]
+        return False, f"Invalid item IDs: {', '.join(invalid)}"
+
+    if len(set(types)) > 1:
+        return False, "All items must be the same type (task, AC, or SC)"
+
+    return True, None
+
 
 def get_project_dir() -> Path:
     """Get project directory from environment or cwd."""
@@ -214,7 +286,9 @@ def resolve_project_status(roadmap: dict) -> str | None:
     phases = roadmap.get("phases", [])
     current_status = roadmap.get("status", "not_started")
 
-    all_completed = all(p.get("status") == "completed" for p in phases) if phases else False
+    all_completed = (
+        all(p.get("status") == "completed" for p in phases) if phases else False
+    )
     any_in_progress = any(p.get("status") == "in_progress" for p in phases)
 
     if current_status != "completed" and all_completed:
@@ -229,6 +303,29 @@ def resolve_project_status(roadmap: dict) -> str | None:
     return None
 
 
+def resolve_tasks(roadmap: dict, milestone: dict) -> list[str]:
+    """Auto-resolve tasks when all ACs are met."""
+    resolutions = []
+    tasks = milestone.get("tasks", [])
+
+    for task in tasks:
+        task_status = task.get("status")
+        if task_status != "in_progress":
+            continue
+
+        if not all_acs_met(task):
+            continue
+
+        incomplete_deps = get_incomplete_task_deps(roadmap, task)
+        if incomplete_deps:
+            continue
+
+        task["status"] = "completed"
+        resolutions.append(f"Task '{task.get('id')}' auto-resolved to 'completed'")
+
+    return resolutions
+
+
 def resolve_milestones_and_phases(roadmap: dict) -> list[str]:
     """Auto-resolve milestones and phases based on their children's status."""
     resolutions = []
@@ -238,6 +335,10 @@ def resolve_milestones_and_phases(roadmap: dict) -> list[str]:
         milestones = phase.get("milestones", [])
 
         for milestone in milestones:
+            # Auto-resolve tasks first
+            task_resolutions = resolve_tasks(roadmap, milestone)
+            resolutions.extend(task_resolutions)
+
             current_status = milestone.get("status")
             tasks_completed = all_tasks_completed(milestone)
             scs_met = all_scs_met(milestone)
@@ -274,7 +375,10 @@ def resolve_milestones_and_phases(roadmap: dict) -> list[str]:
         has_milestone_in_progress = any_milestone_in_progress(phase)
 
         # Auto-progress: pending -> in_progress when milestone starts
-        if current_phase_status in ("pending", "not_started") and has_milestone_in_progress:
+        if (
+            current_phase_status in ("pending", "not_started")
+            and has_milestone_in_progress
+        ):
             phase["status"] = "in_progress"
             resolutions.append(
                 f"Phase '{phase.get('id')}' auto-progressed to 'in_progress'"
@@ -422,17 +526,6 @@ def run_auto_resolver(version: str) -> tuple[bool, list[str]]:
     return True, resolutions
 
 
-def detect_item_type(item_id: str) -> str | None:
-    """Detect the type of item based on its ID pattern."""
-    if re.match(TASK_PATTERN, item_id):
-        return "task"
-    elif re.match(AC_PATTERN, item_id):
-        return "ac"
-    elif re.match(SC_PATTERN, item_id):
-        return "sc"
-    return None
-
-
 def get_valid_statuses(item_type: str) -> list[str]:
     """Get valid statuses for the item type."""
     if item_type == "task":
@@ -486,9 +579,10 @@ def update_ac(roadmap: dict, ac_id: str, status: str) -> tuple[bool, str]:
     # Block AC logging if task is not in_progress
     task_status = task.get("status", "not_started") if task else "not_started"
     if task_status != "in_progress":
+        task_id = task.get("id") if task else "unknown"
         return False, (
             f"Cannot update AC '{ac_id}'. "
-            f"Task '{task.get('id')}' must be 'in_progress' first (current: '{task_status}')."
+            f"Task '{task_id}' must be 'in_progress' first (current: '{task_status}')."
         )
     ac["status"] = status
     return True, f"Acceptance criteria '{ac_id}' status updated to '{status}'"
@@ -502,7 +596,8 @@ def update_sc(roadmap: dict, sc_id: str, status: str) -> tuple[bool, str]:
     # Block SC logging if not all tasks in milestone are completed
     if milestone and not all_tasks_completed(milestone):
         incomplete_tasks = [
-            t.get("id") for t in milestone.get("tasks", [])
+            t.get("id")
+            for t in milestone.get("tasks", [])
             if t.get("status") != "completed"
         ]
         return False, (
@@ -520,64 +615,86 @@ def main() -> None:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  %(prog)s T001 in_progress   # Start working on task T001
-  %(prog)s T002 completed     # Mark task T002 as completed
-  %(prog)s T003 blocked       # Mark task T003 as blocked
-  %(prog)s T001 not_started   # Reset task T001 to not started
-  %(prog)s AC-001 met         # Mark acceptance criteria AC-001 as met
-  %(prog)s AC-002 unmet       # Mark acceptance criteria AC-002 as unmet
-  %(prog)s SC-001 met         # Mark success criteria SC-001 as met
-  %(prog)s SC-002 unmet       # Mark success criteria SC-002 as unmet
+  Single item:
+    %(prog)s T001 in_progress           # Start working on task T001
+    %(prog)s T002 completed             # Mark task T002 as completed
+    %(prog)s AC-001 met                 # Mark acceptance criteria AC-001 as met
+
+  Multiple items (range):
+    %(prog)s T001-T007 in_progress      # Start tasks T001 through T007
+    %(prog)s AC-001-AC-005 met          # Mark ACs AC-001 through AC-005 as met
+    %(prog)s SC-001-SC-003 met          # Mark SCs SC-001 through SC-003 as met
+
+  Multiple items (list):
+    %(prog)s T001 T003 T005 in_progress # Start specific tasks
+    %(prog)s T001,T003,T005 completed   # Comma-separated list
+    %(prog)s AC-001 AC-003 met          # Multiple ACs
 
 Item ID formats:
   Task:               TXXX (e.g., T001, T002)
   Acceptance Criteria: AC-XXX (e.g., AC-001, AC-002)
   Success Criteria:    SC-XXX (e.g., SC-001, SC-002)
+  Range:              T001-T007, AC-001-AC-005, SC-001-SC-003
 
 Valid statuses:
   Task:    not_started, in_progress, completed, blocked
   AC/SC:   met, unmet
-        """
+
+Notes:
+  - All items in a single command must be the same type
+  - On error, valid items are still updated (continue on error)
+        """,
     )
     parser.add_argument(
-        "item_id",
+        "args",
         type=str,
-        help="Item ID (TXXX for task, AC-XXX for acceptance criteria, SC-XXX for success criteria)"
+        nargs="+",
+        metavar="ITEM_IDS STATUS",
+        help="One or more item IDs followed by status",
     )
-    parser.add_argument(
-        "status",
-        type=str,
-        help="New status (task: not_started/in_progress/completed/blocked, AC/SC: met/unmet)"
-    )
-    args = parser.parse_args()
+    parsed = parser.parse_args()
 
-    item_id = args.item_id.upper()
-    status = args.status.lower()
-
-    # Detect item type
-    item_type = detect_item_type(item_id)
-    if item_type is None:
+    # Extract status (last arg) and item inputs (everything else)
+    if len(parsed.args) < 2:
         print(
-            f"Error: Invalid item ID format: '{item_id}'. "
-            f"Expected: TXXX (task), AC-XXX (acceptance criteria), or SC-XXX (success criteria)",
-            file=sys.stderr
+            "Error: At least one item ID and a status are required",
+            file=sys.stderr,
         )
         sys.exit(1)
 
-    # Validate status for item type
+    status = parsed.args[-1].lower()
+    raw_items = parsed.args[:-1]
+
+    # Parse and expand all items (handles ranges, commas)
+    item_ids = parse_item_input(raw_items)
+    if not item_ids:
+        print("Error: No valid item IDs provided", file=sys.stderr)
+        sys.exit(1)
+
+    # Validate all items are the same type
+    valid, error = validate_same_type(item_ids)
+    if not valid:
+        print(f"Error: {error}", file=sys.stderr)
+        sys.exit(1)
+
+    # Get item type and validate status
+    item_type = detect_item_type(item_ids[0])
     valid_statuses = get_valid_statuses(item_type)
     if status not in valid_statuses:
         print(
             f"Error: Invalid status '{status}' for {item_type}. "
             f"Valid statuses: {', '.join(valid_statuses)}",
-            file=sys.stderr
+            file=sys.stderr,
         )
         sys.exit(1)
 
     # Get current version
     version = get_current_version()
     if not version:
-        print("Error: Could not retrieve current_version from project/product/PRD.json", file=sys.stderr)
+        print(
+            "Error: Could not retrieve current_version from project/product/PRD.json",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     # Get roadmap path
@@ -586,35 +703,50 @@ Valid statuses:
         print(f"Error: Roadmap not found at: {roadmap_path}", file=sys.stderr)
         sys.exit(1)
 
-    # Load roadmap
+    # Load roadmap once
     roadmap = load_roadmap(roadmap_path)
     if roadmap is None:
         print(f"Error: Could not load roadmap from: {roadmap_path}", file=sys.stderr)
         sys.exit(1)
 
-    # Update based on item type
-    if item_type == "task":
-        success, message = update_task(roadmap, item_id, status)
-    elif item_type == "ac":
-        success, message = update_ac(roadmap, item_id, status)
-    else:
-        success, message = update_sc(roadmap, item_id, status)
+    # Update each item, collecting results
+    successes: list[tuple[str, str]] = []
+    failures: list[tuple[str, str]] = []
 
-    if not success:
-        print(f"Error: {message}", file=sys.stderr)
+    for item_id in item_ids:
+        if item_type == "task":
+            success, message = update_task(roadmap, item_id, status)
+        elif item_type == "ac":
+            success, message = update_ac(roadmap, item_id, status)
+        else:
+            success, message = update_sc(roadmap, item_id, status)
+
+        if success:
+            successes.append((item_id, message))
+        else:
+            failures.append((item_id, message))
+
+    # Save roadmap once (even if some failed, valid ones were updated)
+    if successes:
+        if not save_roadmap(roadmap_path, roadmap):
+            print("Error: Failed to save roadmap", file=sys.stderr)
+            sys.exit(1)
+
+    # Report results
+    for _, msg in successes:
+        print(msg)
+    for _, msg in failures:
+        print(f"Error: {msg}", file=sys.stderr)
+
+    # Run auto-resolver once at the end
+    if successes:
+        _, resolutions = run_auto_resolver(version)
+        for msg in resolutions:
+            print(f"  {msg}")
+
+    # Exit with error if any failures
+    if failures:
         sys.exit(1)
-
-    # Save roadmap
-    if not save_roadmap(roadmap_path, roadmap):
-        print(f"Error: Failed to save roadmap", file=sys.stderr)
-        sys.exit(1)
-
-    print(message)
-
-    # Run auto-resolver
-    resolver_success, resolutions = run_auto_resolver(version)
-    for msg in resolutions:
-        print(f"  {msg}")
 
 
 if __name__ == "__main__":

@@ -4,10 +4,8 @@
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from utils.roadmap import (  # type: ignore
-    get_current_version,
+from roadmap.utils import (  # type: ignore
     get_roadmap_path,
     load_roadmap,
     save_roadmap,
@@ -22,11 +20,13 @@ DEFAULT_STATUS = {
     "success_criteria": "unmet",
 }
 
+CURRENT_VERSION = "v0.1.0"
+
 
 def reset_roadmap() -> None:
     """Reset all roadmap items to not_started/unmet status."""
     try:
-        version = get_current_version()
+        version = CURRENT_VERSION
         if not version:
             print(
                 "Error: Could not retrieve current_version from PRD.json",

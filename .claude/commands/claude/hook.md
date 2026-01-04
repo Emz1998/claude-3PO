@@ -1,12 +1,11 @@
 ---
-name: hook
-description: Create, update, configure, or validate Claude hooks for various events and integrations
+name: claude-hook
+description: Manage Claude hooks for various events and integrations
 argument-hint: <requirements>
 model: opus
 ---
 
-**Instruction**: Use `/hooks-management` skill to create or update hooks based on the requirements: $ARGUMENTS
+## Instructions
 
-**Rule**: `/hooks-management` skill MUST be used for this task.
-
-**Important**: Do not skip skill usage.
+- Determine the task to be performed: create, update or troubleshoot hooks based on the user inputs/arguments: $ARGUMENTS
+- **MUST** use `/hooks-management` skill to implement the task. This is **NON-NEGOTIABLE**.
