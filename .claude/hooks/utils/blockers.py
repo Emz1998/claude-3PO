@@ -89,9 +89,7 @@ def block_unsafe_bash(command: str, reason: str) -> None:
         block_response(reason)
 
 
-def create_phase_blocker(
-    phase: str, action: str
-) -> Callable[[str, str | None], None]:
+def create_phase_blocker(phase: str, action: str) -> Callable[[str, str | None], None]:
     """Create a blocker function for a specific phase and action."""
     reason = f"You are not allowed to {action} in {phase} phase."
 

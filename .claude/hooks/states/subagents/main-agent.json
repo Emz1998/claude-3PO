@@ -1,0 +1,12 @@
+{
+  "invalid_subagent": true,
+  "last_subagent": "test-engineer",
+  "subagent_invocation": {
+    "status": "success",
+    "reason": "successful_transition",
+    "message": "Subagent main-agent was invoked successfully.",
+    "invoked": "main-agent",
+    "expected": "main-agent",
+    "last_completed_subagent": "version-manager"
+  }
+}

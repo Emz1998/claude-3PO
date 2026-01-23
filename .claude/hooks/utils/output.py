@@ -51,6 +51,17 @@ def block_response(reason: str) -> NoReturn:
     sys.exit(2)
 
 
+def block_stoppage(reason: str):
+    output = {"decision": "block", "reason": reason}
+    print(json.dumps(output))
+    sys.exit(0)
+
+
+def allow_stoppage(reason: str):
+    output = {"continue": True}
+    print(json.dumps(output))
+
+
 def continue_response() -> None:
     """Output continue signal for SubagentStop."""
     print(json.dumps({"continue": True}))

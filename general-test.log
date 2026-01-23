@@ -1,0 +1,208 @@
+
+{
+    "session_id": "e70ee851-0a98-4363-8750-fa4c4cc169d7",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/e70ee851-0a98-4363-8750-fa4c4cc169d7.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Task",
+    "tool_input": {
+        "description": "Explore codebase structure",
+        "prompt": "Explore and analyze the codebase to understand its structure, architecture, and key components. Generate a comprehensive codebase status report including:\n\n1. Project structure and directory layout\n2. Key files and their purposes\n3. Technology stack being used\n4. Important patterns and conventions\n5. Current state of development (based on git status and recent changes)\n6. Any notable configurations or settings\n\nFocus on understanding the overall architecture and how different parts of the codebase relate to each other.",
+        "subagent_type": "codebase-explorer",
+        "run_in_background": true
+    },
+    "tool_use_id": "toolu_01BAfVMXpbZEJrK2PXWvCvkb"
+}
+{
+    "session_id": "e70ee851-0a98-4363-8750-fa4c4cc169d7",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/e70ee851-0a98-4363-8750-fa4c4cc169d7.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+        "command": "git log --oneline -20",
+        "description": "Get recent commit history"
+    },
+    "tool_use_id": "toolu_01Xt4vkAhSwGuawdaaMuJSU4"
+}
+{
+    "session_id": "e70ee851-0a98-4363-8750-fa4c4cc169d7",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/e70ee851-0a98-4363-8750-fa4c4cc169d7.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+        "command": "git branch -a",
+        "description": "List all branches"
+    },
+    "tool_use_id": "toolu_01FfiWopdaTbmH9UDdojzV4R"
+}
+{
+    "session_id": "e70ee851-0a98-4363-8750-fa4c4cc169d7",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/e70ee851-0a98-4363-8750-fa4c4cc169d7.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+        "command": "git status",
+        "description": "Get current git status"
+    },
+    "tool_use_id": "toolu_01TLsFTzb1B4MMRHwvoi37Es"
+}
+{
+    "session_id": "e70ee851-0a98-4363-8750-fa4c4cc169d7",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/e70ee851-0a98-4363-8750-fa4c4cc169d7.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+        "command": "ls -la /home/emhar/avaris-ai/",
+        "description": "List root directory contents"
+    },
+    "tool_use_id": "toolu_013YKQe685CCjmswiTN4fxN9"
+}
+{
+    "session_id": "e70ee851-0a98-4363-8750-fa4c4cc169d7",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/e70ee851-0a98-4363-8750-fa4c4cc169d7.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Read",
+    "tool_input": {
+        "file_path": "/tmp/claude/-home-emhar-avaris-ai/tasks/af2c869.output"
+    },
+    "tool_use_id": "toolu_01UnVPDy8XWBUBse53akVwAT"
+}
+{
+    "session_id": "2542ffad-3c1b-4fd0-8f07-a4d6079c622a",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/2542ffad-3c1b-4fd0-8f07-a4d6079c622a.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "default",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Glob",
+    "tool_input": {
+        "pattern": "**/*.{ts,tsx,js,jsx,json,md}",
+        "path": "/home/emhar/avaris-ai"
+    },
+    "tool_use_id": "toolu_01HbwV46f4Tqk6VEe7JsRPtU"
+}
+{
+    "session_id": "2542ffad-3c1b-4fd0-8f07-a4d6079c622a",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/2542ffad-3c1b-4fd0-8f07-a4d6079c622a.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "default",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+        "command": "ls -la /home/emhar/avaris-ai",
+        "description": "List root directory contents"
+    },
+    "tool_use_id": "toolu_016oqda98SG6Ba4pN6CqFksK"
+}
+{
+    "session_id": "f5db2a85-5235-4020-88ef-9e7a171a80ad",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/f5db2a85-5235-4020-88ef-9e7a171a80ad.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "default",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+        "command": "ls -la /home/emhar/avaris-ai",
+        "description": "List files in working directory"
+    },
+    "tool_use_id": "toolu_01DAzyTtRYK46vNgp314G6gj"
+}
+{
+    "session_id": "e7ad27b5-9edf-4295-a589-8f5b241f257b",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/e7ad27b5-9edf-4295-a589-8f5b241f257b.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "default",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+        "command": "ls -la /home/emhar/avaris-ai",
+        "description": "List root directory contents"
+    },
+    "tool_use_id": "toolu_01C3ms4Cwe2eTQ8JwVkUtHpg"
+}
+{
+    "session_id": "e7ad27b5-9edf-4295-a589-8f5b241f257b",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/e7ad27b5-9edf-4295-a589-8f5b241f257b.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "default",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Glob",
+    "tool_input": {
+        "pattern": "**/*.json",
+        "path": "/home/emhar/avaris-ai"
+    },
+    "tool_use_id": "toolu_01LFqfqdk33eYhnky2noagcr"
+}
+{
+    "session_id": "17c9ddc8-9e81-42fa-9494-501f54bfd8b3",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/17c9ddc8-9e81-42fa-9494-501f54bfd8b3.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "default",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+        "command": "pwd && git branch --show-current",
+        "description": "Verify working directory and current branch"
+    },
+    "tool_use_id": "toolu_013iz7MBStpSF98QHGiU819w"
+}
+{
+    "session_id": "17c9ddc8-9e81-42fa-9494-501f54bfd8b3",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/17c9ddc8-9e81-42fa-9494-501f54bfd8b3.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "default",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Glob",
+    "tool_input": {
+        "pattern": "**/*.{ts,tsx,js,jsx,json,md}",
+        "path": "/home/emhar/avaris-ai"
+    },
+    "tool_use_id": "toolu_01VPGvt9gbQZnBu7vwnjRdmM"
+}
+{
+    "session_id": "17c9ddc8-9e81-42fa-9494-501f54bfd8b3",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/17c9ddc8-9e81-42fa-9494-501f54bfd8b3.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "default",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+        "command": "ls -la /home/emhar/avaris-ai",
+        "description": "List root directory contents"
+    },
+    "tool_use_id": "toolu_01YJpPvhyTFNy99L2TDneAwp"
+}
+{
+    "session_id": "d215125b-9fd4-4e27-99ad-daff911326f5",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/d215125b-9fd4-4e27-99ad-daff911326f5.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "default",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Read",
+    "tool_input": {
+        "file_path": "/home/emhar/avaris-ai/.claude/hooks/workflow/subagents/codebase-explorer.py"
+    },
+    "tool_use_id": "toolu_01CoaRxb8U1nMCXVzbFHmHYW"
+}
+{
+    "session_id": "d215125b-9fd4-4e27-99ad-daff911326f5",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/d215125b-9fd4-4e27-99ad-daff911326f5.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "default",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Read",
+    "tool_input": {
+        "file_path": "/home/emhar/avaris-ai/.claude/hooks/utils/cache.py"
+    },
+    "tool_use_id": "toolu_01KX6UXkLarz68yooFdzDUjU"
+}
