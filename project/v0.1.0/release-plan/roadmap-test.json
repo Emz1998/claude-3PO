@@ -2,20 +2,21 @@
   "name": "Avaris - NBA Betting Analytics Platform",
   "version": "0.1.0",
   "target_release": "2025-01-15",
-  "status": "not_started",
+  "status": "in_progress",
   "phases": [
     {
       "id": "PH-001",
       "name": "Foundation - Environment and Data Models",
-      "status": "not_started",
+      "status": "in_progress",
       "milestones": [
         {
           "id": "MS-001",
           "feature": "F001",
           "name": "Project Setup and Configuration",
           "goal": "Next.js 15 + React 19 + Python ML environment fully configured",
-          "status": "not_started",
+          "status": "in_progress",
           "dependencies": [],
+          "test_strategy": "",
           "success_criteria": [
             {
               "id": "SC-001",
@@ -27,24 +28,21 @@
             {
               "id": "T001",
               "description": "Initialize Next.js 15.1 project with TypeScript strict mode",
-              "status": "not_started",
-              "parallel": false,
+              "status": "completed",
               "owner": "fullstack-developer",
               "dependencies": [],
-              "test_strategy": "tdd",
               "acceptance_criteria": [
                 {
                   "id": "AC-001",
                   "description": "Next.js 15.1 project is initialized with TypeScript strict mode",
-                  "status": "unmet"
+                  "status": "met"
                 }
               ]
             },
             {
               "id": "T002",
               "description": "Configure Tailwind CSS v4 with design tokens from ui-ux specs",
-              "status": "not_started",
-              "parallel": true,
+              "status": "completed",
               "owner": "frontend-engineer",
               "dependencies": [
                 "T001"
@@ -53,15 +51,14 @@
                 {
                   "id": "AC-002",
                   "description": "Tailwind CSS v4 is configured with design tokens from ui-ux specs",
-                  "status": "unmet"
+                  "status": "met"
                 }
               ]
             },
             {
               "id": "T003",
               "description": "Set up Python ML environment with XGBoost, Pandas, nba_api",
-              "status": "not_started",
-              "parallel": true,
+              "status": "completed",
               "owner": "backend-engineer",
               "dependencies": [
                 "T002",
@@ -71,7 +68,24 @@
                 {
                   "id": "AC-003",
                   "description": "Python ML environment is set up with XGBoost, Pandas, nba_api",
-                  "status": "unmet"
+                  "status": "met"
+                }
+              ]
+            },
+            {
+              "id": "T004",
+              "description": "Create Prediction TypeScript interface with moneyline and future spread/totals fields",
+              "status": "completed",
+              "owner": "AI-engineer",
+              "dependencies": [
+                "T001",
+                "T002"
+              ],
+              "acceptance_criteria": [
+                {
+                  "id": "AC-004",
+                  "description": "Prediction TypeScript interface is created with moneyline and future spread/totals fields",
+                  "status": "met"
                 }
               ]
             }
@@ -86,6 +100,7 @@
           "dependencies": [
             "MS-001"
           ],
+          "test_strategy": "tdd",
           "success_criteria": [
             {
               "id": "SC-002",
@@ -97,7 +112,6 @@
               "id": "T004",
               "description": "Create Prediction TypeScript interface with moneyline and future spread/totals fields",
               "status": "not_started",
-              "parallel": false,
               "owner": "fullstack-developer",
               "dependencies": [],
               "acceptance_criteria": [
@@ -112,7 +126,6 @@
               "id": "T005",
               "description": "Create User and Subscription TypeScript interfaces",
               "status": "not_started",
-              "parallel": true,
               "owner": "fullstack-developer",
               "dependencies": [],
               "acceptance_criteria": [
@@ -127,7 +140,6 @@
               "id": "T006",
               "description": "Create NBA Team and Game TypeScript interfaces with validation",
               "status": "not_started",
-              "parallel": true,
               "owner": "fullstack-developer",
               "dependencies": [],
               "acceptance_criteria": [
@@ -156,6 +168,7 @@
           "dependencies": [
             "MS-002"
           ],
+          "test_strategy": "tdd",
           "success_criteria": [
             {
               "id": "SC-001",
@@ -167,7 +180,6 @@
               "id": "T007",
               "description": "Implement fetch_team_stats function with exponential backoff",
               "status": "not_started",
-              "parallel": false,
               "owner": "backend-engineer",
               "dependencies": [],
               "acceptance_criteria": [
@@ -187,7 +199,6 @@
               "id": "T008",
               "description": "Create data transformation pipeline for team stats to Parquet",
               "status": "not_started",
-              "parallel": false,
               "owner": "backend-engineer",
               "dependencies": [
                 "T007"
@@ -204,7 +215,6 @@
               "id": "T009",
               "description": "Write unit tests for team stats fetching and transformation",
               "status": "not_started",
-              "parallel": false,
               "owner": "test-engineer",
               "dependencies": [
                 "T008"
@@ -228,6 +238,7 @@
           "dependencies": [
             "MS-003"
           ],
+          "test_strategy": "tdd",
           "success_criteria": [
             {
               "id": "SC-003",
@@ -239,7 +250,6 @@
               "id": "T010",
               "description": "Implement fetch_player_stats function with injury data capture",
               "status": "not_started",
-              "parallel": false,
               "owner": "backend-engineer",
               "dependencies": [],
               "acceptance_criteria": [
@@ -259,7 +269,6 @@
               "id": "T011",
               "description": "Create player data transformation and storage in Parquet",
               "status": "not_started",
-              "parallel": false,
               "owner": "backend-engineer",
               "dependencies": [
                 "T010"
@@ -284,6 +293,7 @@
             "MS-003",
             "MS-004"
           ],
+          "test_strategy": "ta",
           "success_criteria": [
             {
               "id": "SC-002",
@@ -295,7 +305,6 @@
               "id": "T012",
               "description": "Implement historical game data fetcher with season partitioning",
               "status": "not_started",
-              "parallel": false,
               "owner": "backend-engineer",
               "dependencies": [],
               "acceptance_criteria": [
@@ -315,7 +324,6 @@
               "id": "T013",
               "description": "Run backfill for 2022-23 and 2023-24 seasons",
               "status": "not_started",
-              "parallel": false,
               "owner": "backend-engineer",
               "dependencies": [
                 "T012"
@@ -332,7 +340,6 @@
               "id": "T014",
               "description": "Validate backfilled data completeness and quality",
               "status": "not_started",
-              "parallel": false,
               "owner": "test-engineer",
               "dependencies": [
                 "T013"
@@ -363,6 +370,7 @@
           "dependencies": [
             "MS-005"
           ],
+          "test_strategy": "tdd",
           "success_criteria": [
             {
               "id": "SC-004",
@@ -374,7 +382,6 @@
               "id": "T015",
               "description": "Implement team performance features (win rate, point differential, ratings)",
               "status": "not_started",
-              "parallel": false,
               "owner": "backend-engineer",
               "dependencies": [],
               "acceptance_criteria": [
@@ -389,7 +396,6 @@
               "id": "T016",
               "description": "Implement player features (key stats, injury status, rest days)",
               "status": "not_started",
-              "parallel": true,
               "owner": "backend-engineer",
               "dependencies": [],
               "acceptance_criteria": [
@@ -404,7 +410,6 @@
               "id": "T017",
               "description": "Implement situational features (home/away, back-to-backs, travel)",
               "status": "not_started",
-              "parallel": true,
               "owner": "backend-engineer",
               "dependencies": [],
               "acceptance_criteria": [
@@ -419,7 +424,6 @@
               "id": "T018",
               "description": "Create rolling window features (L5, L10 game performance)",
               "status": "not_started",
-              "parallel": false,
               "owner": "backend-engineer",
               "dependencies": [
                 "T015"
@@ -443,6 +447,7 @@
           "dependencies": [
             "MS-006"
           ],
+          "test_strategy": "ta",
           "success_criteria": [
             {
               "id": "SC-004",
@@ -454,7 +459,6 @@
               "id": "T019",
               "description": "Implement train_model function with time-series cross-validation",
               "status": "not_started",
-              "parallel": false,
               "owner": "backend-engineer",
               "dependencies": [],
               "acceptance_criteria": [
@@ -474,7 +478,6 @@
               "id": "T020",
               "description": "Implement Platt scaling for probability calibration",
               "status": "not_started",
-              "parallel": false,
               "owner": "backend-engineer",
               "dependencies": [
                 "T019"
@@ -491,7 +494,6 @@
               "id": "T021",
               "description": "Train initial model on 2022-24 season data and validate on holdout",
               "status": "not_started",
-              "parallel": false,
               "owner": "backend-engineer",
               "dependencies": [
                 "T020"
@@ -515,6 +517,7 @@
           "dependencies": [
             "MS-007"
           ],
+          "test_strategy": "tdd",
           "success_criteria": [
             {
               "id": "SC-006",
@@ -526,7 +529,6 @@
               "id": "T022",
               "description": "Implement generate_predictions function for daily game inference",
               "status": "not_started",
-              "parallel": false,
               "owner": "backend-engineer",
               "dependencies": [],
               "acceptance_criteria": [
@@ -546,7 +548,6 @@
               "id": "T023",
               "description": "Implement confidence scoring (low/medium/high based on probability)",
               "status": "not_started",
-              "parallel": false,
               "owner": "backend-engineer",
               "dependencies": [
                 "T022"
@@ -563,7 +564,6 @@
               "id": "T024",
               "description": "Create JSON output format for frontend consumption",
               "status": "not_started",
-              "parallel": false,
               "owner": "backend-engineer",
               "dependencies": [
                 "T023"
@@ -587,6 +587,7 @@
           "dependencies": [
             "MS-008"
           ],
+          "test_strategy": "ta",
           "success_criteria": [
             {
               "id": "SC-006",
@@ -598,7 +599,6 @@
               "id": "T025",
               "description": "Implement nightly retraining script with rolling window",
               "status": "not_started",
-              "parallel": false,
               "owner": "backend-engineer",
               "dependencies": [],
               "acceptance_criteria": [
@@ -618,7 +618,6 @@
               "id": "T026",
               "description": "Create GitHub Actions workflow for daily pipeline (6 AM EST)",
               "status": "not_started",
-              "parallel": false,
               "owner": "backend-engineer",
               "dependencies": [
                 "T025"
@@ -648,6 +647,7 @@
           "dependencies": [
             "MS-008"
           ],
+          "test_strategy": "tdd",
           "success_criteria": [
             {
               "id": "SC-007",
@@ -659,7 +659,6 @@
               "id": "T027",
               "description": "Implement GET /api/predictions endpoint with date filtering",
               "status": "not_started",
-              "parallel": false,
               "owner": "fullstack-developer",
               "dependencies": [],
               "acceptance_criteria": [
@@ -673,7 +672,6 @@
               "id": "T028",
               "description": "Implement GET /api/performance endpoint with period filtering",
               "status": "not_started",
-              "parallel": true,
               "owner": "fullstack-developer",
               "dependencies": [],
               "acceptance_criteria": [
@@ -687,7 +685,6 @@
               "id": "T029",
               "description": "Add input validation and error handling for API endpoints",
               "status": "not_started",
-              "parallel": false,
               "owner": "fullstack-developer",
               "dependencies": [
                 "T027",
@@ -704,7 +701,6 @@
               "id": "T030",
               "description": "Write API integration tests with mocked data",
               "status": "not_started",
-              "parallel": false,
               "owner": "test-engineer",
               "dependencies": [
                 "T029"
@@ -734,6 +730,7 @@
           "dependencies": [
             "MS-001"
           ],
+          "test_strategy": "tdd",
           "success_criteria": [
             {
               "id": "SC-008",
@@ -745,7 +742,6 @@
               "id": "T031",
               "description": "Create Pick Card component with all states (pending, win, loss)",
               "status": "not_started",
-              "parallel": false,
               "owner": "frontend-engineer",
               "dependencies": [],
               "acceptance_criteria": [
@@ -759,7 +755,6 @@
               "id": "T032",
               "description": "Create Confidence Badge component (High/Medium/Low)",
               "status": "not_started",
-              "parallel": true,
               "owner": "frontend-engineer",
               "dependencies": [],
               "acceptance_criteria": [
@@ -773,7 +768,6 @@
               "id": "T033",
               "description": "Create Navigation Header with theme toggle",
               "status": "not_started",
-              "parallel": true,
               "owner": "frontend-engineer",
               "dependencies": [],
               "acceptance_criteria": [
@@ -787,7 +781,6 @@
               "id": "T034",
               "description": "Implement dark mode support with localStorage persistence",
               "status": "not_started",
-              "parallel": false,
               "owner": "frontend-engineer",
               "dependencies": [
                 "T033"
@@ -811,6 +804,7 @@
             "MS-010",
             "MS-011"
           ],
+          "test_strategy": "tdd",
           "success_criteria": [
             {
               "id": "SC-009",
@@ -822,7 +816,6 @@
               "id": "T035",
               "description": "Create homepage layout with hero section and picks grid",
               "status": "not_started",
-              "parallel": false,
               "owner": "frontend-engineer",
               "dependencies": [],
               "acceptance_criteria": [
@@ -836,7 +829,6 @@
               "id": "T036",
               "description": "Implement Today's Picks Grid with sorting by game time",
               "status": "not_started",
-              "parallel": false,
               "owner": "frontend-engineer",
               "dependencies": [
                 "T035"
@@ -852,7 +844,6 @@
               "id": "T037",
               "description": "Add performance teaser widget with key metrics",
               "status": "not_started",
-              "parallel": false,
               "owner": "frontend-engineer",
               "dependencies": [
                 "T035"
@@ -868,7 +859,6 @@
               "id": "T038",
               "description": "Implement responsive layouts (mobile, tablet, desktop)",
               "status": "not_started",
-              "parallel": false,
               "owner": "frontend-engineer",
               "dependencies": [
                 "T036"
@@ -892,6 +882,7 @@
             "MS-010",
             "MS-011"
           ],
+          "test_strategy": "tdd",
           "success_criteria": [
             {
               "id": "SC-010",
@@ -903,7 +894,6 @@
               "id": "T039",
               "description": "Create Win Rate Widget with ring chart visualization",
               "status": "not_started",
-              "parallel": false,
               "owner": "frontend-engineer",
               "dependencies": [],
               "acceptance_criteria": [
@@ -917,7 +907,6 @@
               "id": "T040",
               "description": "Create ROI Widget with positive/negative styling",
               "status": "not_started",
-              "parallel": true,
               "owner": "frontend-engineer",
               "dependencies": [],
               "acceptance_criteria": [
@@ -931,7 +920,6 @@
               "id": "T041",
               "description": "Create Streak Indicator showing last 10 results",
               "status": "not_started",
-              "parallel": true,
               "owner": "frontend-engineer",
               "dependencies": [],
               "acceptance_criteria": [
@@ -945,7 +933,6 @@
               "id": "T042",
               "description": "Implement Recent Results List with tap-to-expand",
               "status": "not_started",
-              "parallel": false,
               "owner": "frontend-engineer",
               "dependencies": [
                 "T039"
@@ -961,7 +948,6 @@
               "id": "T043",
               "description": "Create Full History Table with filters and pagination",
               "status": "not_started",
-              "parallel": false,
               "owner": "frontend-engineer",
               "dependencies": [
                 "T042"
@@ -991,6 +977,7 @@
           "dependencies": [
             "MS-005"
           ],
+          "test_strategy": "",
           "success_criteria": [
             {
               "id": "SC-003",
@@ -1002,7 +989,6 @@
               "id": "T044",
               "description": "Write pytest unit tests for data fetching with mocked API",
               "status": "not_started",
-              "parallel": false,
               "owner": "test-engineer",
               "dependencies": [],
               "acceptance_criteria": [
@@ -1016,7 +1002,6 @@
               "id": "T045",
               "description": "Write integration tests for Parquet storage operations",
               "status": "not_started",
-              "parallel": true,
               "owner": "test-engineer",
               "dependencies": [],
               "acceptance_criteria": [
@@ -1030,7 +1015,6 @@
               "id": "T046",
               "description": "Validate pipeline runs for 7 consecutive days without intervention",
               "status": "not_started",
-              "parallel": false,
               "owner": "test-engineer",
               "dependencies": [
                 "T044",
@@ -1054,6 +1038,7 @@
           "dependencies": [
             "MS-007"
           ],
+          "test_strategy": "",
           "success_criteria": [
             {
               "id": "SC-005",
@@ -1065,7 +1050,6 @@
               "id": "T047",
               "description": "Run backtesting on 2023-24 season holdout data",
               "status": "not_started",
-              "parallel": false,
               "owner": "backend-engineer",
               "dependencies": [],
               "acceptance_criteria": [
@@ -1079,7 +1063,6 @@
               "id": "T048",
               "description": "Validate calibration curve follows diagonal",
               "status": "not_started",
-              "parallel": true,
               "owner": "backend-engineer",
               "dependencies": [],
               "acceptance_criteria": [
@@ -1093,7 +1076,6 @@
               "id": "T049",
               "description": "Run paper trading for 50+ predictions before public launch",
               "status": "not_started",
-              "parallel": false,
               "owner": "backend-engineer",
               "dependencies": [
                 "T047"
@@ -1117,6 +1099,7 @@
             "MS-012",
             "MS-013"
           ],
+          "test_strategy": "",
           "success_criteria": [
             {
               "id": "SC-011",
@@ -1128,7 +1111,6 @@
               "id": "T050",
               "description": "Write Vitest unit tests for React components",
               "status": "not_started",
-              "parallel": false,
               "owner": "test-engineer",
               "dependencies": [],
               "acceptance_criteria": [
@@ -1142,7 +1124,6 @@
               "id": "T051",
               "description": "Verify WCAG AA contrast ratios and keyboard navigation",
               "status": "not_started",
-              "parallel": true,
               "owner": "frontend-engineer",
               "dependencies": [],
               "acceptance_criteria": [
@@ -1156,7 +1137,6 @@
               "id": "T052",
               "description": "Run Lighthouse audit and achieve 90+ SEO score",
               "status": "not_started",
-              "parallel": false,
               "owner": "frontend-engineer",
               "dependencies": [
                 "T050",
@@ -1173,7 +1153,6 @@
               "id": "T053",
               "description": "Verify page load under 2 seconds on 3G connection",
               "status": "not_started",
-              "parallel": true,
               "owner": "frontend-engineer",
               "dependencies": [],
               "acceptance_criteria": [
@@ -1201,6 +1180,7 @@
           "dependencies": [
             "MS-016"
           ],
+          "test_strategy": "",
           "success_criteria": [
             {
               "id": "SC-012",
@@ -1212,7 +1192,6 @@
               "id": "T054",
               "description": "Configure Vercel deployment from main branch",
               "status": "not_started",
-              "parallel": false,
               "owner": "fullstack-developer",
               "dependencies": [],
               "acceptance_criteria": [
@@ -1226,7 +1205,6 @@
               "id": "T055",
               "description": "Create GitHub Actions workflow for ML pipeline cron",
               "status": "not_started",
-              "parallel": true,
               "owner": "backend-engineer",
               "dependencies": [],
               "acceptance_criteria": [
@@ -1240,7 +1218,6 @@
               "id": "T056",
               "description": "Set up environment variables in Vercel and GitHub Secrets",
               "status": "not_started",
-              "parallel": true,
               "owner": "fullstack-developer",
               "dependencies": [],
               "acceptance_criteria": [
@@ -1254,7 +1231,6 @@
               "id": "T057",
               "description": "Configure test workflow to run on PR creation",
               "status": "not_started",
-              "parallel": false,
               "owner": "fullstack-developer",
               "dependencies": [
                 "T054"
@@ -1278,6 +1254,7 @@
             "MS-017",
             "MS-015"
           ],
+          "test_strategy": "",
           "success_criteria": [
             {
               "id": "SC-006",
@@ -1289,7 +1266,6 @@
               "id": "T058",
               "description": "Deploy production build to Vercel",
               "status": "not_started",
-              "parallel": false,
               "owner": "fullstack-developer",
               "dependencies": [],
               "acceptance_criteria": [
@@ -1303,7 +1279,6 @@
               "id": "T059",
               "description": "Verify daily pipeline runs successfully in production",
               "status": "not_started",
-              "parallel": false,
               "owner": "backend-engineer",
               "dependencies": [
                 "T058"
@@ -1319,7 +1294,6 @@
               "id": "T060",
               "description": "Monitor first 7 days of production operation",
               "status": "not_started",
-              "parallel": false,
               "owner": "fullstack-developer",
               "dependencies": [
                 "T059"
@@ -1359,7 +1333,7 @@
     }
   },
   "metadata": {
-    "last_updated": "2026-01-04T00:44:52.690866+00:00",
+    "last_updated": "2026-01-25T02:49:33.902398+00:00",
     "schema_version": "1.0.0"
   }
 }

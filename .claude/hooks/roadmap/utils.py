@@ -2,16 +2,24 @@
 # Roadmap utilities for status loggers
 
 import json
+import sys
 import os
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal
 
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from utils.json import load_json  # type: ignore
 
 # Type aliases for schema values
 StatusType = Literal["not_started", "in_progress", "completed"]
 CriteriaStatusType = Literal["met", "unmet"]
 TestStrategyType = Literal["TDD", "TA"]
+
+
+PROJECT_STATUS_FILE_PATH = Path("project/status.json")
+ROADMAP_TEST_FILE_PATH = Path("project/v0.1.0/release-plan/roadmap-test.json")
 
 
 def get_project_dir() -> Path:
@@ -20,28 +28,9 @@ def get_project_dir() -> Path:
     return Path(project_dir)
 
 
-def get_prd_path() -> Path:
-    """Get the path to PRD.json."""
-    project_dir = get_project_dir()
-    return project_dir / "project" / "product" / "PRD.json"
-
-
-def load_prd() -> dict | None:
-    """Load PRD.json file."""
-    prd_path = get_prd_path()
-    if not prd_path.exists():
-        return None
-
-    try:
-        with open(prd_path, "r") as f:
-            return json.load(f)
-    except (json.JSONDecodeError, IOError):
-        return None
-
-
 def get_current_version() -> str:
     """Retrieve current_version from PRD.json."""
-    prd = load_prd()
+    prd = load_json(str(PROJECT_STATUS_FILE_PATH))
     if prd is None:
         return ""
     return prd.get("current_version", "")
@@ -54,9 +43,11 @@ def get_roadmap_path(version: str = get_current_version()) -> Path:
 
 
 def load_roadmap(
-    roadmap_path: Path = get_roadmap_path(),
+    roadmap_path: Path | None = None,
 ) -> dict | None:
     """Load roadmap.json file."""
+    if roadmap_path is None:
+        roadmap_path = get_roadmap_path()
     if not roadmap_path.exists():
         return None
 
@@ -149,12 +140,13 @@ def get_sc(
     return None, None
 
 
-def save_roadmap(roadmap_path: Path, roadmap: dict) -> bool:
-    """Save roadmap.json file with updated timestamp."""
+def save_roadmap(roadmap: dict, roadmap_path: Path | None = None) -> bool:
+    # Save roadmap.json file with updated timestamp.
+    if roadmap_path is None:
+        roadmap_path = get_roadmap_path() or None
     try:
         roadmap["metadata"]["last_updated"] = datetime.now(timezone.utc).isoformat()
-        with open(roadmap_path, "w") as f:
-            json.dump(roadmap, f, indent=2)
+        roadmap_path.write_text(json.dumps(roadmap, indent=2)) if roadmap_path else None
         return True
     except IOError:
         return False
@@ -167,3 +159,137 @@ def get_test_strategy(
     milestone = get_milestone(milestone_id, roadmap)
     test_strategy = milestone.get("test_strategy", "TA") if milestone else ""
     return test_strategy
+
+
+def get_all_completed_tasks(
+    roadmap: dict | None = load_roadmap(),
+) -> list[str]:
+    if not roadmap:
+        return []
+    return [
+        task["id"]
+        for phase in roadmap.get("phases", [])
+        for milestone in phase.get("milestones", [])
+        for task in milestone.get("tasks", [])
+        if task.get("status") == "completed"
+    ]
+
+
+def get_milestone_of_task(
+    task_id: str = get_current("task") or "", roadmap: dict | None = load_roadmap()
+) -> str | None:
+    if not roadmap:
+        return None
+    return next(
+        milestone["id"]
+        for phase in roadmap.get("phases", [])
+        for milestone in phase.get("milestones", [])
+        for task in milestone.get("tasks", [])
+        if task.get("id") == task_id
+    )
+
+
+def get_phase_of_milestone(
+    milestone_id: str = get_current("milestone") or "",
+    roadmap: dict | None = load_roadmap(),
+) -> str | None:
+    if not roadmap:
+        return None
+    return next(
+        phase["id"]
+        for phase in roadmap.get("phases", [])
+        for milestone in phase.get("milestones", [])
+        if milestone.get("id") == milestone_id
+    )
+
+
+# Validation functions
+
+
+def is_milestone_completed(
+    milestone_id: str = get_current("milestone") or "",
+    roadmap: dict | None = load_roadmap(),
+) -> bool:
+    milestone = get_milestone(milestone_id, roadmap)
+    return milestone.get("status") == "completed" if milestone else False
+
+
+def is_task_completed(
+    task_id: str = get_current("task") or "", roadmap: dict | None = load_roadmap()
+) -> bool:
+    task = get_task(task_id, roadmap)
+    return task.get("status") == "completed" if task else False
+
+
+def is_phase_completed(
+    phase_id: str = get_current("phase") or "",
+    roadmap: dict | None = load_roadmap(),
+) -> bool:
+    phase = get_phase(phase_id, roadmap)
+    return phase.get("status") == "completed" if phase else False
+
+
+def are_all_acs_met_in_task(
+    task_id: str = get_current("task") or "",
+    roadmap: dict | None = load_roadmap(),
+) -> bool:
+    task = get_task(task_id, roadmap)
+    return (
+        all(ac.get("status") == "met" for ac in task.get("acceptance_criteria", []))
+        if task
+        else False
+    )
+
+
+def are_all_scs_met_in_milestone(
+    milestone_id: str = get_current("milestone") or "",
+    roadmap: dict | None = load_roadmap(),
+) -> bool:
+    milestone = get_milestone(milestone_id, roadmap)
+    return (
+        all(sc.get("status") == "met" for sc in milestone.get("success_criteria", []))
+        if milestone
+        else False
+    )
+
+
+def are_all_tasks_completed_in_milestone(
+    milestone_id: str = get_current("milestone") or "",
+    roadmap: dict | None = load_roadmap(),
+) -> bool:
+    milestone = get_milestone(milestone_id, roadmap)
+    return (
+        all(task.get("status") == "completed" for task in milestone.get("tasks", []))
+        if milestone
+        else False
+    )
+
+
+def are_all_milestones_completed_in_phase(
+    phase_id: str = get_current("phase") or "",
+    roadmap: dict | None = load_roadmap(),
+) -> bool:
+    phase = get_phase(phase_id, roadmap)
+    return (
+        all(
+            milestone.get("status") == "completed"
+            for milestone in phase.get("milestones", [])
+        )
+        if phase
+        else False
+    )
+
+
+def are_all_phases_completed(
+    roadmap: dict | None = load_roadmap(),
+) -> bool:
+    return (
+        all(phase.get("status") == "completed" for phase in roadmap.get("phases", []))
+        if roadmap
+        else False
+    )
+
+
+# if __name__ == "__main__":
+#     roadmap_test = load_roadmap(ROADMAP_TEST_FILE_PATH)
+#     print(are_all_milestones_completed_in_phase("PH-001", roadmap_test))

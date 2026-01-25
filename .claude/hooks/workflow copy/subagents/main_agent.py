@@ -16,10 +16,6 @@ from utils.json import read_stdin_json  # type: ignore
 from utils.cache import set_cache, get_cache  # type: ignore
 from utils.output import block_response, block_stoppage, allow_stoppage, print_and_exit  # type: ignore
 from utils.project import build_project_path, BASE_PATH  # type: ignore
-from workflow.utils.state_setters import set_tool_call_status, set_tool_call_decision, set_write_tool_call_state  # type: ignore
-from workflow.utils.state_getters import get_tool_call_status, get_out_of_scope_state  # type: ignore
-from workflow.utils.guardrails import no_coding_guardrail  # type: ignore
-from workflow.tests.hook_tests import test_read_tool, test_write_tool  # type: ignore
 
 from roadmap.utils import (
     get_current_version,
@@ -220,43 +216,53 @@ def setup_validator() -> None:
     return None
 
 
-def setup_state_logger(hook_input: dict[str, Any]) -> None:
-
-    hook_event_name = hook_input.get("hook_event_name", "")
-    tool_name = hook_input.get("tool_name", "")
-    tool_input = hook_input.get("tool_input", {})
-    file_path = tool_input.get("file_path", "")
-    out_of_scope = get_out_of_scope_state(MAIN_AGENT_STATE_PATH)
-
-    decision = (
-        no_coding_guardrail(file_path, MAIN_AGENT_STATE_PATH)
-        if "coding" in out_of_scope
-        else "allow"
-    )
-
-    set_tool_call_status(hook_event_name, tool_name, MAIN_AGENT_STATE_PATH)
-    set_write_tool_call_state(
-        hook_event_name, tool_name, file_path, decision, MAIN_AGENT_STATE_PATH
-    )
-
-    return None
-
-
 def is_implement_active() -> bool:
     return get_cache("is_implement_active", MAIN_STATE_PATH)
 
 
-def setup_guardrails(hook_input: dict[str, Any]) -> None:
-    
+def subagents_invocation_guardrail(hook_input: dict[str, Any]):
+    hook_event_name = hook_input.get("hook_event_name", "")
+    tool_name = hook_input.get("tool_name", "")
+    tool_input = hook_input.get("tool_input", {})
+    subagent_name = tool_input.get("subagent_type", "")
+
+    if hook_event_name != "PreToolUse":
+        return
+    if tool_name != "Task":
+        return
+
+
+def validate_tool_call(
+    tool_name: str, hook_event_name: str, tool_input: dict[str, Any]
+) -> None:
+    if hook_event_name != "PreToolUse":
+        return
+
+    if tool_input.get("subagent_type", "") != "test-engineer":
+        return
+
+    return None
+
+
+def _block_stoppage(hook_input: dict[str, Any]) -> None:
+    hook_event_name = hook_input.get("hook_event_name", "")
+    is_report_written = get_cache("is_report_written", MAIN_AGENT_STATE_PATH)
+    if hook_event_name != "Stop":
+        return
+    if not is_report_written:
+        block_response("Report is not written. Please write the report first.")
+
+    set_cache("is_codebase_explorer_done", True, SUBAGENTS_STATE_PATH)
+    print("Codebase explorer completed.")
 
 
 def main() -> None:
-    hook_input = test_write_tool
+    hook_input = test_bash_tool
     set_active_tool(hook_input)
     # dependencies_guardrail(hook_input)
-    # file_write_guardrail(hook_input)
-    # _block_stoppage(hook_input)
+    file_write_guardrail(hook_input)
+    _block_stoppage(hook_input)
 
 
 if __name__ == "__main__":
-    setup_state_logger(test_write_tool)
+    validate_execution_order("main-agent")
