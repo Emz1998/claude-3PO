@@ -505,3 +505,119 @@
     },
     "tool_use_id": "toolu_014aG93jmwhUpvnF4HdtqtcW"
 }
+{
+    "session_id": "09a4767e-c95e-4b28-9446-fb30855a4719",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/09a4767e-c95e-4b28-9446-fb30855a4719.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "default",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Read",
+    "tool_input": {
+        "file_path": "/home/emhar/avaris-ai/.claude/hooks/roadmap/resolver.py"
+    },
+    "tool_use_id": "toolu_01RDHmeLQtu4NcKhFr43p97j"
+}
+{
+    "session_id": "09a4767e-c95e-4b28-9446-fb30855a4719",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/09a4767e-c95e-4b28-9446-fb30855a4719.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "default",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Read",
+    "tool_input": {
+        "file_path": "/home/emhar/avaris-ai/project/v0.1.0/release-plan/roadmap-test.json"
+    },
+    "tool_use_id": "toolu_01GBh74Eg7fP9muTTKpTyWTJ"
+}
+{
+    "session_id": "09a4767e-c95e-4b28-9446-fb30855a4719",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/09a4767e-c95e-4b28-9446-fb30855a4719.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "default",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Edit",
+    "tool_input": {
+        "file_path": "/home/emhar/avaris-ai/.claude/hooks/roadmap/resolver.py",
+        "old_string": "def _get_current(\n    items: list[dict],\n) -> dict:\n\n    current = next(\n        (item for item in items if item.get(\"status\", \"\") != \"completed\"),\n        items[0],\n    )\n\n    return current",
+        "new_string": "def _get_current(items: list[dict]) -> dict | None:\n    \"\"\"Get the first non-completed item, or None if all are completed.\"\"\"\n    return next(\n        (item for item in items if item.get(\"status\", \"\") != \"completed\"),\n        None,\n    )",
+        "replace_all": false
+    },
+    "tool_use_id": "toolu_01NjH8NZSdsFAdHstxTNRjxr"
+}
+{
+    "session_id": "432c991f-353f-4b55-bea0-6c7e7fa757c3",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/432c991f-353f-4b55-bea0-6c7e7fa757c3.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "default",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Read",
+    "tool_input": {
+        "file_path": "/home/emhar/avaris-ai/.claude/hooks/workflow/lib/guardrails.py"
+    },
+    "tool_use_id": "toolu_016VbP1qKi3JxRXUM45Mzfek"
+}
+{
+    "session_id": "432c991f-353f-4b55-bea0-6c7e7fa757c3",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/432c991f-353f-4b55-bea0-6c7e7fa757c3.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "default",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Edit",
+    "tool_input": {
+        "file_path": "/home/emhar/avaris-ai/.claude/hooks/workflow/lib/guardrails.py",
+        "old_string": "def check_tool_allowed(config: dict, state: dict, tool_name: str) -> Tuple[bool, str]:\n    \"\"\"Returns (allowed, reason)\"\"\"\n    phase = get_phase(config, state[\"current_phase\"])\n\n    if tool_name not in phase[\"allowed_tools\"]:",
+        "new_string": "def check_tool_allowed(config: dict, state: dict, tool_name: str) -> Tuple[bool, str]:\n    \"\"\"Returns (allowed, reason)\"\"\"\n    phase = get_phase(config, state[\"current_phase\"])\n\n    if not phase:\n        return False, f\"Unknown phase: {state['current_phase']}\"\n\n    if tool_name not in phase[\"allowed_tools\"]:",
+        "replace_all": false
+    },
+    "tool_use_id": "toolu_013LToYvtB81t9muDyX3WtxL"
+}
+{
+    "session_id": "432c991f-353f-4b55-bea0-6c7e7fa757c3",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/432c991f-353f-4b55-bea0-6c7e7fa757c3.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "default",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Edit",
+    "tool_input": {
+        "file_path": "/home/emhar/avaris-ai/.claude/hooks/workflow/lib/guardrails.py",
+        "old_string": "def check_subagent_allowed(\n    config: dict, state: dict, subagent: str\n) -> Tuple[bool, str]:\n    \"\"\"Check subagent is allowed and in correct order\"\"\"\n    phase = get_phase(config, state[\"current_phase\"])\n\n    # Check phase allows this subagent\n    if subagent not in phase[\"allowed_subagents\"]:",
+        "new_string": "def check_subagent_allowed(\n    config: dict, state: dict, subagent: str\n) -> Tuple[bool, str]:\n    \"\"\"Check subagent is allowed and in correct order\"\"\"\n    phase = get_phase(config, state[\"current_phase\"])\n\n    if not phase:\n        return False, f\"Unknown phase: {state['current_phase']}\"\n\n    # Check phase allows this subagent\n    if subagent not in phase[\"allowed_subagents\"]:",
+        "replace_all": false
+    },
+    "tool_use_id": "toolu_01Uv3UXsZNmUH5WMmJrBbHFc"
+}
+{
+    "session_id": "432c991f-353f-4b55-bea0-6c7e7fa757c3",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/432c991f-353f-4b55-bea0-6c7e7fa757c3.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "default",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Edit",
+    "tool_input": {
+        "file_path": "/home/emhar/avaris-ai/.claude/hooks/workflow/lib/guardrails.py",
+        "old_string": "    # Check required tools were used in current phase\n    current_phase = get_phase(config, state[\"current_phase\"])\n    required = current_phase.get(\"required_before_next\", [])",
+        "new_string": "    # Check required tools were used in current phase\n    current_phase = get_phase(config, state[\"current_phase\"])\n    if not current_phase:\n        return False, f\"Unknown current phase: {state['current_phase']}\"\n\n    required = current_phase.get(\"required_before_next\", [])",
+        "replace_all": false
+    },
+    "tool_use_id": "toolu_01Ui5hBAL8RTCvTP8yS3z5sj"
+}
+{
+    "session_id": "385e07de-d10f-41a3-9516-6fce6be37558",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/385e07de-d10f-41a3-9516-6fce6be37558.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "default",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "mcp__ide__getDiagnostics",
+    "tool_input": {},
+    "tool_use_id": "toolu_01V3XCkGyJJsMsrBRMGQvF7o"
+}
+{
+    "session_id": "9925808d-8dc8-45a9-9807-985df415a366",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/9925808d-8dc8-45a9-9807-985df415a366.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "default",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "mcp__ide__getDiagnostics",
+    "tool_input": {},
+    "tool_use_id": "toolu_01L4aR53XuhuM5TGHViJ7oVK"
+}

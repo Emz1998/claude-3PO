@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Auto-resolver for roadmap statuses based on child item completion."""
 
+import json
 import sys
 from pathlib import Path
 
@@ -70,6 +71,31 @@ def _resolve_phase(phase: dict) -> None:
         phase["status"] = status
 
 
+def _get_current(items: list[dict]) -> dict | None:
+    """Get the first non-completed item, or None if all are completed."""
+    return next(
+        (item for item in items if item.get("status", "") != "completed"),
+        None,
+    )
+
+
+def _resolve_current(phases: list[dict]) -> dict:
+    all_milestones = [m for p in phases for m in p.get("milestones", [])]
+    all_tasks = [t for m in all_milestones for t in m.get("tasks", [])]
+
+    phase = _get_current(phases)
+    milestone = _get_current(all_milestones)
+    task = _get_current(all_tasks)
+
+    print(json.dumps(all_milestones, indent=2))
+
+    return {
+        "phase": phase.get("id", "") if phase else "",
+        "milestone": milestone.get("id", "") if milestone else "",
+        "task": task.get("id", "") if task else "",
+    }
+
+
 def resolve_roadmap(roadmap_path: Path | None = None) -> None:
     """Resolve all statuses in roadmap from bottom up."""
     roadmap = load_roadmap(roadmap_path) if roadmap_path else {}
@@ -88,4 +114,10 @@ def resolve_roadmap(roadmap_path: Path | None = None) -> None:
 
 
 if __name__ == "__main__":
+    roadmap = load_roadmap(ROADMAP_TEST_FILE_PATH) or {}
     resolve_roadmap(ROADMAP_TEST_FILE_PATH)
+    phases = roadmap.get("phases", [])
+    # print(json.dumps(phases[0], indent=2))
+    current = _resolve_current(phases)
+    save_roadmap(roadmap, ROADMAP_TEST_FILE_PATH)
+    print(json.dumps(current, indent=2))
