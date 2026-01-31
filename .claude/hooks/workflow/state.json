@@ -1,0 +1,19 @@
+{
+  "workflow_active": true,
+  "current_phase": "plan",
+  "read_files": {},
+  "written_files": [],
+  "edited_files": [],
+  "troubleshoot": false,
+  "phase_history": [],
+  "deliverables": [
+    {
+      "type": "files",
+      "action": "write",
+      "value": ".*codebase-status/codebase-status_.*\\.md$",
+      "phase": "explore",
+      "completed": true
+    }
+  ],
+  "dry_run_active": true
+}

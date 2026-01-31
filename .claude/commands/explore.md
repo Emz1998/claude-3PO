@@ -6,9 +6,7 @@ argument-hint: <context>
 model: sonnet
 ---
 
-**Goal**: Dry run of the explore phase
+Trigger @codebase-explorer agent to explore the codebase
 
-## Workflow
-
-1. Invoke @agent-codebase-explorer subagent to write the todays date to the specified file path
-2. After writing, exit right away without doing any work. This is a test dry-run.
+1. Instruct it to write only the word "Codebase Status" to the file `project/v0.1.0/PH-001_[Foundation - Environment and Data Models]/MS-001_[Project Setup and Configuration]/codebase-status/codebase-status_20260130_01.md`
+2. File should only contain the word "Codebase Status" and nothing else.

@@ -16,7 +16,7 @@
           "goal": "Next.js 15 + React 19 + Python ML environment fully configured",
           "status": "in_progress",
           "dependencies": [],
-          "test_strategy": "",
+          "test_strategy": "tdd",
           "success_criteria": [
             {
               "id": "SC-001",
@@ -100,7 +100,7 @@
           "dependencies": [
             "MS-001"
           ],
-          "test_strategy": "tdd",
+          "test_strategy": "ta",
           "success_criteria": [
             {
               "id": "SC-002",
@@ -1333,7 +1333,7 @@
     }
   },
   "metadata": {
-    "last_updated": "2026-01-26T01:50:50.298232+00:00",
+    "last_updated": "2026-01-29T05:50:34.772780+00:00",
     "schema_version": "1.0.0"
   }
 }

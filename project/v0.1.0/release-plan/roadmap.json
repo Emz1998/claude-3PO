@@ -16,12 +16,12 @@
           "goal": "Next.js 15 + React 19 + Python ML environment fully configured",
           "status": "not_started",
           "dependencies": [],
-          "test_strategy": "",
+          "test_strategy": "tdd",
           "success_criteria": [
             {
               "id": "SC-001",
               "description": "All tasks in this milestone are completed",
-              "status": "unmet"
+              "status": "met"
             }
           ],
           "tasks": [
@@ -30,64 +30,28 @@
               "description": "Initialize Next.js 15.1 project with TypeScript strict mode",
               "status": "completed",
               "owner": "fullstack-developer",
-              "dependencies": [],
-              "acceptance_criteria": [
-                {
-                  "id": "AC-001",
-                  "description": "Next.js 15.1 project is initialized with TypeScript strict mode",
-                  "status": "met"
-                }
-              ]
+              "dependencies": []
             },
             {
               "id": "T002",
               "description": "Configure Tailwind CSS v4 with design tokens from ui-ux specs",
               "status": "not_started",
               "owner": "frontend-engineer",
-              "dependencies": [
-                "T001"
-              ],
-              "acceptance_criteria": [
-                {
-                  "id": "AC-002",
-                  "description": "Tailwind CSS v4 is configured with design tokens from ui-ux specs",
-                  "status": "unmet"
-                }
-              ]
+              "dependencies": ["T001"]
             },
             {
               "id": "T003",
               "description": "Set up Python ML environment with XGBoost, Pandas, nba_api",
               "status": "not_started",
               "owner": "backend-engineer",
-              "dependencies": [
-                "T002",
-                "T001"
-              ],
-              "acceptance_criteria": [
-                {
-                  "id": "AC-003",
-                  "description": "Python ML environment is set up with XGBoost, Pandas, nba_api",
-                  "status": "unmet"
-                }
-              ]
+              "dependencies": ["T002", "T001"]
             },
             {
               "id": "T004",
               "description": "Create Prediction TypeScript interface with moneyline and future spread/totals fields",
               "status": "not_started",
               "owner": "AI-engineer",
-              "dependencies": [
-                "T001",
-                "T002"
-              ],
-              "acceptance_criteria": [
-                {
-                  "id": "AC-004",
-                  "description": "Prediction TypeScript interface is created with moneyline and future spread/totals fields",
-                  "status": "unmet"
-                }
-              ]
+              "dependencies": ["T001", "T002"]
             }
           ]
         },
@@ -97,13 +61,12 @@
           "name": "Data Models and TypeScript Interfaces",
           "goal": "Core data structures defined for predictions, teams, and games",
           "status": "not_started",
-          "dependencies": [
-            "MS-001"
-          ],
+          "dependencies": ["MS-001"],
           "test_strategy": "tdd",
           "success_criteria": [
             {
               "id": "SC-002",
+              "description": "All TypeScript interfaces for core data structures are defined and validated",
               "status": "unmet"
             }
           ],
@@ -113,42 +76,21 @@
               "description": "Create Prediction TypeScript interface with moneyline and future spread/totals fields",
               "status": "not_started",
               "owner": "fullstack-developer",
-              "dependencies": [],
-              "acceptance_criteria": [
-                {
-                  "id": "AC-004",
-                  "description": "Prediction TypeScript interface is created with moneyline and future spread/totals fields",
-                  "status": "unmet"
-                }
-              ]
+              "dependencies": []
             },
             {
               "id": "T005",
               "description": "Create User and Subscription TypeScript interfaces",
               "status": "not_started",
               "owner": "fullstack-developer",
-              "dependencies": [],
-              "acceptance_criteria": [
-                {
-                  "id": "AC-005",
-                  "description": "User and Subscription TypeScript interfaces are created",
-                  "status": "unmet"
-                }
-              ]
+              "dependencies": []
             },
             {
               "id": "T006",
               "description": "Create NBA Team and Game TypeScript interfaces with validation",
               "status": "not_started",
               "owner": "fullstack-developer",
-              "dependencies": [],
-              "acceptance_criteria": [
-                {
-                  "id": "AC-006",
-                  "description": "NBA Team and Game TypeScript interfaces are created with validation",
-                  "status": "unmet"
-                }
-              ]
+              "dependencies": []
             }
           ]
         }
@@ -165,13 +107,12 @@
           "name": "Team Performance Data Fetching",
           "goal": "Automated fetch of all 30 NBA team statistics with rate limiting",
           "status": "not_started",
-          "dependencies": [
-            "MS-002"
-          ],
+          "dependencies": ["MS-002"],
           "test_strategy": "tdd",
           "success_criteria": [
             {
-              "id": "SC-001",
+              "id": "SC-003",
+              "description": "Team stats fetching and transformation pipeline is operational with tests",
               "status": "unmet"
             }
           ],
@@ -181,51 +122,21 @@
               "description": "Implement fetch_team_stats function with exponential backoff",
               "status": "not_started",
               "owner": "backend-engineer",
-              "dependencies": [],
-              "acceptance_criteria": [
-                {
-                  "id": "AC-001",
-                  "description": "fetch_team_stats function is implemented with exponential backoff",
-                  "status": "unmet"
-                },
-                {
-                  "id": "AC-002",
-                  "description": "data transformation pipeline for team stats to Parquet is created",
-                  "status": "unmet"
-                }
-              ]
+              "dependencies": []
             },
             {
               "id": "T008",
               "description": "Create data transformation pipeline for team stats to Parquet",
               "status": "not_started",
               "owner": "backend-engineer",
-              "dependencies": [
-                "T007"
-              ],
-              "acceptance_criteria": [
-                {
-                  "id": "AC-007",
-                  "description": "unit tests for team stats fetching and transformation are written",
-                  "status": "unmet"
-                }
-              ]
+              "dependencies": ["T007"]
             },
             {
               "id": "T009",
               "description": "Write unit tests for team stats fetching and transformation",
               "status": "not_started",
               "owner": "test-engineer",
-              "dependencies": [
-                "T008"
-              ],
-              "acceptance_criteria": [
-                {
-                  "id": "AC-008",
-                  "description": "fetch_player_stats function is implemented with injury data capture",
-                  "status": "unmet"
-                }
-              ]
+              "dependencies": ["T008"]
             }
           ]
         },
@@ -235,13 +146,12 @@
           "name": "Player Statistics Collection",
           "goal": "Collect key player stats and injury reports for all rostered players",
           "status": "not_started",
-          "dependencies": [
-            "MS-003"
-          ],
+          "dependencies": ["MS-003"],
           "test_strategy": "tdd",
           "success_criteria": [
             {
-              "id": "SC-003",
+              "id": "SC-004",
+              "description": "Player stats and injury data collection pipeline is operational",
               "status": "unmet"
             }
           ],
@@ -251,35 +161,14 @@
               "description": "Implement fetch_player_stats function with injury data capture",
               "status": "not_started",
               "owner": "backend-engineer",
-              "dependencies": [],
-              "acceptance_criteria": [
-                {
-                  "id": "AC-003",
-                  "description": "fetch_player_stats function is implemented with injury data capture",
-                  "status": "unmet"
-                },
-                {
-                  "id": "AC-004",
-                  "description": "data transformation pipeline for player stats to Parquet is created",
-                  "status": "unmet"
-                }
-              ]
+              "dependencies": []
             },
             {
               "id": "T011",
               "description": "Create player data transformation and storage in Parquet",
               "status": "not_started",
               "owner": "backend-engineer",
-              "dependencies": [
-                "T010"
-              ],
-              "acceptance_criteria": [
-                {
-                  "id": "AC-009",
-                  "description": "player data transformation and storage in Parquet is created",
-                  "status": "unmet"
-                }
-              ]
+              "dependencies": ["T010"]
             }
           ]
         },
@@ -289,14 +178,12 @@
           "name": "Historical Data Backfill",
           "goal": "Backfill 2022-23 and 2023-24 season data for model training",
           "status": "not_started",
-          "dependencies": [
-            "MS-003",
-            "MS-004"
-          ],
+          "dependencies": ["MS-003", "MS-004"],
           "test_strategy": "ta",
           "success_criteria": [
             {
-              "id": "SC-002",
+              "id": "SC-005",
+              "description": "Historical data for 2022-24 seasons is complete and validated",
               "status": "unmet"
             }
           ],
@@ -306,51 +193,21 @@
               "description": "Implement historical game data fetcher with season partitioning",
               "status": "not_started",
               "owner": "backend-engineer",
-              "dependencies": [],
-              "acceptance_criteria": [
-                {
-                  "id": "AC-005",
-                  "description": "historical game data fetcher with season partitioning is implemented",
-                  "status": "unmet"
-                },
-                {
-                  "id": "AC-006",
-                  "description": "data transformation pipeline for historical game data to Parquet is created",
-                  "status": "unmet"
-                }
-              ]
+              "dependencies": []
             },
             {
               "id": "T013",
               "description": "Run backfill for 2022-23 and 2023-24 seasons",
               "status": "not_started",
               "owner": "backend-engineer",
-              "dependencies": [
-                "T012"
-              ],
-              "acceptance_criteria": [
-                {
-                  "id": "AC-010",
-                  "description": "backfill for 2022-23 and 2023-24 seasons is run",
-                  "status": "unmet"
-                }
-              ]
+              "dependencies": ["T012"]
             },
             {
               "id": "T014",
               "description": "Validate backfilled data completeness and quality",
               "status": "not_started",
               "owner": "test-engineer",
-              "dependencies": [
-                "T013"
-              ],
-              "acceptance_criteria": [
-                {
-                  "id": "AC-011",
-                  "description": "validation for backfilled data completeness and quality is done",
-                  "status": "unmet"
-                }
-              ]
+              "dependencies": ["T013"]
             }
           ]
         }
@@ -367,13 +224,12 @@
           "name": "Feature Engineering",
           "goal": "Create model-ready features from raw NBA data",
           "status": "not_started",
-          "dependencies": [
-            "MS-005"
-          ],
+          "dependencies": ["MS-005"],
           "test_strategy": "tdd",
           "success_criteria": [
             {
-              "id": "SC-004",
+              "id": "SC-006",
+              "description": "All feature engineering functions are implemented and tested",
               "status": "unmet"
             }
           ],
@@ -383,58 +239,28 @@
               "description": "Implement team performance features (win rate, point differential, ratings)",
               "status": "not_started",
               "owner": "backend-engineer",
-              "dependencies": [],
-              "acceptance_criteria": [
-                {
-                  "id": "AC-012",
-                  "description": "team performance features (win rate, point differential, ratings) are implemented",
-                  "status": "unmet"
-                }
-              ]
+              "dependencies": []
             },
             {
               "id": "T016",
               "description": "Implement player features (key stats, injury status, rest days)",
               "status": "not_started",
               "owner": "backend-engineer",
-              "dependencies": [],
-              "acceptance_criteria": [
-                {
-                  "id": "AC-013",
-                  "description": "player features (key stats, injury status, rest days) are implemented",
-                  "status": "unmet"
-                }
-              ]
+              "dependencies": []
             },
             {
               "id": "T017",
               "description": "Implement situational features (home/away, back-to-backs, travel)",
               "status": "not_started",
               "owner": "backend-engineer",
-              "dependencies": [],
-              "acceptance_criteria": [
-                {
-                  "id": "AC-014",
-                  "description": "situational features (home/away, back-to-backs, travel) are implemented",
-                  "status": "unmet"
-                }
-              ]
+              "dependencies": []
             },
             {
               "id": "T018",
               "description": "Create rolling window features (L5, L10 game performance)",
               "status": "not_started",
               "owner": "backend-engineer",
-              "dependencies": [
-                "T015"
-              ],
-              "acceptance_criteria": [
-                {
-                  "id": "AC-015",
-                  "description": "rolling window features (L5, L10 game performance) are implemented",
-                  "status": "unmet"
-                }
-              ]
+              "dependencies": ["T015"]
             }
           ]
         },
@@ -444,13 +270,12 @@
           "name": "Model Training",
           "goal": "Train XGBoost classifier with 55%+ accuracy on holdout data",
           "status": "not_started",
-          "dependencies": [
-            "MS-006"
-          ],
+          "dependencies": ["MS-006"],
           "test_strategy": "ta",
           "success_criteria": [
             {
-              "id": "SC-004",
+              "id": "SC-007",
+              "description": "XGBoost model achieves 55%+ accuracy on holdout data",
               "status": "unmet"
             }
           ],
@@ -460,51 +285,21 @@
               "description": "Implement train_model function with time-series cross-validation",
               "status": "not_started",
               "owner": "backend-engineer",
-              "dependencies": [],
-              "acceptance_criteria": [
-                {
-                  "id": "AC-007",
-                  "description": "train_model function is implemented with time-series cross-validation",
-                  "status": "unmet"
-                },
-                {
-                  "id": "AC-008",
-                  "description": "Platt scaling for probability calibration is implemented",
-                  "status": "unmet"
-                }
-              ]
+              "dependencies": []
             },
             {
               "id": "T020",
               "description": "Implement Platt scaling for probability calibration",
               "status": "not_started",
               "owner": "backend-engineer",
-              "dependencies": [
-                "T019"
-              ],
-              "acceptance_criteria": [
-                {
-                  "id": "AC-016",
-                  "description": "initial model is trained on 2022-24 season data and validated on holdout",
-                  "status": "unmet"
-                }
-              ]
+              "dependencies": ["T019"]
             },
             {
               "id": "T021",
               "description": "Train initial model on 2022-24 season data and validate on holdout",
               "status": "not_started",
               "owner": "backend-engineer",
-              "dependencies": [
-                "T020"
-              ],
-              "acceptance_criteria": [
-                {
-                  "id": "AC-017",
-                  "description": "initial model is trained on 2022-24 season data and validated on holdout",
-                  "status": "unmet"
-                }
-              ]
+              "dependencies": ["T020"]
             }
           ]
         },
@@ -514,13 +309,12 @@
           "name": "Daily Inference Pipeline",
           "goal": "Generate predictions for daily games with confidence scores",
           "status": "not_started",
-          "dependencies": [
-            "MS-007"
-          ],
+          "dependencies": ["MS-007"],
           "test_strategy": "tdd",
           "success_criteria": [
             {
-              "id": "SC-006",
+              "id": "SC-008",
+              "description": "Daily inference pipeline generates predictions with confidence scores",
               "status": "unmet"
             }
           ],
@@ -530,51 +324,21 @@
               "description": "Implement generate_predictions function for daily game inference",
               "status": "not_started",
               "owner": "backend-engineer",
-              "dependencies": [],
-              "acceptance_criteria": [
-                {
-                  "id": "AC-009",
-                  "description": "generate_predictions function is implemented for daily game inference",
-                  "status": "unmet"
-                },
-                {
-                  "id": "AC-010",
-                  "description": "confidence scoring (low/medium/high based on probability) is implemented",
-                  "status": "unmet"
-                }
-              ]
+              "dependencies": []
             },
             {
               "id": "T023",
               "description": "Implement confidence scoring (low/medium/high based on probability)",
               "status": "not_started",
               "owner": "backend-engineer",
-              "dependencies": [
-                "T022"
-              ],
-              "acceptance_criteria": [
-                {
-                  "id": "AC-018",
-                  "description": "confidence scoring (low/medium/high based on probability) is implemented",
-                  "status": "unmet"
-                }
-              ]
+              "dependencies": ["T022"]
             },
             {
               "id": "T024",
               "description": "Create JSON output format for frontend consumption",
               "status": "not_started",
               "owner": "backend-engineer",
-              "dependencies": [
-                "T023"
-              ],
-              "acceptance_criteria": [
-                {
-                  "id": "AC-019",
-                  "description": "JSON output format for frontend consumption is created",
-                  "status": "unmet"
-                }
-              ]
+              "dependencies": ["T023"]
             }
           ]
         },
@@ -584,13 +348,12 @@
           "name": "Nightly Retraining Pipeline",
           "goal": "Automated nightly model retraining with latest results",
           "status": "not_started",
-          "dependencies": [
-            "MS-008"
-          ],
+          "dependencies": ["MS-008"],
           "test_strategy": "ta",
           "success_criteria": [
             {
-              "id": "SC-006",
+              "id": "SC-009",
+              "description": "Nightly retraining pipeline runs automatically via GitHub Actions",
               "status": "unmet"
             }
           ],
@@ -600,34 +363,14 @@
               "description": "Implement nightly retraining script with rolling window",
               "status": "not_started",
               "owner": "backend-engineer",
-              "dependencies": [],
-              "acceptance_criteria": [
-                {
-                  "id": "AC-011",
-                  "description": "nightly retraining script with rolling window is implemented",
-                  "status": "unmet"
-                },
-                {
-                  "id": "AC-012",
-                  "description": "GitHub Actions workflow for daily pipeline (6 AM EST) is created",
-                  "status": "unmet"
-                }
-              ]
+              "dependencies": []
             },
             {
               "id": "T026",
               "description": "Create GitHub Actions workflow for daily pipeline (6 AM EST)",
               "status": "not_started",
               "owner": "backend-engineer",
-              "dependencies": [
-                "T025"
-              ],
-              "acceptance_criteria": [
-                {
-                  "id": "AC-020",
-                  "status": "unmet"
-                }
-              ]
+              "dependencies": ["T025"]
             }
           ]
         }
@@ -644,13 +387,12 @@
           "name": "Predictions API",
           "goal": "REST API endpoints for prediction data access",
           "status": "not_started",
-          "dependencies": [
-            "MS-008"
-          ],
+          "dependencies": ["MS-008"],
           "test_strategy": "tdd",
           "success_criteria": [
             {
-              "id": "SC-007",
+              "id": "SC-010",
+              "description": "API endpoints are functional with validation and error handling",
               "status": "unmet"
             }
           ],
@@ -660,57 +402,28 @@
               "description": "Implement GET /api/predictions endpoint with date filtering",
               "status": "not_started",
               "owner": "fullstack-developer",
-              "dependencies": [],
-              "acceptance_criteria": [
-                {
-                  "id": "AC-021",
-                  "status": "unmet"
-                }
-              ]
+              "dependencies": []
             },
             {
               "id": "T028",
               "description": "Implement GET /api/performance endpoint with period filtering",
               "status": "not_started",
               "owner": "fullstack-developer",
-              "dependencies": [],
-              "acceptance_criteria": [
-                {
-                  "id": "AC-022",
-                  "status": "unmet"
-                }
-              ]
+              "dependencies": []
             },
             {
               "id": "T029",
               "description": "Add input validation and error handling for API endpoints",
               "status": "not_started",
               "owner": "fullstack-developer",
-              "dependencies": [
-                "T027",
-                "T028"
-              ],
-              "acceptance_criteria": [
-                {
-                  "id": "AC-023",
-                  "status": "unmet"
-                }
-              ]
+              "dependencies": ["T027", "T028"]
             },
             {
               "id": "T030",
               "description": "Write API integration tests with mocked data",
               "status": "not_started",
               "owner": "test-engineer",
-              "dependencies": [
-                "T029"
-              ],
-              "acceptance_criteria": [
-                {
-                  "id": "AC-024",
-                  "status": "unmet"
-                }
-              ]
+              "dependencies": ["T029"]
             }
           ]
         }
@@ -727,13 +440,12 @@
           "name": "Core UI Components",
           "goal": "Reusable UI components following design system",
           "status": "not_started",
-          "dependencies": [
-            "MS-001"
-          ],
+          "dependencies": ["MS-001"],
           "test_strategy": "tdd",
           "success_criteria": [
             {
-              "id": "SC-008",
+              "id": "SC-011",
+              "description": "Core UI components are built and support dark mode",
               "status": "unmet"
             }
           ],
@@ -743,54 +455,28 @@
               "description": "Create Pick Card component with all states (pending, win, loss)",
               "status": "not_started",
               "owner": "frontend-engineer",
-              "dependencies": [],
-              "acceptance_criteria": [
-                {
-                  "id": "AC-025",
-                  "status": "unmet"
-                }
-              ]
+              "dependencies": []
             },
             {
               "id": "T032",
               "description": "Create Confidence Badge component (High/Medium/Low)",
               "status": "not_started",
               "owner": "frontend-engineer",
-              "dependencies": [],
-              "acceptance_criteria": [
-                {
-                  "id": "AC-026",
-                  "status": "unmet"
-                }
-              ]
+              "dependencies": []
             },
             {
               "id": "T033",
               "description": "Create Navigation Header with theme toggle",
               "status": "not_started",
               "owner": "frontend-engineer",
-              "dependencies": [],
-              "acceptance_criteria": [
-                {
-                  "id": "AC-027",
-                  "status": "unmet"
-                }
-              ]
+              "dependencies": []
             },
             {
               "id": "T034",
               "description": "Implement dark mode support with localStorage persistence",
               "status": "not_started",
               "owner": "frontend-engineer",
-              "dependencies": [
-                "T033"
-              ],
-              "acceptance_criteria": [
-                {
-                  "id": "AC-028",
-                  "status": "unmet"
-                }
-              ]
+              "dependencies": ["T033"]
             }
           ]
         },
@@ -800,14 +486,12 @@
           "name": "Homepage - Today's Picks",
           "goal": "Homepage displaying today's NBA game predictions",
           "status": "not_started",
-          "dependencies": [
-            "MS-010",
-            "MS-011"
-          ],
+          "dependencies": ["MS-010", "MS-011"],
           "test_strategy": "tdd",
           "success_criteria": [
             {
-              "id": "SC-009",
+              "id": "SC-012",
+              "description": "Homepage displays today's picks with responsive layout",
               "status": "unmet"
             }
           ],
@@ -817,58 +501,28 @@
               "description": "Create homepage layout with hero section and picks grid",
               "status": "not_started",
               "owner": "frontend-engineer",
-              "dependencies": [],
-              "acceptance_criteria": [
-                {
-                  "id": "AC-029",
-                  "status": "unmet"
-                }
-              ]
+              "dependencies": []
             },
             {
               "id": "T036",
               "description": "Implement Today's Picks Grid with sorting by game time",
               "status": "not_started",
               "owner": "frontend-engineer",
-              "dependencies": [
-                "T035"
-              ],
-              "acceptance_criteria": [
-                {
-                  "id": "AC-030",
-                  "status": "unmet"
-                }
-              ]
+              "dependencies": ["T035"]
             },
             {
               "id": "T037",
               "description": "Add performance teaser widget with key metrics",
               "status": "not_started",
               "owner": "frontend-engineer",
-              "dependencies": [
-                "T035"
-              ],
-              "acceptance_criteria": [
-                {
-                  "id": "AC-031",
-                  "status": "unmet"
-                }
-              ]
+              "dependencies": ["T035"]
             },
             {
               "id": "T038",
               "description": "Implement responsive layouts (mobile, tablet, desktop)",
               "status": "not_started",
               "owner": "frontend-engineer",
-              "dependencies": [
-                "T036"
-              ],
-              "acceptance_criteria": [
-                {
-                  "id": "AC-032",
-                  "status": "unmet"
-                }
-              ]
+              "dependencies": ["T036"]
             }
           ]
         },
@@ -878,14 +532,12 @@
           "name": "Performance Dashboard",
           "goal": "Public dashboard with win rate, ROI, and historical performance",
           "status": "not_started",
-          "dependencies": [
-            "MS-010",
-            "MS-011"
-          ],
+          "dependencies": ["MS-010", "MS-011"],
           "test_strategy": "tdd",
           "success_criteria": [
             {
-              "id": "SC-010",
+              "id": "SC-013",
+              "description": "Performance dashboard displays all metrics with visualizations",
               "status": "unmet"
             }
           ],
@@ -895,69 +547,35 @@
               "description": "Create Win Rate Widget with ring chart visualization",
               "status": "not_started",
               "owner": "frontend-engineer",
-              "dependencies": [],
-              "acceptance_criteria": [
-                {
-                  "id": "AC-033",
-                  "status": "unmet"
-                }
-              ]
+              "dependencies": []
             },
             {
               "id": "T040",
               "description": "Create ROI Widget with positive/negative styling",
               "status": "not_started",
               "owner": "frontend-engineer",
-              "dependencies": [],
-              "acceptance_criteria": [
-                {
-                  "id": "AC-034",
-                  "status": "unmet"
-                }
-              ]
+              "dependencies": []
             },
             {
               "id": "T041",
               "description": "Create Streak Indicator showing last 10 results",
               "status": "not_started",
               "owner": "frontend-engineer",
-              "dependencies": [],
-              "acceptance_criteria": [
-                {
-                  "id": "AC-035",
-                  "status": "unmet"
-                }
-              ]
+              "dependencies": []
             },
             {
               "id": "T042",
               "description": "Implement Recent Results List with tap-to-expand",
               "status": "not_started",
               "owner": "frontend-engineer",
-              "dependencies": [
-                "T039"
-              ],
-              "acceptance_criteria": [
-                {
-                  "id": "AC-036",
-                  "status": "unmet"
-                }
-              ]
+              "dependencies": ["T039"]
             },
             {
               "id": "T043",
               "description": "Create Full History Table with filters and pagination",
               "status": "not_started",
               "owner": "frontend-engineer",
-              "dependencies": [
-                "T042"
-              ],
-              "acceptance_criteria": [
-                {
-                  "id": "AC-037",
-                  "status": "unmet"
-                }
-              ]
+              "dependencies": ["T042"]
             }
           ]
         }
@@ -974,13 +592,12 @@
           "name": "Pipeline Testing",
           "goal": "Comprehensive tests for data pipeline reliability",
           "status": "not_started",
-          "dependencies": [
-            "MS-005"
-          ],
+          "dependencies": ["MS-005"],
           "test_strategy": "",
           "success_criteria": [
             {
-              "id": "SC-003",
+              "id": "SC-014",
+              "description": "Pipeline runs for 7 consecutive days without intervention",
               "status": "unmet"
             }
           ],
@@ -990,42 +607,21 @@
               "description": "Write pytest unit tests for data fetching with mocked API",
               "status": "not_started",
               "owner": "test-engineer",
-              "dependencies": [],
-              "acceptance_criteria": [
-                {
-                  "id": "AC-038",
-                  "status": "unmet"
-                }
-              ]
+              "dependencies": []
             },
             {
               "id": "T045",
               "description": "Write integration tests for Parquet storage operations",
               "status": "not_started",
               "owner": "test-engineer",
-              "dependencies": [],
-              "acceptance_criteria": [
-                {
-                  "id": "AC-039",
-                  "status": "unmet"
-                }
-              ]
+              "dependencies": []
             },
             {
               "id": "T046",
               "description": "Validate pipeline runs for 7 consecutive days without intervention",
               "status": "not_started",
               "owner": "test-engineer",
-              "dependencies": [
-                "T044",
-                "T045"
-              ],
-              "acceptance_criteria": [
-                {
-                  "id": "AC-040",
-                  "status": "unmet"
-                }
-              ]
+              "dependencies": ["T044", "T045"]
             }
           ]
         },
@@ -1035,13 +631,12 @@
           "name": "Model Validation",
           "goal": "Verify model achieves 55%+ win rate target",
           "status": "not_started",
-          "dependencies": [
-            "MS-007"
-          ],
+          "dependencies": ["MS-007"],
           "test_strategy": "",
           "success_criteria": [
             {
-              "id": "SC-005",
+              "id": "SC-015",
+              "description": "Model achieves 55%+ win rate with calibrated probabilities",
               "status": "unmet"
             }
           ],
@@ -1051,41 +646,21 @@
               "description": "Run backtesting on 2023-24 season holdout data",
               "status": "not_started",
               "owner": "backend-engineer",
-              "dependencies": [],
-              "acceptance_criteria": [
-                {
-                  "id": "AC-041",
-                  "status": "unmet"
-                }
-              ]
+              "dependencies": []
             },
             {
               "id": "T048",
               "description": "Validate calibration curve follows diagonal",
               "status": "not_started",
               "owner": "backend-engineer",
-              "dependencies": [],
-              "acceptance_criteria": [
-                {
-                  "id": "AC-042",
-                  "status": "unmet"
-                }
-              ]
+              "dependencies": []
             },
             {
               "id": "T049",
               "description": "Run paper trading for 50+ predictions before public launch",
               "status": "not_started",
               "owner": "backend-engineer",
-              "dependencies": [
-                "T047"
-              ],
-              "acceptance_criteria": [
-                {
-                  "id": "AC-043",
-                  "status": "unmet"
-                }
-              ]
+              "dependencies": ["T047"]
             }
           ]
         },
@@ -1095,14 +670,12 @@
           "name": "Frontend Testing and Accessibility",
           "goal": "WCAG AA compliant, Lighthouse 90+ SEO score",
           "status": "not_started",
-          "dependencies": [
-            "MS-012",
-            "MS-013"
-          ],
+          "dependencies": ["MS-012", "MS-013"],
           "test_strategy": "",
           "success_criteria": [
             {
-              "id": "SC-011",
+              "id": "SC-016",
+              "description": "WCAG AA compliant with Lighthouse 90+ SEO score",
               "status": "unmet"
             }
           ],
@@ -1112,55 +685,28 @@
               "description": "Write Vitest unit tests for React components",
               "status": "not_started",
               "owner": "test-engineer",
-              "dependencies": [],
-              "acceptance_criteria": [
-                {
-                  "id": "AC-044",
-                  "status": "unmet"
-                }
-              ]
+              "dependencies": []
             },
             {
               "id": "T051",
               "description": "Verify WCAG AA contrast ratios and keyboard navigation",
               "status": "not_started",
               "owner": "frontend-engineer",
-              "dependencies": [],
-              "acceptance_criteria": [
-                {
-                  "id": "AC-045",
-                  "status": "unmet"
-                }
-              ]
+              "dependencies": []
             },
             {
               "id": "T052",
               "description": "Run Lighthouse audit and achieve 90+ SEO score",
               "status": "not_started",
               "owner": "frontend-engineer",
-              "dependencies": [
-                "T050",
-                "T051"
-              ],
-              "acceptance_criteria": [
-                {
-                  "id": "AC-046",
-                  "status": "unmet"
-                }
-              ]
+              "dependencies": ["T050", "T051"]
             },
             {
               "id": "T053",
               "description": "Verify page load under 2 seconds on 3G connection",
               "status": "not_started",
               "owner": "frontend-engineer",
-              "dependencies": [],
-              "acceptance_criteria": [
-                {
-                  "id": "AC-047",
-                  "status": "unmet"
-                }
-              ]
+              "dependencies": []
             }
           ]
         }
@@ -1177,13 +723,12 @@
           "name": "CI/CD and Deployment Setup",
           "goal": "Automated deployment pipeline for frontend and ML",
           "status": "not_started",
-          "dependencies": [
-            "MS-016"
-          ],
+          "dependencies": ["MS-016"],
           "test_strategy": "",
           "success_criteria": [
             {
-              "id": "SC-012",
+              "id": "SC-017",
+              "description": "CI/CD pipeline deploys automatically on merge to main",
               "status": "unmet"
             }
           ],
@@ -1193,54 +738,28 @@
               "description": "Configure Vercel deployment from main branch",
               "status": "not_started",
               "owner": "fullstack-developer",
-              "dependencies": [],
-              "acceptance_criteria": [
-                {
-                  "id": "AC-048",
-                  "status": "unmet"
-                }
-              ]
+              "dependencies": []
             },
             {
               "id": "T055",
               "description": "Create GitHub Actions workflow for ML pipeline cron",
               "status": "not_started",
               "owner": "backend-engineer",
-              "dependencies": [],
-              "acceptance_criteria": [
-                {
-                  "id": "AC-049",
-                  "status": "unmet"
-                }
-              ]
+              "dependencies": []
             },
             {
               "id": "T056",
               "description": "Set up environment variables in Vercel and GitHub Secrets",
               "status": "not_started",
               "owner": "fullstack-developer",
-              "dependencies": [],
-              "acceptance_criteria": [
-                {
-                  "id": "AC-050",
-                  "status": "unmet"
-                }
-              ]
+              "dependencies": []
             },
             {
               "id": "T057",
               "description": "Configure test workflow to run on PR creation",
               "status": "not_started",
               "owner": "fullstack-developer",
-              "dependencies": [
-                "T054"
-              ],
-              "acceptance_criteria": [
-                {
-                  "id": "AC-051",
-                  "status": "unmet"
-                }
-              ]
+              "dependencies": ["T054"]
             }
           ]
         },
@@ -1250,14 +769,12 @@
           "name": "Production Launch",
           "goal": "MVP live with daily predictions and performance tracking",
           "status": "not_started",
-          "dependencies": [
-            "MS-017",
-            "MS-015"
-          ],
+          "dependencies": ["MS-017", "MS-015"],
           "test_strategy": "",
           "success_criteria": [
             {
-              "id": "SC-006",
+              "id": "SC-018",
+              "description": "MVP is live and daily pipeline runs successfully for 7 days",
               "status": "unmet"
             }
           ],
@@ -1267,43 +784,21 @@
               "description": "Deploy production build to Vercel",
               "status": "not_started",
               "owner": "fullstack-developer",
-              "dependencies": [],
-              "acceptance_criteria": [
-                {
-                  "id": "AC-052",
-                  "status": "unmet"
-                }
-              ]
+              "dependencies": []
             },
             {
               "id": "T059",
               "description": "Verify daily pipeline runs successfully in production",
               "status": "not_started",
               "owner": "backend-engineer",
-              "dependencies": [
-                "T058"
-              ],
-              "acceptance_criteria": [
-                {
-                  "id": "AC-053",
-                  "status": "unmet"
-                }
-              ]
+              "dependencies": ["T058"]
             },
             {
               "id": "T060",
               "description": "Monitor first 7 days of production operation",
               "status": "not_started",
               "owner": "fullstack-developer",
-              "dependencies": [
-                "T059"
-              ],
-              "acceptance_criteria": [
-                {
-                  "id": "AC-054",
-                  "status": "unmet"
-                }
-              ]
+              "dependencies": ["T059"]
             }
           ]
         }
@@ -1333,7 +828,7 @@
     }
   },
   "metadata": {
-    "last_updated": "2026-01-25T01:53:47.622852+00:00",
-    "schema_version": "1.0.0"
+    "last_updated": "2026-01-27T00:00:00.000000+00:00",
+    "schema_version": "1.1.0"
   }
 }

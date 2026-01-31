@@ -1,0 +1,88 @@
+# .claude/hooks/config/workflow.yaml
+
+- name: recap
+  allowed_subagents: [recap-specialist]
+  requires_phase: null
+  required_deliverables:
+    - tool: Write
+      pattern: "(^|.*/)recap_.*\\.md$"
+    - tool: Read
+      pattern: "(^|.*/)ms-summary_.*\\.md$"
+    - tool: Read
+      pattern: "(^|.*/)tasks_.*\\.md$"
+
+- name: explore
+  allowed_subagents: [codebase-explorer]
+  requires_phase: null
+  required_deliverables:
+    - type: file
+      tool: Write
+      pattern: "(^|.*/)codebase-status_.*\\.md$"
+
+- name: plan
+  allowed_subagents: [planning-specialist]
+  requires_phase: explore
+  required_deliverables:
+    - type: file
+      tool: Write
+      pattern: "(^|.*/)plan_.*\\.md$"
+
+- name: plan-consult
+  allowed_subagents: [plan-consultant]
+  requires_phase: plan
+  required_deliverables:
+    - type: file
+      tool: Write
+      pattern: "(^|.*/)plan_consultation_.*\\.md$"
+
+- name: code
+  requires_phase: plan-consult
+  subphases:
+    tdd: [write_test, review_test, implement, review_code, refactor, validate]
+    test_after:
+      [implement, review_code, write_test, review_test, refactor, validate]
+
+- name: commit
+  allowed_subagents: [version-manager]
+  requires_phase: code
+  required_deliverables:
+    - tool: Bash
+      pattern: "git commit"
+
+- name: write_test
+  allowed_subagents: [test-engineer]
+  required_deliverables:
+    - tool: [Write, Edit]
+      pattern: "^.*_test\\.py$|^test_.*\\.py$|^.*\\.spec\\.ts$|^.*\\.test\\.ts$"
+
+- name: review_test
+  allowed_subagents: [test-reviewer]
+  required_deliverables:
+    - tool: Write
+      pattern: "^.*quality_report.*\\.md$"
+
+- name: implement
+  allowed_subagents: [main-agent]
+  required_deliverables:
+    - tool: [Write, Edit]
+      extensions: [.ts, .tsx, .js, .jsx, .py, .json, .css, .html]
+
+- name: review_code
+  allowed_subagents: [code-reviewer]
+  required_deliverables:
+    - tool: Write
+      pattern: "^.*revision.*\\.md$"
+
+- name: refactor
+  allowed_subagents: [main-agent]
+  required_deliverables:
+    - tool: Edit
+      extensions: [.ts, .tsx, .js, .jsx, .py, .json, .css, .html]
+
+- name: validate
+  allowed_subagents: [validator]
+  required_deliverables:
+    - tool: Write
+      pattern: "(^|.*/)validation_report_.*\\.md$"
+    - tool: Skill
+      pattern: "^log:ac.*$"

@@ -1,0 +1,101 @@
+# .claude/hooks/config/workflow.yaml
+
+phases:
+  - name: recap
+    agent_owner: recap-specialist
+    requires_phase: null
+    required_deliverables:
+      - tool: Write
+        file_path: "(^|.*/)recap_.*\\.md$"
+      - tool: Read
+        pattern: "(^|.*/)ms-summary_.*\\.md$"
+      - tool: Read
+        pattern: "(^|.*/)tasks_.*\\.md$"
+
+  - name: explore
+    agent_owner: codebase-explorer
+    requires_phase: null
+    required_deliverables:
+      - tool: Write
+        pattern: "(^|.*/)codebase-status_.*\\.md$"
+
+  - name: plan
+    agent_owner: planning-specialist
+    requires_phase: explore
+    required_deliverables:
+      - tool: Write
+        pattern: "(^|.*/)plan_.*\\.md$"
+
+  - name: plan-consult
+    agent_owner: plan-consultant
+    requires_phase: plan
+    required_deliverables:
+      - tool: Write
+        pattern: "(^|.*/)plan_consultation_.*\\.md$"
+
+  - name: code
+    requires_phase: plan-consult
+    subphases:
+      tdd: [write_test, review_test, implement, review_code, refactor, validate]
+      test_after:
+        [implement, review_code, write_test, review_test, refactor, validate]
+
+  - name: commit
+    agent_owner: version-manager
+    requires_phase: code
+    required_deliverables:
+      - tool: Bash
+        pattern: "git commit"
+
+  - name: write_test
+    agent_owner: test-engineer
+    required_deliverables:
+      - tool: [Write, Edit]
+        pattern: "^.*_test\\.py$|^test_.*\\.py$|^.*\\.spec\\.ts$|^.*\\.test\\.ts$"
+
+  - name: review_test
+    agent_owner: test-reviewer
+    required_deliverables:
+      - tool: Write
+        pattern: "^.*quality_report.*\\.md$"
+
+  - name: write_code
+    agent_owner: main-agent
+    required_deliverables:
+      - tool: [Write, Edit]
+        extensions: [.ts, .tsx, .js, .jsx, .py, .json, .css, .html]
+
+  - name: review_code
+    agent_owner: code-reviewer
+    required_deliverables:
+      - tool: Write
+        pattern: "^.*revision.*\\.md$"
+
+  - name: refactor
+    agent_owner: main-agent
+    required_deliverables:
+      - tool: Edit
+        extensions: [.ts, .tsx, .js, .jsx, .py, .json, .css, .html]
+
+  - name: validate
+    agent_owner: validator
+    required_deliverables:
+      - tool: Write
+        pattern: "(^|.*/)validation_report_.*\\.md$"
+      - tool: Skill
+        pattern: "^log:ac.*$"
+
+main_phases_order: [explore, plan, plan-consult, code, commit]
+
+coding_phases_order:
+  tdd: [write_test, review_test, implement, review_code, refactor, validate]
+  test_after:
+    [implement, review_code, write_test, review_test, refactor, validate]
+
+stop_conditions:
+  main_agent:
+    - all_acs_met
+    - all_deliverables_met
+
+  subagents:
+    - all_deliverables_met

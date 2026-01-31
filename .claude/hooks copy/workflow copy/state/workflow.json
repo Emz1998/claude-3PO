@@ -1,0 +1,25 @@
+{
+  "workflow_active": false,
+  "current_phase": "explore",
+  "current_subphase": null,
+  "current_coding_phase": null,
+  "current_tool": null,
+  "development_mode": "tdd",
+  "phase_history": [],
+  "subphase_index": 0,
+  "tools_used": [],
+  "subagents_invoked": [],
+  "work_done": {
+    "files_written": [],
+    "files_edited": [],
+    "files_read": [],
+    "commands_run": [],
+    "skills_used": []
+  },
+  "deliverables_met": [],
+  "acceptance_criteria": {
+    "items": [],
+    "all_met": false
+  },
+  "_updated": null
+}

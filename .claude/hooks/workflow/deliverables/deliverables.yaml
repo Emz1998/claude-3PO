@@ -1,0 +1,46 @@
+explore:
+  file_paths:
+    - "(^|.*/)codebase-status_.*\\.md$"
+plan:
+  file_paths:
+    - "(^|.*/)plan_.*\\.md$"
+plan-consult:
+  file_paths:
+    - "(^|.*/)plan_consultation_.*\\.md$"
+code:
+  tdd:
+    write-test:
+      file_paths:
+        - "^.*_test\\.py$|^test_.*\\.py$|^.*\\.spec\\.ts$|^.*\\.test\\.ts$"
+    review-test:
+      file_paths:
+        - "^.*test-quality-report_*\\.md$"
+    write-code:
+      file_paths:
+        extensions: [.ts, .tsx, .js, .jsx, .py, .json, .css, .html]
+    review-code:
+      file_paths:
+        - "^.*code-review_*\\.md$"
+    refactor:
+      file_paths:
+        extensions: [.ts, .tsx, .js, .jsx, .py, .json, .css, .html]
+
+  ta:
+    write-code:
+      file_paths:
+        extensions: [.ts, .tsx, .js, .jsx, .py, .json, .css, .html]
+    write-test:
+      file_paths:
+        - "^.*_test\\.py$|^test_.*\\.py$|^.*\\.spec\\.ts$|^.*\\.test\\.ts$"
+    review-test:
+      file_paths:
+        - "^.*test-quality-report_*\\.md$"
+    review-code:
+      file_paths:
+        - "^.*revision.*\\.md$"
+    refactor:
+      file_paths:
+        extensions: [.ts, .tsx, .js, .jsx, .py, .json, .css, .html]
+    validate:
+      file_paths:
+        - "^.*validation.*\\.md$"
