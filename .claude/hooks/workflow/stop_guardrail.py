@@ -17,43 +17,6 @@ def log(message: str) -> None:
     print(message, file=sys.stderr)
 
 
-def block_subagent_stop(hook_input: dict, deliverables_met: bool) -> bool:
-    hook_event = hook_input.get("hook_event_name", "")
-    if hook_event != "SubagentStop":
-        return False
-    log(f"SubagentStop hook: deliverables_met={deliverables_met}")
-    if not deliverables_met:
-        decision = {
-            "decision": "block",
-            "reason": "Not all deliverables have been met",
-        }
-        print(json.dumps(decision))
-        sys.exit(2)
-    return True
-
-
-def block_main_agent_stop(
-    hook_input: dict, deliverables_met: bool, scs_met: bool
-) -> bool:
-    hook_event = hook_input.get("hook_event_name", "")
-    if hook_event != "Stop":
-        return False
-    log(f"Stop hook: deliverables_met={deliverables_met}, scs_met={scs_met}")
-    if not deliverables_met or not scs_met:
-        reason = []
-        if not deliverables_met:
-            reason.append("deliverables not met")
-        if not scs_met:
-            reason.append("success criteria not met")
-        decision = {
-            "decision": "block",
-            "reason": f"Cannot stop: {', '.join(reason)}",
-        }
-        print(json.dumps(decision))
-        sys.exit(2)
-    return True
-
-
 def main() -> None:
     is_workflow_active = get_state("workflow_active")
     if not is_workflow_active:
@@ -62,12 +25,16 @@ def main() -> None:
     if not hook_input:
         sys.exit(0)
 
-    deliverables_met = are_all_deliverables_met()
-    scs_met = are_all_scs_met_in_milestone()
+    deliverables_met, message = are_all_deliverables_met()
+    scs_met, scs_message = are_all_scs_met_in_milestone()
 
-    handled = block_subagent_stop(hook_input, deliverables_met)
-    if not handled:
-        block_main_agent_stop(hook_input, deliverables_met, scs_met)
+    if not deliverables_met or not scs_met:
+        decision = {
+            "decision": "block",
+            "reason": message if deliverables_met else scs_message,
+        }
+        print(json.dumps(decision))
+        sys.exit(2)
 
     sys.exit(0)
 

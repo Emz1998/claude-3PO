@@ -12,7 +12,7 @@ from utils import read_stdin_json  # type: ignore
 from roadmap.utils import get_test_strategy  # type: ignore
 
 sys.path.insert(0, str(Path(__file__).parent))
-from state import get_state, set_state  # type: ignore
+from state import get_state, set_state, initialize_deliverables_state  # type: ignore
 from _utils import validate_order  # type: ignore
 
 DEFAULT_STATE_FILE_PATH = Path(__file__).parent / "state.json"
@@ -67,7 +67,7 @@ def main() -> None:
         return
     if tool_name != "Skill":
         return
-
+    initialize_deliverables_state()
     skill = hook_input.get("tool_input", {}).get("skill", "")
     is_valid, error_message = validate_order(current_phase, skill, phase_order)
     print(
@@ -76,7 +76,3 @@ def main() -> None:
     if not is_valid:
         print(error_message, file=sys.stderr)
         sys.exit(2)
-
-
-# if __name__ == "__main__":
-#     print(complete_phase_order("tdd"))

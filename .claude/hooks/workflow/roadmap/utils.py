@@ -6,7 +6,7 @@ import sys
 import os
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Tuple
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -291,17 +291,24 @@ def are_all_acs_met_in_task(
 
 def are_all_scs_met_in_milestone(
     milestone_id: str | None = None,
-    roadmap: dict | None = load_roadmap(),
-) -> bool:
+    roadmap: dict | None = None,
+) -> Tuple[bool, str]:
+    if roadmap is None:
+        roadmap = load_roadmap()
     if not milestone_id:
         milestone_id = get_current("milestone")
-    if not roadmap:
-        roadmap = load_roadmap()
+
     milestone = get_milestone(milestone_id, roadmap)
-    return (
+    are_all_completed = (
         all(sc.get("status") == "met" for sc in milestone.get("success_criteria", []))
         if milestone
         else False
+    )
+
+    return are_all_completed, (
+        "All success criteria are met"
+        if are_all_completed
+        else "Some success criteria are not met"
     )
 
 

@@ -194,14 +194,25 @@ def write_to_config() -> None:
 
 
 def load_config(config_path: Path = CONFIG_PATH) -> dict[str, Any]:
-    """Load and validate config from yaml file. Raises on error."""
+    """Load and validate config from yaml file. Returns empty config on error."""
+    default_config: dict[str, Any] = {"deliverables": {}}
+
     if not config_path.exists():
-        raise FileNotFoundError(f"Config file not found: {config_path}")
-    with open(config_path) as f:
-        data = yaml.safe_load(f) or {}
+        return default_config
+
+    try:
+        with open(config_path) as f:
+            data = yaml.safe_load(f)
+    except (yaml.YAMLError, IOError):
+        return default_config
+
     if not data:
-        raise ValueError("Config file is empty")
-    return DeliverablesConfig(**data).model_dump()
+        return default_config
+
+    try:
+        return DeliverablesConfig(**data).model_dump()
+    except ValidationError:
+        return default_config
 
 
 def validate_config(data: dict[str, Any] | None = None) -> tuple[bool, list[str]]:

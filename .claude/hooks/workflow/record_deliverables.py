@@ -30,26 +30,33 @@ def main():
     if tool_name not in ["Write", "Edit", "Bash", "Read"]:
         return
 
-    if tool_name == "Write" or tool_name == "Edit":
+    if tool_name == "Write":
         file_path = tool_input.get("file_path", "")
         if not file_path:
             sys.exit(0)
+        mark_deliverable_complete("write", file_path)
+        return
 
-        if tool_name == "Write":
-            action = "write"
-        elif tool_name == "Edit":
-            action = "edit"
-        elif tool_name == "Read":
-            action = "read"
-        else:
+    if tool_name == "Edit":
+        file_path = tool_input.get("file_path", "")
+        if not file_path:
             sys.exit(0)
-        mark_deliverable_complete(action, file_path)
+        mark_deliverable_complete("edit", file_path)
+        return
+
+    if tool_name == "Read":
+        file_path = tool_input.get("file_path", "")
+        if not file_path:
+            sys.exit(0)
+        mark_deliverable_complete("read", file_path)
+        return
 
     if tool_name == "Bash":
         command = tool_input.get("command", "")
         if not command:
             sys.exit(0)
         mark_deliverable_complete("bash", command)
+        return
 
 
 if __name__ == "__main__":

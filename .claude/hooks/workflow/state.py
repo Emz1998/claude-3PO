@@ -5,7 +5,7 @@ import json
 import sys
 import re
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, Tuple
 
 sys.path.insert(0, str(Path(__file__).parent))
 
@@ -60,20 +60,10 @@ def add_deliverable(
             "type": _type,
             "action": action,
             "value": value,
-            "phase": current_phase,
             "completed": False,
         }
     )
     save_state(state)
-
-
-def get_deliverables(state: dict | None = None) -> list[dict[str, Any]]:
-    """Get deliverables for the current phase only."""
-    if not state:
-        state = load_state()
-    current_phase = state.get("current_phase", "")
-    deliverables = state.get("deliverables", [])
-    return [d for d in deliverables if d.get("phase") == current_phase]
 
 
 def initialize_deliverables_state(
@@ -86,51 +76,34 @@ def initialize_deliverables_state(
     if state is None:
         state = load_state()
 
+    deliverables_state = []
+
     current_phase = state.get("current_phase", "")
     if not current_phase:
         return
 
     phase_deliverables = config.get("deliverables", {}).get(current_phase, [])
     for d in phase_deliverables:
-        add_deliverable(
-            _type=d["type"],
-            action=d["action"],
-            value=d["value"],
-            state=state,
+        deliverables_state.append(
+            {
+                "type": d["type"],
+                "action": d["action"],
+                "value": d["value"],
+                "completed": False,
+            }
         )
+    state["deliverables"] = deliverables_state
+    save_state(state)
 
 
 def reset_deliverables_state() -> None:
     initialize_deliverables_state()
 
 
-def get_deliverable_state(deliverable_name: str = "", state: dict = {}) -> dict:
-    deliverables = state.get("deliverables", [])
-    if not deliverable_name:
-        return {}
-    for d in deliverables:
-        if d["name"] == deliverable_name:
-            return d
-    return {}
-
-
-def check_matches(value: str, patterns: list[str]) -> bool:
-    for p in patterns:
-        if bool(re.match(p, value)):
-            return True
-    return False
-
-
-def log_deliverable_status(tool_value: str, state: dict | None = None) -> None:
-    """Mark a deliverable as completed if it matches the tool value (current phase only)."""
+def get_deliverable_state(state: dict | None = None) -> list[dict[str, Any]]:
     if not state:
         state = load_state()
-
-    for deliverable in get_deliverables(state):
-        if re.match(deliverable["value"], tool_value):
-            deliverable["completed"] = True
-            save_state(state)
-            break
+    return state.get("deliverables", [])
 
 
 def mark_deliverable_complete(
@@ -148,10 +121,11 @@ def mark_deliverable_complete(
     Returns:
         True if a match was found and marked complete, False otherwise
     """
+    print(f"Marking deliverable complete: action={action}, value={value}")
     if not state:
         state = load_state()
 
-    for deliverable in get_deliverables(state):
+    for deliverable in get_deliverable_state(state):
         if deliverable["action"] == action and re.match(deliverable["value"], value):
             deliverable["completed"] = True
             save_state(state)
@@ -159,16 +133,28 @@ def mark_deliverable_complete(
     return False
 
 
-def are_all_deliverables_met(state: dict | None = None) -> bool:
+def are_all_deliverables_met(state: dict | None = None) -> Tuple[bool, str]:
     """Check if all deliverables for the current phase are completed."""
     if not state:
         state = load_state()
 
-    phase_deliverables = get_deliverables(state)
+    phase_deliverables = get_deliverable_state(state)
     if not phase_deliverables:
-        return True
+        return True, "No deliverables found"
 
-    return all(d.get("completed", False) for d in phase_deliverables)
+    are_all_completed = all(d.get("completed", True) for d in phase_deliverables)
+    not_completed_deliverable_names = [
+        d.get("value", "") for d in phase_deliverables if not d.get("completed", False)
+    ]
+
+    deliverable_names = [d.get("value", "") for d in phase_deliverables]
+
+    return are_all_completed, (
+        "All deliverables are completed: " + ", ".join(deliverable_names)
+        if are_all_completed
+        else "Some deliverables are not completed: "
+        + ", ".join(not_completed_deliverable_names)
+    )
 
 
 def initialize_state() -> None:
@@ -190,3 +176,7 @@ def initialize_state() -> None:
 def reset_state() -> None:
     """Reset state to defaults."""
     initialize_state()
+
+
+if __name__ == "__main__":
+    reset_state()

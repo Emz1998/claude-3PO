@@ -7,10 +7,6 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from utils import read_stdin_json
-from roadmap.utils import (
-    are_all_tasks_completed_in_milestone,
-    are_all_scs_met_in_milestone,
-)
 
 sys.path.insert(0, str(Path(__file__).parent))
 from state import get_state, set_state  # type: ignore

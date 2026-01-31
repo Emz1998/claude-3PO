@@ -5,6 +5,10 @@ deliverables:
     - type: files
       action: write
       value: ".*codebase-status/codebase-status_.*\\.md$"
+
+    - type: files
+      action: read
+      value: ".*prompt.*\\.md$"
   plan:
     - type: files
       action: read
