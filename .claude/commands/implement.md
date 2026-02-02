@@ -1,9 +1,9 @@
 ---
 name: implement
-description: Create implementation plan by delegating to strategic-planner and consulting-expert agents
-allowed-tools: Read, Write, Glob, Grep, Task
-argument-hint: <instructions>
-model: sonnet
+description: Implement the current milestone in the roadmap by delegating to the appropriate subagent
+allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task, TodoWrite
+argument-hint: <milestone-id>
+model: opus
 ---
 
-Say "Implement" triggered
+**Goal**: Implement the current milestone in the roadmap by invoking the `build` Skill
