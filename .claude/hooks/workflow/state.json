@@ -1,6 +1,6 @@
 {
-  "workflow_active": true,
-  "current_phase": "explore",
+  "workflow_active": false,
+  "current_phase": "write-test",
   "read_files": {},
   "written_files": [],
   "edited_files": [],
@@ -9,17 +9,17 @@
   "deliverables": [
     {
       "type": "files",
-      "action": "write",
-      "value": ".*codebase-status/codebase-status_.*\\.md$",
-      "completed": true
+      "action": "read",
+      "value": ".*plans/final-plan_.*\\.md$",
+      "completed": false
     },
     {
       "type": "files",
-      "action": "read",
-      "value": ".*prompt.*\\.md$",
-      "completed": true
+      "action": "write",
+      "value": ".*tests/test-summary_.*\\.md$",
+      "completed": false
     }
   ],
-  "dry_run_active": true,
-  "subagent_status": "blocked"
+  "dry_run_active": false,
+  "subagent_status": "allowed"
 }

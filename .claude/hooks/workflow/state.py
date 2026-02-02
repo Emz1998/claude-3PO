@@ -69,6 +69,7 @@ def add_deliverable(
 def initialize_deliverables_state(
     config: dict[str, Any] | None = None,
     state: dict[str, Any] | None = None,
+    phase: str = "",
 ) -> None:
     """Initialize deliverables for current phase from config."""
     if config is None:
@@ -76,13 +77,10 @@ def initialize_deliverables_state(
     if state is None:
         state = load_state()
 
+    if not phase:
+        phase = state.get("current_phase", "")
     deliverables_state = []
-
-    current_phase = state.get("current_phase", "")
-    if not current_phase:
-        return
-
-    phase_deliverables = config.get("deliverables", {}).get(current_phase, [])
+    phase_deliverables = config.get("deliverables", {}).get(phase, [])
     for d in phase_deliverables:
         deliverables_state.append(
             {
@@ -176,6 +174,15 @@ def initialize_state() -> None:
 def reset_state() -> None:
     """Reset state to defaults."""
     initialize_state()
+
+
+def reset_deliverables_status(state: dict | None = None) -> None:
+    """Reset deliverables state to defaults."""
+    if not state:
+        state = load_state()
+    for deliverable in get_deliverable_state(state):
+        deliverable["completed"] = False
+    save_state(state)
 
 
 if __name__ == "__main__":

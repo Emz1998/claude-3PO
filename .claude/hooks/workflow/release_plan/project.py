@@ -12,7 +12,8 @@ from pprint import pprint
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from utils.json import load_json, save_json  # type: ignore
-from roadmap.utils import get_current_version, get_current_phase_name, get_current_milestone_name  # type: ignore
+
+from workflow.release_plan.state import get_current_version  # type: ignore
 
 MilestoneSubdir = Literal[
     "codebase-status",
@@ -35,6 +36,14 @@ def get_project_dir(query: Literal["rel", "abs"] = "rel") -> Path:
 
 def get_project_version_path(query: Literal["rel", "abs"] = "rel") -> Path:
     return get_project_dir(query) / get_current_version()
+
+
+def get_project_release_plan_path(query: Literal["rel", "abs"] = "rel") -> Path:
+    return get_project_version_path(query) / "release-plan"
+
+
+def get_project_roadmap_path(query: Literal["rel", "abs"] = "rel") -> Path:
+    return get_project_release_plan_path(query) / "roadmap.json"
 
 
 def get_project_phase_dir_path(query: Literal["rel", "abs"] = "rel") -> Path:

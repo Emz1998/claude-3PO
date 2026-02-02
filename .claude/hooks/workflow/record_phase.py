@@ -9,7 +9,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from utils import read_stdin_json
 
 sys.path.insert(0, str(Path(__file__).parent))
-from state import get_state, set_state  # type: ignore
+from state import get_state, initialize_deliverables_state, set_state  # type: ignore
 
 
 def main():
@@ -29,6 +29,7 @@ def main():
     skill_name = tool_input.get("skill", "")
 
     set_state("current_phase", skill_name)
+    initialize_deliverables_state(phase=skill_name)
 
 
 if __name__ == "__main__":

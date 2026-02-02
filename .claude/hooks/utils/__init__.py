@@ -17,7 +17,7 @@ from .files import (
     write_file,
     FileReadError,
 )
-from .json import load_json, set_json, get_json
+from .json import load_json
 from .blockers import (
     is_code_file,
     is_safe_git_command,
@@ -54,8 +54,6 @@ __all__ = [
     "FileReadError",
     # JSON handler
     "load_json",
-    "set_json",
-    "get_json",
     # Blockers
     "is_code_file",
     "is_safe_git_command",

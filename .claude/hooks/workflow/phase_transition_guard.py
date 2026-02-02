@@ -67,7 +67,6 @@ def main() -> None:
         return
     if tool_name != "Skill":
         return
-    initialize_deliverables_state()
     skill = hook_input.get("tool_input", {}).get("skill", "")
     is_valid, error_message = validate_order(current_phase, skill, phase_order)
     print(

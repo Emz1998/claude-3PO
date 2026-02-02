@@ -8,11 +8,11 @@ deliverables:
 
     - type: files
       action: read
-      value: ".*prompt.*\\.md$"
+      value: "/home/emhar/avaris-ai/prompt.md"
   plan:
     - type: files
       action: read
-      value: ".*exploration/codebase-status_.*\\.md$"
+      value: ".*codebase-status/codebase-status_.*\\.md$"
     - type: files
       action: write
       value: ".*plans/initial-plan_.*\\.md$"

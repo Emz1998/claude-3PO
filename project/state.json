@@ -1,0 +1,59 @@
+{
+  "name": "Avaris - NBA Betting Analytics Platform",
+  "target_release": "2025-01-15",
+  "current_version": "v0.1.0",
+  "current_epic": "EPIC-002",
+  "current_feature": "FEAT-003",
+  "current_user_story": "US-004",
+  "current_tasks": {
+    "T009": "not_started",
+    "T010": "not_started"
+  },
+  "current_acs": {
+    "AC-009": "unmet",
+    "AC-010": "unmet",
+    "AC-011": "unmet",
+    "AC-012": "unmet"
+  },
+  "current_scs": {
+    "SC-003": "unmet"
+  },
+  "completed_tasks": [
+    "T001",
+    "T002",
+    "T003",
+    "T004",
+    "T005",
+    "T006",
+    "T007",
+    "T008"
+  ],
+  "met_acs": [
+    "AC-001",
+    "AC-002",
+    "AC-003",
+    "AC-004",
+    "AC-005",
+    "AC-006",
+    "AC-007",
+    "AC-008",
+    "AC-009"
+  ],
+  "met_scs": [
+    "SC-001",
+    "SC-002"
+  ],
+  "completed_user_stories": [
+    "US-001",
+    "US-002",
+    "US-003"
+  ],
+  "completed_features": [
+    "FEAT-001",
+    "FEAT-002"
+  ],
+  "completed_epics": [
+    "EPIC-001"
+  ],
+  "updated": "2026-02-01T19:41:14.115525"
+}

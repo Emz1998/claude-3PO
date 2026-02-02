@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 sys.path.insert(0, str(Path(__file__).parent))
-from state import get_state, reset_state, set_state  # type: ignore
+from state import get_state, reset_deliverables_status, reset_state, set_state  # type: ignore
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from utils import read_stdin_json  # type: ignore
@@ -31,6 +31,7 @@ def main():
     prompt = hook_input.get("prompt", "")
 
     if is_dry_run_active:
+        reset_deliverables_status()
         return
     if not dry_run_triggered(prompt):
         return
