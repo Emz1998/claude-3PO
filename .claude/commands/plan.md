@@ -1,54 +1,40 @@
 ---
 name: plan
-description: Create implementation plan by delegating to strategic-planner and consulting-expert agents
+description: dry run of the plan phase
 allowed-tools: Read, Write, Glob, Grep, Task
 argument-hint: <instructions>
 model: sonnet
 ---
 
-**Goal**: Create a detailed implementation plan based on research findings
+Trigger @planner agent to create the implementation plan
 
-## Workflow
+## Dry Run Checklist
 
-1. Invoke @agent-planner subagent to create the implementation plan
-2. Invoke @agent-consultant subagent to review and consult on the plan
-3. Report plan summary to user
-
-## Subagent Prompts
-
-### Step 1: Strategic Planner
-
-Delegate to @agent-planner subagent with this prompt:
+**1. Phase Reminder Test**
 
 ```
-Create implementation plan for: $2 - $3
-Plan type: $1
-
-Using the validated research findings, create:
-1. Executive summary
-2. Implementation phases with task breakdowns
-3. Risk mitigation strategies
-4. Success criteria and acceptance tests
-5. Dependencies and constraints
-
-Output: Create project/[milestone]/plans/plan_[session]_[date].md
+Action: Check if reminder appears in context after phase starts
+Expected: Content from config/reminders/plan.md
+Verify: Contains "Purpose:", "Deliverables:", "Key Focus:", "Next Phase:"
+Report: [PHASE] plan - Reminder: LOADED/FALLBACK/MISSING | Structure: VALID/INVALID
 ```
 
-### Step 2: Consulting Expert
-
-Delegate to @agent-consultant subagent with this prompt:
+**2. Deliverables Test**
 
 ```
-Review the implementation plan at:
-project/[milestone]/plans/plan_[session]_[date].md
+Priority 1 (read):  codebase-status/codebase-status_*.md
+Priority 2 (write): plans/initial-plan_*.md
 
-Evaluate:
-1. Technical feasibility
-2. Risk assessment accuracy
-3. Resource allocation
-4. Alternative approaches considered
-5. Potential blind spots
+Action: Attempt write before read
+Expected: Guardrail blocks write until read completes
+Report: [DELIVERABLE] plan - Read: PASS/FAIL | Write: PASS/FAIL | Order: VALID/INVALID
+```
 
-Update frontmatter with: consulted_by: consulting-expert
-Provide actionable feedback and recommendations.
+**3. Transition Test**
+
+```
+Prior phase: explore (required)
+Next phase: /plan-consult
+Action: Trigger /plan-consult after plan completes
+Expected: Transition allowed
 ```

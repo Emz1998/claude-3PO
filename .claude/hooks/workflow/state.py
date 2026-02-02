@@ -12,7 +12,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 CONFIG_PATH = Path(__file__).parent / "config.yaml"
 STATE_PATH = Path(__file__).parent / "state.json"
 
-from _deliverables import load_config  # type: ignore
+from config.loader import load_workflow_config as load_config  # type: ignore
 
 
 def load_state(state_path: Path = STATE_PATH) -> dict:

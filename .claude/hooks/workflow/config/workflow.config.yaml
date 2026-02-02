@@ -1,0 +1,283 @@
+# WORKFLOW CONFIGURATION
+# This file controls all workflow behavior. Non-technical users can safely edit this file.
+# Uses simple wildcard patterns: * matches any characters, ** matches directories
+
+# =============================================================================
+# PROJECT SETTINGS
+# =============================================================================
+project:
+  name: "Avaris - NBA Betting Analytics Platform"
+  version: "v0.1.0"
+  target_release: "2025-01-15"
+
+# =============================================================================
+# WORKFLOW PHASES - The steps that must be completed in order
+# =============================================================================
+phases:
+  # Standard workflow (with placeholder "code" that expands based on test strategy)
+  base:
+    - explore        # Understand codebase
+    - plan           # Create plan
+    - plan-consult   # Review plan
+    - finalize-plan  # Finalize plan
+    - code           # Implementation (expands to TDD or test-after phases)
+    - commit         # Commit changes
+
+  # Simple workflow without TDD
+  simple:
+    - explore        # Understand codebase
+    - plan           # Create plan
+    - execute        # Execute plan
+    - commit         # Commit changes
+
+  # TDD phases (replace "code" when using TDD strategy)
+  tdd:
+    - write-test     # Write failing tests first
+    - review-test    # Review test quality
+    - write-code     # Implement to pass tests
+    - code-review    # Review code quality
+    - refactor       # Improve code
+    - validate       # Final validation
+
+  # Test-after phases (replace "code" when writing tests after)
+  test-after:
+    - write-code     # Write code first
+    - write-test     # Write tests after
+    - review-test    # Review test quality
+    - code-review    # Review code quality
+    - refactor       # Improve code
+    - validate       # Final validation
+
+# =============================================================================
+# AGENTS - Who handles each phase
+# =============================================================================
+agents:
+  explore: codebase-explorer
+  plan: planner
+  plan-consult: plan-consultant
+  finalize-plan: planner
+  execute: main-agent
+  commit: version-manager
+  write-test: test-engineer
+  review-test: test-reviewer
+  write-code: main-agent
+  code-review: code-reviewer
+  refactor: main-agent
+  validate: validator
+
+# =============================================================================
+# DELIVERABLES - Required inputs/outputs for each phase
+# Uses simple wildcards: * matches any characters, ** matches directories
+# =============================================================================
+deliverables:
+  explore:
+    # Files to read before starting
+    read:
+      - file: "prompt.md"
+        description: "User's requirements"
+        priority: 1
+    # Files to create/write
+    write:
+      - folder: "codebase-status"
+        pattern: "codebase-status_*.md"
+        description: "Codebase analysis report"
+        priority: 2
+
+  plan:
+    read:
+      - folder: "codebase-status"
+        pattern: "codebase-status_*.md"
+        description: "Codebase analysis from explore phase"
+        priority: 1
+    write:
+      - folder: "plans"
+        pattern: "initial-plan_*.md"
+        description: "Initial implementation plan"
+        priority: 2
+
+  plan-consult:
+    read:
+      - folder: "plans"
+        pattern: "initial-plan_*.md"
+        description: "Initial plan to review"
+        priority: 1
+    write:
+      - folder: "plans"
+        pattern: "plan-consultation_*.md"
+        description: "Plan consultation feedback"
+        priority: 2
+
+  finalize-plan:
+    read:
+      - folder: "plans"
+        pattern: "plan-consultation_*.md"
+        description: "Consultation feedback to incorporate"
+        priority: 1
+    write:
+      - folder: "plans"
+        pattern: "final-plan_*.md"
+        description: "Final approved plan"
+        priority: 2
+
+  write-test:
+    read:
+      - folder: "plans"
+        pattern: "final-plan_*.md"
+        description: "Final plan for test creation"
+        priority: 1
+    # Files to modify (edit existing files)
+    edit:
+      - folder: "src"
+        pattern: "**/*.test.ts"
+        description: "Test files"
+      - folder: "src"
+        pattern: "**/*.test.tsx"
+        description: "React test files"
+      - folder: "tests"
+        pattern: "**/*.py"
+        description: "Python test files"
+    write:
+      - folder: "tests"
+        pattern: "test-summary_*.md"
+        description: "Summary of tests written"
+        priority: 2
+
+  review-test:
+    read:
+      - folder: "tests"
+        pattern: "test-summary_*.md"
+        description: "Test summary to review"
+        priority: 1
+    write:
+      - folder: "tests"
+        pattern: "test-quality-report_*.md"
+        description: "Test quality assessment"
+        priority: 2
+
+  write-code:
+    read:
+      - folder: "plans"
+        pattern: "final-plan_*.md"
+        description: "Final plan for implementation"
+        priority: 1
+    # Files to modify (edit existing files)
+    edit:
+      - folder: "src"
+        pattern: "**/*.ts"
+        description: "TypeScript source files"
+      - folder: "src"
+        pattern: "**/*.tsx"
+        description: "React components"
+      - folder: "src"
+        pattern: "**/*.py"
+        description: "Python source files"
+    write:
+      - folder: "misc"
+        pattern: "code-test_*.md"
+        description: "Code implementation notes"
+        priority: 2
+
+  code-review:
+    read:
+      - folder: "misc"
+        pattern: "code-test_*.md"
+        description: "Code notes to review"
+        priority: 1
+    write:
+      - folder: "reviews"
+        pattern: "code-review_*.md"
+        description: "Code review feedback"
+        priority: 2
+
+  refactor:
+    read:
+      - folder: "reviews"
+        pattern: "code-review_*.md"
+        description: "Review feedback to address"
+        priority: 1
+    # Files to modify during refactoring
+    edit:
+      - folder: "src"
+        pattern: "**/*.ts"
+        description: "TypeScript files to refactor"
+      - folder: "src"
+        pattern: "**/*.tsx"
+        description: "React components to refactor"
+    write:
+      - folder: "reports"
+        pattern: "refactor_*.md"
+        description: "Refactoring summary"
+        priority: 2
+
+  validate:
+    read:
+      - folder: "reports"
+        pattern: "refactor_*.md"
+        description: "Refactoring report to validate"
+        priority: 1
+    # Commands to run (bash)
+    bash:
+      - command: "npm test"
+        description: "Run test suite"
+        allow_failure: false
+      - command: "npm run lint"
+        description: "Check code style"
+        allow_failure: true
+      - command: "npm run typecheck"
+        description: "Verify TypeScript types"
+        allow_failure: false
+    write:
+      - folder: "reports"
+        pattern: "validation_report_*.md"
+        description: "Validation results"
+        priority: 2
+
+  commit:
+    read:
+      - folder: "reports"
+        pattern: "validation_report_*.md"
+        description: "Validation report to confirm"
+        priority: 1
+    # Skills to invoke
+    skill:
+      - name: "commit"
+        description: "Invoke /commit skill"
+    write:
+      - folder: "reports"
+        pattern: "commit_*.md"
+        description: "Commit summary"
+        priority: 2
+
+# =============================================================================
+# REQUIRED READ ORDER - Files that should be read in this order when starting
+# =============================================================================
+required_read_order:
+  - recap.md
+  - ms-summary.md
+  - tasks.md
+  - codebase-status.md
+  - plan.md
+  - plan-consultation.md
+
+# =============================================================================
+# FEATURE FLAGS - Enable/disable workflow components
+# =============================================================================
+features:
+  dry_run: false              # Simulate without making changes
+  strict_phase_order: true    # Enforce phase order
+  require_deliverables: true  # Require deliverables before phase transition
+  verbose_logging: false      # Extra debug output
+
+# =============================================================================
+# ENVIRONMENT OVERRIDES (optional)
+# =============================================================================
+environments:
+  dev:
+    features:
+      dry_run: true
+      verbose_logging: true
+  prod:
+    features:
+      dry_run: false
+      verbose_logging: false
+      strict_phase_order: true

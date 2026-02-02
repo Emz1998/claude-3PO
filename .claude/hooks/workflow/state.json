@@ -1,25 +1,11 @@
 {
   "workflow_active": false,
-  "current_phase": "write-test",
+  "current_phase": "explore",
   "read_files": {},
   "written_files": [],
   "edited_files": [],
   "troubleshoot": false,
   "phase_history": [],
-  "deliverables": [
-    {
-      "type": "files",
-      "action": "read",
-      "value": ".*plans/final-plan_.*\\.md$",
-      "completed": false
-    },
-    {
-      "type": "files",
-      "action": "write",
-      "value": ".*tests/test-summary_.*\\.md$",
-      "completed": false
-    }
-  ],
-  "dry_run_active": false,
-  "subagent_status": "allowed"
+  "deliverables": [],
+  "dry_run_active": false
 }

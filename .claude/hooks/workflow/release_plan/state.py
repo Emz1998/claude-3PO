@@ -30,11 +30,15 @@ from release_plan.utils import (  # type: ignore
     find_epic_id_of_feature,
     PROJECT_ROOT,
 )
+from config.unified_loader import get_project_settings  # type: ignore
 
+
+# Load project settings from unified configuration
+_project_settings = get_project_settings()
 PROJECT_STATE_FILE_PATH = PROJECT_ROOT / "project" / "state.json"
-TARGET_RELEASE = "2025-01-15"
-PROJECT_NAME = "Avaris - NBA Betting Analytics Platform"
-CURRENT_VERSION = "v0.1.0"
+TARGET_RELEASE = _project_settings.target_release
+PROJECT_NAME = _project_settings.name
+CURRENT_VERSION = _project_settings.version
 
 RELEASE_PLAN_PATH = get_release_plan_path("v0.1.0")
 STATE_LOCK = FileLock(PROJECT_STATE_FILE_PATH.with_suffix(".lock"))
