@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""SubagentStop hook for workflow enforcement."""
+"""PreToolUse hook for file read validation.
+
+Validates that files are read in the required order during workflow execution.
+"""
 
 
 import sys
@@ -43,7 +46,7 @@ def last_file_read(
     return files_read[-1] if files_read else None
 
 
-def main():
+def main() -> None:
     hook_input = read_stdin_json()
     hook_event_name = hook_input.get("hook_event_name", "")
     if not hook_input:

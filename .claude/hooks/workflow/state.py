@@ -119,7 +119,6 @@ def mark_deliverable_complete(
     Returns:
         True if a match was found and marked complete, False otherwise
     """
-    print(f"Marking deliverable complete: action={action}, value={value}")
     if not state:
         state = load_state()
 

@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""SubagentStop hook for workflow enforcement."""
+"""SubagentStop hook for deliverable enforcement.
+
+Blocks subagent termination if deliverables or success criteria are not met.
+"""
 
 import json
 import sys

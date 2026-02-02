@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""SubagentStop hook for workflow enforcement."""
+"""UserPromptSubmit hook for workflow activation.
+
+Activates the workflow when /implement command is invoked with valid milestone ID.
+"""
 
 import re
 import sys
@@ -28,7 +31,7 @@ def is_valid_args(prompt: str) -> bool:
     return True
 
 
-def main():
+def main() -> None:
 
     hook_input = read_stdin_json()
     if not hook_input:

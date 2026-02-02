@@ -6,4 +6,4 @@ argument-hint: <none>
 model: sonnet
 ---
 
-!`python3 .claude/hooks/workflow/manual_state_reset.py`
+!`python3 .claude/hooks/workflow/manually-deactivate_workflow.py`

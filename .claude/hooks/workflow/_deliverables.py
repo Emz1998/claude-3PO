@@ -4,17 +4,17 @@
 import sys
 from pathlib import Path
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
-from typing import Literal
 from pydantic import BaseModel, ValidationError
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from utils.cache import get_session_id
 
 sys.path.insert(0, str(Path(__file__).parent))
-from roadmap.project import get_project_milestone_subdir_path  # type: ignore
-from roadmap.utils import get_current_milestone_name, get_current  # type: ignore
+from release_plan.project import get_project_milestone_subdir_path  # type: ignore
+from release_plan.state import load_project_state, get_current_feature_id  # type: ignore
+from phases import PHASES, TDD_PHASES, TA_PHASES, get_all_phases  # type: ignore
 
 import yaml
 
@@ -30,26 +30,6 @@ class DeliverablesConfig(BaseModel):
 
 
 CONFIG_PATH = Path(__file__).parent / "config.yaml"
-
-PHASES = ["explore", "plan", "plan-consult", "code", "commit"]
-TDD_PHASES = [
-    "write-test",
-    "review-test",
-    "write-code",
-    "review-code",
-    "refactor",
-    "validate",
-]
-TA_PHASES = [
-    "write-code",
-    "write-test",
-    "review-test",
-    "review-code",
-    "refactor",
-    "validate",
-]
-
-DEFAULT_PHASES = ["explore", "plan", "plan-consult", "execute", "commit"]
 
 # Phase -> list of deliverables with type, action, subdir, and prefix
 _DELIVERABLES: dict[str, list[dict[str, Any]]] = {
@@ -98,7 +78,7 @@ _DELIVERABLES: dict[str, list[dict[str, Any]]] = {
             "prefix": "coding-summary",
         }
     ],
-    "review-code": [
+    "code-review": [
         {
             "type": "files",
             "action": "write",
@@ -167,22 +147,12 @@ def get_resolved(phase: str) -> list[dict[str, str]]:
     return result
 
 
-def get_all_phases(test_strategy: str = "TDD") -> list[str]:
-    """Get all phases in order based on test strategy."""
-    list_to_add = DEFAULT_PHASES
-    if test_strategy == "TDD":
-        list_to_add = TDD_PHASES
-    if test_strategy == "TA":
-        list_to_add = TA_PHASES
-    idx = PHASES.index("code") + 1
-    return PHASES[:idx] + list_to_add + PHASES[idx:]
-
-
 def write_to_config() -> None:
     """Write deliverables to config.yaml as flat list per phase."""
+    state = load_project_state() or {}
+    feature_id = get_current_feature_id(state)
     config: dict[str, Any] = {
-        "milestone-id": get_current("milestone"),
-        "milestone-name": get_current_milestone_name(),
+        "feature-id": feature_id,
         "deliverables": {},
     }
     for phase in get_all_phases():

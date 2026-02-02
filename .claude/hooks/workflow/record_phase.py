@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""SubagentStop hook for workflow enforcement."""
+"""PostToolUse hook for phase tracking.
+
+Records the current phase when a Skill tool is invoked and initializes deliverables.
+"""
 
 import json
 import sys
@@ -12,7 +15,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from state import get_state, initialize_deliverables_state, set_state  # type: ignore
 
 
-def main():
+def main() -> None:
     is_workflow_active = get_state("workflow_active")
     if not is_workflow_active:
         sys.exit(0)

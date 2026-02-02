@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""SubagentStop hook for workflow enforcement."""
+"""PostToolUse hook for deliverable tracking.
+
+Marks deliverables as complete when Write, Edit, Read, or Bash tools are used.
+"""
 
 import json
 import sys
@@ -13,7 +16,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from state import mark_deliverable_complete, get_state  # type: ignore
 
 
-def main():
+def main() -> None:
     is_workflow_active = get_state("workflow_active")
     if not is_workflow_active:
         sys.exit(0)
