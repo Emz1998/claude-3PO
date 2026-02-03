@@ -18,8 +18,8 @@ The following imports are maintained for backward compatibility with
 existing hooks that import directly from this module.
 """
 
-# Backward compatible imports from state.py
-from .state import (
+# Backward compatible imports from core.state_manager
+from .core.state_manager import (
     load_state,
     save_state,
     get_state,
@@ -35,8 +35,8 @@ from .state import (
     reset_deliverables_status,
 )
 
-# Backward compatible imports from phases.py
-from .phases import (
+# Backward compatible imports from core.phase_engine
+from .core.phase_engine import (
     PHASES,
     TDD_PHASES,
     TA_PHASES,

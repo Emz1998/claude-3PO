@@ -13,7 +13,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from utils.json import load_json, save_json  # type: ignore
 
-from workflow.release_plan.state import get_current_epic_id, get_current_feature_id, load_project_state  # type: ignore
+from workflow.release_plan.state import load_project_state  # type: ignore
+from workflow.release_plan.getters import get_current_epic_id, get_current_feature_id  # type: ignore
 
 FeatureSubdir = Literal[
     "codebase-status",

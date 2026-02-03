@@ -316,6 +316,102 @@ def reset_state() -> None:
     get_manager().reset()
 
 
+def initialize_state() -> None:
+    """Initialize state with defaults and deliverables for current phase."""
+    manager = get_manager()
+    manager.reset()
+    initialize_deliverables_state()
+
+
+def initialize_deliverables_state(
+    config: dict[str, Any] | None = None,
+    state: dict[str, Any] | None = None,
+    phase: str = "",
+) -> None:
+    """Initialize deliverables for current phase from config."""
+    from config.loader import load_workflow_config as load_config  # type: ignore
+
+    if config is None:
+        config = load_config()
+    manager = get_manager()
+    if state is None:
+        state = manager.load()
+
+    if not phase:
+        phase = (state or {}).get("current_phase", "")
+    deliverables_state = []
+    phase_deliverables = config.get("deliverables", {}).get(phase, [])
+    for d in phase_deliverables:
+        deliverables_state.append(
+            {
+                "type": d["type"],
+                "action": d["action"],
+                "value": d.get("value", d.get("pattern", "")),
+                "completed": False,
+            }
+        )
+    manager.set("deliverables", deliverables_state)
+
+
+def reset_deliverables_state() -> None:
+    """Reset deliverables state by re-initializing from config."""
+    initialize_deliverables_state()
+
+
+def get_deliverable_state(state: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+    """Get current deliverables from state."""
+    if not state:
+        state = get_manager().load()
+    return (state or {}).get("deliverables", [])
+
+
+def add_deliverable(
+    _type: Literal["files", "commands", "artifacts"] = "files",
+    action: Literal["write", "read", "edit", "bash"] = "write",
+    value: str = "",
+    state: dict[str, Any] | None = None,
+) -> None:
+    """Add a deliverable to state for current phase."""
+    manager = get_manager()
+    if not state:
+        state = manager.load()
+    current_phase = (state or {}).get("current_phase", "")
+    if not current_phase:
+        return
+    if "deliverables" not in (state or {}):
+        state["deliverables"] = []  # type: ignore
+    state["deliverables"].append(  # type: ignore
+        {
+            "type": _type,
+            "action": action,
+            "value": value,
+            "completed": False,
+        }
+    )
+    manager.save(state)
+
+
+def mark_deliverable_complete(
+    action: Literal["write", "read", "edit", "bash"],
+    value: str,
+    state: dict[str, Any] | None = None,
+) -> bool:
+    """Mark a deliverable as completed if action and value match."""
+    return get_manager().mark_deliverable_complete(action, value)
+
+
+def are_all_deliverables_met(
+    state: dict[str, Any] | None = None,
+) -> tuple[bool, str]:
+    """Check if all deliverables for the current phase are completed."""
+    return get_manager().are_all_deliverables_met()
+
+
+def reset_deliverables_status(state: dict[str, Any] | None = None) -> None:
+    """Reset all deliverables to incomplete."""
+    get_manager().reset_deliverables_status()
+
+
 if __name__ == "__main__":
     manager = StateManager()
     manager.reset()

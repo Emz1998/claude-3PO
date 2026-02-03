@@ -116,7 +116,6 @@ class UnifiedWorkflowConfig:
     deliverables: dict[str, PhaseDeliverables] = field(default_factory=dict)
     required_read_order: list[str] = field(default_factory=list)
     features: FeaturesConfig = field(default_factory=FeaturesConfig)
-    environments: dict[str, dict[str, Any]] = field(default_factory=dict)
 
 
 # =============================================================================
@@ -480,7 +479,7 @@ def parse_phase_deliverables(phase_data: dict[str, Any]) -> PhaseDeliverables:
 
 
 def load_unified_config(
-    use_cache: bool = True, validate: bool = True, environment: str | None = None
+    use_cache: bool = True, validate: bool = True
 ) -> UnifiedWorkflowConfig:
     """Load unified workflow configuration.
 
@@ -489,7 +488,6 @@ def load_unified_config(
     Args:
         use_cache: Whether to use cached configuration
         validate: Whether to validate configuration
-        environment: Environment name for overrides (e.g., 'dev', 'prod')
 
     Returns:
         UnifiedWorkflowConfig dataclass instance
@@ -500,7 +498,7 @@ def load_unified_config(
     global _unified_config_cache
 
     if use_cache and _unified_config_cache is not None:
-        return _build_config_from_dict(_unified_config_cache, environment)
+        return _build_config_from_dict(_unified_config_cache)
 
     # Try YAML first
     config = load_yaml_config()
@@ -531,12 +529,10 @@ def load_unified_config(
     # Cache raw config
     _unified_config_cache = config
 
-    return _build_config_from_dict(config, environment)
+    return _build_config_from_dict(config)
 
 
-def _build_config_from_dict(
-    config: dict[str, Any], environment: str | None = None
-) -> UnifiedWorkflowConfig:
+def _build_config_from_dict(config: dict[str, Any]) -> UnifiedWorkflowConfig:
     """Build UnifiedWorkflowConfig from dictionary."""
     # Project settings
     project_data = config.get("project", {})
@@ -548,13 +544,6 @@ def _build_config_from_dict(
 
     # Feature flags
     features_data = config.get("features", {})
-
-    # Apply environment overrides if specified
-    if environment:
-        env_overrides = config.get("environments", {}).get(environment, {})
-        env_features = env_overrides.get("features", {})
-        features_data = {**features_data, **env_features}
-
     features = FeaturesConfig(
         dry_run=features_data.get("dry_run", False),
         strict_phase_order=features_data.get("strict_phase_order", True),
@@ -588,7 +577,6 @@ def _build_config_from_dict(
         deliverables=deliverables,
         required_read_order=config.get("required_read_order", []),
         features=features,
-        environments=config.get("environments", {}),
     )
 
 
@@ -609,9 +597,9 @@ def get_project_settings() -> ProjectConfig:
     return config.project
 
 
-def get_feature_flags(environment: str | None = None) -> FeaturesConfig:
+def get_feature_flags() -> FeaturesConfig:
     """Get feature flags from configuration."""
-    config = load_unified_config(environment=environment)
+    config = load_unified_config()
     return config.features
 
 

@@ -1,26 +1,22 @@
 #!/usr/bin/env python3
 """Configuration loader for workflow orchestration.
 
-Provides typed access to workflow configuration with caching.
-
-NOTE: This module now delegates to unified_loader.py for configuration loading.
-The JSON config is kept for backward compatibility but YAML is preferred.
+Thin delegation layer to unified_loader.py. Preserves import paths
+used by existing code while unified_loader handles actual loading.
 """
 
-import sys
-import warnings
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal
 
-import json
+from .unified_loader import (
+    load_unified_config,
+    clear_unified_cache,
+    wildcard_to_regex,
+)
 
 CONFIG_PATH = Path(__file__).parent / "workflow_config.json"
 YAML_CONFIG_PATH = Path(__file__).parent / "workflow.config.yaml"
-
-# Module-level cache
-_config_cache: dict[str, Any] | None = None
-_using_yaml: bool = False
 
 
 @dataclass
@@ -30,7 +26,7 @@ class Deliverable:
     type: Literal["files", "commands", "artifacts", "skill"]
     action: Literal["write", "read", "edit", "bash", "invoke"]
     pattern: str
-    priority: int | None = None  # None = lowest priority (last)
+    priority: int | None = None
 
 
 @dataclass
@@ -48,175 +44,51 @@ def load_workflow_config(
 ) -> dict[str, Any]:
     """Load and cache workflow configuration.
 
-    Tries YAML config first (workflow.config.yaml), falls back to JSON
-    (workflow_config.json) with a deprecation warning.
-
-    Args:
-        config_path: Path to the JSON configuration file (for backward compat)
-        use_cache: Whether to use cached config
-
-    Returns:
-        Configuration dictionary
+    Delegates to unified_loader which handles YAML/JSON loading.
+    Returns dict format for backward compatibility.
     """
-    global _config_cache, _using_yaml
+    unified = load_unified_config(use_cache=use_cache, validate=False)
 
-    if use_cache and _config_cache is not None:
-        return _config_cache
-
-    default_config: dict[str, Any] = {
-        "phases": {"base": [], "tdd": [], "test-after": []},
-        "subagents": {},
-        "deliverables": {},
-        "required_read_order": [],
-    }
-
-    # Try YAML config first
-    if YAML_CONFIG_PATH.exists():
-        try:
-            import yaml
-
-            with open(YAML_CONFIG_PATH) as f:
-                data = yaml.safe_load(f)
-
-            if data:
-                # Convert YAML format to expected format
-                converted = _convert_yaml_to_internal(data)
-                _config_cache = converted
-                _using_yaml = True
-                return converted
-        except ImportError:
-            pass  # yaml not installed, fall through to JSON
-        except Exception:
-            pass  # YAML parse error, fall through to JSON
-
-    # Fall back to JSON
-    if not config_path.exists():
-        return default_config
-
-    try:
-        with open(config_path) as f:
-            data = json.load(f)
-
-        if YAML_CONFIG_PATH.exists():
-            warnings.warn(
-                "Using deprecated workflow_config.json. "
-                "YAML config exists but failed to load. Check workflow.config.yaml.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-        elif not _using_yaml:
-            warnings.warn(
-                "Using deprecated workflow_config.json. "
-                "Please migrate to workflow.config.yaml for better usability. "
-                "See WORKFLOW_CONFIG_GUIDE.md for migration instructions.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-    except (json.JSONDecodeError, IOError):
-        return default_config
-
-    if not data:
-        return default_config
-
-    _config_cache = data
-    return data
-
-
-def _convert_yaml_to_internal(yaml_data: dict[str, Any]) -> dict[str, Any]:
-    """Convert YAML config format to internal format expected by existing code.
-
-    YAML format uses 'agents' and user-friendly deliverables.
-    Internal format uses 'subagents' and regex patterns.
-    """
-    from .unified_loader import wildcard_to_regex
-
-    result: dict[str, Any] = {
-        "phases": yaml_data.get("phases", {}),
-        "subagents": yaml_data.get("agents", yaml_data.get("subagents", {})),
-        "deliverables": {},
-        "required_read_order": yaml_data.get("required_read_order", []),
-    }
-
-    # Convert deliverables from YAML format to internal format
-    yaml_deliverables = yaml_data.get("deliverables", {})
-
-    for phase_name, phase_data in yaml_deliverables.items():
-        if not isinstance(phase_data, dict):
-            result["deliverables"][phase_name] = []
-            continue
-
-        internal_deliverables: list[dict[str, Any]] = []
-
+    # Convert unified config to legacy dict format
+    deliverables: dict[str, Any] = {}
+    for phase_name, phase_deliverables in unified.deliverables.items():
+        phase_list: list[dict[str, Any]] = []
         for action in ["read", "write", "edit"]:
-            items = phase_data.get(action, [])
-            if not isinstance(items, list):
-                continue
-
+            items = getattr(phase_deliverables, action, [])
             for item in items:
-                if not isinstance(item, dict):
-                    continue
-
-                pattern = item.get("pattern", "")
-                file_path = item.get("file", "")
-                folder = item.get("folder", "")
-
-                # Build regex pattern
-                if file_path:
-                    regex_pattern = file_path.replace(".", "\\.") + "$"
-                elif pattern:
-                    if folder:
-                        full_pattern = f".*{folder}/{pattern}"
-                    else:
-                        full_pattern = f".*{pattern}"
-                    regex_pattern = wildcard_to_regex(full_pattern)
-                else:
-                    continue
-
-                internal_item: dict[str, Any] = {
+                entry: dict[str, Any] = {
                     "type": "files",
                     "action": action,
-                    "pattern": regex_pattern,
+                    "pattern": item.regex_pattern or item.pattern,
                 }
+                if item.priority is not None:
+                    entry["priority"] = item.priority
+                phase_list.append(entry)
+        for item in phase_deliverables.bash:
+            phase_list.append({
+                "type": "commands",
+                "action": "bash",
+                "pattern": item.command,
+                "allow_failure": item.allow_failure,
+            })
+        for item in phase_deliverables.skill:
+            phase_list.append({
+                "type": "skill",
+                "action": "invoke",
+                "pattern": item.name or item.pattern,
+            })
+        deliverables[phase_name] = phase_list
 
-                if item.get("priority") is not None:
-                    internal_item["priority"] = item["priority"]
-
-                internal_deliverables.append(internal_item)
-
-        # Handle bash commands
-        bash_items = phase_data.get("bash", [])
-        if isinstance(bash_items, list):
-            for item in bash_items:
-                if isinstance(item, dict):
-                    internal_deliverables.append({
-                        "type": "commands",
-                        "action": "bash",
-                        "pattern": item.get("command", ""),
-                        "allow_failure": item.get("allow_failure", False),
-                    })
-
-        # Handle skills
-        skill_items = phase_data.get("skill", [])
-        if isinstance(skill_items, list):
-            for item in skill_items:
-                if isinstance(item, dict):
-                    internal_deliverables.append({
-                        "type": "skill",
-                        "action": "invoke",
-                        "pattern": item.get("name", item.get("pattern", "")),
-                    })
-
-        result["deliverables"][phase_name] = internal_deliverables
-
-    return result
+    return {
+        "phases": unified.phases,
+        "subagents": unified.agents,
+        "deliverables": deliverables,
+        "required_read_order": unified.required_read_order,
+    }
 
 
 def get_config() -> WorkflowConfig:
-    """Get typed workflow configuration.
-
-    Returns:
-        WorkflowConfig dataclass instance
-    """
+    """Get typed workflow configuration."""
     data = load_workflow_config()
     return WorkflowConfig(
         phases=data.get("phases", {}),
@@ -229,17 +101,7 @@ def get_config() -> WorkflowConfig:
 def get_phases(
     strategy: Literal["tdd", "test-after", "none"] = "tdd"
 ) -> list[str]:
-    """Get complete phase order based on test strategy.
-
-    Args:
-        strategy: The testing strategy to use
-            - "tdd": Full workflow with write-test before write-code
-            - "test-after": Full workflow with write-code before write-test
-            - "none": Simple 4-phase workflow (explore, plan, execute, commit)
-
-    Returns:
-        Complete list of phases in execution order
-    """
+    """Get complete phase order based on test strategy."""
     config = load_workflow_config()
     phases = config.get("phases", {})
 
@@ -247,7 +109,6 @@ def get_phases(
         return phases.get("simple", ["explore", "plan", "execute", "commit"])
 
     base = phases.get("base", [])
-
     if "code" not in base:
         return base
 
@@ -264,74 +125,40 @@ def get_phases(
 
 
 def get_deliverables(phase: str | None = None) -> dict[str, list[dict[str, str]]]:
-    """Get deliverables configuration.
-
-    Args:
-        phase: Optional phase to filter by
-
-    Returns:
-        Deliverables dictionary (all or for specific phase)
-    """
+    """Get deliverables configuration."""
     config = load_workflow_config()
     deliverables = config.get("deliverables", {})
-
     if phase is not None:
         return {phase: deliverables.get(phase, [])}
-
     return deliverables
 
 
 def get_phase_deliverables(phase: str) -> list[dict[str, str]]:
-    """Get deliverables for a specific phase.
-
-    Args:
-        phase: The phase name
-
-    Returns:
-        List of deliverable dictionaries for the phase
-    """
+    """Get deliverables for a specific phase."""
     config = load_workflow_config()
     return config.get("deliverables", {}).get(phase, [])
 
 
 def get_phase_subagents() -> dict[str, str]:
-    """Get phase to subagent mapping.
-
-    Returns:
-        Dictionary mapping phase names to subagent names
-    """
+    """Get phase to subagent mapping."""
     config = load_workflow_config()
     return config.get("subagents", {})
 
 
 def get_subagent_for_phase(phase: str) -> str | None:
-    """Get the subagent for a specific phase.
-
-    Args:
-        phase: The phase name
-
-    Returns:
-        Subagent name or None if not found
-    """
-    subagents = get_phase_subagents()
-    return subagents.get(phase)
+    """Get the subagent for a specific phase."""
+    return get_phase_subagents().get(phase)
 
 
 def get_required_read_order() -> list[str]:
-    """Get the required file read order.
-
-    Returns:
-        List of file names in required read order
-    """
+    """Get the required file read order."""
     config = load_workflow_config()
     return config.get("required_read_order", [])
 
 
 def clear_cache() -> None:
     """Clear the configuration cache."""
-    global _config_cache, _using_yaml
-    _config_cache = None
-    _using_yaml = False
+    clear_unified_cache()
 
 
 if __name__ == "__main__":
