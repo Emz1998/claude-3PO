@@ -12,6 +12,7 @@ from .phase_transition import validate_phase_transition, PhaseTransitionGuard
 from .subagent_access import validate_subagent_access, SubagentAccessGuard
 from .deliverables_exit import validate_deliverables_exit, DeliverablesExitGuard
 from .read_order import validate_read_order, ReadOrderGuard
+from .task_dod_stop import TaskDodStopGuard
 
 __all__ = [
     # Phase Transition
@@ -26,4 +27,6 @@ __all__ = [
     # Read Order
     "validate_read_order",
     "ReadOrderGuard",
+    # Task DoD Stop
+    "TaskDodStopGuard",
 ]

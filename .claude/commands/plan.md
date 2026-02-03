@@ -1,40 +1,49 @@
 ---
 name: plan
-description: dry run of the plan phase
-allowed-tools: Read, Write, Glob, Grep, Task
-argument-hint: <instructions>
-model: sonnet
+description: Create implementation plan from user instructions by delegating to planner agent
+allowed-tools: Task, Read, Glob, Grep, AskUserQuestion, TodoWrite
+argument-hint: <planning-instructions>
+model: opus
 ---
 
-Trigger @planner agent to create the implementation plan
+**Goal**: Create an actionable implementation plan by delegating to the `planning-specialist` subagent based on user instructions
 
-## Dry Run Checklist
+## Context
 
-**1. Phase Reminder Test**
+- Arguments: `$ARGUMENTS` (user's planning instructions, feature description, or task scope)
+- If no arguments provided, ask the user what they want to plan
 
-```
-Action: Check if reminder appears in context after phase starts
-Expected: Content from config/reminders/plan.md
-Verify: Contains "Purpose:", "Deliverables:", "Key Focus:", "Next Phase:"
-Report: [PHASE] plan - Reminder: LOADED/FALLBACK/MISSING | Structure: VALID/INVALID
-```
+## Workflow
 
-**2. Deliverables Test**
+### Phase 1: Gather Context
 
-```
-Priority 1 (read):  codebase-status/codebase-status_*.md
-Priority 2 (write): plans/initial-plan_*.md
+1. If `$ARGUMENTS` is empty, use `AskUserQuestion` to ask the user what they want to plan
+2. Invoke `agent-codebase-explorer` subagent to analyze relevant parts of the codebase and produce a codebase report
+3. Read the codebase report output
 
-Action: Attempt write before read
-Expected: Guardrail blocks write until read completes
-Report: [DELIVERABLE] plan - Read: PASS/FAIL | Write: PASS/FAIL | Order: VALID/INVALID
-```
+### Phase 2: Create Plan
 
-**3. Transition Test**
+1. Invoke `agent-planning-specialist` subagent with the codebase report and user instructions
+2. The planner reads the codebase report and generates a structured implementation plan
+3. Present the plan to the user for review using `AskUserQuestion`
 
-```
-Prior phase: explore (required)
-Next phase: /plan-consult
-Action: Trigger /plan-consult after plan completes
-Expected: Transition allowed
-```
+### Phase 3: Finalize
+
+1. If user requests changes, re-invoke `agent-planning-specialist` with the feedback
+2. Once approved, save the finalized plan to the appropriate project directory
+3. Report plan location and summary to the user
+
+## Rules
+
+- **NEVER** create a plan without first gathering codebase context via `agent-codebase-explorer`
+- **NEVER** finalize a plan without user approval
+- **DO NOT** include implementation details beyond what the planner agent produces
+- **DO NOT** skip the codebase exploration phase
+- **MUST** pass user instructions verbatim to the planner agent
+
+## Acceptance Criteria
+
+- Codebase report generated before planning begins
+- Implementation plan created with phases, tasks, and file modifications
+- User reviewed and approved the plan
+- Finalized plan saved to the project directory

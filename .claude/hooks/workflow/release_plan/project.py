@@ -13,9 +13,9 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from utils.json import load_json, save_json  # type: ignore
 
-from workflow.release_plan.state import get_current_version  # type: ignore
+from workflow.release_plan.state import get_current_epic_id, get_current_feature_id, load_project_state  # type: ignore
 
-MilestoneSubdir = Literal[
+FeatureSubdir = Literal[
     "codebase-status",
     "reports",
     "decisions",
@@ -25,8 +25,11 @@ MilestoneSubdir = Literal[
     "misc",
     "todos",
     "consults",
+    "revisions",
 ]
-VALID_MILESTONE_SUBDIRS = get_args(MilestoneSubdir)
+VALID_FEATURE_SUBDIRS = get_args(FeatureSubdir)
+
+STATE = load_project_state()
 
 
 def get_project_dir(query: Literal["rel", "abs"] = "rel") -> Path:
@@ -35,44 +38,33 @@ def get_project_dir(query: Literal["rel", "abs"] = "rel") -> Path:
 
 
 def get_project_version_path(query: Literal["rel", "abs"] = "rel") -> Path:
-    return get_project_dir(query) / get_current_version()
+    return get_project_dir(query) / STATE.get("current_version", "")
 
 
-def get_project_release_plan_path(query: Literal["rel", "abs"] = "rel") -> Path:
-    return get_project_version_path(query) / "release-plan"
+def get_project_epic_path(query: Literal["rel", "abs"] = "rel") -> Path:
+    return get_project_version_path(query) / get_current_epic_id(STATE)
 
 
-def get_project_roadmap_path(query: Literal["rel", "abs"] = "rel") -> Path:
-    return get_project_release_plan_path(query) / "roadmap.json"
+def get_feature_path(query: Literal["rel", "abs"] = "rel") -> Path:
+    return get_project_epic_path(query) / get_current_feature_id(STATE)
 
 
-def get_project_phase_dir_path(query: Literal["rel", "abs"] = "rel") -> Path:
-    return get_project_version_path(query) / f"{get_current_phase_name()}"
-
-
-def get_project_milestone_dir_path(query: Literal["rel", "abs"] = "rel") -> Path:
-    return get_project_phase_dir_path(query) / f"{get_current_milestone_name()}"
-
-
-def get_project_milestone_subdir_path(
-    subdir: MilestoneSubdir, query: Literal["rel", "abs"] = "rel"
+def get_feature_subdir_path(
+    subdir: FeatureSubdir, query: Literal["rel", "abs"] = "rel"
 ) -> Path | list[str]:
-    return get_project_milestone_dir_path(query) / subdir
+    return get_feature_path(query) / subdir
 
 
-def get_all_project_milestone_subdir_paths(
+def get_all_feature_subdir_paths(
     query: Literal["rel", "abs"] = "rel",
 ) -> list[str]:
     return [
-        str(get_project_milestone_dir_path(query) / subdir)
-        for subdir in VALID_MILESTONE_SUBDIRS
+        str(get_feature_subdir_path(subdir, query)) for subdir in VALID_FEATURE_SUBDIRS
     ]
 
 
 if __name__ == "__main__":
     print(get_project_dir())
     print(get_project_version_path())
-    print(get_project_phase_dir_path())
-    print(get_project_milestone_dir_path())
-    print(get_project_milestone_subdir_path("codebase-status"))
-    pprint(get_all_project_milestone_subdir_paths())
+    print(get_feature_subdir_path("codebase-status"))
+    pprint(get_all_feature_subdir_paths())

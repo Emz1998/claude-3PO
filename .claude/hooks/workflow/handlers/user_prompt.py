@@ -92,6 +92,19 @@ class UserPromptHandler:
             sys.exit(2)
         self._state.activate_workflow()
 
+        # Check for pending validation and set flag
+        try:
+            from validators.criteria_validator import get_pending_validation_type  # type: ignore
+            validation_type = get_pending_validation_type()
+            if validation_type:
+                self._state.set("pending_validation", validation_type)
+                # Clear the needs_*_validation flags
+                self._state.delete("needs_ac_validation")
+                self._state.delete("needs_sc_validation")
+                self._state.delete("needs_epic_sc_validation")
+        except ImportError:
+            pass
+
     def handle_deactivate(self) -> None:
         """Handle /deactivate-workflow command."""
         self._state.deactivate_workflow()

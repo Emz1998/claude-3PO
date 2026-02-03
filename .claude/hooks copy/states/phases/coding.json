@@ -1,9 +1,0 @@
-{
-  "subagents_status": [
-    {"name": "test-engineer", "status": "completed"},
-    {"name": "version-manager", "status": "completed"},
-    {"name": "main-agent", "status": "pending"},
-    {"name": "code-reviewer", "status": "pending"},
-    {"name": "code-specialist", "status": "pending"}
-  ]
-}

@@ -171,6 +171,35 @@ def find_success_criteria(
     )
 
 
+# Epic Success Criteria
+def find_epic_success_criteria(
+    esc_id: str,
+    release_plan: dict | None = None,
+) -> dict | None:
+    if not release_plan:
+        release_plan = load_release_plan(get_release_plan_path("v0.1.0")) or {}
+    epics = get_epics(release_plan) or []
+    return next(
+        (
+            sc
+            for epic in epics
+            for sc in epic.get("success_criteria", [])
+            if sc.get("id", "") == esc_id
+        ),
+        None,
+    )
+
+
+def get_all_epic_scs_ids(
+    epic_id: str, release_plan: dict | None = None
+) -> list[str]:
+    """Get all epic-level success criteria IDs for an epic."""
+    if not release_plan:
+        release_plan = load_release_plan(get_release_plan_path("v0.1.0")) or {}
+    epic = find_epic(epic_id, release_plan) or {}
+    return [sc.get("id", "") for sc in epic.get("success_criteria", [])]
+
+
 def find_feature_id_of_user_story(
     user_story_id: str, release_plan: dict | None = None
 ) -> str | None:

@@ -152,6 +152,57 @@ def is_task_allowed(task_id: str, state: dict | None = None) -> bool:
     return all(is_task_completed(dep_id, state) for dep_id in deps)
 
 
+# Task-only and story-only completion checkers
+def are_all_tasks_completed_in_user_story(
+    user_story_id: str, state: dict | None = None
+) -> bool:
+    """Check if ALL tasks in a user story are completed (ignores ACs)."""
+    if state is None:
+        state = _load_state()
+
+    release_plan = load_release_plan(RELEASE_PLAN_PATH) or {}
+    all_tasks_ids = get_all_tasks_ids_in_user_story(user_story_id, release_plan) or []
+
+    if not all_tasks_ids:
+        return False
+
+    return all(is_task_completed(task_id, state) for task_id in all_tasks_ids)
+
+
+def are_all_user_stories_completed_in_feature(
+    feature_id: str, state: dict | None = None
+) -> bool:
+    """Check if ALL user stories in a feature are completed (ignores SCs)."""
+    if state is None:
+        state = _load_state()
+
+    release_plan = load_release_plan(RELEASE_PLAN_PATH) or {}
+    user_story_ids = get_all_user_story_ids_in_feature(feature_id, release_plan) or []
+
+    if not user_story_ids:
+        return False
+
+    completed_user_stories = state.get("completed_user_stories", [])
+    return all(us_id in completed_user_stories for us_id in user_story_ids)
+
+
+def are_all_features_completed_in_epic(
+    epic_id: str, state: dict | None = None
+) -> bool:
+    """Check if ALL features in an epic are completed (ignores epic SCs)."""
+    if state is None:
+        state = _load_state()
+
+    release_plan = load_release_plan(RELEASE_PLAN_PATH) or {}
+    feature_ids = get_all_features_ids_in_epic(epic_id, release_plan) or []
+
+    if not feature_ids:
+        return False
+
+    completed_features = state.get("completed_features", [])
+    return all(feat_id in completed_features for feat_id in feature_ids)
+
+
 # Finder helpers
 def find_tasks_allowed_in_user_story(
     user_story_id: str, state: dict | None = None

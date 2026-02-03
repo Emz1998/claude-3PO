@@ -42,6 +42,52 @@ class ContextInjector:
         add_context(reminder, "PostToolUse")
         return True
 
+    def inject_validation_context(self) -> bool:
+        """Inject validation context if pending_validation is set.
+
+        Returns:
+            True if validation context was injected
+        """
+        pending = self._state.get_pending_validation()
+        if not pending:
+            return False
+
+        try:
+            sys.path.insert(0, str(Path(__file__).parent.parent))
+            from validators.criteria_validator import (  # type: ignore
+                get_unmet_acs,
+                get_unmet_scs,
+                get_unmet_epic_scs,
+            )
+
+            type_labels = {
+                "ac": "Acceptance Criteria (AC)",
+                "sc": "Success Criteria (SC)",
+                "epic_sc": "Epic Success Criteria (ESC)",
+            }
+            label = type_labels.get(pending, pending)
+
+            if pending == "ac":
+                unmet_ids = get_unmet_acs()
+            elif pending == "sc":
+                unmet_ids = get_unmet_scs()
+            elif pending == "epic_sc":
+                unmet_ids = get_unmet_epic_scs()
+            else:
+                unmet_ids = []
+
+            unmet_str = ", ".join(unmet_ids) if unmet_ids else "unknown"
+            context = (
+                f"VALIDATION REQUIRED: Deploy the validator subagent to validate "
+                f"{label} before proceeding with normal workflow phases. "
+                f"Unmet criteria: {unmet_str}"
+            )
+
+            add_context(context, "PostToolUse")
+            return True
+        except ImportError:
+            return False
+
     def run(self, hook_input: dict) -> None:
         """Run the injector against hook input.
 
@@ -50,6 +96,10 @@ class ContextInjector:
         """
         if not self.is_active():
             sys.exit(0)
+
+        # Check for pending validation and inject context
+        if self.inject_validation_context():
+            return
 
         hook_event_name = hook_input.get("hook_event_name", "")
         if hook_event_name != "PostToolUse":

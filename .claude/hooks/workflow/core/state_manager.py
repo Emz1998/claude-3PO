@@ -230,6 +230,26 @@ class StateManager:
 
         return True, "All deliverables completed"
 
+    def get_pending_validation(self) -> str | None:
+        """Get pending validation type.
+
+        Returns:
+            "ac", "sc", "epic_sc", or None
+        """
+        return self.get("pending_validation", None)
+
+    def set_pending_validation(self, validation_type: str) -> None:
+        """Set pending validation type.
+
+        Args:
+            validation_type: "ac", "sc", or "epic_sc"
+        """
+        self.set("pending_validation", validation_type)
+
+    def clear_pending_validation(self) -> None:
+        """Clear pending validation flag."""
+        self.delete("pending_validation")
+
     def is_dry_run_active(self) -> bool:
         """Check if dry run mode is active.
 

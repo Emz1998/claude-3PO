@@ -16,6 +16,7 @@ deliverables:
     - type: files
       action: write
       value: ".*plans/initial-plan_.*\\.md$"
+
   plan-consult:
     - type: files
       action: read
