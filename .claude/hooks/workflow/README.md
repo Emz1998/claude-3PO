@@ -44,12 +44,14 @@ The workflow system enforces a structured development process through Claude Cod
 │   │   Validators    │    │  │Deliverables │ │ReleasePlan  │    │           │
 │   │ ┌─────────────┐ │    │  │  Tracker    │ │   Module    │    │           │
 │   │ │CriteriaVal. │ │    │  └─────────────┘ └─────────────┘    │           │
-│   │ │RevisionMgr. │ │    └─────────────────────────────────────┘           │
-│   │ └─────────────┘ │                    │                                  │
-│   └─────────────────┘                    ▼                                  │
+│   │ │RevisionMgr. │ │    │  ┌─────────────┐                     │           │
+│   │ └─────────────┘ │    │  │  Auditor   │ -> logs/            │           │
+│   └─────────────────┘    └─────────────────────────────────────┘           │
+│                                            │                                  │
+│                                            ▼                                  │
 │                           ┌─────────────────────────────────────┐           │
 │                           │            STATE FILES              │           │
-│                           │  state.json    workflow_config.json │           │
+│                           │  state.json    workflow.config.yaml │           │
 │                           │  project/state.json (release plan)  │           │
 │                           └─────────────────────────────────────┘           │
 │                                                                              │
@@ -65,18 +67,19 @@ workflow/
 ├── __init__.py               # Backward-compatible exports
 │
 ├── config/
-│   ├── workflow_config.json  # Phase definitions, subagent mappings, deliverables
-│   └── loader.py             # Configuration loading with caching
+│   ├── workflow.config.yaml      # Phase definitions, subagent mappings, deliverables
+│   ├── unified_loader.py         # Configuration loading with caching and validation
+│   └── WORKFLOW_CONFIG_GUIDE.md  # Configuration guide
 │
 ├── core/
 │   ├── state_manager.py      # Unified state API (includes pending_validation)
 │   ├── phase_engine.py       # Phase ordering and transitions
-│   └── deliverables_tracker.py # Deliverable completion tracking
+│   ├── deliverables_tracker.py # Deliverable completion tracking
+│   └── workflow_auditor.py   # Invariant checks and violation logging
 │
 ├── guards/                   # PreToolUse + Stop validation
 │   ├── phase_transition.py   # Enforce phase order
 │   ├── subagent_access.py    # Enforce subagent permissions
-│   ├── read_order.py         # Enforce file read order (optional)
 │   ├── deliverables_exit.py  # Block phase exit without deliverables
 │   └── task_dod_stop.py      # Block Stop if tasks incomplete
 │
@@ -109,6 +112,9 @@ workflow/
 │   ├── project.py            # Project directory types (FeatureSubdir)
 │   └── state.py              # Project state file operations
 │
+├── logs/                     # Audit logs (auto-created)
+│   └── violations.log        # Invariant violations and guard decisions
+│
 └── tests/
     ├── test_workflow_architecture.py
     ├── test_release_plan_tracker.py
@@ -116,6 +122,7 @@ workflow/
     ├── test_criteria_validator.py
     ├── test_revision_manager.py
     ├── test_task_dod_stop.py
+    ├── test_troubleshoot_phase.py
     └── test_validation_integration.py
 ```
 
@@ -126,6 +133,7 @@ workflow/
 Triggered when user submits a prompt. Used for:
 - Workflow activation via `/implement` command
 - Workflow deactivation via `/deactivate-workflow`
+- Troubleshoot mode via `/troubleshoot` command (bypasses coding phases)
 - Pending validation detection (sets `pending_validation` flag in state)
 
 **2. PreToolUse (Validation Phase)**
@@ -187,6 +195,42 @@ When all tasks in a unit complete, the system auto-detects that criteria validat
 - Injected into `current_tasks` in project state
 - Validated and tracked like regular tasks by `ReleasePlanTracker`
 
+## Bypass Phases (Troubleshoot Mode)
+
+Some phases can bypass normal phase ordering. The `troubleshoot` phase allows entering troubleshoot mode from any coding phase.
+
+**Bypass Configuration** (`workflow.config.yaml`):
+```yaml
+bypass_phases:
+  troubleshoot:
+    can_bypass:      # Coding phases (can enter troubleshoot from these)
+      - write-tests
+      - review-tests
+      - write-code
+      - code-review
+      - refactor
+      - validate
+      - commit
+    cannot_bypass:   # Pre-coding phases (protected, cannot skip)
+      - explore
+      - plan
+      - plan-consult
+      - finalize-plan
+```
+
+**Troubleshoot Flow:**
+1. User invokes `/troubleshoot` from a coding phase (e.g., `write-code`)
+2. Current phase is stored in `pre_troubleshoot_phase`
+3. Phase transitions to `troubleshoot`, owned by `troubleshooter` agent
+4. User invokes `/troubleshoot` again to exit
+5. Phase returns to stored `pre_troubleshoot_phase`
+
+**State Changes:**
+- `activate_troubleshoot()` - Stores current phase, sets `troubleshoot: true`
+- `deactivate_troubleshoot()` - Restores previous phase, clears flag
+- `is_troubleshoot_active()` - Check if in troubleshoot mode
+- `get_pre_troubleshoot_phase()` - Get phase before troubleshoot
+
 ## Release Plan Integration
 
 The `release_plan_tracker` validates and records release plan items:
@@ -220,7 +264,9 @@ The `release_plan_tracker` validates and records release plan items:
   "needs_ac_validation": true,
   "deliverables": [...],
   "phase_history": ["explore"],
-  "dry_run_active": false
+  "dry_run_active": false,
+  "troubleshoot": false,
+  "pre_troubleshoot_phase": null
 }
 ```
 
@@ -248,16 +294,48 @@ The `release_plan_tracker` validates and records release plan items:
 
 1. **Separation of Concerns**: Guards validate, trackers record, validators enforce criteria, handlers route
 2. **Exit Codes**: `0` = allow, `2` = block with error message
-3. **Priority System**: Lower priority number = higher priority, must complete first
+3. **Strict Order**: `strict_order` field actively blocks tool calls until lower-level deliverables are complete
 4. **Singleton Patterns**: StateManager and PhaseEngine use module-level singletons
 5. **Backward Compatibility**: Legacy functions wrap new classes for smooth migration
 6. **Release Plan Integration**: Real validation against release plan, not just regex patterns
 7. **Validation Chain**: AC -> SC -> Epic SC validation triggered automatically on completion
 8. **Revision Tasks**: Failed criteria generate `RT-` prefixed tasks that integrate with existing task tracking
+9. **Audit System**: Non-blocking invariant checks with violation logging for post-hoc analysis
+10. **Bypass Phases**: Special phases (e.g., `troubleshoot`) can skip normal ordering from coding phases while protecting pre-coding phases
+
+## Audit System
+
+The `WorkflowAuditor` detects guard failures and state corruption without breaking workflow execution. All write errors are silently caught.
+
+**Invariant Checks:**
+- `check_strict_order_compliance` - Verify completed deliverables respect `strict_order`
+- `check_phase_validity` - Verify phase exists in config
+- `check_empty_deliverables` - Warn on zero deliverables for a phase
+- `check_state_integrity` - Verify required keys exist with correct types
+- `check_state_corruption` - Detect JSON corruption on state load
+- `check_phase_deliverable_match` - Verify deliverable count matches config
+
+**Log Format:**
+```
+[2025-01-15 10:30:45] [VIOLATION] [STRICT_ORDER] Level 2 deliverable complete while level 1 still pending
+[2025-01-15 10:30:46] [DECISION] [PhaseTransitionGuard] ALLOW explore -> plan
+[2025-01-15 10:30:47] [WARN] [EMPTY_DELIVERABLES] Phase 'custom' has 0 deliverables
+```
+
+**Log Location:** `logs/violations.log` (auto-rotates at 5MB)
+
+**Usage:**
+```python
+from core.workflow_auditor import get_auditor
+
+auditor = get_auditor()
+auditor.check_state_integrity(state)
+auditor.log_decision("MyGuard", "BLOCK", "reason: invalid phase")
+```
 
 ## Testing
 
-Run all tests (200 tests):
+Run all tests (511 tests):
 ```bash
 python -m pytest .claude/hooks/workflow/tests/ -v
 ```
@@ -265,7 +343,7 @@ python -m pytest .claude/hooks/workflow/tests/ -v
 Run specific test file:
 ```bash
 python -m pytest .claude/hooks/workflow/tests/test_criteria_validator.py -v
-python -m pytest .claude/hooks/workflow/tests/test_task_dod_stop.py -v
+python -m pytest .claude/hooks/workflow/tests/test_troubleshoot_phase.py -v
 ```
 
 ## Adding New Guards/Trackers

@@ -12,13 +12,9 @@ Architecture:
 - context/: Phase-specific context injection
 - handlers/: Consolidated hook entry points
 - release_plan/: Release plan state management
-
-Backward Compatibility:
-The following imports are maintained for backward compatibility with
-existing hooks that import directly from this module.
 """
 
-# Backward compatible imports from core.state_manager
+# State management
 from .core.state_manager import (
     load_state,
     save_state,
@@ -35,36 +31,21 @@ from .core.state_manager import (
     reset_deliverables_status,
 )
 
-# Backward compatible imports from core.phase_engine
+# Phase engine
 from .core.phase_engine import (
-    PHASES,
-    TDD_PHASES,
-    TA_PHASES,
-    DEFAULT_PHASES,
-    PHASE_SUBAGENTS,
     get_phase_order,
     get_all_phases,
 )
 
-# New architecture exports
+# Core classes
 from .core import (
     StateManager,
     PhaseEngine,
     DeliverablesTracker,
 )
 
-from .config import (
-    WorkflowConfig,
-    load_workflow_config,
-    get_config,
-    get_phases,
-    get_deliverables,
-    get_phase_subagents,
-    get_phase_deliverables,
-)
-
 __all__ = [
-    # Legacy state functions
+    # State functions
     "load_state",
     "save_state",
     "get_state",
@@ -78,23 +59,11 @@ __all__ = [
     "are_all_deliverables_met",
     "add_deliverable",
     "reset_deliverables_status",
-    # Legacy phase constants
-    "PHASES",
-    "TDD_PHASES",
-    "TA_PHASES",
-    "DEFAULT_PHASES",
-    "PHASE_SUBAGENTS",
+    # Phase functions
     "get_phase_order",
     "get_all_phases",
-    # New architecture
+    # Core classes
     "StateManager",
     "PhaseEngine",
     "DeliverablesTracker",
-    "WorkflowConfig",
-    "load_workflow_config",
-    "get_config",
-    "get_phases",
-    "get_deliverables",
-    "get_phase_subagents",
-    "get_phase_deliverables",
 ]

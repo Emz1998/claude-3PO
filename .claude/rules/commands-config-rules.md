@@ -12,5 +12,3 @@ paths: .claude/commands/**/*.md
 4. Consult user before major structural changes
 5. Only modify when explicitly requested
 6. All new commands must include context-memory management section
-
-

@@ -16,37 +16,75 @@ project:
 phases:
   # Standard workflow (with placeholder "code" that expands based on test strategy)
   base:
-    - explore        # Understand codebase
-    - plan           # Create plan
-    - plan-consult   # Review plan
-    - finalize-plan  # Finalize plan
-    - code           # Implementation (expands to TDD or test-after phases)
-    - commit         # Commit changes
+    - explore # Understand codebase
+    - plan # Create plan
+    - plan-consult # Review plan
+    - finalize-plan # Finalize plan
+    - code # Implementation (expands to TDD or test-after phases)
+    - commit # Commit changes
 
   # Simple workflow without TDD
   simple:
-    - explore        # Understand codebase
-    - plan           # Create plan
-    - execute        # Execute plan
-    - commit         # Commit changes
+    - explore # Understand codebase
+    - plan # Create plan
+    - execute # Execute plan
+    - commit # Commit changes
 
   # TDD phases (replace "code" when using TDD strategy)
   tdd:
-    - write-test     # Write failing tests first
-    - review-test    # Review test quality
-    - write-code     # Implement to pass tests
-    - code-review    # Review code quality
-    - refactor       # Improve code
-    - validate       # Final validation
+    - write-tests # Write failing tests first
+    - review-tests # Review test quality
+    - write-code # Implement to pass tests
+    - code-review # Review code quality
+    - refactor # Improve code
+    - validate # Final validation
 
   # Test-after phases (replace "code" when writing tests after)
   test-after:
-    - write-code     # Write code first
-    - write-test     # Write tests after
-    - review-test    # Review test quality
-    - code-review    # Review code quality
-    - refactor       # Improve code
-    - validate       # Final validation
+    - write-code # Write code first
+    - write-tests # Write tests after
+    - review-tests # Review test quality
+    - code-review # Review code quality
+    - refactor # Improve code
+    - validate # Final validation
+
+# =============================================================================
+# TRIGGERS - Commands that activate/deactivate the workflow
+# =============================================================================
+triggers:
+  implement:
+    command: "/implement"
+    arg_pattern: "T\\d{3}(\\s*-\\s*T\\d{3})?$"
+    arg_hint: "TNNN"
+    description: "Activate workflow and begin implementation"
+  deactivate:
+    command: "/deactivate-workflow"
+    description: "Deactivate the workflow"
+  dry_run:
+    command: "/dry-run"
+    description: "Activate dry-run mode"
+  troubleshoot:
+    command: "/troubleshoot"
+    description: "Enter troubleshoot mode (bypasses coding phases)"
+
+# =============================================================================
+# BYPASS PHASES - Phases that can skip normal ordering
+# =============================================================================
+bypass_phases:
+  troubleshoot:
+    can_bypass:
+      - write-tests
+      - review-tests
+      - write-code
+      - code-review
+      - refactor
+      - validate
+      - commit
+    cannot_bypass:
+      - explore
+      - plan
+      - plan-consult
+      - finalize-plan
 
 # =============================================================================
 # AGENTS - Who handles each phase
@@ -58,163 +96,141 @@ agents:
   finalize-plan: planner
   execute: main-agent
   commit: version-manager
-  write-test: test-engineer
-  review-test: test-reviewer
+  write-tests: test-engineer
+  review-tests: test-reviewer
   write-code: main-agent
   code-review: code-reviewer
   refactor: main-agent
   validate: validator
+  troubleshoot: troubleshooter
 
 # =============================================================================
 # DELIVERABLES - Required inputs/outputs for each phase
 # Uses simple wildcards: * matches any characters, ** matches directories
+# Placeholders: {project} = current feature path, {session} = session ID
+# Prefix with ./ for exact match from repo root (e.g., ./prompt.md)
 # =============================================================================
 deliverables:
   explore:
     # Files to read before starting
     read:
-      - file: "prompt.md"
+      - filepath: "./prompt.md"
         description: "User's requirements"
-        priority: 1
+        strict_order: 1
     # Files to create/write
     write:
-      - folder: "codebase-status"
-        pattern: "codebase-status_*.md"
+      - filepath: "{project}/codebase-status/codebase-status_{session}.md"
         description: "Codebase analysis report"
-        priority: 2
 
   plan:
     read:
-      - folder: "codebase-status"
-        pattern: "codebase-status_*.md"
+      - filepath: "{project}/codebase-status/codebase-status_{session}.md"
         description: "Codebase analysis from explore phase"
-        priority: 1
+        strict_order: 1
     write:
-      - folder: "plans"
-        pattern: "initial-plan_*.md"
+      - filepath: "{project}/plans/initial-plan_{session}.md"
         description: "Initial implementation plan"
-        priority: 2
 
   plan-consult:
     read:
-      - folder: "plans"
-        pattern: "initial-plan_*.md"
+      - filepath: "{project}/plans/initial-plan_{session}.md"
         description: "Initial plan to review"
-        priority: 1
+        strict_order: 1
     write:
-      - folder: "plans"
-        pattern: "plan-consultation_*.md"
+      - filepath: "{project}/plans/plan-consultation_{session}.md"
         description: "Plan consultation feedback"
-        priority: 2
 
   finalize-plan:
     read:
-      - folder: "plans"
-        pattern: "plan-consultation_*.md"
+      - filepath: "{project}/plans/plan-consultation_{session}.md"
         description: "Consultation feedback to incorporate"
-        priority: 1
+        strict_order: 1
     write:
-      - folder: "plans"
-        pattern: "final-plan_*.md"
+      - filepath: "{project}/plans/final-plan_{session}.md"
         description: "Final approved plan"
-        priority: 2
 
   write-test:
     read:
-      - folder: "plans"
-        pattern: "final-plan_*.md"
+      - filepath: "{project}/plans/final-plan_{session}.md"
         description: "Final plan for test creation"
-        priority: 1
-    # Files to modify (edit existing files)
-    edit:
-      - folder: "src"
-        pattern: "**/*.test.ts"
-        description: "Test files"
-      - folder: "src"
-        pattern: "**/*.test.tsx"
-        description: "React test files"
-      - folder: "tests"
-        pattern: "**/*.py"
-        description: "Python test files"
+        strict_order: 1
     write:
-      - folder: "tests"
-        pattern: "test-summary_*.md"
+      - filepath: "src/**/*.test.ts"
+        description: "Test files"
+        match: test-files
+
+      - filepath: "src/**/*.test.tsx"
+        description: "React test files"
+        match: test-files
+
+      - filepath: "tests/**/*.py"
+        description: "Python test files"
+        match: test-files
+
+      - filepath: "{project}/reports/test-summary_{session}.md"
         description: "Summary of tests written"
-        priority: 2
 
   review-test:
     read:
-      - folder: "tests"
-        pattern: "test-summary_*.md"
+      - filepath: "{project}/reports/test-summary_{session}.md"
         description: "Test summary to review"
-        priority: 1
     write:
-      - folder: "tests"
-        pattern: "test-quality-report_*.md"
+      - filepath: "{project}/reports/test-quality-report_{session}.md"
         description: "Test quality assessment"
-        priority: 2
 
   write-code:
     read:
-      - folder: "plans"
-        pattern: "final-plan_*.md"
+      - filepath: "{project}/plans/final-plan_{session}.md"
         description: "Final plan for implementation"
-        priority: 1
+        strict_order: 1
+      - filepath: "{project}/codebase-status/codebase-status_{session}.md"
+        description: "Codebase status report"
+        strict_order: 1
     # Files to modify (edit existing files)
     edit:
-      - folder: "src"
-        pattern: "**/*.ts"
+      - filepath: "src/**/*.ts"
         description: "TypeScript source files"
-      - folder: "src"
-        pattern: "**/*.tsx"
+        match: source-files
+      - filepath: "src/**/*.tsx"
         description: "React components"
-      - folder: "src"
-        pattern: "**/*.py"
+        match: source-files
+      - filepath: "src/**/*.py"
         description: "Python source files"
+        match: source-files
     write:
-      - folder: "misc"
-        pattern: "code-test_*.md"
+      - filepath: "{project}/misc/code-test_{session}.md"
         description: "Code implementation notes"
-        priority: 2
 
   code-review:
     read:
-      - folder: "misc"
-        pattern: "code-test_*.md"
+      - filepath: "{project}/misc/code-test_{session}.md"
         description: "Code notes to review"
-        priority: 1
+        strict_order: 1
     write:
-      - folder: "reviews"
-        pattern: "code-review_*.md"
+      - filepath: "{project}/reviews/code-review_{session}.md"
         description: "Code review feedback"
-        priority: 2
 
   refactor:
     read:
-      - folder: "reviews"
-        pattern: "code-review_*.md"
+      - filepath: "{project}/reviews/code-review_{session}.md"
         description: "Review feedback to address"
-        priority: 1
+        strict_order: 1
     # Files to modify during refactoring
     edit:
-      - folder: "src"
-        pattern: "**/*.ts"
+      - filepath: "src/**/*.ts"
         description: "TypeScript files to refactor"
-      - folder: "src"
-        pattern: "**/*.tsx"
+        match: refactor-files
+      - filepath: "src/**/*.tsx"
         description: "React components to refactor"
+        match: refactor-files
     write:
-      - folder: "reports"
-        pattern: "refactor_*.md"
+      - filepath: "{project}/reports/refactor_{session}.md"
         description: "Refactoring summary"
-        priority: 2
 
   validate:
     read:
-      - folder: "reports"
-        pattern: "refactor_*.md"
+      - filepath: "{project}/reports/refactor_{session}.md"
         description: "Refactoring report to validate"
-        priority: 1
     # Commands to run (bash)
     bash:
       - command: "npm test"
@@ -227,46 +243,29 @@ deliverables:
         description: "Verify TypeScript types"
         allow_failure: false
     write:
-      - folder: "reports"
-        pattern: "validation_report_*.md"
+      - filepath: "{project}/reports/validation_report_{session}.md"
         description: "Validation results"
-        priority: 2
 
   commit:
     read:
-      - folder: "reports"
-        pattern: "validation_report_*.md"
+      - filepath: "{project}/reports/validation_report_{session}.md"
         description: "Validation report to confirm"
-        priority: 1
     # Skills to invoke
     skill:
       - name: "commit"
         description: "Invoke /commit skill"
     write:
-      - folder: "reports"
-        pattern: "commit_*.md"
+      - filepath: "{project}/reports/commit_{session}.md"
         description: "Commit summary"
-        priority: 2
-
-# =============================================================================
-# REQUIRED READ ORDER - Files that should be read in this order when starting
-# =============================================================================
-required_read_order:
-  - recap.md
-  - ms-summary.md
-  - tasks.md
-  - codebase-status.md
-  - plan.md
-  - plan-consultation.md
 
 # =============================================================================
 # FEATURE FLAGS - Enable/disable workflow components
 # =============================================================================
 features:
-  dry_run: false              # Simulate without making changes
-  strict_phase_order: true    # Enforce phase order
-  require_deliverables: true  # Require deliverables before phase transition
-  verbose_logging: false      # Extra debug output
+  dry_run: false # Simulate without making changes
+  strict_phase_order: true # Enforce phase order
+  require_deliverables: true # Require deliverables before phase transition
+  verbose_logging: false # Extra debug output
 
 # =============================================================================
 # ENVIRONMENT OVERRIDES (optional)

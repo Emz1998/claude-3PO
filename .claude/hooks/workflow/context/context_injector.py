@@ -13,6 +13,7 @@ from utils import read_stdin_json, add_context  # type: ignore
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from core.state_manager import get_manager  # type: ignore
 from context.phase_reminders import get_phase_reminder  # type: ignore
+from config.unified_loader import normalize_skill_name  # type: ignore
 
 
 class ContextInjector:
@@ -115,6 +116,7 @@ class ContextInjector:
         if not skill_name:
             sys.exit(0)
 
+        skill_name = normalize_skill_name(skill_name)
         self.inject(skill_name)
 
 

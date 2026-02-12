@@ -2,30 +2,16 @@
 """Configuration module for workflow orchestration.
 
 Provides unified access to workflow configuration including phases,
-deliverables, and subagent mappings.
-
-This module exports both legacy loader functions (for backward compatibility)
-and new unified loader functions (recommended for new code).
+deliverables, and subagent mappings via the unified YAML loader.
 """
 
-# Legacy loader (backward compatible)
-from .loader import (
-    WorkflowConfig,
-    load_workflow_config,
-    get_config,
-    get_phases,
-    get_deliverables,
-    get_phase_subagents,
-    get_phase_deliverables,
-    clear_cache,
-)
-
-# Unified loader (recommended)
 from .unified_loader import (
     # Configuration classes
     UnifiedWorkflowConfig,
     ProjectConfig,
     FeaturesConfig,
+    TriggerConfig,
+    TriggersConfig,
     FileDeliverable,
     CommandDeliverable,
     SkillDeliverable,
@@ -36,6 +22,7 @@ from .unified_loader import (
     # Convenience functions
     get_project_settings,
     get_feature_flags,
+    get_triggers,
     get_agent_for_phase,
     get_phase_deliverables_typed,
     get_deliverable_patterns,
@@ -47,24 +34,14 @@ from .unified_loader import (
     ConfigurationError,
     validate_config,
     format_validation_errors,
-    # Backward compatibility
-    get_legacy_deliverables_format,
 )
 
 __all__ = [
-    # Legacy exports (backward compatible)
-    "WorkflowConfig",
-    "load_workflow_config",
-    "get_config",
-    "get_phases",
-    "get_deliverables",
-    "get_phase_subagents",
-    "get_phase_deliverables",
-    "clear_cache",
-    # Unified exports (recommended)
     "UnifiedWorkflowConfig",
     "ProjectConfig",
     "FeaturesConfig",
+    "TriggerConfig",
+    "TriggersConfig",
     "FileDeliverable",
     "CommandDeliverable",
     "SkillDeliverable",
@@ -73,6 +50,7 @@ __all__ = [
     "clear_unified_cache",
     "get_project_settings",
     "get_feature_flags",
+    "get_triggers",
     "get_agent_for_phase",
     "get_phase_deliverables_typed",
     "get_deliverable_patterns",
@@ -82,5 +60,4 @@ __all__ = [
     "ConfigurationError",
     "validate_config",
     "format_validation_errors",
-    "get_legacy_deliverables_format",
 ]

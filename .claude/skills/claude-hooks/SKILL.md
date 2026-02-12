@@ -5,13 +5,16 @@ description: Use PROACTIVELY when you need to create, update, configure, or vali
 
 **Goal**: Create, update or troubleshoot Claude Code hook scripts
 
+## Context
+
+- **Task to be performed (create, refactor, troubleshoot)**: $1
+- **Instructions**: $2
+
 ## Instructions
 
-- **MUST** include proper error handling
-- **MUST** prefer Python over shell scripts
-- **MUST** use `sys.path.insert(0, str(Path(__file__).parent.parent))` to import utils
-- **MUST** use type hints and type checking
-- **MUST** use `# type: ignore` to suppress type errors
+- If `Task to be performed` is `create`, then your main task is to create a new hook. Create a new hook in the `.claude/hooks/` directory based on `Instructions` provided by the user.
+- If `Task to be performed` is `refactor`, then your main task is to refactor an existing hook. Refactor the hook in the `.claude/hooks/` directory based on `Instructions` provided by the user.
+- If `Task to be performed` is `troubleshoot`, then your main task is to troubleshoot an existing hook. Troubleshoot the specified hook based on `Instructions` provided by the user.
 
 ## Workflow
 

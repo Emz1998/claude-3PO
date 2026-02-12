@@ -63,8 +63,13 @@ class SubagentAccessGuard:
         current_phase = self._state.get_current_phase()
         subagent = hook_input.get("tool_input", {}).get("subagent_type", "")
 
+        from core.workflow_auditor import get_auditor  # type: ignore
+
+        auditor = get_auditor()
+
         if not self.is_subagent_allowed(current_phase, subagent):
             allowed = get_phase_subagent(current_phase)
+            auditor.log_decision("SUBAGENT_GUARD", "BLOCK", f"'{subagent}' in phase '{current_phase}'")
             print(
                 f'Subagent "{subagent}" not allowed in phase "{current_phase}". '
                 f'Expected: "{allowed}"',
@@ -72,6 +77,7 @@ class SubagentAccessGuard:
             )
             sys.exit(2)
 
+        auditor.log_decision("SUBAGENT_GUARD", "ALLOW", f"'{subagent}' in phase '{current_phase}'")
         sys.exit(0)
 
 

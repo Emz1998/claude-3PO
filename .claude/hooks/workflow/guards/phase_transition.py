@@ -13,6 +13,7 @@ from utils import read_stdin_json  # type: ignore
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from core.state_manager import get_manager  # type: ignore
 from core.phase_engine import get_engine, validate_order, get_phase_order  # type: ignore
+from config.unified_loader import normalize_skill_name, is_bypass_phase  # type: ignore
 
 
 class PhaseTransitionGuard:
@@ -41,6 +42,12 @@ class PhaseTransitionGuard:
         Returns:
             Tuple of (is_valid, error_message)
         """
+        # Check if troubleshoot is active and we're returning to previous phase
+        if self._state.is_troubleshoot_active() and not is_bypass_phase(next_phase):
+            pre_phase = self._state.get_pre_troubleshoot_phase()
+            if pre_phase == next_phase:
+                return True, ""
+
         return self._engine.is_valid_transition(current_phase, next_phase)
 
     def run(self, hook_input: dict) -> None:
@@ -62,12 +69,19 @@ class PhaseTransitionGuard:
 
         current_phase = self._state.get_current_phase()
         skill = hook_input.get("tool_input", {}).get("skill", "")
+        skill = normalize_skill_name(skill)
+
+        from core.workflow_auditor import get_auditor  # type: ignore
+
+        auditor = get_auditor()
 
         is_valid, error_message = self.validate(current_phase, skill)
         if not is_valid:
+            auditor.log_decision("PHASE_GUARD", "BLOCK", f"{current_phase} -> {skill}: {error_message}")
             print(error_message, file=sys.stderr)
             sys.exit(2)
 
+        auditor.log_decision("PHASE_GUARD", "ALLOW", f"{current_phase} -> {skill}")
         sys.exit(0)
 
 

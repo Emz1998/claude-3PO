@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from config.loader import get_phase_deliverables  # type: ignore
+from config.unified_loader import get_phase_deliverables_typed  # type: ignore
 from core.state_manager import get_manager, StateManager  # type: ignore
 
 
@@ -31,17 +31,42 @@ class DeliverablesTracker:
         Args:
             phase: Phase name to initialize deliverables for
         """
-        config_deliverables = get_phase_deliverables(phase)
-        deliverables = [
-            {
-                "type": d.get("type", "files"),
-                "action": d.get("action", "write"),
-                "pattern": d.get("pattern", d.get("value", "")),
-                "priority": d.get("priority"),
+        phase_deliverables = get_phase_deliverables_typed(phase)
+        deliverables: list[dict[str, Any]] = []
+
+        for action in ["read", "write", "edit"]:
+            items = getattr(phase_deliverables, action, [])
+            for item in items:
+                entry: dict[str, Any] = {
+                    "type": "files",
+                    "action": action,
+                    "pattern": item.regex_pattern or item.pattern,
+                    "match": item.match,
+                    "strict_order": item.strict_order,
+                    "completed": False,
+                }
+                deliverables.append(entry)
+
+        for item in phase_deliverables.bash:
+            deliverables.append({
+                "type": "commands",
+                "action": "bash",
+                "pattern": item.command,
+                "match": item.match,
+                "strict_order": item.strict_order,
                 "completed": False,
-            }
-            for d in config_deliverables
-        ]
+            })
+
+        for item in phase_deliverables.skill:
+            deliverables.append({
+                "type": "skill",
+                "action": "invoke",
+                "pattern": item.name or item.pattern,
+                "match": item.match,
+                "strict_order": item.strict_order,
+                "completed": False,
+            })
+
         self._state.set_deliverables(deliverables)
 
     def get_deliverables(self) -> list[dict[str, Any]]:

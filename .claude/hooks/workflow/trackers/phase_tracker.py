@@ -13,6 +13,7 @@ from utils import read_stdin_json  # type: ignore
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from core.state_manager import get_manager  # type: ignore
 from core.deliverables_tracker import get_tracker  # type: ignore
+from config.unified_loader import normalize_skill_name, is_bypass_phase  # type: ignore
 
 
 class PhaseTracker:
@@ -33,8 +34,32 @@ class PhaseTracker:
         Args:
             skill_name: The skill/phase name to track
         """
+        # Handle bypass phases specially (e.g., troubleshoot)
+        if is_bypass_phase(skill_name):
+            if skill_name == "troubleshoot":
+                if not self._state.is_troubleshoot_active():
+                    self._state.activate_troubleshoot()
+                    self._deliverables.initialize_for_phase(skill_name)
+                else:
+                    # Toggle off - deactivate troubleshoot
+                    self._state.deactivate_troubleshoot()
+                return
+
+        # Regular phase tracking
+        # If exiting troubleshoot, deactivate it first
+        if self._state.is_troubleshoot_active():
+            self._state.deactivate_troubleshoot()
+
         self._state.set_current_phase(skill_name)
         self._deliverables.initialize_for_phase(skill_name)
+
+        from core.workflow_auditor import get_auditor  # type: ignore
+
+        auditor = get_auditor()
+        auditor.check_phase_validity(skill_name)
+        deliverables = self._state.get_deliverables()
+        auditor.check_empty_deliverables(skill_name, deliverables)
+        auditor.check_phase_deliverable_match(skill_name, deliverables)
 
     def run(self, hook_input: dict) -> None:
         """Run the tracker against hook input.
@@ -57,6 +82,7 @@ class PhaseTracker:
         skill_name = tool_input.get("skill", "")
 
         if skill_name:
+            skill_name = normalize_skill_name(skill_name)
             self.track(skill_name)
 
 

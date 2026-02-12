@@ -15,12 +15,35 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from core.state_manager import get_manager  # type: ignore
 from guards.phase_transition import PhaseTransitionGuard  # type: ignore
 from guards.subagent_access import SubagentAccessGuard  # type: ignore
-from guards.read_order import ReadOrderGuard  # type: ignore
 from trackers.release_plan_tracker import ReleasePlanTracker  # type: ignore
 from release_plan.getters import get_current_feature_id  # type: ignore
 from release_plan.utils import get_feature_test_strategy  # type: ignore
 
 TestStrategy = Literal["tdd", "test-after", "none"]
+
+_TOOL_ACTION_MAP: dict[str, str] = {
+    "Read": "read",
+    "Write": "write",
+    "Edit": "edit",
+    "Bash": "bash",
+    "Skill": "invoke",
+}
+
+
+def _map_tool_to_action(tool_name: str) -> str | None:
+    """Map a tool name to a deliverable action."""
+    return _TOOL_ACTION_MAP.get(tool_name)
+
+
+def _get_tool_value(tool_name: str, tool_input: dict) -> str:
+    """Extract the relevant value from tool input for matching."""
+    if tool_name in ("Read", "Write", "Edit"):
+        return tool_input.get("file_path", "")
+    if tool_name == "Bash":
+        return tool_input.get("command", "")
+    if tool_name == "Skill":
+        return tool_input.get("skill", "")
+    return ""
 
 
 def _normalize_test_strategy(raw_strategy: str | None) -> TestStrategy:
@@ -68,12 +91,30 @@ class PreToolHandler:
         self._test_strategy = _get_current_test_strategy()
         self._phase_guard = PhaseTransitionGuard(self._test_strategy)
         self._subagent_guard = SubagentAccessGuard(self._test_strategy)
-        self._read_guard = ReadOrderGuard()
         self._release_plan_tracker = ReleasePlanTracker()
 
     def is_active(self) -> bool:
         """Check if handler is active (workflow is active)."""
         return self._state.is_workflow_active()
+
+    def check_strict_order(self, tool_name: str, tool_input: dict) -> None:
+        """Block tool if strict_order enforcement applies.
+
+        Args:
+            tool_name: Name of the tool being called
+            tool_input: Tool input parameters
+        """
+        action = _map_tool_to_action(tool_name)
+        if action is None:
+            return
+        value = _get_tool_value(tool_name, tool_input)
+        reason = self._state.get_strict_order_block_reason(action, value)
+        if reason:
+            from core.workflow_auditor import get_auditor  # type: ignore
+
+            get_auditor().log_decision("STRICT_ORDER", "BLOCK", f"{action} on {value}")
+            print(reason, file=sys.stderr)
+            sys.exit(2)
 
     def run(self, hook_input: dict) -> None:
         """Run the handler against hook input.
@@ -89,6 +130,11 @@ class PreToolHandler:
             sys.exit(0)
 
         tool_name = hook_input.get("tool_name", "")
+        tool_input = hook_input.get("tool_input", {})
+
+        # Strict order enforcement for Read/Write/Edit/Bash/Skill
+        if tool_name in _TOOL_ACTION_MAP:
+            self.check_strict_order(tool_name, tool_input)
 
         # Route to appropriate guard based on tool
         if tool_name == "Skill":
@@ -100,11 +146,6 @@ class PreToolHandler:
         elif tool_name == "Task":
             # Check subagent access
             self._subagent_guard.run(hook_input)
-
-        elif tool_name == "Read":
-            # Check read order (optional enforcement)
-            # self._read_guard.run(hook_input)
-            pass
 
         # All checks passed
         sys.exit(0)

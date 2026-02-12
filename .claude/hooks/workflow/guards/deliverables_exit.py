@@ -48,6 +48,12 @@ class DeliverablesExitGuard:
             from roadmap.utils import are_all_scs_met_in_milestone  # type: ignore
             return are_all_scs_met_in_milestone()
         except ImportError:
+            from core.workflow_auditor import get_auditor  # type: ignore
+
+            get_auditor().log_warn(
+                "SC_SKIP",
+                "SC validation unavailable (ImportError) — exit allowed without SC check",
+            )
             return True, "SC validation not available"
 
     def run(self, hook_input: dict) -> None:
@@ -62,8 +68,13 @@ class DeliverablesExitGuard:
         deliverables_met, del_message = self.validate_deliverables()
         scs_met, scs_message = self.validate_scs()
 
+        from core.workflow_auditor import get_auditor  # type: ignore
+
+        auditor = get_auditor()
+
         if not deliverables_met or not scs_met:
             reason = del_message if not deliverables_met else scs_message
+            auditor.log_decision("EXIT_GUARD", "BLOCK", reason)
             decision = {
                 "decision": "block",
                 "reason": reason,
@@ -71,6 +82,9 @@ class DeliverablesExitGuard:
             print(json.dumps(decision))
             sys.exit(2)
 
+        total = len(self._tracker.get_deliverables())
+        complete = len(self._tracker.get_complete())
+        auditor.log_decision("EXIT_GUARD", "ALLOW", f"{complete}/{total} deliverables met")
         sys.exit(0)
 
 

@@ -1,94 +1,78 @@
 ---
-name: specs-creator
-description: Creates tech specs and UI/UX specs based on feature requirements. Use when user mentions "Create Tech Specs", "Create UI/UX Specs", or needs technical/design documentation for a version.
+name: specs
+description: Creates project documentation (product-vision, product-brief, architecture, coding-standards, definition-of-done, decisions). Use when user mentions "Create Specs", "Create Architecture", "Create Product Vision", or needs foundational project documentation.
+disable-model-invocation: true
 ---
 
-**Goal**: Create or update comprehensive tech specs and UI/UX specs based on feature requirements
+**Goal**: Create or update project documentation based on the dependency chain
 
 ## Dependency Chain
 
 ```
-app-vision.md → PRD.md → tech-specs.md → ui-ux.md
+product-vision.md + business-plan.md → product-brief.md → decisions.md → architecture.md → coding-standards.md → definition-of-done.md
 ```
+
+## Context
+
+- **Action to be performed (create, update, delete)**: $0
+- **Doc type (product-vision, product-brief, architecture, coding-standards, definition-of-done)**: $1
+- **Instructions**: $2
+
+## Instructions
+
+- Each doc depends on its predecessors. `decisions.md` is standalone and can be updated at any time.
+- If `Action to be performed` is `create` and `Doc type` is specified, then create the specified doc while respecting the dependency chain. If dependency is not met yet, exit and inform the user to create the missing docs first.
+- If `Action to be performed` is `create` but `Doc type` is not specified, then create all docs in the dependency chain.
+- If `Action to be performed` is `update` or `delete` but `Doc type` is not specified, ask the user to specify the doc type to update or delete.
+- If No `Action to be performed` is specified and no `Doc type` is specified and no `Instructions` are provided, default to `create` and create all docs in the dependency chain.
 
 ## Workflow
 
-1. Read `project/product/PRD.json` to determine current version and features
-2. Read `project/executive/app-vision.md` for project vision
-3. For tech-specs: also read `project/product/PRD.md` for requirements
-4. For ui-ux specs: read all preceding specs in the dependency chain
-5. Choose template from `.claude/skills/specs-creator/templates/`
-6. Generate spec with version-specific content
-7. Save to `project/{version}/specs/` with correct naming
-8. Report completion with file path and next steps
+1. Identify which doc type the user wants to create or update
+2. Verify all dependencies exist (read predecessor docs in the chain)
+3. Read `project/docs/executive/product-vision.md` for project context
+4. Read `project/docs/executive/business-plan.md` for business plan context
+5. Read predecessor docs for context relevant to the target doc
+6. Choose template from `.claude/skills/specs-creator/templates/` depending on the `Doc type`
+7. Generate doc with project-specific content
+8. Save to the correct path in `project/docs/` (See `Output Path` section for details)
+9. Report completion with file path and next steps in the dependency chain
 
 ## Constraints
 
-- NEVER create a spec if its dependency doesn't exist yet
-- NEVER overwrite existing specs without user approval
-- DO NOT create specs outside `project/{version}/specs/` directory
+- NEVER create a doc if its dependency doesn't exist yet
+- NEVER overwrite existing docs without user approval
 - NEVER assume requirements - ask for clarification
-- KEEP specs focused on the target version's features
+- KEEP docs aligned with the project's constitution and existing decisions
 
 ## Acceptance Criteria
 
-- [ ] Spec contains all required sections from template
-- [ ] Frontmatter includes `version-coverage`
-- [ ] Database models include future-proofing considerations
-- [ ] File saved to `project/{version}/specs/` directory
-- [ ] Completion report includes: file path, version, next steps
+- [ ] Doc contains all required sections from its template
+- [ ] Saved to the correct path under `project/docs/`
+- [ ] Content is consistent with predecessor docs in the chain
+- [ ] Completion report includes: file path, doc type, next steps
 
 ## References
 
-- **PRD Path:** `project/product/PRD.md`
-- **PRD JSON:** `project/product/PRD.json`
-- **App Vision:** `project/executive/app-vision.md`
-- **Tech Template:** `.claude/skills/specs-creator/templates/tech.md`
-- **UX Template:** `.claude/skills/specs-creator/templates/ux.md`
+- **Product Vision:** `project/docs/executive/product-vision.md`
+- **Business Plan:** `project/docs/executive/business-plan.md`
+- **Templates:** `.claude/skills/specs-creator/templates/`
 
-## Considerations
+## Output Path
 
-### Per-Version Approach
+- **Product Brief:** `project/docs/product/product-brief.md`
+- **Architecture:** `project/docs/architecture.md/architecture.md`
+- **Coding Standards:** `project/docs/architecture.md/coding-standards.md`
+- **Definition of Done:** `project/docs/governance/definition-of-done.md`
+- **Decisions:** `project/docs/architecture.md/decisions.md`
 
-Tech specs are created per version (e.g., `v0.1.0`, `v0.2.0`). Each version's spec focuses only on features in that release.
+## Available Doc Types
 
-**Benefits:**
-
-- Clear scope boundaries per release
-- Smaller, focused documents
-- Specs can evolve as you learn from previous versions
-- Aligns with iterative/MVP development
-
-**Cross-Version Concerns:**
-
-- Use the PRD as the north star for upcoming features
-- Design database schemas with nullable fields for future features
-- Reference earlier version specs when building on existing systems
-
-### Database Schema Future-Proofing
-
-When designing data models, anticipate future versions:
-
-- Add `type` or `category` columns for entities that may have variants later
-- Use nullable fields for attributes coming in future versions
-- Prefer additive schema changes (new tables/columns) over modifications
-- Document "Future Considerations" for each entity
-
-**Example:**
-
-```
-predictions table (v0.1.0):
-- prediction_type: 'moneyline' (default)  // Ready for 'spread', 'total' in v1.0.0
-- spread_value: null                       // Populated in v1.0.0
-- total_value: null                        // Populated in v1.0.0
-```
-
-### Frontmatter
-
-Tech specs should include version in YAML frontmatter:
-
-```yaml
----
-version: v0.1.0
----
-```
+| Type               | Path                                               | Template                          | Depends On            |
+| ------------------ | -------------------------------------------------- | --------------------------------- | --------------------- |
+| Product Vision     | `project/docs/executive/product-vision.md`         | `templates/product-vision.md`     | `app-vision.md`       |
+| Product Brief      | `project/docs/product/product-brief.md`            | `templates/product-brief.md`      | `product-vision.md`   |
+| Architecture       | `project/docs/architecture.md/architecture.md`     | `templates/architecture.md`       | `product-brief.md`    |
+| Coding Standards   | `project/docs/architecture.md/coding-standards.md` | `templates/coding-standards.md`   | `architecture.md`     |
+| Definition of Done | `project/docs/governance/definition-of-done.md`    | `templates/definition-of-done.md` | `coding-standards.md` |
+| Decisions          | `project/docs/architecture.md/decisions.md`        | `templates/decisions.md`          | None                  |

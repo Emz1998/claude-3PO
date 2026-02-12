@@ -31,13 +31,24 @@ class StateManager:
         Returns:
             State dictionary
         """
+        was_fallback = False
         if self._state_path.exists():
             try:
                 self._state = json.loads(self._state_path.read_text())
             except (json.JSONDecodeError, IOError, TypeError):
                 self._state = {}
+                was_fallback = True
         else:
             self._state = {}
+
+        from core.workflow_auditor import get_auditor  # type: ignore
+
+        auditor = get_auditor()
+        if was_fallback:
+            auditor.check_state_corruption(self._state, was_fallback=True)
+        elif self._state:
+            auditor.check_state_integrity(self._state)
+
         return self._state
 
     def save(self, state: dict[str, Any] | None = None) -> None:
@@ -161,8 +172,6 @@ class StateManager:
     ) -> bool:
         """Mark a deliverable as completed if action and value match.
 
-        Only marks complete if all higher-priority deliverables are done.
-
         Args:
             action: The action type to match
             value: The value to match against deliverable patterns
@@ -171,43 +180,100 @@ class StateManager:
             True if a match was found and marked complete
         """
         deliverables = self.get_deliverables()
+        matched = False
         for deliverable in deliverables:
             if deliverable.get("action") == action:
                 pattern = deliverable.get("pattern", deliverable.get("value", ""))
                 if re.match(pattern, value):
-                    # Check priority enforcement
-                    if not self._can_complete_deliverable(deliverable, deliverables):
-                        return False
                     deliverable["completed"] = True
+                    matched = True
+                    # Cascade: mark all entries in the same (action, match) group
+                    match_group = deliverable.get("match")
+                    if match_group:
+                        for other in deliverables:
+                            if (
+                                other.get("action") == action
+                                and other.get("match") == match_group
+                            ):
+                                other["completed"] = True
                     self.set_deliverables(deliverables)
+
+                    from core.workflow_auditor import get_auditor  # type: ignore
+
+                    get_auditor().check_strict_order_compliance(deliverables)
                     return True
-        return False
+        return matched
 
-    def _can_complete_deliverable(
-        self, target: dict[str, Any], all_deliverables: list[dict[str, Any]]
-    ) -> bool:
-        """Check if target deliverable can be completed based on priority.
-
-        Returns True if all higher-priority deliverables are already completed.
-
-        Args:
-            target: The deliverable attempting to be completed
-            all_deliverables: All deliverables for the current phase
+    def get_min_incomplete_strict_order(self) -> int | None:
+        """Get the lowest strict_order among incomplete deliverables.
 
         Returns:
-            True if target can be completed (all higher priority items done)
+            Lowest strict_order value, or None if no strict_order items remain.
         """
-        target_priority = target.get("priority")
-        if target_priority is None:
-            return True  # No priority = can always complete
+        deliverables = self.get_deliverables()
+        min_order: int | None = None
+        for d in deliverables:
+            order = d.get("strict_order")
+            if order is None:
+                continue
+            if d.get("completed", False):
+                continue
+            if min_order is None or order < min_order:
+                min_order = order
+        return min_order
 
-        for d in all_deliverables:
-            d_priority = d.get("priority")
-            if d_priority is None:
-                continue  # Skip deliverables without priority
-            if d_priority < target_priority and not d.get("completed", False):
-                return False  # Higher priority item not completed
-        return True
+    def get_strict_order_block_reason(
+        self,
+        action: str,
+        value: str,
+    ) -> str | None:
+        """Check if a tool call should be blocked by strict_order enforcement.
+
+        Args:
+            action: Tool action (read, write, edit, bash, invoke)
+            value: File path, command, or skill name
+
+        Returns:
+            Block reason string if blocked, None if allowed.
+        """
+        from config.unified_loader import regex_to_wildcard  # type: ignore
+
+        min_order = self.get_min_incomplete_strict_order()
+        if min_order is None:
+            return None
+
+        # Check if action/value matches any deliverable at the current min level
+        deliverables = self.get_deliverables()
+        for d in deliverables:
+            if d.get("strict_order") != min_order:
+                continue
+            if d.get("completed", False):
+                continue
+            if d.get("action") != action:
+                continue
+            pattern = d.get("pattern", d.get("value", ""))
+            if pattern and re.match(pattern, value):
+                return None
+
+        # Build block message listing what needs to be done first
+        pending: list[str] = []
+        for d in deliverables:
+            if d.get("strict_order") != min_order:
+                continue
+            if d.get("completed", False):
+                continue
+            pattern = d.get("pattern", d.get("value", ""))
+            display = regex_to_wildcard(pattern) if pattern else d.get("action", "")
+            desc = d.get("description", "")
+            label = f"{d.get('action', '')} {display}"
+            if desc:
+                label += f" ({desc})"
+            pending.append(label)
+
+        return (
+            f"STRICT ORDER: Complete level {min_order} deliverables first:\n"
+            + "\n".join(f"  - {p}" for p in pending)
+        )
 
     def are_all_deliverables_met(self) -> tuple[bool, str]:
         """Check if all deliverables are completed.
@@ -265,6 +331,37 @@ class StateManager:
     def deactivate_dry_run(self) -> None:
         """Deactivate dry run mode."""
         self.set("dry_run_active", False)
+
+    def is_troubleshoot_active(self) -> bool:
+        """Check if troubleshoot mode is active.
+
+        Returns:
+            True if troubleshoot is active
+        """
+        return self.get("troubleshoot", False) is True
+
+    def activate_troubleshoot(self) -> None:
+        """Activate troubleshoot mode and store current phase."""
+        current = self.get_current_phase()
+        self.set("pre_troubleshoot_phase", current)
+        self.set("troubleshoot", True)
+        self.set_current_phase("troubleshoot")
+
+    def deactivate_troubleshoot(self) -> None:
+        """Deactivate troubleshoot and return to previous phase."""
+        previous = self.get("pre_troubleshoot_phase")
+        self.set("troubleshoot", False)
+        if previous:
+            self.set_current_phase(previous)
+        self.delete("pre_troubleshoot_phase")
+
+    def get_pre_troubleshoot_phase(self) -> str | None:
+        """Get the phase before troubleshoot was activated.
+
+        Returns:
+            Previous phase name or None
+        """
+        return self.get("pre_troubleshoot_phase")
 
     def reset_deliverables_status(self) -> None:
         """Reset all deliverables to incomplete."""
@@ -324,32 +421,51 @@ def initialize_state() -> None:
 
 
 def initialize_deliverables_state(
-    config: dict[str, Any] | None = None,
     state: dict[str, Any] | None = None,
     phase: str = "",
 ) -> None:
     """Initialize deliverables for current phase from config."""
-    from config.loader import load_workflow_config as load_config  # type: ignore
+    from config.unified_loader import get_phase_deliverables_typed  # type: ignore
 
-    if config is None:
-        config = load_config()
     manager = get_manager()
     if state is None:
         state = manager.load()
 
     if not phase:
         phase = (state or {}).get("current_phase", "")
-    deliverables_state = []
-    phase_deliverables = config.get("deliverables", {}).get(phase, [])
-    for d in phase_deliverables:
-        deliverables_state.append(
-            {
-                "type": d["type"],
-                "action": d["action"],
-                "value": d.get("value", d.get("pattern", "")),
+
+    phase_deliverables = get_phase_deliverables_typed(phase)
+    deliverables_state: list[dict[str, Any]] = []
+
+    for action in ["read", "write", "edit"]:
+        items = getattr(phase_deliverables, action, [])
+        for item in items:
+            deliverables_state.append({
+                "type": "files",
+                "action": action,
+                "value": item.regex_pattern or item.pattern,
+                "match": item.match,
                 "completed": False,
-            }
-        )
+            })
+
+    for item in phase_deliverables.bash:
+        deliverables_state.append({
+            "type": "commands",
+            "action": "bash",
+            "value": item.command,
+            "match": item.match,
+            "completed": False,
+        })
+
+    for item in phase_deliverables.skill:
+        deliverables_state.append({
+            "type": "skill",
+            "action": "invoke",
+            "value": item.name or item.pattern,
+            "match": item.match,
+            "completed": False,
+        })
+
     manager.set("deliverables", deliverables_state)
 
 

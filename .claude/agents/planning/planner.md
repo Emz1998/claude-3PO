@@ -1,5 +1,5 @@
 ---
-name: planner
+name: strategic-planner
 description: Use this agent to create implementation plans from codebase reports. Reads user-provided codebase-report and produces actionable implementation plans with phases, tasks, and file modifications.
 tools: Read, Write
 model: opus

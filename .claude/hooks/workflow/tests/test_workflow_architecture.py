@@ -10,13 +10,11 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent))
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from config.loader import (  # type: ignore
-    load_workflow_config,
-    get_config,
-    get_phases,
-    get_phase_subagents,
-    get_phase_deliverables,
-    clear_cache,
+from config.unified_loader import (  # type: ignore
+    load_unified_config,
+    get_agent_for_phase,
+    get_phase_deliverables_typed,
+    clear_unified_cache,
 )
 from core.state_manager import StateManager  # type: ignore
 from core.phase_engine import PhaseEngine, get_phase_order  # type: ignore
@@ -49,56 +47,44 @@ def deliverables_tracker(state_manager):
 @pytest.fixture(autouse=True)
 def clear_config_cache():
     """Clear config cache before and after each test."""
-    clear_cache()
+    clear_unified_cache()
     yield
-    clear_cache()
+    clear_unified_cache()
 
 
 class TestConfigLoader:
-    """Tests for the configuration loader module."""
+    """Tests for the unified configuration loader module."""
 
-    def test_load_workflow_config_returns_dict(self):
-        """Config loader returns a dictionary."""
-        config = load_workflow_config()
-        assert isinstance(config, dict)
-
-    def test_config_has_required_keys(self):
-        """Config contains all required top-level keys."""
-        config = load_workflow_config()
-        assert "phases" in config
-        assert "subagents" in config
-        assert "deliverables" in config
-
-    def test_get_config_returns_dataclass(self):
-        """get_config returns a WorkflowConfig dataclass."""
-        config = get_config()
+    def test_load_unified_config_returns_dataclass(self):
+        """Unified config loader returns a UnifiedWorkflowConfig."""
+        config = load_unified_config(validate=False)
         assert hasattr(config, "phases")
-        assert hasattr(config, "subagents")
+        assert hasattr(config, "agents")
         assert hasattr(config, "deliverables")
+        assert hasattr(config, "project")
+        assert hasattr(config, "features")
 
-    def test_get_phases_tdd_contains_test_phases(self):
-        """TDD strategy includes test phases."""
-        phases = get_phases("tdd")
-        assert "explore" in phases
-        assert "commit" in phases
-        assert "write-test" in phases
+    def test_config_has_phases(self):
+        """Config contains phase definitions."""
+        config = load_unified_config(validate=False)
+        assert isinstance(config.phases, dict)
+        assert "base" in config.phases
 
-    def test_get_phases_test_after_contains_test_phases(self):
-        """Test-after strategy includes test phases."""
-        phases = get_phases("test-after")
-        assert "explore" in phases
-        assert "commit" in phases
+    def test_config_has_agents(self):
+        """Config contains agent mappings."""
+        config = load_unified_config(validate=False)
+        assert isinstance(config.agents, dict)
+        assert config.agents.get("explore") == "codebase-explorer"
+        assert config.agents.get("commit") == "version-manager"
 
-    def test_get_phase_subagents_mapping(self):
-        """Phase subagents mapping is correct."""
-        subagents = get_phase_subagents()
-        assert subagents.get("explore") == "codebase-explorer"
-        assert subagents.get("commit") == "version-manager"
-
-    def test_get_phase_deliverables_returns_list(self):
-        """Phase deliverables returns a list for valid phase."""
-        deliverables = get_phase_deliverables("explore")
-        assert isinstance(deliverables, list)
+    def test_get_phase_deliverables_typed_returns_dataclass(self):
+        """Phase deliverables returns a PhaseDeliverables dataclass."""
+        deliverables = get_phase_deliverables_typed("explore")
+        assert hasattr(deliverables, "read")
+        assert hasattr(deliverables, "write")
+        assert hasattr(deliverables, "edit")
+        assert hasattr(deliverables, "bash")
+        assert hasattr(deliverables, "skill")
 
 
 class TestStateManager:
@@ -229,16 +215,6 @@ class TestDeliverablesTracker:
         all_met, message = tracker.are_all_met()
         assert all_met
 
-    def test_initialize_preserves_priority(self, deliverables_tracker):
-        """Priority field is preserved when initializing deliverables."""
-        deliverables_tracker.initialize_for_phase("explore")
-        deliverables = deliverables_tracker.get_deliverables()
-        # Explore phase has priority 1 for read and priority 2 for write
-        priorities = [d.get("priority") for d in deliverables]
-        assert 1 in priorities
-        assert 2 in priorities
-
-
 class TestSkillDeliverableType:
     """Tests for the skill deliverable type feature."""
 
@@ -292,141 +268,6 @@ class TestSkillDeliverableType:
         assert deliverables[0]["completed"] is False
 
 
-class TestPrioritySystem:
-    """Tests for the deliverable priority system."""
-
-    def test_priority_blocks_lower_priority(self, state_manager):
-        """Lower priority deliverables cannot complete before higher priority."""
-        state_manager.set_deliverables(
-            [
-                {
-                    "type": "files",
-                    "action": "read",
-                    "pattern": ".*input.md",
-                    "priority": 1,
-                    "completed": False,
-                },
-                {
-                    "type": "files",
-                    "action": "write",
-                    "pattern": ".*output.md",
-                    "priority": 2,
-                    "completed": False,
-                },
-            ]
-        )
-        # Try to complete priority 2 before priority 1
-        result = state_manager.mark_deliverable_complete("write", "/path/to/output.md")
-        assert result is False
-        deliverables = state_manager.get_deliverables()
-        assert deliverables[1]["completed"] is False
-
-    def test_priority_allows_after_higher_complete(self, state_manager):
-        """Lower priority deliverables can complete after higher priority is done."""
-        state_manager.set_deliverables(
-            [
-                {
-                    "type": "files",
-                    "action": "read",
-                    "pattern": ".*input.md",
-                    "priority": 1,
-                    "completed": False,
-                },
-                {
-                    "type": "files",
-                    "action": "write",
-                    "pattern": ".*output.md",
-                    "priority": 2,
-                    "completed": False,
-                },
-            ]
-        )
-        # Complete priority 1 first
-        state_manager.mark_deliverable_complete("read", "/path/to/input.md")
-        # Now priority 2 should work
-        result = state_manager.mark_deliverable_complete("write", "/path/to/output.md")
-        assert result is True
-
-    def test_same_priority_independent(self, state_manager):
-        """Deliverables with same priority can complete in any order."""
-        state_manager.set_deliverables(
-            [
-                {
-                    "type": "files",
-                    "action": "read",
-                    "pattern": ".*file1.md",
-                    "priority": 1,
-                    "completed": False,
-                },
-                {
-                    "type": "files",
-                    "action": "read",
-                    "pattern": ".*file2.md",
-                    "priority": 1,
-                    "completed": False,
-                },
-            ]
-        )
-        # Complete second one first
-        result = state_manager.mark_deliverable_complete("read", "/path/to/file2.md")
-        assert result is True
-        # First one should also work
-        result = state_manager.mark_deliverable_complete("read", "/path/to/file1.md")
-        assert result is True
-
-    def test_no_priority_always_allowed(self, state_manager):
-        """Deliverables without priority can always be completed."""
-        state_manager.set_deliverables(
-            [
-                {
-                    "type": "files",
-                    "action": "read",
-                    "pattern": ".*input.md",
-                    "priority": 1,
-                    "completed": False,
-                },
-                {
-                    "type": "files",
-                    "action": "write",
-                    "pattern": ".*output.md",
-                    "completed": False,
-                },  # No priority
-            ]
-        )
-        # No priority item can complete even if priority 1 is not done
-        result = state_manager.mark_deliverable_complete("write", "/path/to/output.md")
-        assert result is True
-
-    def test_priority_with_skill_deliverable(self, state_manager):
-        """Priority system works with skill deliverables."""
-        state_manager.set_deliverables(
-            [
-                {
-                    "type": "files",
-                    "action": "read",
-                    "pattern": ".*plan.md",
-                    "priority": 1,
-                    "completed": False,
-                },
-                {
-                    "type": "skill",
-                    "action": "invoke",
-                    "pattern": "^commit$",
-                    "priority": 2,
-                    "completed": False,
-                },
-            ]
-        )
-        # Skill deliverable blocked by higher priority
-        result = state_manager.mark_deliverable_complete("invoke", "commit")
-        assert result is False
-        # Complete priority 1
-        state_manager.mark_deliverable_complete("read", "/path/to/plan.md")
-        # Now skill should work
-        result = state_manager.mark_deliverable_complete("invoke", "commit")
-        assert result is True
-
-
 class TestGuards:
     """Tests for guard modules."""
 
@@ -457,13 +298,12 @@ class TestBackwardCompatibility:
     """Tests for backward compatible imports."""
 
     def test_import_from_workflow_module(self):
-        """Legacy imports from workflow module work."""
+        """Core imports from workflow module work."""
         from workflow import (  # type: ignore
             load_state,
             save_state,
             get_state,
             set_state,
-            PHASES,
             get_phase_order,
         )
 
@@ -471,7 +311,6 @@ class TestBackwardCompatibility:
         assert callable(save_state)
         assert callable(get_state)
         assert callable(set_state)
-        assert isinstance(PHASES, (dict, list))
         assert callable(get_phase_order)
 
     def test_import_new_architecture_from_workflow(self):
@@ -480,15 +319,11 @@ class TestBackwardCompatibility:
             StateManager,
             PhaseEngine,
             DeliverablesTracker,
-            WorkflowConfig,
-            load_workflow_config,
         )
 
         assert StateManager is not None
         assert PhaseEngine is not None
         assert DeliverablesTracker is not None
-        assert WorkflowConfig is not None
-        assert callable(load_workflow_config)
 
 
 if __name__ == "__main__":
