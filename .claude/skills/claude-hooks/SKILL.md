@@ -1,14 +1,15 @@
 ---
-name: hooks-management
+name: claude-hooks
 description: Use PROACTIVELY when you need to create, update, configure, or validate Claude hooks for various events and integrations
+argument-hint: <task-to-be-performed> <instructions>
 ---
 
 **Goal**: Create, update or troubleshoot Claude Code hook scripts
 
 ## Context
 
-- **Task to be performed (create, refactor, troubleshoot)**: $1
-- **Instructions**: $2
+- **Task to be performed (create, refactor, troubleshoot)**: $0
+- **Instructions**: $1
 
 ## Instructions
 

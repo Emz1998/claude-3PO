@@ -26,9 +26,7 @@ def build_gemini_command(args: argparse.Namespace) -> list[str]:
 
 
 def run_gemini(
-    cmd: list[str],
-    stdin_input: Optional[str] = None,
-    stream: bool = False
+    cmd: list[str], stdin_input: Optional[str] = None, stream: bool = False
 ) -> tuple[int, str, str]:
     if stream:
         process = subprocess.Popen(
@@ -36,7 +34,7 @@ def run_gemini(
             stdin=subprocess.PIPE if stdin_input else None,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            text=True
+            text=True,
         )
         stdout_lines = []
         if stdin_input:
@@ -48,12 +46,7 @@ def run_gemini(
         process.wait()
         stderr = process.stderr.read()
         return process.returncode, "".join(stdout_lines), stderr
-    result = subprocess.run(
-        cmd,
-        input=stdin_input,
-        capture_output=True,
-        text=True
-    )
+    result = subprocess.run(cmd, input=stdin_input, capture_output=True, text=True)
     return result.returncode, result.stdout, result.stderr
 
 
@@ -74,53 +67,41 @@ Examples:
   %(prog)s -p "Summarize this" --stdin < README.md
   %(prog)s -p "Review code" -o json --model gemini-2.5-flash
   cat file.py | %(prog)s -p "Explain this code"
-        """
+        """,
     )
+    parser.add_argument("-p", "--prompt", type=str, help="The prompt to send to Gemini")
     parser.add_argument(
-        "-p", "--prompt",
-        type=str,
-        help="The prompt to send to Gemini"
-    )
-    parser.add_argument(
-        "-o", "--output-format",
+        "-o",
+        "--output-format",
         choices=["text", "json", "stream-json"],
         default="text",
-        help="Output format (default: text)"
+        help="Output format (default: text)",
     )
     parser.add_argument(
-        "-m", "--model",
+        "-m",
+        "--model",
         type=str,
-        help="Gemini model to use (e.g., gemini-2.5-flash, gemini-2.5-pro)"
+        help="Gemini model to use (e.g., gemini-2.5-flash, gemini-2.5-pro)",
+    )
+    parser.add_argument("-d", "--debug", action="store_true", help="Enable debug mode")
+    parser.add_argument(
+        "-y", "--yolo", action="store_true", help="Auto-approve all actions"
     )
     parser.add_argument(
-        "-d", "--debug",
-        action="store_true",
-        help="Enable debug mode"
-    )
-    parser.add_argument(
-        "-y", "--yolo",
-        action="store_true",
-        help="Auto-approve all actions"
-    )
-    parser.add_argument(
-        "--approval-mode",
-        choices=["auto_edit", "full"],
-        help="Set approval mode"
+        "--approval-mode", choices=["auto_edit", "full"], help="Set approval mode"
     )
     parser.add_argument(
         "--include-directories",
         type=str,
-        help="Include additional directories (comma-separated)"
+        help="Include additional directories (comma-separated)",
     )
     parser.add_argument(
-        "--stdin",
-        action="store_true",
-        help="Read input from stdin and pipe to gemini"
+        "--stdin", action="store_true", help="Read input from stdin and pipe to gemini"
     )
     parser.add_argument(
         "--extract-response",
         action="store_true",
-        help="Extract only the response field from JSON output"
+        help="Extract only the response field from JSON output",
     )
     args = parser.parse_args()
     stdin_input = None

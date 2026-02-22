@@ -1,0 +1,382 @@
+{
+  "project": "Avaris",
+  "sprint": 1,
+  "goal": "Establish foundational infrastructure and ML pipeline for NBA prediction model",
+  "dates": {
+    "start": "2026-02-17",
+    "end": "2026-03-02"
+  },
+  "capacity": {
+    "hours": 80,
+    "weeks": 2
+  },
+  "totalPoints": 23,
+  "stories": [
+    {
+      "id": "SK-001",
+      "type": "Spike",
+      "epic": "EP-001",
+      "title": "Which NBA stats features yield best XGBoost accuracy",
+      "points": 2,
+      "status": "Todo",
+      "dependsOn": [],
+      "blockedBy": [],
+      "timebox": "8 hours",
+      "deliverables": [
+        "Feature importance analysis documented in decisions.md with top 10 features ranked",
+        "Recommendation includes feature set with pros/cons and expected accuracy impact",
+        "Prototype training script tests at least 3 different feature combinations"
+      ]
+    },
+    {
+      "id": "SK-002",
+      "type": "Spike",
+      "epic": "EP-001",
+      "title": "Pre-market vs post-line-release prediction timing",
+      "points": 1,
+      "status": "Todo",
+      "dependsOn": [],
+      "blockedBy": [],
+      "timebox": "4 hours",
+      "deliverables": [
+        "Decision documented in decisions.md with timing recommendation",
+        "Trade-off analysis includes data freshness, line availability, and user value",
+        "Cron schedule recommendation for daily pipeline execution"
+      ]
+    },
+    {
+      "id": "TS-012",
+      "type": "Tech",
+      "epic": null,
+      "title": "Next.js 15 project setup",
+      "points": 3,
+      "status": "Todo",
+      "dependsOn": [],
+      "blockedBy": [],
+      "priority": "Must",
+      "tasks": [
+        {
+          "id": "T-001",
+          "title": "Initialize Next.js 15 project with App Router and TypeScript",
+          "status": "Todo",
+          "complexity": "S",
+          "dependsOn": [],
+          "qaLoops": [
+            0,
+            3
+          ],
+          "codeReviewLoops": [
+            0,
+            2
+          ]
+        },
+        {
+          "id": "T-002",
+          "title": "Configure ESLint and Prettier with project standards",
+          "status": "Todo",
+          "complexity": "S",
+          "dependsOn": [
+            "T-001"
+          ],
+          "qaLoops": [
+            0,
+            3
+          ],
+          "codeReviewLoops": [
+            0,
+            2
+          ]
+        },
+        {
+          "id": "T-003",
+          "title": "Create project folder structure per architecture.md",
+          "status": "Todo",
+          "complexity": "S",
+          "dependsOn": [
+            "T-001"
+          ],
+          "qaLoops": [
+            0,
+            3
+          ],
+          "codeReviewLoops": [
+            0,
+            2
+          ]
+        }
+      ]
+    },
+    {
+      "id": "TS-013",
+      "type": "Tech",
+      "epic": null,
+      "title": "Firebase Firestore configuration",
+      "points": 2,
+      "status": "Todo",
+      "dependsOn": [],
+      "blockedBy": [],
+      "priority": "Must",
+      "tasks": [
+        {
+          "id": "T-004",
+          "title": "Create Firebase project and configure credentials",
+          "status": "Todo",
+          "complexity": "S",
+          "dependsOn": [],
+          "qaLoops": [
+            0,
+            3
+          ],
+          "codeReviewLoops": [
+            0,
+            2
+          ]
+        },
+        {
+          "id": "T-005",
+          "title": "Initialize Firestore SDK and create collection schemas",
+          "status": "Todo",
+          "complexity": "M",
+          "dependsOn": [
+            "T-004"
+          ],
+          "qaLoops": [
+            0,
+            3
+          ],
+          "codeReviewLoops": [
+            0,
+            2
+          ]
+        },
+        {
+          "id": "T-006",
+          "title": "Configure Firestore security rules",
+          "status": "Todo",
+          "complexity": "S",
+          "dependsOn": [
+            "T-005"
+          ],
+          "qaLoops": [
+            0,
+            3
+          ],
+          "codeReviewLoops": [
+            0,
+            2
+          ]
+        }
+      ]
+    },
+    {
+      "id": "TS-016",
+      "type": "Tech",
+      "epic": null,
+      "title": "Python ML pipeline project setup",
+      "points": 2,
+      "status": "Todo",
+      "dependsOn": [],
+      "blockedBy": [],
+      "priority": "Must",
+      "tasks": [
+        {
+          "id": "T-007",
+          "title": "Create Python virtual environment and install dependencies",
+          "status": "Todo",
+          "complexity": "S",
+          "dependsOn": [],
+          "qaLoops": [
+            0,
+            3
+          ],
+          "codeReviewLoops": [
+            0,
+            2
+          ]
+        },
+        {
+          "id": "T-008",
+          "title": "Create pipeline folder structure and placeholder files",
+          "status": "Todo",
+          "complexity": "S",
+          "dependsOn": [
+            "T-007"
+          ],
+          "qaLoops": [
+            0,
+            3
+          ],
+          "codeReviewLoops": [
+            0,
+            2
+          ]
+        },
+        {
+          "id": "T-009",
+          "title": "Configure pytest and mypy for Python testing",
+          "status": "Todo",
+          "complexity": "S",
+          "dependsOn": [
+            "T-008"
+          ],
+          "qaLoops": [
+            0,
+            3
+          ],
+          "codeReviewLoops": [
+            0,
+            2
+          ]
+        }
+      ]
+    },
+    {
+      "id": "TS-001",
+      "type": "Tech",
+      "epic": "EP-001",
+      "title": "NBA Stats API data ingestion",
+      "points": 5,
+      "status": "Todo",
+      "dependsOn": [
+        "TS-016"
+      ],
+      "blockedBy": [],
+      "priority": "Must",
+      "tasks": [
+        {
+          "id": "T-010",
+          "title": "Implement NBA API client wrapper with rate limiting",
+          "status": "Todo",
+          "complexity": "M",
+          "dependsOn": [],
+          "qaLoops": [
+            0,
+            3
+          ],
+          "codeReviewLoops": [
+            0,
+            2
+          ]
+        },
+        {
+          "id": "T-011",
+          "title": "Implement team stats fetching for current season",
+          "status": "Todo",
+          "complexity": "M",
+          "dependsOn": [
+            "T-010"
+          ],
+          "qaLoops": [
+            0,
+            3
+          ],
+          "codeReviewLoops": [
+            0,
+            2
+          ]
+        },
+        {
+          "id": "T-012",
+          "title": "Implement Parquet file storage for training data",
+          "status": "Todo",
+          "complexity": "S",
+          "dependsOn": [
+            "T-011"
+          ],
+          "qaLoops": [
+            0,
+            3
+          ],
+          "codeReviewLoops": [
+            0,
+            2
+          ]
+        }
+      ]
+    },
+    {
+      "id": "TS-002",
+      "type": "Tech",
+      "epic": "EP-001",
+      "title": "XGBoost model training pipeline",
+      "points": 8,
+      "status": "Todo",
+      "dependsOn": [
+        "SK-001",
+        "TS-001"
+      ],
+      "blockedBy": [],
+      "priority": "Must",
+      "tasks": [
+        {
+          "id": "T-013",
+          "title": "Implement feature engineering pipeline",
+          "status": "Todo",
+          "complexity": "L",
+          "dependsOn": [],
+          "qaLoops": [
+            0,
+            3
+          ],
+          "codeReviewLoops": [
+            0,
+            2
+          ]
+        },
+        {
+          "id": "T-014",
+          "title": "Implement XGBoost model training with cross-validation",
+          "status": "Todo",
+          "complexity": "L",
+          "dependsOn": [
+            "T-013"
+          ],
+          "qaLoops": [
+            0,
+            3
+          ],
+          "codeReviewLoops": [
+            0,
+            2
+          ]
+        },
+        {
+          "id": "T-015",
+          "title": "Implement prediction generation for today's games",
+          "status": "Todo",
+          "complexity": "M",
+          "dependsOn": [
+            "T-014"
+          ],
+          "qaLoops": [
+            0,
+            3
+          ],
+          "codeReviewLoops": [
+            0,
+            2
+          ]
+        },
+        {
+          "id": "T-016",
+          "title": "Implement Firestore write for predictions",
+          "status": "Todo",
+          "complexity": "M",
+          "dependsOn": [
+            "T-015"
+          ],
+          "qaLoops": [
+            0,
+            3
+          ],
+          "codeReviewLoops": [
+            0,
+            2
+          ]
+        }
+      ]
+    }
+  ],
+  "completedPoints": 0,
+  "progress": 0
+}

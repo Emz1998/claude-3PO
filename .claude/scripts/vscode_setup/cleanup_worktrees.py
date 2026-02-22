@@ -100,19 +100,20 @@ def main() -> None:
         description="Delete all git worktrees and their associated milestone branches"
     )
     parser.add_argument(
-        "-f", "--force",
+        "-f",
+        "--force",
         action="store_true",
-        help="Force remove worktrees and branches even with uncommitted changes"
+        help="Force remove worktrees and branches even with uncommitted changes",
     )
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="Show what would be deleted without actually deleting"
+        help="Show what would be deleted without actually deleting",
     )
     parser.add_argument(
         "--branches-only",
         action="store_true",
-        help="Only delete milestone branches (skip worktree removal)"
+        help="Only delete milestone branches (skip worktree removal)",
     )
     args = parser.parse_args()
 
@@ -124,7 +125,8 @@ def main() -> None:
 
     # Filter to only milestone worktrees (in worktrees/ directory)
     milestone_worktrees = [
-        wt for wt in worktrees
+        wt
+        for wt in worktrees
         if wt["path"].startswith(str(worktrees_dir))
         and wt["branch"].startswith("milestones/")
     ]

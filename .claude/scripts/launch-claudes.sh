@@ -1,11 +1,15 @@
 #!/bin/bash
-# launch-claudes.sh - Launch multiple Claude Code terminals in VS Code
+# launch-claudes.sh - Launch 4 tmux windows with claude
 
-COUNT=${1:-2}  # Default to 2 terminals
+SESSION="claude"
+PROJECT_DIR="$HOME/avaris-ai"
 
-for i in $(seq 1 $COUNT); do
-  code -r --command "workbench.action.terminal.new"
-  sleep 0.3
+tmux new-session -d -s "$SESSION" -c "$PROJECT_DIR" 2>/dev/null || tmux kill-session -t "$SESSION" && tmux new-session -d -s "$SESSION" -c "$PROJECT_DIR"
+tmux send-keys -t "$SESSION" "claude" Enter
+
+for i in 2 3 4; do
+  tmux new-window -t "$SESSION" -c "$PROJECT_DIR"
+  tmux send-keys -t "$SESSION" "claude" Enter
 done
 
-echo "Opened $COUNT terminals - type 'claude' in each"
+tmux attach -t "$SESSION"

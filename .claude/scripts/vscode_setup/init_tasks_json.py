@@ -13,7 +13,9 @@ def sanitize_name(name: str) -> str:
     return name.lower().replace(" ", "-").replace("/", "-").replace("\\", "-")
 
 
-def create_worktree(project_dir: Path, milestone_id: str, milestone_name: str) -> Path | None:
+def create_worktree(
+    project_dir: Path, milestone_id: str, milestone_name: str
+) -> Path | None:
     # Create a git worktree for a milestone
     worktrees_dir = project_dir / "worktrees"
     worktrees_dir.mkdir(exist_ok=True)
@@ -56,9 +58,7 @@ def create_worktree(project_dir: Path, milestone_id: str, milestone_name: str) -
 
 
 def create_claude_task(
-    label: str,
-    worktree_path: Path | None = None,
-    run_on_open: bool = True
+    label: str, worktree_path: Path | None = None, run_on_open: bool = True
 ) -> dict[str, Any]:
     # Creates a VS Code task configuration for launching Claude Code
     if worktree_path:
@@ -70,12 +70,9 @@ def create_claude_task(
         "label": label,
         "type": "shell",
         "command": command,
-        "presentation": {
-            "reveal": "always",
-            "panel": "new"
-        },
+        "presentation": {"reveal": "always", "panel": "new"},
         "isBackground": True,
-        "problemMatcher": []
+        "problemMatcher": [],
     }
     if run_on_open:
         task["runOptions"] = {"runOn": "folderOpen"}
@@ -86,7 +83,7 @@ def create_tasks_json(
     num_tasks: int = 2,
     run_on_open: bool = True,
     milestones: list[dict[str, str]] | None = None,
-    project_dir: Path | None = None
+    project_dir: Path | None = None,
 ) -> dict[str, Any]:
     # Creates the complete tasks.json structure
     tasks = []
@@ -104,10 +101,7 @@ def create_tasks_json(
             for i in range(num_tasks)
         ]
 
-    return {
-        "version": "2.0.0",
-        "tasks": tasks
-    }
+    return {"version": "2.0.0", "tasks": tasks}
 
 
 def main() -> None:
@@ -115,37 +109,40 @@ def main() -> None:
         description="Initialize VS Code tasks.json with Claude Code launcher tasks"
     )
     parser.add_argument(
-        "-n", "--num-tasks",
+        "-n",
+        "--num-tasks",
         type=int,
         default=2,
-        help="Number of Claude launcher tasks to create (default: 2)"
+        help="Number of Claude launcher tasks to create (default: 2)",
     )
     parser.add_argument(
-        "-o", "--output",
+        "-o",
+        "--output",
         type=str,
         default=None,
-        help="Output path for tasks.json (default: .vscode/tasks.json)"
+        help="Output path for tasks.json (default: .vscode/tasks.json)",
     )
     parser.add_argument(
         "--no-auto-run",
         action="store_true",
-        help="Disable automatic run on folder open"
+        help="Disable automatic run on folder open",
     )
     parser.add_argument(
-        "-f", "--force",
+        "-f",
+        "--force",
         action="store_true",
-        help="Overwrite existing tasks.json without prompting"
+        help="Overwrite existing tasks.json without prompting",
     )
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="Print the tasks.json content without writing to file"
+        help="Print the tasks.json content without writing to file",
     )
     parser.add_argument(
         "--milestones",
         type=str,
         default=None,
-        help="JSON array of milestones [{\"id\": \"MS-001\", \"name\": \"Name\"}]"
+        help='JSON array of milestones [{"id": "MS-001", "name": "Name"}]',
     )
     args = parser.parse_args()
 
@@ -167,10 +164,7 @@ def main() -> None:
     # Create tasks.json content
     run_on_open = not args.no_auto_run
     tasks_json = create_tasks_json(
-        args.num_tasks,
-        run_on_open,
-        milestones,
-        project_root if milestones else None
+        args.num_tasks, run_on_open, milestones, project_root if milestones else None
     )
     json_content = json.dumps(tasks_json, indent=2)
 

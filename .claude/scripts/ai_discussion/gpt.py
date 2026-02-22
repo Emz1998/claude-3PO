@@ -47,16 +47,10 @@ def build_codex_command(args: argparse.Namespace, prompt: str) -> list[str]:
     return cmd
 
 
-def run_codex(
-    cmd: list[str],
-    stream: bool = False
-) -> tuple[int, str, str]:
+def run_codex(cmd: list[str], stream: bool = False) -> tuple[int, str, str]:
     if stream:
         process = subprocess.Popen(
-            cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True
+            cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
         )
         stdout_lines = []
         for line in process.stdout:
@@ -65,11 +59,7 @@ def run_codex(
         process.wait()
         stderr = process.stderr.read()
         return process.returncode, "".join(stdout_lines), stderr
-    result = subprocess.run(
-        cmd,
-        capture_output=True,
-        text=True
-    )
+    result = subprocess.run(cmd, capture_output=True, text=True)
     return result.returncode, result.stdout, result.stderr
 
 
@@ -102,111 +92,101 @@ Examples:
   %(prog)s -p "Review code" --json --full-auto
   %(prog)s -p "Fix bug" --yolo --search
   echo "Explain this" | %(prog)s --stdin
-        """
+        """,
     )
+    parser.add_argument("-p", "--prompt", type=str, help="The prompt to send to Codex")
     parser.add_argument(
-        "-p", "--prompt",
-        type=str,
-        help="The prompt to send to Codex"
-    )
-    parser.add_argument(
-        "-i", "--image",
+        "-i",
+        "--image",
         type=str,
         action="append",
-        help="Attach image file(s) to the prompt (repeatable)"
+        help="Attach image file(s) to the prompt (repeatable)",
     )
     parser.add_argument(
-        "-m", "--model",
+        "-m",
+        "--model",
         type=str,
-        help="Override the configured model (e.g., gpt-5-codex)"
+        help="Override the configured model (e.g., gpt-5-codex)",
     )
     parser.add_argument(
         "--oss",
         action="store_true",
-        help="Use local open source model provider (requires Ollama)"
+        help="Use local open source model provider (requires Ollama)",
     )
     parser.add_argument(
         "--profile",
         type=str,
-        help="Configuration profile name from ~/.codex/config.toml"
+        help="Configuration profile name from ~/.codex/config.toml",
     )
     parser.add_argument(
-        "-s", "--sandbox",
+        "-s",
+        "--sandbox",
         choices=["read-only", "workspace-write", "danger-full-access"],
-        help="Sandbox policy for model-generated commands"
+        help="Sandbox policy for model-generated commands",
     )
     parser.add_argument(
         "--full-auto",
         action="store_true",
-        help="Low-friction automation (workspace-write sandbox, approvals on failure)"
+        help="Low-friction automation (workspace-write sandbox, approvals on failure)",
     )
     parser.add_argument(
-        "-y", "--yolo",
+        "-y",
+        "--yolo",
         action="store_true",
-        help="Bypass approval prompts and sandboxing (dangerous)"
+        help="Bypass approval prompts and sandboxing (dangerous)",
     )
     parser.add_argument(
-        "-C", "--cd",
-        type=str,
-        help="Set working directory before executing"
+        "-C", "--cd", type=str, help="Set working directory before executing"
     )
     parser.add_argument(
         "--skip-git-repo-check",
         action="store_true",
-        help="Allow running outside a Git repository"
+        help="Allow running outside a Git repository",
     )
     parser.add_argument(
-        "--output-schema",
-        type=str,
-        help="JSON Schema file for expected response shape"
+        "--output-schema", type=str, help="JSON Schema file for expected response shape"
     )
     parser.add_argument(
         "--color",
         choices=["always", "never", "auto"],
-        help="Control ANSI color in stdout"
+        help="Control ANSI color in stdout",
     )
     parser.add_argument(
         "--json",
         dest="json_output",
         action="store_true",
-        help="Output newline-delimited JSON events"
+        help="Output newline-delimited JSON events",
     )
     parser.add_argument(
-        "-o", "--output-last-message",
+        "-o",
+        "--output-last-message",
         type=str,
-        help="Write assistant's final message to file"
+        help="Write assistant's final message to file",
     )
     parser.add_argument(
-        "--search",
-        action="store_true",
-        help="Enable web search capability"
+        "--search", action="store_true", help="Enable web search capability"
     )
     parser.add_argument(
         "--add-dir",
         type=str,
         action="append",
-        help="Grant additional directories write access (repeatable)"
+        help="Grant additional directories write access (repeatable)",
     )
     parser.add_argument(
-        "-c", "--config",
+        "-c",
+        "--config",
         type=str,
         action="append",
-        help="Configuration override key=value (repeatable)"
+        help="Configuration override key=value (repeatable)",
     )
+    parser.add_argument("--stdin", action="store_true", help="Read prompt from stdin")
     parser.add_argument(
-        "--stdin",
-        action="store_true",
-        help="Read prompt from stdin"
-    )
-    parser.add_argument(
-        "--stream",
-        action="store_true",
-        help="Stream output in real-time"
+        "--stream", action="store_true", help="Stream output in real-time"
     )
     parser.add_argument(
         "--extract-response",
         action="store_true",
-        help="Extract only the final assistant message from JSON output"
+        help="Extract only the final assistant message from JSON output",
     )
     args = parser.parse_args()
     prompt = args.prompt

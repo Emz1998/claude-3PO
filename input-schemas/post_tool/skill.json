@@ -1,0 +1,17 @@
+{
+    "session_id": "58859241-fc2f-41f0-b829-9baac891dd31",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/58859241-fc2f-41f0-b829-9baac891dd31.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "default",
+    "hook_event_name": "PostToolUse",
+    "tool_name": "Skill",
+    "tool_input": {
+        "skill": "plan",
+        "args": "revise @.claude/hooks/guardrails/codebase_explorer.py. I want you to add a dependency check that will block if dependency hasnt met. The dependencies are:\n\n1. implement is triggered and active\n2. The todo file is read"
+    },
+    "tool_response": {
+        "success": true,
+        "commandName": "hooks-management"
+    },
+    "tool_use_id": "toolu_01FsV4JJLyQtZykTCAjYYQav"
+}

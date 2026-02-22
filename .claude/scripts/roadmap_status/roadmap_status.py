@@ -9,7 +9,6 @@ import re
 from datetime import datetime, timezone
 from pathlib import Path
 
-
 TASK_STATUSES = ["not_started", "in_progress", "completed", "blocked"]
 CRITERIA_STATUSES = ["met", "unmet"]
 

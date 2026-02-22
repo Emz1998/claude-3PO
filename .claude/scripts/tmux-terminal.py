@@ -12,7 +12,6 @@ import shutil
 import os
 from typing import Optional
 
-
 DEFAULT_SESSION = "terminal"
 
 

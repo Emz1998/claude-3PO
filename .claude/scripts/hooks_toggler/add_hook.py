@@ -83,7 +83,10 @@ def add_hook(
         existing_cmd = existing.get("hooks", [{}])[0].get("command", "")
         existing_matcher = existing.get("matcher")
         if existing_cmd == command and existing_matcher == matcher:
-            print(f"Hook already exists for {event}" + (f" with matcher {matcher}" if matcher else ""))
+            print(
+                f"Hook already exists for {event}"
+                + (f" with matcher {matcher}" if matcher else "")
+            )
             return
 
     structure["hooks"][event].append(hook_group)
@@ -107,7 +110,8 @@ def remove_hook(event: str, command: str, matcher: Optional[str] = None) -> None
 
     original_count = len(structure["hooks"][event])
     structure["hooks"][event] = [
-        h for h in structure["hooks"][event]
+        h
+        for h in structure["hooks"][event]
         if not (
             h.get("hooks", [{}])[0].get("command", "") == command
             and h.get("matcher") == matcher
@@ -156,7 +160,9 @@ def main() -> None:
     add_parser.add_argument("event", choices=VALID_EVENTS, help="Hook event type")
     add_parser.add_argument("command", help="Command to execute")
     add_parser.add_argument("-m", "--matcher", help="Tool matcher (optional)")
-    add_parser.add_argument("-t", "--timeout", type=int, default=10, help="Timeout in seconds")
+    add_parser.add_argument(
+        "-t", "--timeout", type=int, default=10, help="Timeout in seconds"
+    )
 
     # Remove hook
     rm_parser = subparsers.add_parser("remove", help="Remove a hook")
@@ -166,7 +172,9 @@ def main() -> None:
 
     # List hooks
     list_parser = subparsers.add_parser("list", help="List registered hooks")
-    list_parser.add_argument("event", nargs="?", choices=VALID_EVENTS, help="Filter by event")
+    list_parser.add_argument(
+        "event", nargs="?", choices=VALID_EVENTS, help="Filter by event"
+    )
 
     # Sync command
     subparsers.add_parser("sync", help="Sync structure to settings.local.json")

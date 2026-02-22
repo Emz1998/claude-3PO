@@ -1,0 +1,36 @@
+{
+  "sprint_id": "SPRINT-001",
+  "sprint_completed": false,
+  "current_story": "SK-001",
+  "stories": {
+    "pending": [
+      "TS-001",
+      "TS-002"
+    ],
+    "ready": [
+      "TS-012",
+      "TS-013",
+      "TS-016"
+    ],
+    "in_progress": [
+      "SK-001"
+    ],
+    "completed": [
+      "SK-002"
+    ]
+  },
+  "tasks": {
+    "SK-002": {
+      "pending": [],
+      "ready": [],
+      "in_progress": [],
+      "completed": []
+    },
+    "SK-001": {
+      "pending": [],
+      "ready": [],
+      "in_progress": [],
+      "completed": []
+    }
+  }
+}
