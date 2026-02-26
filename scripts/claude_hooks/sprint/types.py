@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from typing import Any, Literal, TypeVar, Generic
+from datetime import datetime
 
 
 T = TypeVar("T")
@@ -36,22 +37,50 @@ class TaskBucket(Generic[T]):
 
 
 @dataclass
+class SprintMetadata:
+    created_at: str = field(default_factory=lambda: datetime.now().isoformat())
+    updated_at: str = ""
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "created_at": self.created_at,
+            "updated_at": self.updated_at,
+        }
+
+    @classmethod
+    def from_dict(cls, raw: dict[str, Any]) -> "SprintMetadata":
+        return cls(
+            created_at=raw.get("created_at", ""),
+            updated_at=raw.get("updated_at", ""),
+        )
+
+
+@dataclass
 class SprintState:
-    sprint_id: str = ""
-    sprint_completed: bool = False
+    metadata: SprintMetadata = field(default_factory=SprintMetadata)
+    sprint_id: str = "SPRINT-001"
+    status: Literal["not_started", "in_progress", "completed"] = "not_started"
     current_story: str = ""
     stories: Bucket = field(default_factory=Bucket)
     tasks: TaskBucket[Bucket] = field(default_factory=TaskBucket[Bucket])
 
+    @staticmethod
+    def next_sprint_id(sprint_id: str) -> str:
+        """SPRINT-001 -> SPRINT-002."""
+        prefix, num = sprint_id.rsplit("-", 1)
+        return f"{prefix}-{int(num) + 1:03d}"
+
     @classmethod
     def from_dict(cls, raw: dict[str, Any]) -> "SprintState":
         stories = raw.get("stories", {})
+        metadata = SprintMetadata.from_dict(raw.get("metadata", {}))
         tasks = TaskBucket[Bucket]()
         for sid, b in raw.get("tasks", {}).items():
             tasks[sid] = Bucket(**b) if isinstance(b, dict) else Bucket()
         return cls(
-            sprint_id=raw.get("sprint_id", ""),
-            sprint_completed=raw.get("sprint_completed", False),
+            metadata=metadata,
+            sprint_id=raw.get("sprint_id", "SPRINT-001"),
+            status=raw.get("status", "not_started"),
             current_story=raw.get("current_story", ""),
             stories=Bucket(**stories) if isinstance(stories, dict) else Bucket(),
             tasks=tasks,
@@ -59,8 +88,9 @@ class SprintState:
 
     def to_dict(self) -> dict[str, Any]:
         return {
+            "metadata": self.metadata.to_dict(),
             "sprint_id": self.sprint_id,
-            "sprint_completed": self.sprint_completed,
+            "status": self.status,
             "current_story": self.current_story,
             "stories": vars(self.stories),
             "tasks": {sid: vars(b) for sid, b in self.tasks.items.items()},

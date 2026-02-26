@@ -11,19 +11,18 @@ Blocks subagent execution (exit 2) if triggered out of order.
 Uses task owner from roadmap.json to determine expected engineer subagent.
 """
 
-import sys
+from typing import Any, cast
 from pathlib import Path
-import json
-
-from scripts.claude_hooks.utils.hook_manager import Hook  # type: ignore
+from datetime import datetime
 from scripts.claude_hooks.utils.state_store import StateStore  # type: ignore
+from scripts.claude_hooks.sprint.sprint import Sprint
+from scripts.claude_hooks.project.paths import ProjectPaths
+from scripts.claude_hooks.utils.hook import PreToolUse, Skill
 
 
-PHASES = ["explore", "plan", "code", "push"]
+PHASES = ["explore", "plan", "code", "validate" "push"]
 
-CODING_PHASES = ["mark", "validate", "commit"]
-
-STATE_PATH = Path(".claude/hooks/phase/state.json")
+CODING_PHASES = ["log", "commit"]
 
 
 def validate_order(
@@ -63,18 +62,25 @@ def validate_order(
     return True, ""
 
 
-class PhaseGuard(Hook):
+class PhaseGuard:
     """Phase transition guard."""
 
-    def __init__(self):
+    def __init__(self, hook_input: dict[str, Any]):
         """Initialize the guard."""
-        super().__init__()
-        self.load_test_data("PreToolUse", "Skill")
-        self._state = StateStore(STATE_PATH)
+        self._sprint = Sprint.create()
+        self._hook = PreToolUse(**hook_input)
+        paths = ProjectPaths(self._sprint.current_id, self._hook.session_id or "")
+        self._state = StateStore(paths.current_session_path / "state.json")
 
-    def validate(self) -> tuple[bool, str]:
+    def validate_transition(self) -> tuple[bool, str]:
         """Validate transition from current phase to next phase."""
-        next_phase = self.input.to_dict().get("tool_input", {}).get("skill", None)
+        if not isinstance(self._hook.tool_input, Skill):
+            return False, "Invalid tool input"
+        next_phase = self._hook.tool_input.skill
+
+        if next_phase is None:
+            return False, "No skill provided"
+
         recent_phase = self._state.get("recent_phase", "explore")
         if recent_phase == "code" and next_phase in CODING_PHASES:
             recent_coding_phase = self._state.get("recent_coding_phase")
@@ -90,22 +96,39 @@ class PhaseGuard(Hook):
 
     def run(self) -> None:
         """Run the test."""
+        if not isinstance(self._hook.tool_input, Skill):
+            return
 
-        if self.input.tool_input is None:
+        if self._hook.tool_input is None:
+            print("Tool input is None")
             return
 
         if (
-            self.input.tool_input.skill not in PHASES
-            and self.input.tool_input.skill not in CODING_PHASES
+            self._hook.tool_input.skill not in PHASES
+            and self._hook.tool_input.skill not in CODING_PHASES
         ):
+            print("Invalid skill")
             return
 
-        is_valid, reason = self.validate()
+        is_valid, reason = self.validate_transition()
 
         if not is_valid:
-            self.block(reason)
+            self._hook.block(reason)
+
+        print("Valid Phase")
 
 
 if __name__ == "__main__":
-    phase = PhaseGuard()
+    phase = PhaseGuard(
+        hook_input={
+            "tool_name": "Skill",
+            "tool_input": {"skill": "explore"},
+            "session_id": "123",
+            "transcript_path": "/path/to/transcript.json",
+            "cwd": "/path/to/cwd",
+            "permission_mode": "default",
+            "hook_event_name": "PreToolUse",
+            "tool_use_id": "123",
+        }
+    )
     phase.run()

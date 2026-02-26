@@ -59,6 +59,36 @@ class TaskManager:
             return []
         return [t for t in story.get_task_ids() if t not in exclude]
 
+    def get_task_in_progress(self) -> list[str]:
+        """Get the tasks in progress."""
+        current_story = self._state.current_story
+        if current_story is None:
+            return []
+        if current_story not in self._state.tasks:
+            return []
+        return self._state.tasks[current_story].in_progress
+
+    def no_tasks_in_progress(self) -> bool:
+        """Check if no tasks are in progress."""
+        return len(self.get_task_in_progress()) == 0
+
+    def all_completed(self, story_id: str | None = None) -> tuple[bool, list[str]]:
+        """Check if all tasks for a story are completed. Returns (done, remaining)."""
+        if story_id is None:
+            story_id = self._state.current_story
+        story = self._config.sprint.find_story(story_id)
+        if not story:
+            return True, []
+        all_ids = set(story.get_task_ids())
+        if not all_ids:
+            return True, []
+        tasks = self._state.tasks
+        if tasks.get(story_id) is None:
+            return False, sorted(all_ids)
+        completed = set(tasks[story_id].completed)
+        remaining = sorted(all_ids - completed)
+        return len(remaining) == 0, remaining
+
     def resolve_tasks(self, story_id: str | None = None) -> None:
         """Resolve the tasks."""
         tasks = self._state.tasks

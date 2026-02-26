@@ -1,0 +1,13 @@
+{
+  "session_id": "58859241-fc2f-41f0-b829-9baac891dd31",
+  "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/58859241-fc2f-41f0-b829-9baac891dd31.jsonl",
+  "cwd": "/home/emhar/avaris-ai",
+  "permission_mode": "default",
+  "hook_event_name": "PreToolUse",
+  "tool_name": "Skill",
+  "tool_input": {
+    "skill": "log",
+    "args": "task T-005 in_progress"
+  },
+  "tool_use_id": "toolu_01FsV4JJLyQtZykTCAjYYQav"
+}

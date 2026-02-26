@@ -1,0 +1,38 @@
+{
+  "metadata": {
+    "created_at": "2026-02-26T13:52:11.948050",
+    "updated_at": ""
+  },
+  "sprint_id": "SPRINT-001",
+  "status": "not_started",
+  "current_story": "TS-012",
+  "stories": {
+    "pending": [
+      "TS-001",
+      "TS-002"
+    ],
+    "ready": [
+      "SK-001",
+      "SK-002",
+      "TS-013",
+      "TS-016"
+    ],
+    "in_progress": [
+      "TS-012"
+    ],
+    "completed": []
+  },
+  "tasks": {
+    "TS-012": {
+      "pending": [],
+      "ready": [],
+      "in_progress": [
+        "T-002",
+        "T-003"
+      ],
+      "completed": [
+        "T-001"
+      ]
+    }
+  }
+}

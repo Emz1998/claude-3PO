@@ -9,56 +9,24 @@ import json
 import re
 from dataclasses import fields, dataclass
 
-from scripts.claude_hooks.utils.state_store import StateStore  # type: ignore
-from scripts.claude_hooks.utils.decision import Output  # type: ignore
+from scripts.claude_hooks.utils.hook import Hook
+from scripts.claude_hooks.recorder.hook_recorder import SessionRecorder
+from scripts.claude_hooks.reminders.log_reminder import LogReminder
+
+HOOKS: list = [SessionRecorder, LogReminder]
 
 
-@dataclass
-class ToolInput:
-    def from_dict(self, data: dict[str, Any]) -> "ToolInput":
-        data = data or {}
-        allowed = {f.name for f in fields(self)}
-        filtered = {k: v for k, v in data.items() if k in allowed}
-        return self.__class__(**filtered)  # type: ignore[arg-type]
+class PostToolUse:
+    def __init__(self):
+        self.input = Hook._read_stdin()
 
-    def to_dict(self) -> dict[str, Any]:
-        return {f.name: getattr(self, f.name) for f in fields(self)}
+    def run(self) -> None:
+        if self.input.get("hook_event_name") != "PostToolUse":
+            return
 
-
-@dataclass
-class ReadToolInput(ToolInput):
-    file_path: str | None = None
-    offset: int | None = None
-    limit: int | None = None
+        for hook in HOOKS:
+            hook(hook_input=self.input).run()
 
 
-@dataclass
-class WriteToolInput(ToolInput):
-    file_path: str | None = None
-    content: str | None = None
-
-
-@dataclass
-class TaskToolInput(ToolInput):
-    description: str | None = None
-    prompt: str | None = None
-    subagent_type: str | None = None
-
-
-@dataclass
-class SkillToolInput(ToolInput):
-    skill: str | None = None
-    args: str | None = None
-
-
-@dataclass
-class BashToolInput(ToolInput):
-    command: str | None = None
-    description: str | None = None
-
-
-@dataclass
-class EditToolInput(ToolInput):
-    file_path: str | None = None
-    old_string: str | None = None
-    new_string: str | None = None
+if __name__ == "__main__":
+    PostToolUse().run()

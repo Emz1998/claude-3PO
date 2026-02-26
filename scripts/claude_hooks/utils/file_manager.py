@@ -29,23 +29,19 @@ def load_jsonl(path: Path) -> list[dict]:
 
 
 def load_file(path: Path, default: Any | None = None) -> Any | None:
-    if path.suffix == ".jsonl":
-        return load_jsonl(path)
     try:
         text = path.read_text(encoding="utf-8")
-    except (OSError, TypeError):
-        return default if default is not None else set_default(path)
-    if path.suffix == ".json":
-        if not text.strip():
-            return default if default is not None else {}
-        try:
-            return json.loads(text)
-        except json.JSONDecodeError:
-            if default is not None:
-                write_file(path, default)
-                return default
-            return {}
-    return text
+        if path.suffix == ".json":
+            return json.loads(text) if text.strip() else default
+        return text
+    except FileNotFoundError:
+        print(f"File not found: {path}")
+        print(f"Creating file: {path}")
+        FileManager.create_file(path, default)
+        return default
+    except json.JSONDecodeError:
+        print(f"JSON decode error: {path}")
+        return default
 
 
 def write_file(path: Path, data: Any) -> None:
@@ -123,3 +119,36 @@ class FileManager:
             return
         with self._lock:
             append_text(path, data)
+
+    @staticmethod
+    def create_dir(path: Path) -> None:
+        path.mkdir(parents=True, exist_ok=True)
+
+    @staticmethod
+    def create_multi_dir(list_of_paths: list[Path]) -> None:
+        for path in list_of_paths:
+            FileManager.create_dir(path)
+
+    @staticmethod
+    def create_file(path: Path, initial_data: Any | None = None) -> None:
+        path.touch()
+
+        write_file(path, initial_data)
+
+    @staticmethod
+    def delete_dir(path: Path) -> None:
+        path.rmdir()
+
+    @staticmethod
+    def delete_multi_dir(list_of_paths: list[Path]) -> None:
+        for path in list_of_paths:
+            FileManager.delete_dir(path)
+
+    @staticmethod
+    def delete_file(path: Path) -> None:
+        path.unlink()
+
+    @staticmethod
+    def delete_multi_file(list_of_paths: list[Path]) -> None:
+        for path in list_of_paths:
+            FileManager.delete_file(path)

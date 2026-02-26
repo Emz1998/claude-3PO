@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 
 from scripts.claude_hooks.utils.file_manager import FileManager
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+PROJECT_ROOT = Path.cwd()
 STATE_PATH = PROJECT_ROOT / "project/sprints/SPRINT-001/overview/sprint.json"
 
 

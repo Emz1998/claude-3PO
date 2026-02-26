@@ -2,33 +2,30 @@
 """Recorder for hook events."""
 
 from dataclasses import dataclass
-import sys
-from pathlib import Path
-from typing import Any, Union, TypedDict
-import json
-import re
 
-from scripts.claude_hooks.utils.hook_manager import Hook
-from scripts.claude_hooks.sprint.sprint import Sprint
-from scripts.claude_hooks.guardrail.workflow import Workflow
+from scripts.claude_hooks.utils.hook import Hook
+from scripts.claude_hooks.guardrail.phase_guard import PhaseGuard
+from scripts.claude_hooks.guardrail.log_guard import LogGuard
+from scripts.claude_hooks.guardrail.commit_guard import CommitGuard
 
-HOOKS: list[type[Hook]] = [Workflow]
+HOOKS: list = [PhaseGuard, LogGuard, CommitGuard]
 
 
 @dataclass
 class PreToolUse:
-    def __init__(self, tool_name: str):
-        self.tool_name = tool_name
-
-    def run_with_test(self) -> None:
-        for hook in HOOKS:
-            hook().load_test_data("PreToolUse", self.tool_name)
-            hook().run()
+    def __init__(self):
+        self.input = Hook._read_stdin()
 
     def run(self) -> None:
+        hook_event_name = self.input.get("hook_event_name")
+        if hook_event_name != "PreToolUse":
+            print(f"Skipping {hook_event_name} hook")
+            return
+
         for hook in HOOKS:
-            hook().run()
+
+            hook(hook_input=self.input).run()
 
 
 if __name__ == "__main__":
-    PreToolUse("read").run_with_test()
+    PreToolUse().run()

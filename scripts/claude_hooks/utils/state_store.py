@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 from typing import Any, Callable
 
@@ -30,3 +31,18 @@ class StateStore:
 
     def reset(self) -> None:
         self._fm.save({})
+
+    def archive(self, history_path: Path) -> None:
+        """Append current state as a JSONL entry to history_path."""
+        history_fm = FileManager(history_path, lock=True)
+        entry = json.dumps(self.load()) + "\n"
+        history_fm.append(entry)
+
+    @staticmethod
+    def latest_from_history(history_path: Path) -> dict[str, Any] | None:
+        """Return the last archived entry or None."""
+        history_fm = FileManager(history_path, lock=True)
+        entries = history_fm.load()
+        if not entries:
+            return None
+        return entries[-1] if isinstance(entries, list) else None

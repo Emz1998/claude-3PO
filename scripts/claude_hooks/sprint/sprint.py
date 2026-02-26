@@ -3,6 +3,7 @@
 
 from dataclasses import dataclass
 from pathlib import Path
+from datetime import datetime
 
 from scripts.claude_hooks.sprint.types import SprintState  # type: ignore
 from scripts.claude_hooks.sprint.sprint_config import SprintConfig  # type: ignore
@@ -12,7 +13,11 @@ from scripts.claude_hooks.sprint.task_manager import TaskManager  # type: ignore
 from scripts.claude_hooks.utils.state_store import StateStore  # type: ignore
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
-STATE_PATH = PROJECT_ROOT / "project/sprints/SPRINT-001/sprint-status.json"
+SPRINTS_DIR = PROJECT_ROOT / "project/sprints"
+HISTORY_PATH = SPRINTS_DIR / "history.jsonl"
+DEFAULT_SPRINT = "SPRINT-001"
+STATE_FILENAME = "state.json"
+CONFIG_FILENAME = "overview/sprint.json"
 
 
 @dataclass
@@ -26,14 +31,38 @@ class Sprint:
     task: TaskManager
     context: SprintContext
 
+    @staticmethod
+    def _resolve_paths() -> tuple[Path, Path]:
+        """Resolve sprint state path. Defaults to SPRINT-001."""
+        last_sprint_data = StateStore.latest_from_history(HISTORY_PATH)
+        if last_sprint_data is None:
+            return (
+                SPRINTS_DIR / DEFAULT_SPRINT / STATE_FILENAME,
+                SPRINTS_DIR / DEFAULT_SPRINT / CONFIG_FILENAME,
+            )
+        last_sprint_id = last_sprint_data.get("sprint_id")
+        if last_sprint_id is None:
+            raise ValueError("Last sprint ID is not set")
+        next_sprint = SprintState.next_sprint_id(last_sprint_id)
+        return (
+            SPRINTS_DIR / next_sprint / STATE_FILENAME,
+            SPRINTS_DIR / next_sprint / CONFIG_FILENAME,
+        )
+
     @classmethod
     def create(
-        cls, state_path: Path = STATE_PATH, config_path: Path | None = None
+        cls, state_path: Path | None = None, config_path: Path | None = None
     ) -> "Sprint":
-        config = SprintConfig(config_path) if config_path else SprintConfig()
+
+        if state_path is None:
+            state_path, _ = cls._resolve_paths()
+        if config_path is None:
+            _, config_path = cls._resolve_paths()
+
+        config = SprintConfig(config_path)
         store = StateStore(state_path, default_state=SprintState().to_dict())
         state = SprintState.from_dict(store.load())
-        return cls(
+        sprint = cls(
             config=config,
             store=store,
             state=state,
@@ -41,6 +70,8 @@ class Sprint:
             task=TaskManager(state, config),
             context=SprintContext(config),
         )
+        sprint.resolve()
+        return sprint
 
     # -- persistence --
 
@@ -54,7 +85,6 @@ class Sprint:
         if ok:
             self.task.resolve_tasks(story_id)
             self.save()
-        print(f"Failed to start story {story_id}")
         return ok, msg
 
     def complete_story(self, story_id: str) -> tuple[bool, str]:
@@ -98,15 +128,14 @@ class Sprint:
     # -- sprint-level --
 
     def complete_sprint(self) -> bool:
-        self.state.sprint_completed = True
+        print(f"Completing sprint {self.state.sprint_id}")
+        self.state.status = "completed"
+        self.state.metadata.updated_at = datetime.now().isoformat()
+
         self.save()
+        self.store.archive(HISTORY_PATH)
         return True
 
-
-if __name__ == "__main__":
-    sprint = Sprint.create()
-    sprint.complete_story("SK-002")
-    sprint.start_task("T-001")
-    print(f"Current story: {sprint.state.current_story}")
-    print(f"Ready stories: {sprint.state.stories.ready}")
-    print(f"Context:\n{sprint.render_context()}")
+    @property
+    def current_id(self) -> str:
+        return self.state.sprint_id
