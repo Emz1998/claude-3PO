@@ -1,5 +1,9 @@
 {
   "hooks": {
+    "PermissionRequest": [],
+    "Notification": [],
+    "SessionStart": [],
+    "PreCompact": [],
     "PreToolUse": [
       {
         "hooks": [
@@ -15,7 +19,29 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/workflow/handlers/pre_tool.py\"",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/dispatchers/pre_tool.py\"",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/dispatchers/user_prompt.py\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/dispatchers/stop.py\"",
             "timeout": 15
           }
         ]
@@ -27,39 +53,13 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/workflow/handlers/post_tool.py\"",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/dispatchers/post_tool.py\"",
             "timeout": 15
           }
         ]
       }
     ],
-    "UserPromptSubmit": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/workflow/handlers/user_prompt.py\"",
-            "timeout": 10
-          }
-        ]
-      }
-    ],
-    "SubagentStop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/workflow/handlers/subagent_stop.py\"",
-            "timeout": 15
-          }
-        ]
-      }
-    ],
-    "Stop": [],
-    "SessionStart": [],
     "SessionEnd": [],
-    "PermissionRequest": [],
-    "Notification": [],
-    "PreCompact": []
+    "SubagentStop": []
   }
 }

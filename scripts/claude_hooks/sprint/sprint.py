@@ -10,7 +10,7 @@ from scripts.claude_hooks.sprint.sprint_config import SprintConfig  # type: igno
 from scripts.claude_hooks.sprint.sprint_context import SprintContext  # type: ignore
 from scripts.claude_hooks.sprint.story_manager import StoryManager  # type: ignore
 from scripts.claude_hooks.sprint.task_manager import TaskManager  # type: ignore
-from scripts.claude_hooks.utils.state_store import StateStore  # type: ignore
+from scripts.claude_hooks.state_store import StateStore  # type: ignore
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 SPRINTS_DIR = PROJECT_ROOT / "project/sprints"

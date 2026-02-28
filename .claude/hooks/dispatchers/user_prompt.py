@@ -1,30 +1,36 @@
 #!/usr/bin/env python3
-"""Recorder for hook events."""
+"""UserPromptSubmit dispatcher — thin entry point with error isolation."""
 
-from dataclasses import dataclass
+import os
+import sys
+import json
+import traceback
+from pathlib import Path
 
-from scripts.claude_hooks.utils.hook import Hook
-from scripts.claude_hooks.entry_point.build import BuildEntryPoint
-from scripts.claude_hooks.guardrail.implement_trigger import ImplementTriggerGuard
+project_dir = os.environ.get(
+    "CLAUDE_PROJECT_DIR",
+    str(Path(__file__).resolve().parents[3]),
+)
+if project_dir not in sys.path:
+    sys.path.insert(0, project_dir)
 
-HOOKS: list = [BuildEntryPoint, ImplementTriggerGuard]
+from scripts.claude_hooks.handlers import get_handlers
 
 
-@dataclass
-class UserPrompt:
-    def __init__(self):
-        self.input = Hook._read_stdin()
+def main() -> None:
+    try:
+        hook_input = json.load(sys.stdin)
+    except (json.JSONDecodeError, ValueError):
+        sys.exit(0)
 
-    def run(self) -> None:
-        hook_event_name = self.input.get("hook_event_name")
-        if hook_event_name != "UserPromptSubmit":
-            print(f"Skipping {hook_event_name} hook")
-            return
-
-        for hook in HOOKS:
-            hook(hook_input=self.input).run()
+    for handler in get_handlers("UserPromptSubmit"):
+        try:
+            handler(hook_input)
+        except SystemExit:
+            raise
+        except Exception:
+            traceback.print_exc(file=sys.stderr)
 
 
 if __name__ == "__main__":
-    user_prompt = UserPrompt()
-    user_prompt.run()
+    main()

@@ -1,30 +1,36 @@
 #!/usr/bin/env python3
-"""Recorder for hook events."""
+"""Stop dispatcher — thin entry point with error isolation."""
 
-from dataclasses import dataclass
+import os
 import sys
-from pathlib import Path
-from typing import Any, Union, TypedDict
 import json
-import re
+import traceback
+from pathlib import Path
 
-from scripts.claude_hooks.utils.hook import Hook
+project_dir = os.environ.get(
+    "CLAUDE_PROJECT_DIR",
+    str(Path(__file__).resolve().parents[3]),
+)
+if project_dir not in sys.path:
+    sys.path.insert(0, project_dir)
 
-from scripts.claude_hooks.guardrail.stoppage import StopGuard
-
-HOOKS: list = [StopGuard]
+from scripts.claude_hooks.handlers import get_handlers
 
 
-@dataclass
-class Stop:
-    def __init__(self):
-        self.input = Hook._read_stdin()
+def main() -> None:
+    try:
+        hook_input = json.load(sys.stdin)
+    except (json.JSONDecodeError, ValueError):
+        sys.exit(0)
 
-    def run(self) -> None:
-        for hook in HOOKS:
-
-            hook(hook_input=self.input).run()
+    for handler in get_handlers("Stop"):
+        try:
+            handler(hook_input)
+        except SystemExit:
+            raise
+        except Exception:
+            traceback.print_exc(file=sys.stderr)
 
 
 if __name__ == "__main__":
-    Stop().run()
+    main()

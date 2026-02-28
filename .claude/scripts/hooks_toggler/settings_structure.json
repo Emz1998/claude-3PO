@@ -1,5 +1,3 @@
-
-
 {
   "hooks": {
     "PreToolUse": [
@@ -13,21 +11,11 @@
         ]
       },
       {
-        "matcher": "Skill",
+        "matcher": "Skill|Task",
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/workflow/skill_implement_detector.py\"",
-            "timeout": 10
-          }
-        ]
-      },
-      {
-        "matcher": "Task",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/guardrails/implement_workflow_guard.py\"",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/dispatchers/pre_tool.py\"",
             "timeout": 15
           }
         ]
@@ -35,51 +23,43 @@
     ],
     "PostToolUse": [
       {
-        "matcher": "Read",
+        "matcher": "Skill|Write|Edit|Read|Bash",
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/workflow/todo_read_detector.py\"",
-            "timeout": 10
-          }
-        ]
-      },
-      {
-        "matcher": "Task",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/workflow/implement_progress.py\"",
-            "timeout": 10
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/dispatchers/post_tool.py\"",
+            "timeout": 15
           }
         ]
       }
-    ],
-    "Stop": [
-
-    ],
-    "SubagentStop": [
-
-    ],
-    "SessionStart": [
-
-    ],
-    "SessionEnd": [
-
     ],
     "UserPromptSubmit": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/workflow/implement_detector.py\"",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/dispatchers/user_prompt.py\"",
             "timeout": 10
           }
         ]
       }
     ],
-    "PermissionRequest": [
-
-    ]
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/dispatchers/stop.py\"",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [],
+    "SessionStart": [],
+    "SessionEnd": [],
+    "PermissionRequest": [],
+    "Notification": [],
+    "PreCompact": []
   }
 }

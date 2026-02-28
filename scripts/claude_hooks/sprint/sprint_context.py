@@ -7,7 +7,7 @@ import json
 
 from scripts.claude_hooks.sprint.sprint_config import SprintConfig, Story  # type: ignore
 from scripts.claude_hooks.sprint.types import SprintState  # type: ignore
-from scripts.claude_hooks.utils.context_injector import ContextInjector  # type: ignore
+from scripts.claude_hooks.context_injector import ContextInjector  # type: ignore
 
 TEMPLATE_DIR = Path(__file__).resolve().parent / "context"
 IMPORTANT_NOTE = "Follow the plan. Do not deviate without approval."

@@ -1,31 +1,31 @@
 #!/usr/bin/env python3
-"""Recorder for hook events."""
+"""PreToolUse dispatcher — thin entry point with error isolation."""
 
-from dataclasses import dataclass
+import os
+import sys
+import json
+import traceback
+from pathlib import Path
 
-from scripts.claude_hooks.utils.hook import Hook
-from scripts.claude_hooks.guardrail.phase_guard import PhaseGuard
-from scripts.claude_hooks.guardrail.log_guard import LogGuard
-from scripts.claude_hooks.guardrail.commit_guard import CommitGuard
+project_dir = os.environ.get(
+    "CLAUDE_PROJECT_DIR",
+    str(Path(__file__).resolve().parents[3]),
+)
+if project_dir not in sys.path:
+    sys.path.insert(0, project_dir)
 
-HOOKS: list = [PhaseGuard, LogGuard, CommitGuard]
+from scripts.claude_hooks.handlers import get_handlers
 
 
-@dataclass
-class PreToolUse:
-    def __init__(self):
-        self.input = Hook._read_stdin()
+def main() -> None:
+    try:
+        hook_input = json.load(sys.stdin)
+    except (json.JSONDecodeError, ValueError):
+        sys.exit(0)
 
-    def run(self) -> None:
-        hook_event_name = self.input.get("hook_event_name")
-        if hook_event_name != "PreToolUse":
-            print(f"Skipping {hook_event_name} hook")
-            return
-
-        for hook in HOOKS:
-
-            hook(hook_input=self.input).run()
+    for handler in get_handlers("PreToolUse"):
+        handler(hook_input)
 
 
 if __name__ == "__main__":
-    PreToolUse().run()
+    main()

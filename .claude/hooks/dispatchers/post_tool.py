@@ -1,32 +1,36 @@
 #!/usr/bin/env python3
-"""Recorder for hook events."""
+"""PostToolUse dispatcher — thin entry point with error isolation."""
 
-from dataclasses import dataclass
+import os
 import sys
-from pathlib import Path
-from typing import Any, Type
 import json
-import re
-from dataclasses import fields, dataclass
+import traceback
+from pathlib import Path
 
-from scripts.claude_hooks.utils.hook import Hook
-from scripts.claude_hooks.recorder.hook_recorder import SessionRecorder
-from scripts.claude_hooks.reminders.log_reminder import LogReminder
+project_dir = os.environ.get(
+    "CLAUDE_PROJECT_DIR",
+    str(Path(__file__).resolve().parents[3]),
+)
+if project_dir not in sys.path:
+    sys.path.insert(0, project_dir)
 
-HOOKS: list = [SessionRecorder, LogReminder]
+from scripts.claude_hooks.handlers import get_handlers
 
 
-class PostToolUse:
-    def __init__(self):
-        self.input = Hook._read_stdin()
+def main() -> None:
+    try:
+        hook_input = json.load(sys.stdin)
+    except (json.JSONDecodeError, ValueError):
+        sys.exit(0)
 
-    def run(self) -> None:
-        if self.input.get("hook_event_name") != "PostToolUse":
-            return
-
-        for hook in HOOKS:
-            hook(hook_input=self.input).run()
+    for handler in get_handlers("PostToolUse"):
+        try:
+            handler(hook_input)
+        except SystemExit:
+            raise
+        except Exception:
+            traceback.print_exc(file=sys.stderr)
 
 
 if __name__ == "__main__":
-    PostToolUse().run()
+    main()

@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any, Optional
 from dataclasses import dataclass, field
 
-from scripts.claude_hooks.utils.file_manager import FileManager
+from scripts.claude_hooks.file_manager import FileManager
 
 PROJECT_ROOT = Path.cwd()
 STATE_PATH = PROJECT_ROOT / "project/sprints/SPRINT-001/overview/sprint.json"

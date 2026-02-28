@@ -25,11 +25,11 @@
   "tasks": {
     "TS-012": {
       "pending": [],
-      "ready": [],
-      "in_progress": [
+      "ready": [
         "T-002",
         "T-003"
       ],
+      "in_progress": [],
       "completed": [
         "T-001"
       ]
