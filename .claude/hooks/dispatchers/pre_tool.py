@@ -7,6 +7,7 @@ import json
 import traceback
 from pathlib import Path
 
+
 project_dir = os.environ.get(
     "CLAUDE_PROJECT_DIR",
     str(Path(__file__).resolve().parents[3]),

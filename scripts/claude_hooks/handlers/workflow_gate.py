@@ -7,12 +7,11 @@ check_workflow_gate() to skip when the workflow is inactive.
 
 from typing import Any
 
-from pathlib import Path
-from scripts.claude_hooks.file_manager import FileManager
+from scripts.claude_hooks.flag_file import FlagFile
 
 WORKFLOW_ACTIVE_KEY = "workflow_active"
 
-FLAG_FILE = Path.cwd() / "project/tmp/tmp_state.json"
+WORKFLOW_FLAG = FlagFile("workflow_flag")
 
 
 def is_workflow_active(state: dict[str, Any]) -> bool:
@@ -22,11 +21,7 @@ def is_workflow_active(state: dict[str, Any]) -> bool:
 
 def activate_workflow() -> None:
     """Set workflow_active=True in sprint state and persist."""
-    state = FileManager(FLAG_FILE).load()
-    if state is None:
-        state = {}
-    state[WORKFLOW_ACTIVE_KEY] = True
-    FileManager(FLAG_FILE).save(state)
+    WORKFLOW_FLAG.update(WORKFLOW_ACTIVE_KEY, True)
 
 
 def check_workflow_gate() -> bool:
@@ -34,7 +29,7 @@ def check_workflow_gate() -> bool:
 
     Handlers should call this at the top and return early if False.
     """
-    state = FileManager(FLAG_FILE).load()
+    state = WORKFLOW_FLAG.read()
     if state is None:
         return False
     return is_workflow_active(state)

@@ -1,9 +1,10 @@
 """PostToolUse handler — suggests parallel-ready tasks after a single-task log."""
 
 from typing import Any
-
+import json
 from scripts.claude_hooks.models import PostToolUse, Skill
 from scripts.claude_hooks.sprint.sprint import Sprint
+from scripts.claude_hooks.responses import succeed
 from scripts.claude_hooks.handlers.workflow_gate import check_workflow_gate
 
 
@@ -35,6 +36,9 @@ def handle(hook_input: dict[str, Any]) -> None:
         return
 
     piped = "|".join(remaining)
-    print(
-        f"Tip: {', '.join(remaining)} can also run in parallel. Use: /log task {piped} in_progress"
-    )
+    tip = f"Tip: {', '.join(remaining)} can also run in parallel. Use: /log task {piped} in_progress"
+
+    additional_context = {
+        "hookSpecificOutput": {"hookEventName": "PostToolUse", "additionalContext": tip}
+    }
+    succeed(json.dumps(additional_context))

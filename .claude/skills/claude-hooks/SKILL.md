@@ -6,25 +6,11 @@ argument-hint: <task-to-be-performed> <instructions>
 
 **Goal**: Create, update or troubleshoot Claude Code hook scripts
 
-## Context
-
-- **Task to be performed (create, refactor, troubleshoot)**: $0
-- **Instructions**: $1
+**IMPORTANT**: Infer the task to be performed based on the user's request. If not clear, ask the user for more details.
 
 ## Instructions
 
-- If `Task to be performed` is `create`, then your main task is to create a new hook. Create a new hook in the `.claude/hooks/` directory based on `Instructions` provided by the user.
-- If `Task to be performed` is `refactor`, then your main task is to refactor an existing hook. Refactor the hook in the `.claude/hooks/` directory based on `Instructions` provided by the user.
-- If `Task to be performed` is `troubleshoot`, then your main task is to troubleshoot an existing hook. Troubleshoot the specified hook based on `Instructions` provided by the user.
-
-## Workflow
-
-1. Read `.claude/skills/claude-hooks/references/hooks.md` for claude code hooks configuration
-2. Read `.claude/skills/claude-hooks/references/input-patterns.md` for claude code hook input patterns
-3. Determine the task to be performed: create, revise, activate, deactivate or troubleshoot hooks
-4. Implement the task based on the conditions below
-
-## Conditions
+**IMPORTANT**: For all tasks, you must always read the `.claude/skills/claude-hooks/references/hooks.md` file and `.claude/skills/claude-hooks/references/input-patterns.md` file to understand the hooks configuration and structure.
 
 ### If the task is to create a new hook
 
@@ -38,50 +24,16 @@ argument-hint: <task-to-be-performed> <instructions>
 - Update the `/home/emhar/avaris-ai/scripts/claude_hooks/test/dry_run_test.py` file with the new hook and run it to test the hook
 - Provide report to main agent
 
-**Important:** `Dry-run` is different from `echo` testing. `Dry-run` will fully invoke the hook script either with tools, prompts, or other events. While `echo` testing will only test the hook script with a JSON input to ensure no errors are present in the hook script.
-
-### If the task is to activate/deactivate hooks
-
-**If the task is to activate hooks**
-
-- Activate hooks in the `.claude/settings.local.json` file with the structure provided in `.claude/skills/hooks-management/references/hooks-registry.json`
-- Update the hooks registry file(`hooks-registry.json`) with the new hooks structure
-- Provide report to main agent
-
-**If the task is to deactivate hooks**
-
-- Deactivate hooks in the `.claude/settings.local.json` by replacing the values of each section in the `hooks` section with an empty array
-
-```json
-{
-  "hooks": {
-    "PreToolUse": [],
-    "PostToolUse": [],
-    "PermissionRequest": [],
-    "SessionStart": [],
-    "SessionEnd": [],
-    "UserPromptSubmit": [],
-    "Stop": [],
-    "SubagentStop": [],
-    "PreCompact": [],
-    "Notification": []
-  }
-}
-```
-
-- Provide report to main agent
-
 ### If the task is to refactor hooks
 
 - Analyze the user revision request. If revision request is vague, ask the user for more details.
-- Identify the file that is needed to be revised. If not provided, ask the user for the file path.
+- Invoke `enter_plan_mode` tool to enter plan mode.
+- Identify all the files that are needed to be revised. If not provided, ask the user for the file path.
 - Choose the appropriate hook schema sample to read from `.claude/skills/claude-hooks/input-schemas/` based on the task
 - Explore the hooks directory in `.claude/hooks/` to understand the structure and identify useful patterns
-- Create a plan first for hook revision and present it to the user. Do not write the plan in a file. Just present it in the conversation.
-- Once the user approved, revise the hook script in the `.claude/hooks/` directory with the structure provided in `.claude/skills/claude-hooks/references/hooks-registry.json`
-- Assess complexity of the hook script implementation. Revise if necessary.
-- Test the hook using `echo` to pipe JSON input
-- Provide report to main agent
+- Explore the hook scripts in `scripts/claude_hooks/` to understand the implementation and identify the code that is needed to be revised.
+- Create a plan first for refactoring and present it to the user.
+- Once the user approved, implement the refactoring plan and register the hooks in `.claude/settings.local.json` file
 
 ### If the task is to troubleshoot hooks
 
@@ -92,15 +44,27 @@ argument-hint: <task-to-be-performed> <instructions>
 - Test the fix using `echo` to pipe JSON input
 - Provide report to main agent
 
+## Workflow
+
+1. Read `.claude/skills/claude-hooks/references/hooks.md` for claude code hooks configuration
+2. Read `.claude/skills/claude-hooks/references/input-patterns.md` for claude code hook input patterns
+3. Determine the task to be performed: create, revise, activate, deactivate or troubleshoot hooks
+4. Implement the task based on the conditions below
+5. Assess the complexity of the hook script implementation if applicable. Revise if necessary.
+6. Validate the hook script implementation.
+7. Test the hook using `echo` to pipe JSON input
+8. Provide report to main agent
+
 ## Constraints
 
 - **NEVER** hardcode credentials or modify critical system files
 - **NEVER** write hooks that can cause infinite loops
 - **NEVER** bypass security validations
-- **DO NOT** use multiline comments. Only single line comments (`#`).
+- Ask the user first before removing any hooks from the registry
 
 ## Acceptance Criteria
 
+- Assess the complexity of the hook script implementation. Revise if necessary.
 - Hook executes successfully on target event
 - Hook handles invalid/malformed input gracefully
 - Hook implementation is simple and not complex

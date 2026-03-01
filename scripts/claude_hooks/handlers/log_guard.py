@@ -3,10 +3,14 @@
 import re
 from typing import Any, Callable
 
-from scripts.claude_hooks.models import PreToolUse, Skill
-from scripts.claude_hooks.responses import block, debug
+from scripts.claude_hooks.flag_file import FlagFile
+from scripts.claude_hooks.models import PreToolUse, PostToolUse, Skill
+from scripts.claude_hooks.responses import block
 from scripts.claude_hooks.sprint.sprint import Sprint
 from scripts.claude_hooks.handlers.workflow_gate import check_workflow_gate
+
+COMMIT_FLAG = FlagFile("commit_flag")
+
 
 VALID_STATUSES = {"in_progress", "completed"}
 TICKET_PATTERNS = {
@@ -50,30 +54,29 @@ def handle(hook_input: dict[str, Any]) -> None:
     if not isinstance(hook.tool_input, Skill):
         return
     if hook.tool_input.skill != "log":
-        debug(f"not a log skill: {hook.tool_input.skill}")
         return
 
     if not hook.tool_input.args:
         # block("Usage: /log <type> <ticket_id> <status>")
-        debug("Usage: /log <type> <ticket_id> <status>")
+        block("Usage: /log <type> <ticket_id> <status>")
         return
 
     args = hook.tool_input.args.strip().split()
     if len(args) != 3:
         # block("Expected 3 args: <type> <ticket_id> <status>")
-        debug("Expected 3 args: <type> <ticket_id> <status>")
+        block("Expected 3 args: <type> <ticket_id> <status>")
         return
 
     ticket_type, raw_ids, status = args
 
     if ticket_type not in TICKET_PATTERNS:
         # block(f"Invalid type '{ticket_type}'. Use: task, story")
-        debug(f"Invalid type '{ticket_type}'. Use: task, story")
+        block(f"Invalid type '{ticket_type}'. Use: task, story")
         return
 
     if status not in VALID_STATUSES:
         # block(f"Invalid status '{status}'. Use: in_progress, completed")
-        debug(f"Invalid status '{status}'. Use: in_progress, completed")
+        block(f"Invalid status '{status}'. Use: in_progress, completed")
         return
 
     ticket_ids = [tid.strip() for tid in raw_ids.split("|") if tid.strip()]
@@ -82,7 +85,7 @@ def handle(hook_input: dict[str, Any]) -> None:
         if not pattern.match(tid):
             expected = "T-XXX" if ticket_type == "task" else "(TS|SK|US|BG)-XXX"
             # block(f"Invalid {ticket_type} ID '{tid}'. Expected: {expected}")
-            debug(f"Invalid {ticket_type} ID '{tid}'. Expected: {expected}")
+            block(f"Invalid {ticket_type} ID '{tid}'. Expected: {expected}")
             return
 
     sprint = Sprint.create()
@@ -90,7 +93,7 @@ def handle(hook_input: dict[str, Any]) -> None:
     error = _preflight(sprint, ticket_type, ticket_ids, status)
     if error:
         # block(error)
-        debug(error)
+        block(error)
         return
 
     actions: dict[tuple[str, str], Callable[..., tuple[bool, str]]] = {
@@ -103,3 +106,34 @@ def handle(hook_input: dict[str, Any]) -> None:
     for tid in ticket_ids:
         action(tid)
         print(f"Updated {ticket_type} {tid} -> {status}")
+
+
+def post_handle(hook_input: dict[str, Any]) -> None:
+    """PostToolUse handler — creates commit flag after task completion."""
+    if not check_workflow_gate():
+        return
+    hook = PostToolUse(**hook_input)
+    if not isinstance(hook.tool_input, Skill):
+        return
+    if hook.tool_input.skill != "log":
+        return
+    if not hook.tool_input.args:
+        return
+
+    args = hook.tool_input.args.strip().split()
+    if len(args) != 3:
+        return
+
+    ticket_type, raw_ids, status = args
+    if ticket_type != "task" or status != "completed":
+        return
+
+    sprint = Sprint.create()
+    story = sprint.state.current_story
+    if not story:
+        return
+
+    ticket_ids = [tid.strip() for tid in raw_ids.split("|") if tid.strip()]
+    for tid in ticket_ids:
+        COMMIT_FLAG.update("current_story", story)
+        COMMIT_FLAG.append_to("completed_tasks", tid)

@@ -37,11 +37,11 @@ def block(reason: str) -> None:
     sys.exit(2)
 
 
-def debug(message: str) -> None:
+def debug(message: str | None = None) -> None:
     """Print a debug message (exit 0 if message given)."""
     if message is None:
         return
-    print(message, file=sys.stderr)
+    print(message)
     sys.exit(1)
 
 

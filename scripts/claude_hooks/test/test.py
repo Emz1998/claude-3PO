@@ -84,12 +84,15 @@ def run_test(script: Path, input_json: str) -> None:
 
 
 if __name__ == "__main__":
-    script = Path(".claude/hooks/plans/symlink.py")
-    schema = SchemaLoader("PostToolUse", "Write")
+    script = Path("scripts/claude_hooks/handlers/commit_guard.py")
+    schema = SchemaLoader("PreToolUse", "Skill")
     schema.patch(
         {
-            "file_path": "/home/emhar/.claude/plans/rustling-twirling-puddle.md",
+            "tool_input": {
+                "skill": "commit",
+                "args": 'feat TS-012/T-001 "This is a test commit" "This is a test body" "This is a test footer"',
+            }
         }
     )
-    input_json = schema.to_json()
-    run_test(script, input_json)
+    print(json.dumps(schema.data, indent=4))
+    run_test(script, json.dumps(schema.data, indent=4))

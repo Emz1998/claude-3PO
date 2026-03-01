@@ -17,8 +17,17 @@ from scripts.claude_hooks.handlers import (
 Handler = Callable[[dict[str, Any]], None]
 
 HANDLER_REGISTRY: dict[str, list[Handler]] = {
-    "PreToolUse": [phase_guard.handle, log_guard.handle, commit_guard.handle],
-    "PostToolUse": [session_recorder.handle, logging_reminder.handle, parallel_tasks.handle],
+    "PreToolUse": [
+        phase_guard.handle,
+        log_guard.handle,
+        commit_guard.handle,
+    ],
+    "PostToolUse": [
+        session_recorder.handle,
+        log_guard.post_handle,
+        logging_reminder.handle,
+        parallel_tasks.handle,
+    ],
     "UserPromptSubmit": [build_entry.handle, implement_trigger.handle],
     "Stop": [stop_guard.handle],
 }

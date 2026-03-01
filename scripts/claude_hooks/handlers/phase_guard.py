@@ -3,12 +3,12 @@
 from typing import Any
 
 from scripts.claude_hooks.constants import PHASES, CODING_PHASES
+from scripts.claude_hooks.flag_file import FlagFile
 from scripts.claude_hooks.models import PreToolUse, Skill
 from scripts.claude_hooks.responses import block
-from scripts.claude_hooks.state_store import StateStore
-from scripts.claude_hooks.paths import ProjectPaths
-from scripts.claude_hooks.sprint.sprint import Sprint
 from scripts.claude_hooks.handlers.workflow_gate import check_workflow_gate
+
+PHASE_FLAG = FlagFile("phase_flag")
 
 
 def validate_order(
@@ -39,7 +39,7 @@ def validate_order(
     return True, ""
 
 
-def _validate_transition(hook: PreToolUse, state: StateStore) -> tuple[bool, str]:
+def _validate_transition(hook: PreToolUse, flag: FlagFile) -> tuple[bool, str]:
     """Validate transition from current phase to next phase."""
     if not isinstance(hook.tool_input, Skill):
         return False, "Invalid tool input"
@@ -48,10 +48,10 @@ def _validate_transition(hook: PreToolUse, state: StateStore) -> tuple[bool, str
     if next_phase is None:
         return False, "No skill provided"
 
+    state = flag.read() or {}
     recent_phase = state.get("recent_phase", "explore")
     if recent_phase == "code" and next_phase in CODING_PHASES:
         recent_coding_phase = state.get("recent_coding_phase")
-        print(f"Recent coding phase: '{recent_coding_phase}'")
         return validate_order(recent_coding_phase, next_phase, CODING_PHASES)
 
     if recent_phase != "code" and next_phase in CODING_PHASES:
@@ -77,12 +77,6 @@ def handle(hook_input: dict[str, Any]) -> None:
     ):
         return
 
-    sprint = Sprint.create()
-    paths = ProjectPaths(sprint.current_id, hook.session_id or "")
-    state = StateStore(paths.current_session_path / "state.json")
-
-    is_valid, reason = _validate_transition(hook, state)
+    is_valid, reason = _validate_transition(hook, PHASE_FLAG)
     if not is_valid:
         block(reason)
-
-    print("Valid Phase")

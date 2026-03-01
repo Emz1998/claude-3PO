@@ -71,8 +71,8 @@ def test_all_handlers_named_handle():
 
     for event, handlers in HANDLER_REGISTRY.items():
         for handler in handlers:
-            assert handler.__name__ == "handle", (
-                f"Handler {handler.__module__} for '{event}' should be named 'handle', "
+            assert handler.__name__ in ("handle", "gate"), (
+                f"Handler {handler.__module__} for '{event}' should be named 'handle' or 'gate', "
                 f"got '{handler.__name__}'"
             )
 

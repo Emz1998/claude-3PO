@@ -5,6 +5,7 @@ All other handlers must check this flag and return early if not active.
 """
 
 import json
+import os
 import subprocess
 import sys
 import pytest
@@ -12,6 +13,7 @@ from pathlib import Path
 from unittest.mock import patch, MagicMock
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
+FLAG_FILE = PROJECT_ROOT / "project/tmp/tmp_state.json"
 
 
 # --- State flag tests ---
@@ -44,14 +46,12 @@ class TestActivationHandlers:
     """build_entry and implement_trigger must set workflow_active=True."""
 
     def test_activate_workflow_sets_flag(self):
-        from scripts.claude_hooks.handlers.workflow_gate import activate_workflow
+        from scripts.claude_hooks.handlers.workflow_gate import activate_workflow, WORKFLOW_FLAG
 
-        with patch("scripts.claude_hooks.handlers.workflow_gate.FileManager") as MockFM:
-            mock_fm = MagicMock()
-            mock_fm.load.return_value = {}
-            MockFM.return_value = mock_fm
+        with patch.object(WORKFLOW_FLAG, "read", return_value={}), \
+             patch.object(WORKFLOW_FLAG, "write") as mock_write:
             activate_workflow()
-            mock_fm.save.assert_called_once_with({"workflow_active": True})
+            mock_write.assert_called_once_with({"workflow_active": True})
 
 
 class TestGatedHandlers:
@@ -74,7 +74,7 @@ class TestGatedHandlers:
 
         mod = importlib.import_module(f"scripts.claude_hooks.handlers.{handler_name}")
         with patch(
-            "scripts.claude_hooks.handlers.workflow_gate.check_workflow_gate",
+            f"scripts.claude_hooks.handlers.{handler_name}.check_workflow_gate",
             return_value=False,
         ):
             # Provide minimal valid hook input
@@ -128,6 +128,20 @@ class TestGateBypass:
 
 class TestDispatcherGateIntegration:
     """Dispatchers should pass through when workflow is inactive (handlers skip)."""
+
+    @pytest.fixture(autouse=True)
+    def _deactivate_workflow(self):
+        """Ensure workflow is inactive for dispatcher subprocess tests."""
+        backup = None
+        if FLAG_FILE.exists():
+            backup = FLAG_FILE.read_text()
+        FLAG_FILE.parent.mkdir(parents=True, exist_ok=True)
+        FLAG_FILE.write_text(json.dumps({"workflow_active": False}))
+        yield
+        if backup is not None:
+            FLAG_FILE.write_text(backup)
+        else:
+            FLAG_FILE.unlink(missing_ok=True)
 
     def _run_dispatcher(
         self, event: str, stdin_data: str

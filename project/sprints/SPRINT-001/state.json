@@ -17,21 +17,21 @@
       "TS-013",
       "TS-016"
     ],
-    "in_progress": [
+    "in_progress": [],
+    "completed": [
       "TS-012"
-    ],
-    "completed": []
+    ]
   },
   "tasks": {
     "TS-012": {
       "pending": [],
       "ready": [
-        "T-002",
         "T-003"
       ],
       "in_progress": [],
       "completed": [
-        "T-001"
+        "T-001",
+        "T-002"
       ]
     }
   }
