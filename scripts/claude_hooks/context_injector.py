@@ -15,7 +15,9 @@ class ContextInjector:
 
     def render(self, template_name: str, **kwargs: Any) -> str:
         """Load a template file and fill placeholders with kwargs."""
-        template = FileManager(self.template_dir / template_name, lock=False).load() or ""
+        template = (
+            FileManager(self.template_dir / template_name, lock=False).load() or ""
+        )
         return template.format(**kwargs)
 
     def render_string(self, template: str, **kwargs: Any) -> str:

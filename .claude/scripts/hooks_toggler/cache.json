@@ -1,41 +1,5 @@
 {
   "hooks": {
-    "PermissionRequest": [],
-    "Notification": [],
-    "SessionStart": [],
-    "PreCompact": [],
-    "PreToolUse": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/security/security.py\"",
-            "timeout": 30
-          }
-        ]
-      },
-      {
-        "matcher": "Skill|Task",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/dispatchers/pre_tool.py\"",
-            "timeout": 15
-          }
-        ]
-      }
-    ],
-    "UserPromptSubmit": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/dispatchers/user_prompt.py\"",
-            "timeout": 10
-          }
-        ]
-      }
-    ],
     "Stop": [
       {
         "hooks": [
@@ -47,6 +11,43 @@
         ]
       }
     ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/security/security.py\"",
+            "timeout": 30
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/dispatchers/pre_tool.py\"",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "PermissionRequest": [],
+    "SubagentStop": [],
+    "SessionEnd": [],
+    "PreCompact": [],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/dispatchers/user_prompt.py\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "Notification": [],
+    "SessionStart": [],
     "PostToolUse": [
       {
         "matcher": "Skill|Write|Edit|Read|Bash",
@@ -58,8 +59,6 @@
           }
         ]
       }
-    ],
-    "SessionEnd": [],
-    "SubagentStop": []
+    ]
   }
 }

@@ -10,8 +10,17 @@ from scripts.claude_hooks.sprint.sprint import Sprint
 from scripts.claude_hooks.handlers.workflow_gate import check_workflow_gate
 
 CODING_FILE_EXTENSIONS = (
-    ".py", ".ts", ".js", ".jsx", ".tsx", ".html",
-    ".css", ".scss", ".json", ".yaml", ".yml",
+    ".py",
+    ".ts",
+    ".js",
+    ".jsx",
+    ".tsx",
+    ".html",
+    ".css",
+    ".scss",
+    ".json",
+    ".yaml",
+    ".yml",
 )
 
 CWD = Path.cwd() / ".claude/tmp"

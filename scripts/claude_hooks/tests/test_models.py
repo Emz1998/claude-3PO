@@ -4,11 +4,11 @@ import pytest
 from typing import Any
 
 
-def test_tool_registry_has_all_tool_types():
-    from scripts.claude_hooks.models import Tool
+def test_tool_classes_has_all_tool_types():
+    from scripts.claude_hooks.models import TOOL_CLASSES
 
-    expected = {"skill", "bash", "write", "edit", "read"}
-    assert expected.issubset(set(Tool.registry.keys()))
+    expected = {"Skill", "Bash", "Write", "Edit", "Read"}
+    assert expected == set(TOOL_CLASSES.keys())
 
 
 def test_skill_model_parses():

@@ -21,7 +21,6 @@
       "status": "Todo",
       "dependsOn": [],
       "blockedBy": [],
-      "timebox": "8 hours",
       "deliverables": [
         "Feature importance analysis documented in decisions.md with top 10 features ranked",
         "Recommendation includes feature set with pros/cons and expected accuracy impact",
@@ -37,7 +36,6 @@
       "status": "Todo",
       "dependsOn": [],
       "blockedBy": [],
-      "timebox": "4 hours",
       "deliverables": [
         "Decision documented in decisions.md with timing recommendation",
         "Trade-off analysis includes data freshness, line availability, and user value",

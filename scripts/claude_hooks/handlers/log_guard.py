@@ -46,66 +46,100 @@ def _preflight(
     return None
 
 
-def handle(hook_input: dict[str, Any]) -> None:
+class LogGuard(PreToolUse):
     """Log guard handler."""
-    if not check_workflow_gate():
-        return
-    hook = PreToolUse(**hook_input)
-    if not isinstance(hook.tool_input, Skill):
-        return
-    if hook.tool_input.skill != "log":
-        return
 
-    if not hook.tool_input.args:
-        # block("Usage: /log <type> <ticket_id> <status>")
-        block("Usage: /log <type> <ticket_id> <status>")
-        return
+    def parse_args(self) -> tuple[str, str, str] | None:
+        args = self.tool_input.args.strip().split()
+        if len(args) != 3:
+            # block("Expected 3 args: <type> <ticket_id> <status>")
+            return None
+        return args
 
-    args = hook.tool_input.args.strip().split()
-    if len(args) != 3:
-        # block("Expected 3 args: <type> <ticket_id> <status>")
-        block("Expected 3 args: <type> <ticket_id> <status>")
-        return
+    def validate_args(self, args: tuple[str, str, str]) -> tuple[bool, str | None]:
+        ticket_type, raw_ids, status = args
+        if ticket_type not in TICKET_PATTERNS:
+            return False, f"Invalid type '{ticket_type}'. Use: task, story"
+        if status not in VALID_STATUSES:
+            return False, f"Invalid status '{status}'. Use: in_progress, completed"
+        return True, None
 
-    ticket_type, raw_ids, status = args
+    def parse_ticket_ids(self, raw_ids: str) -> list[str]:
+        return [tid.strip() for tid in raw_ids.split("|") if tid.strip()]
 
-    if ticket_type not in TICKET_PATTERNS:
-        # block(f"Invalid type '{ticket_type}'. Use: task, story")
-        block(f"Invalid type '{ticket_type}'. Use: task, story")
-        return
+    def args_validation(self) -> tuple[bool, str | None]:
+        args = self.tool_input.args.strip().split()
+        if len(args) != 3:
+            # block("Expected 3 args: <type> <ticket_id> <status>")
+            return False, "Expected 3 args: <type> <ticket_id> <status>"
+        ticket_type, raw_ids, status = args
+        if ticket_type not in TICKET_PATTERNS:
+            # block(f"Invalid type '{ticket_type}'. Use: task, story")
+            return False, f"Invalid type '{ticket_type}'. Use: task, story"
 
-    if status not in VALID_STATUSES:
-        # block(f"Invalid status '{status}'. Use: in_progress, completed")
-        block(f"Invalid status '{status}'. Use: in_progress, completed")
-        return
+        if status not in VALID_STATUSES:
+            # block(f"Invalid status '{status}'. Use: in_progress, completed")
+            return False, f"Invalid status '{status}'. Use: in_progress, completed"
 
-    ticket_ids = [tid.strip() for tid in raw_ids.split("|") if tid.strip()]
-    pattern = TICKET_PATTERNS[ticket_type]
-    for tid in ticket_ids:
-        if not pattern.match(tid):
-            expected = "T-XXX" if ticket_type == "task" else "(TS|SK|US|BG)-XXX"
-            # block(f"Invalid {ticket_type} ID '{tid}'. Expected: {expected}")
-            block(f"Invalid {ticket_type} ID '{tid}'. Expected: {expected}")
+        return True, None
+
+    def run(self) -> None:
+        if not check_workflow_gate():
             return
 
-    sprint = Sprint.create()
+        if self.tool_input.skill != "log":
+            return
 
-    error = _preflight(sprint, ticket_type, ticket_ids, status)
-    if error:
-        # block(error)
-        block(error)
-        return
+        if not self.tool_input.args:
+            # block("Usage: /log <type> <ticket_id> <status>")
+            block("Usage: /log <type> <ticket_id> <status>")
+            return
 
-    actions: dict[tuple[str, str], Callable[..., tuple[bool, str]]] = {
-        ("task", "in_progress"): sprint.start_task,
-        ("task", "completed"): sprint.complete_task,
-        ("story", "in_progress"): sprint.start_story,
-        ("story", "completed"): sprint.complete_story,
-    }
-    action = actions[(ticket_type, status)]
-    for tid in ticket_ids:
-        action(tid)
-        print(f"Updated {ticket_type} {tid} -> {status}")
+        args = self.tool_input.args.strip().split()
+        if len(args) != 3:
+            # block("Expected 3 args: <type> <ticket_id> <status>")
+            block("Expected 3 args: <type> <ticket_id> <status>")
+            return
+
+        ticket_type, raw_ids, status = args
+
+        if ticket_type not in TICKET_PATTERNS:
+            # block(f"Invalid type '{ticket_type}'. Use: task, story")
+            block(f"Invalid type '{ticket_type}'. Use: task, story")
+            return
+
+        if status not in VALID_STATUSES:
+            # block(f"Invalid status '{status}'. Use: in_progress, completed")
+            block(f"Invalid status '{status}'. Use: in_progress, completed")
+            return
+
+        ticket_ids = [tid.strip() for tid in raw_ids.split("|") if tid.strip()]
+        pattern = TICKET_PATTERNS[ticket_type]
+        for tid in ticket_ids:
+            if not pattern.match(tid):
+                expected = "T-XXX" if ticket_type == "task" else "(TS|SK|US|BG)-XXX"
+                # block(f"Invalid {ticket_type} ID '{tid}'. Expected: {expected}")
+                block(f"Invalid {ticket_type} ID '{tid}'. Expected: {expected}")
+                return
+
+        sprint = Sprint.create()
+
+        error = _preflight(sprint, ticket_type, ticket_ids, status)
+        if error:
+            # block(error)
+            block(error)
+            return
+
+        actions: dict[tuple[str, str], Callable[..., tuple[bool, str]]] = {
+            ("task", "in_progress"): sprint.start_task,
+            ("task", "completed"): sprint.complete_task,
+            ("story", "in_progress"): sprint.start_story,
+            ("story", "completed"): sprint.complete_story,
+        }
+        action = actions[(ticket_type, status)]
+        for tid in ticket_ids:
+            action(tid)
+            print(f"Updated {ticket_type} {tid} -> {status}")
 
 
 def post_handle(hook_input: dict[str, Any]) -> None:

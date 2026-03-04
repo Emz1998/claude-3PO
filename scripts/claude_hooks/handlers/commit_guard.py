@@ -109,14 +109,9 @@ def handle(hook_input: dict[str, Any]) -> None:
 
     setup_guard(hook_input)
     hook = PreToolUse(**hook_input)
-    if not isinstance(hook.tool_input, Skill):
-        succeed("commit_guard: not a Skill tool")
-        return
-    if hook.tool_input.skill != "commit":
-        succeed(f"commit_guard: skill is '{hook.tool_input.skill}', not 'commit'")
-        return
 
-    parsed_args = _parse_args(hook.tool_input)
+
+    parsed_args = _parse_args(hook.tool_input.args)
     if parsed_args is None:
         succeed(f"commit_guard: invalid args '{hook.tool_input.args}'")
         return

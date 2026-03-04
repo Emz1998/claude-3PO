@@ -105,14 +105,33 @@ class HooksRegistry:
         save_json(SETTINGS_FILE, self.settings)
         print("Hooks cleared successfully")
 
+    def register_security_hook(self) -> None:
+        """Note this will overrides current hooks"""
+        registry = {
+            "PreToolUse": [
+                {
+                    "hooks": [
+                        {
+                            "type": "command",
+                            "command": 'python3 "$CLAUDE_PROJECT_DIR/.claude/hooks/security/security.py"',
+                            "timeout": 30,
+                        }
+                    ]
+                }
+            ]
+        }
+        self.settings["hooks"] = registry
+        save_json(SETTINGS_FILE, self.settings)
+
     def deactivate_hooks(self) -> None:
         if not self.current_registered_hooks:
             print("No hooks to deactivate")
             return
         self.cache_hooks()
         self.clear_hooks()
+        self.register_security_hook()
 
 
-# if __name__ == "__main__":
-#     hooks_registry = HooksRegistry()
-#     hooks_registry.activate_hooks()
+if __name__ == "__main__":
+    hooks_registry = HooksRegistry()
+    hooks_registry.deactivate_hooks()
