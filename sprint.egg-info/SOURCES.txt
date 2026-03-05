@@ -1,5 +1,7 @@
 README.md
 pyproject.toml
+mycli/__init__.py
+mycli/cli.py
 scripts/__init__.py
 scripts/claude_hooks/__init__.py
 scripts/claude_hooks/constants.py
@@ -67,4 +69,5 @@ scripts/misc/vscode_setup/init_tasks_json.py
 sprint.egg-info/PKG-INFO
 sprint.egg-info/SOURCES.txt
 sprint.egg-info/dependency_links.txt
+sprint.egg-info/entry_points.txt
 sprint.egg-info/top_level.txt
