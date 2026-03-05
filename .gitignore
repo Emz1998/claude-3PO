@@ -1,3 +1,17 @@
 .claude/worktrees/
 .worktrees/
 worktrees/
+
+# Claude Code sandbox sentinel files
+.bash_profile
+.bashrc
+.profile
+.zprofile
+.zshrc
+.ripgreprc
+.idea
+HEAD
+config
+hooks
+objects
+refs

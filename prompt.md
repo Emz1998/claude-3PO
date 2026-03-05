@@ -1,15 +1,5 @@
 ### Dependency Health Check
 
-```
-Total stories: 22
-Stories with dependencies: 14 (64%)
-Independent stories: 8 (36%)
-```
-
-That's high. Let me categorize them:
-
-### Fan-out (Healthy)
-
 These are foundational items that many things depend on — this is normal:
 
 ```

@@ -5,11 +5,9 @@ description = "Sprint orchestration engine"
 requires-python = ">=3.10"
 
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
-[project.scripts]
-mycli = "mycli.cli:main"
+[tool.setuptools.packages.find]
+where = [".claude/hooks/"]
 
-[tool.setuptools]
-packages = ["mycli"]
