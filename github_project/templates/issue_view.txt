@@ -1,0 +1,23 @@
+____________________________________________________________
+
+Issue:     #{issue_number}
+Status:    {status}
+Priority:  {priority}
+Size:      {size}
+Estimate:  {estimate}
+
+Start:     {start_date}
+Target:    {target_date}
+
+Milestone: {milestone}
+Labels:    {labels}
+Assignees: {assignees}
+Url:       {url}
+____________________________________________________________
+
+
+{key}: {title}
+
+
+{body}
+

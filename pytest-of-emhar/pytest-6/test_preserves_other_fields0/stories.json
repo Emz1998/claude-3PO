@@ -1,0 +1,12 @@
+{
+  "project": "Test",
+  "goal": "Build it",
+  "stories": [
+    {
+      "id": "SK-001",
+      "title": "Story",
+      "points": 3,
+      "issue_number": 101
+    }
+  ]
+}

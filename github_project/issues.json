@@ -19,7 +19,7 @@
     "assignees": [
       "Emz1998"
     ],
-    "issue_number": 33
+    "issue_number": 69
   },
   {
     "key": "TS-002",
@@ -38,7 +38,7 @@
       "automation"
     ],
     "assignees": [],
-    "issue_number": 29
+    "issue_number": 66
   },
   {
     "key": "TS-003",
@@ -60,7 +60,7 @@
     "assignees": [
       "Emz1998"
     ],
-    "issue_number": 34
+    "issue_number": 72
   },
   {
     "key": "TS-004",
@@ -82,7 +82,7 @@
     "assignees": [
       "Emz1998"
     ],
-    "issue_number": 36
+    "issue_number": 68
   },
   {
     "key": "TS-005",
@@ -102,7 +102,7 @@
       "reliability"
     ],
     "assignees": [],
-    "issue_number": 31
+    "issue_number": 67
   },
   {
     "key": "TS-006",
@@ -124,7 +124,7 @@
     "assignees": [
       "Emz1998"
     ],
-    "issue_number": 35
+    "issue_number": 73
   },
   {
     "key": "TS-007",
@@ -144,7 +144,7 @@
       "dx"
     ],
     "assignees": [],
-    "issue_number": 30
+    "issue_number": 70
   },
   {
     "key": "TS-008",
@@ -166,7 +166,7 @@
     "assignees": [
       "Emz1998"
     ],
-    "issue_number": 32
+    "issue_number": 71
   },
   {
     "key": "TS-009",
@@ -186,7 +186,7 @@
       "enhancement"
     ],
     "assignees": [],
-    "issue_number": 37
+    "issue_number": 74
   },
   {
     "key": "TS-010",
@@ -206,7 +206,7 @@
       "enhancement"
     ],
     "assignees": [],
-    "issue_number": 38
+    "issue_number": 75
   },
   {
     "key": "TS-011",
@@ -228,7 +228,7 @@
     "assignees": [
       "Emz1998"
     ],
-    "issue_number": 39
+    "issue_number": 77
   },
   {
     "key": "TS-012",
@@ -250,6 +250,6 @@
     "assignees": [
       "Emz1998"
     ],
-    "issue_number": 40
+    "issue_number": 76
   }
 ]

@@ -1,0 +1,8 @@
+project: Avaris AI
+repo: Emz1998/avaris-ai
+owner: Emz1998
+project: 4
+data_paths:
+  project_data: github_project/project_data.json
+  sprint: github_project/issues/sprint.json
+  stories: github_project/issues/stories.json

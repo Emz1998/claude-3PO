@@ -2,12 +2,11 @@ import sys
 import json
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from utils import read_stdin_json, write_file, read_file  # type: ignore
 
 FILE_PATH = Path("general-test.log")
-
-
-def read_stdin_json() -> dict:
-    return json.loads(sys.stdin.read())
 
 
 def main() -> None:

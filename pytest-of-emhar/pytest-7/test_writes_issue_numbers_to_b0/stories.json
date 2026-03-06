@@ -1,0 +1,10 @@
+{
+  "project": "Test",
+  "stories": [
+    {
+      "id": "SK-001",
+      "title": "Story",
+      "issue_number": 101
+    }
+  ]
+}

@@ -16,7 +16,7 @@ from typing import Any
 
 import shutil
 
-from workflow.libfile_manager_v2 import FileManager
+from workflow.lib.file_manager_v2 import FileManager
 
 
 # Hook events that require tool_name

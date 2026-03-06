@@ -12,7 +12,6 @@
     {
       "id": "SK-001",
       "type": "Spike",
-      "issue_number": 101,
       "labels": [
         "spike",
         "research",
@@ -26,7 +25,9 @@
       "startDate": "2026-02-17",
       "targetDate": "2026-02-21",
       "priority": "P0",
-      "is_blocking": [],
+      "is_blocking": [
+        "TS-002"
+      ],
       "blocked_by": [],
       "acceptance_criteria": [
         "Feature importance analysis completed and documented",
@@ -38,7 +39,6 @@
         {
           "id": "T-017",
           "type": "task",
-          "issue_number": 201,
           "labels": [
             "analysis",
             "documentation",
@@ -49,18 +49,20 @@
           "status": "In progress",
           "priority": "P1",
           "complexity": "M",
-          "is_blocking": [],
+          "is_blocking": [
+            "T-018"
+          ],
           "blocked_by": [],
           "acceptance_criteria": [
             "Feature importance analysis completed",
             "Top 10 features documented in decisions.md",
             "Importance scores calculated"
-          ]
+          ],
+          "issue_number": 241
         },
         {
           "id": "T-018",
           "type": "task",
-          "issue_number": 202,
           "labels": [
             "recommendation",
             "documentation",
@@ -72,19 +74,21 @@
           "priority": "P1",
           "complexity": "M",
           "is_blocking": [
+            "T-019"
+          ],
+          "blocked_by": [
             "T-017"
           ],
-          "blocked_by": [],
           "acceptance_criteria": [
             "Feature set recommendations documented",
             "Pros and cons listed for each recommendation",
             "Expected accuracy impact assessed"
-          ]
+          ],
+          "issue_number": 240
         },
         {
           "id": "T-019",
           "type": "task",
-          "issue_number": 203,
           "labels": [
             "prototype",
             "testing",
@@ -95,22 +99,23 @@
           "status": "Ready",
           "priority": "P2",
           "complexity": "M",
-          "is_blocking": [
+          "is_blocking": [],
+          "blocked_by": [
             "T-018"
           ],
-          "blocked_by": [],
           "acceptance_criteria": [
             "Prototype training script created",
             "At least 3 feature combinations tested",
             "Results documented"
-          ]
+          ],
+          "issue_number": 243
         }
-      ]
+      ],
+      "issue_number": 234
     },
     {
       "id": "SK-002",
       "type": "Spike",
-      "issue_number": 102,
       "labels": [
         "spike",
         "timing",
@@ -125,7 +130,9 @@
       "targetDate": "2026-02-21",
       "priority": "P1",
       "is_blocking": [],
-      "blocked_by": [],
+      "blocked_by": [
+        "SK-001"
+      ],
       "acceptance_criteria": [
         "Timing decision documented in decisions.md",
         "Trade-off analysis between pre-market and post-release completed",
@@ -136,7 +143,6 @@
         {
           "id": "T-020",
           "type": "task",
-          "issue_number": 204,
           "labels": [
             "documentation",
             "decision"
@@ -147,16 +153,18 @@
           "priority": "P1",
           "complexity": "S",
           "is_blocking": [],
-          "blocked_by": [],
+          "blocked_by": [
+            "T-021"
+          ],
           "acceptance_criteria": [
             "Timing decision documented",
             "Recommendation clearly stated in decisions.md"
-          ]
+          ],
+          "issue_number": 237
         },
         {
           "id": "T-021",
           "type": "task",
-          "issue_number": 205,
           "labels": [
             "analysis",
             "trade-offs"
@@ -169,18 +177,20 @@
           "is_blocking": [
             "T-020"
           ],
-          "blocked_by": [],
+          "blocked_by": [
+            "T-022"
+          ],
           "acceptance_criteria": [
             "Trade-off analysis completed",
             "Data freshness implications documented",
             "Line availability considerations noted",
             "User value assessment complete"
-          ]
+          ],
+          "issue_number": 236
         },
         {
           "id": "T-022",
           "type": "task",
-          "issue_number": 206,
           "labels": [
             "scheduling",
             "devops",
@@ -199,14 +209,15 @@
             "Cron schedule recommended",
             "Daily execution plan defined",
             "Timezone considerations documented"
-          ]
+          ],
+          "issue_number": 242
         }
-      ]
+      ],
+      "issue_number": 233
     },
     {
       "id": "TS-012",
       "type": "Tech",
-      "issue_number": 103,
       "labels": [
         "setup",
         "frontend",
@@ -219,7 +230,7 @@
       "status": "In progress",
       "startDate": "2026-02-17",
       "targetDate": "2026-02-24",
-      "priority": "Must",
+      "priority": "P0",
       "is_blocking": [],
       "blocked_by": [],
       "acceptance_criteria": [
@@ -232,7 +243,6 @@
         {
           "id": "T-001",
           "type": "task",
-          "issue_number": 207,
           "labels": [
             "setup",
             "frontend",
@@ -243,19 +253,22 @@
           "status": "Done",
           "priority": "P0",
           "complexity": "S",
-          "is_blocking": [],
+          "is_blocking": [
+            "T-002",
+            "T-003"
+          ],
           "blocked_by": [],
           "acceptance_criteria": [
             "Next.js 15 project created",
             "TypeScript configured",
             "App Router enabled",
             "Project builds successfully"
-          ]
+          ],
+          "issue_number": 238
         },
         {
           "id": "T-002",
           "type": "task",
-          "issue_number": 208,
           "labels": [
             "linting",
             "code-quality",
@@ -266,20 +279,20 @@
           "status": "In review",
           "priority": "P1",
           "complexity": "S",
-          "is_blocking": [
+          "is_blocking": [],
+          "blocked_by": [
             "T-001"
           ],
-          "blocked_by": [],
           "acceptance_criteria": [
             "ESLint rules configured",
             "Prettier formatter configured",
             "Linting runs without errors"
-          ]
+          ],
+          "issue_number": 239
         },
         {
           "id": "T-003",
           "type": "task",
-          "issue_number": 209,
           "labels": [
             "setup",
             "frontend",
@@ -290,22 +303,23 @@
           "status": "In progress",
           "priority": "P1",
           "complexity": "S",
-          "is_blocking": [
+          "is_blocking": [],
+          "blocked_by": [
             "T-001"
           ],
-          "blocked_by": [],
           "acceptance_criteria": [
             "Project folder structure created",
             "Architecture.md followed",
             "All directories created"
-          ]
+          ],
+          "issue_number": 244
         }
-      ]
+      ],
+      "issue_number": 235
     },
     {
       "id": "TS-013",
       "type": "Tech",
-      "issue_number": 104,
       "labels": [
         "setup",
         "database",
@@ -318,7 +332,7 @@
       "status": "In review",
       "startDate": "2026-02-17",
       "targetDate": "2026-02-24",
-      "priority": "Must",
+      "priority": "P0",
       "is_blocking": [],
       "blocked_by": [],
       "acceptance_criteria": [
@@ -331,7 +345,6 @@
         {
           "id": "T-004",
           "type": "task",
-          "issue_number": 210,
           "labels": [
             "setup",
             "firebase",
@@ -342,18 +355,20 @@
           "status": "Done",
           "priority": "P0",
           "complexity": "S",
-          "is_blocking": [],
+          "is_blocking": [
+            "T-005"
+          ],
           "blocked_by": [],
           "acceptance_criteria": [
             "Firebase project created",
             "Service account credentials configured",
             "Environment variables set"
-          ]
+          ],
+          "issue_number": 245
         },
         {
           "id": "T-005",
           "type": "task",
-          "issue_number": 211,
           "labels": [
             "database",
             "firestore",
@@ -365,19 +380,22 @@
           "priority": "P0",
           "complexity": "M",
           "is_blocking": [
+            "T-006",
+            "T-016"
+          ],
+          "blocked_by": [
             "T-004"
           ],
-          "blocked_by": [],
           "acceptance_criteria": [
             "Firestore SDK initialized",
             "Collection schemas defined",
             "Collections created in Firestore"
-          ]
+          ],
+          "issue_number": 246
         },
         {
           "id": "T-006",
           "type": "task",
-          "issue_number": 212,
           "labels": [
             "security",
             "backend",
@@ -388,22 +406,23 @@
           "status": "Ready",
           "priority": "P1",
           "complexity": "S",
-          "is_blocking": [
+          "is_blocking": [],
+          "blocked_by": [
             "T-005"
           ],
-          "blocked_by": [],
           "acceptance_criteria": [
             "Security rules configured",
             "Rules tested and validated",
             "Access control verified"
-          ]
+          ],
+          "issue_number": 249
         }
-      ]
+      ],
+      "issue_number": 232
     },
     {
       "id": "TS-016",
       "type": "Tech",
-      "issue_number": 105,
       "labels": [
         "setup",
         "ml-pipeline",
@@ -416,8 +435,10 @@
       "status": "Done",
       "startDate": "2026-02-17",
       "targetDate": "2026-02-24",
-      "priority": "Must",
-      "is_blocking": [],
+      "priority": "P0",
+      "is_blocking": [
+        "TS-001"
+      ],
       "blocked_by": [],
       "acceptance_criteria": [
         "Python virtual environment created",
@@ -429,7 +450,6 @@
         {
           "id": "T-007",
           "type": "task",
-          "issue_number": 213,
           "labels": [
             "setup",
             "python",
@@ -440,18 +460,20 @@
           "status": "Done",
           "priority": "P0",
           "complexity": "S",
-          "is_blocking": [],
+          "is_blocking": [
+            "T-008"
+          ],
           "blocked_by": [],
           "acceptance_criteria": [
             "Python virtual environment created",
             "Dependencies installed successfully",
             "Requirements.txt generated"
-          ]
+          ],
+          "issue_number": 248
         },
         {
           "id": "T-008",
           "type": "task",
-          "issue_number": 214,
           "labels": [
             "setup",
             "ml-pipeline",
@@ -463,19 +485,21 @@
           "priority": "P1",
           "complexity": "S",
           "is_blocking": [
+            "T-009"
+          ],
+          "blocked_by": [
             "T-007"
           ],
-          "blocked_by": [],
           "acceptance_criteria": [
             "Pipeline folder structure created",
             "All necessary directories present",
             "Placeholder files created"
-          ]
+          ],
+          "issue_number": 250
         },
         {
           "id": "T-009",
           "type": "task",
-          "issue_number": 215,
           "labels": [
             "testing",
             "ml-pipeline",
@@ -486,22 +510,23 @@
           "status": "Ready",
           "priority": "P2",
           "complexity": "S",
-          "is_blocking": [
+          "is_blocking": [],
+          "blocked_by": [
             "T-008"
           ],
-          "blocked_by": [],
           "acceptance_criteria": [
             "Pytest configured and working",
             "Mypy type checking configured",
             "Test suite runs successfully"
-          ]
+          ],
+          "issue_number": 247
         }
-      ]
+      ],
+      "issue_number": 230
     },
     {
       "id": "TS-001",
       "type": "Tech",
-      "issue_number": 106,
       "labels": [
         "api",
         "data-ingestion",
@@ -514,11 +539,13 @@
       "status": "In progress",
       "startDate": "2026-02-24",
       "targetDate": "2026-02-28",
-      "priority": "Must",
+      "priority": "P0",
       "is_blocking": [
+        "TS-002"
+      ],
+      "blocked_by": [
         "TS-016"
       ],
-      "blocked_by": [],
       "acceptance_criteria": [
         "NBA API client wrapper implemented with rate limiting",
         "Team stats fetching working for current season",
@@ -529,7 +556,6 @@
         {
           "id": "T-010",
           "type": "task",
-          "issue_number": 216,
           "labels": [
             "api",
             "nba-stats",
@@ -540,19 +566,21 @@
           "status": "In progress",
           "priority": "P0",
           "complexity": "M",
-          "is_blocking": [],
+          "is_blocking": [
+            "T-011"
+          ],
           "blocked_by": [],
           "acceptance_criteria": [
             "NBA API client wrapper created",
             "Rate limiting implemented",
             "Error handling implemented",
             "API connection verified"
-          ]
+          ],
+          "issue_number": 251
         },
         {
           "id": "T-011",
           "type": "task",
-          "issue_number": 217,
           "labels": [
             "api",
             "nba-stats",
@@ -564,19 +592,21 @@
           "priority": "P1",
           "complexity": "M",
           "is_blocking": [
+            "T-012"
+          ],
+          "blocked_by": [
             "T-010"
           ],
-          "blocked_by": [],
           "acceptance_criteria": [
             "Team stats fetching implemented",
             "Data retrieved for current season",
             "Data structure validated"
-          ]
+          ],
+          "issue_number": 253
         },
         {
           "id": "T-012",
           "type": "task",
-          "issue_number": 218,
           "labels": [
             "storage",
             "data-engineering",
@@ -588,21 +618,24 @@
           "priority": "P1",
           "complexity": "S",
           "is_blocking": [
+            "T-013"
+          ],
+          "blocked_by": [
             "T-011"
           ],
-          "blocked_by": [],
           "acceptance_criteria": [
             "Parquet file storage implemented",
             "Training data stored successfully",
             "File format verified"
-          ]
+          ],
+          "issue_number": 255
         }
-      ]
+      ],
+      "issue_number": 229
     },
     {
       "id": "TS-002",
       "type": "Tech",
-      "issue_number": 107,
       "labels": [
         "ml-model",
         "xgboost",
@@ -615,12 +648,12 @@
       "status": "Backlog",
       "startDate": "2026-02-28",
       "targetDate": "2026-03-02",
-      "priority": "Must",
-      "is_blocking": [
+      "priority": "P0",
+      "is_blocking": [],
+      "blocked_by": [
         "SK-001",
         "TS-001"
       ],
-      "blocked_by": [],
       "acceptance_criteria": [
         "Feature engineering pipeline implemented",
         "XGBoost model training with cross-validation working",
@@ -631,7 +664,6 @@
         {
           "id": "T-013",
           "type": "task",
-          "issue_number": 219,
           "labels": [
             "feature-engineering",
             "ml-model"
@@ -641,18 +673,22 @@
           "status": "Backlog",
           "priority": "P1",
           "complexity": "L",
-          "is_blocking": [],
-          "blocked_by": [],
+          "is_blocking": [
+            "T-014"
+          ],
+          "blocked_by": [
+            "T-012"
+          ],
           "acceptance_criteria": [
             "Feature engineering pipeline created",
             "Features generated successfully",
             "Pipeline tested with sample data"
-          ]
+          ],
+          "issue_number": 252
         },
         {
           "id": "T-014",
           "type": "task",
-          "issue_number": 220,
           "labels": [
             "ml-model",
             "xgboost",
@@ -664,20 +700,22 @@
           "priority": "P0",
           "complexity": "L",
           "is_blocking": [
+            "T-015"
+          ],
+          "blocked_by": [
             "T-013"
           ],
-          "blocked_by": [],
           "acceptance_criteria": [
             "XGBoost model implemented",
             "Cross-validation configured",
             "Model training successful",
             "Model accuracy metrics captured"
-          ]
+          ],
+          "issue_number": 256
         },
         {
           "id": "T-015",
           "type": "task",
-          "issue_number": 221,
           "labels": [
             "predictions",
             "ml-model"
@@ -688,19 +726,21 @@
           "priority": "P1",
           "complexity": "M",
           "is_blocking": [
+            "T-016"
+          ],
+          "blocked_by": [
             "T-014"
           ],
-          "blocked_by": [],
           "acceptance_criteria": [
             "Prediction generation implemented",
             "Predictions generated for test games",
             "Output format validated"
-          ]
+          ],
+          "issue_number": 254
         },
         {
           "id": "T-016",
           "type": "task",
-          "issue_number": 222,
           "labels": [
             "database",
             "backend",
@@ -711,17 +751,20 @@
           "status": "Backlog",
           "priority": "P2",
           "complexity": "M",
-          "is_blocking": [
-            "T-015"
+          "is_blocking": [],
+          "blocked_by": [
+            "T-015",
+            "T-005"
           ],
-          "blocked_by": [],
           "acceptance_criteria": [
             "Firestore write implementation complete",
             "Predictions written to database",
             "Data retrieval verified"
-          ]
+          ],
+          "issue_number": 257
         }
-      ]
+      ],
+      "issue_number": 231
     }
   ]
 }

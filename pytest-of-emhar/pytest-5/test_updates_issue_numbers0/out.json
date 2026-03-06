@@ -1,0 +1,14 @@
+{
+  "stories": [
+    {
+      "id": "SK-001",
+      "issue_number": 101,
+      "tasks": [
+        {
+          "id": "T-001",
+          "issue_number": 201
+        }
+      ]
+    }
+  ]
+}

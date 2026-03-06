@@ -1,0 +1,15 @@
+{
+  "project": "Test",
+  "stories": [
+    {
+      "id": "SK-001",
+      "title": "Story",
+      "tasks": [
+        {
+          "id": "T-001",
+          "title": "Task"
+        }
+      ]
+    }
+  ]
+}
