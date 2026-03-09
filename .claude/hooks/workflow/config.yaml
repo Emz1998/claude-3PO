@@ -1,0 +1,48 @@
+paths:
+  base: "project"
+  sprints: "project/sprints"
+  workflow_state: ".claude/hooks/workflow/state.json"
+  validation_log: ".claude/hooks/workflow/validation.log"
+  plans_dir: "~/.claude/plans"
+  templates_reminders: ".claude/hooks/workflow/templates/reminders"
+
+agents:
+  pre_coding: ["Explore", "Plan", "PlanReviewer"]
+  test: ["TestEngineer", "TestReviewer"]
+  code: ["CodeReviewer"]
+  reviewers: ["code-reviewer", "test-reviewer", "plan-reviewer"]
+
+phases:
+  workflow: ["explore", "plan", "code", "validate", "push"]
+  coding: ["log", "commit"]
+
+validation:
+  iteration_loop: 3
+  confidence_score: 70
+  quality_score: 70
+
+reminders:
+  map:
+    - event: "PostToolUse"
+      tool: "EnterPlanMode"
+      agent: null
+      template: "pre_coding_phase.md"
+    - event: "PostToolUse"
+      tool: "Agent"
+      agent: "Plan"
+      template: "plan_review.md"
+    - event: "PostToolUse"
+      tool: "ExitPlanMode"
+      agent: null
+      template: "coding_phase.md"
+    - event: "PostToolUse"
+      tool: "Agent"
+      agent: "test-engineer"
+      template: "test_review.md"
+    - event: "PreToolUse"
+      tool: "Agent"
+      agent: "code-reviewer"
+      template: "code-reviewer.md"
+
+session_dirs:
+  ["exploration", "planning", "review", "testing", "troubleshooting", "reports"]

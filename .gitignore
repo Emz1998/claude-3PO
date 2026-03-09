@@ -10,11 +10,11 @@ worktrees/
 .zshrc
 .ripgreprc
 .idea
-HEAD
-config
-hooks
-objects
-refs
+.git/HEAD
+.git/config
+.git/hooks
+.git/objects
+.git/refs
 
 # State Json
 .claude/hooks/workflow/state.json
