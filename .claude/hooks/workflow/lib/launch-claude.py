@@ -2,14 +2,12 @@
 """Launch multiple tmux windows with claude."""
 
 import argparse
-import json
 import os
 import re
 import subprocess
 
 SESSION = "claude"
 PROJECT_DIR = os.path.expanduser("~/avaris-ai")
-SPRINT_STATUS_PATH = os.path.join(PROJECT_DIR, "project/sprints/SPRINT-001/sprint-status.json")
 
 
 def run(cmd: list[str], check: bool = True, **kwargs) -> subprocess.CompletedProcess:
@@ -24,9 +22,22 @@ def session_exists() -> bool:
 
 
 def load_sprint_id() -> str:
-    """Read sprint_id directly from the sprint status JSON."""
-    with open(SPRINT_STATUS_PATH) as f:
-        return json.load(f).get("sprint_id", "SPRINT-001")
+    """Get sprint number from project_manager.py and format as SPRINT-NNN."""
+    try:
+        result = subprocess.run(
+            [
+                "python3",
+                os.path.join(PROJECT_DIR, "github_project", "project_manager.py"),
+                "sprint-info",
+            ],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        sprint_num = int(result.stdout.strip())
+    except (subprocess.CalledProcessError, ValueError):
+        sprint_num = 1
+    return f"SPRINT-{sprint_num:03d}"
 
 
 def extract_story_id(prompt: str) -> str | None:
@@ -49,9 +60,7 @@ def build_claude_cmd(prompt: str | None, worktree_name: str | None = None) -> st
     return " ".join(parts)
 
 
-def launch_window(
-    prompt: str | None, sprint_id: str, is_first: bool = False
-) -> None:
+def launch_window(prompt: str | None, sprint_id: str, is_first: bool = False) -> None:
     """Launch a tmux window with claude in its own worktree."""
     story_id = extract_story_id(prompt) if prompt else None
     worktree_name = build_worktree_name(sprint_id, story_id) if story_id else None
@@ -74,7 +83,16 @@ def launch_window(
     else:
         run(["tmux", "new-window", "-t", SESSION, "-n", window_name, "-c", PROJECT_DIR])
 
-    run(["tmux", "send-keys", "-t", SESSION, build_claude_cmd(prompt, worktree_name), "Enter"])
+    run(
+        [
+            "tmux",
+            "send-keys",
+            "-t",
+            SESSION,
+            build_claude_cmd(prompt, worktree_name),
+            "Enter",
+        ]
+    )
 
 
 def main() -> None:

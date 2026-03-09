@@ -1,5 +1,12 @@
-"""Single source of truth for workflow phase constants."""
+"""Single source of truth for workflow phase and status constants."""
 
-PHASES: list[str] = ["explore", "plan", "code", "validate", "push"]
+from workflow.config import get
 
-CODING_PHASES: list[str] = ["log", "commit"]
+PHASES: list[str] = get("phases.workflow")
+
+CODING_PHASES: list[str] = get("phases.coding")
+
+# Statuses
+STATUS_READY = "Ready"
+STATUS_DONE = "Done"
+STATUS_IN_PROGRESS = "In progress"

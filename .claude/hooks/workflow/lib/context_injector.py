@@ -4,7 +4,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from workflow.lib.file_manager_v2 import FileManager
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
+
+from workflow.lib.file_manager import FileManager
 from string import Formatter
 
 

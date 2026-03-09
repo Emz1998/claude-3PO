@@ -4,5 +4,5 @@
   "cwd": "/home/emhar/avaris-ai",
   "permission_mode": "bypassPermissions",
   "hook_event_name": "UserPromptSubmit",
-  "prompt": "/implement TS-013"
+  "prompt": "/build"
 }

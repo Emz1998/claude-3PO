@@ -15,3 +15,6 @@ config
 hooks
 objects
 refs
+
+# State Json
+.claude/hooks/workflow/state.json

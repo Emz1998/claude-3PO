@@ -4,7 +4,7 @@ import json
 import os
 from pathlib import Path
 from typing import Any, Callable
-from filelock import FileLock
+from filelock import FileLock, BaseFileLock
 import sys
 
 _JSON_SUFFIXES = {".json", ".jsonl"}
@@ -37,13 +37,11 @@ def load_file(path: Path, default: Any | None = None) -> Any | None:
             return json.loads(text) if text.strip() else default
         return text
     except FileNotFoundError:
-        print(f"File not found: {path}")
-        print(f"Creating file: {path}")
-        FileManager.create_file(path, default)
-        return default
-    except json.JSONDecodeError:
-        print(f"JSON decode error: {path}")
-        return default
+        if default is not None:
+            return default
+        raise
+    except json.JSONDecodeError as e:
+        raise ValueError(f"Corrupt JSON in {path}: {e}") from e
 
 
 def write_file(path: Path, data: Any) -> None:
@@ -71,32 +69,56 @@ def set_default(path: Path):
 class FileManager:
     def __init__(self, path: Path, lock: bool = True):
         self._path = path
-        self._lock = FileLock(path.with_suffix(".lock")) if lock else None
+        self._use_lock = lock
+        self._lock: BaseFileLock | None = self.create_file_lock() if lock else None
         self._data: Any | None = None
 
-        if not self._path.exists() and self._path.suffix in _JSON_SUFFIXES:
+    def create_json_file(self, default: Any | None = None) -> None:
+        if self._path.suffix not in _JSON_SUFFIXES:
+            raise ValueError(f"File {self._path} is not a JSON file")
+
+        if self._path.exists():
+            return
+
+        if not self._path.parent.exists():
             self._path.parent.mkdir(parents=True, exist_ok=True)
-            if self._path.suffix == ".jsonl":
-                self._path.touch()
-                self._data = []
-            else:
-                self._data = {}
-                write_file(self._path, self._data)
-        self.load(set_default(self._path))
+
+        self._path.touch()
+        self._data = default if default is not None else {}
+
+        write_file(self._path, self._data)
+
+    def create_jsonl_file(self, default: Any | None = None) -> None:
+        if self._path.suffix not in _JSON_SUFFIXES:
+            raise ValueError(f"File {self._path} is not a JSONL file")
+        self._path.touch()
+        self._data = default if default is not None else []
+
+        write_file(self._path, self._data)
+
+    def create_file_lock(self, path: Path | None = None) -> BaseFileLock | None:
+        if not self._use_lock:
+            return None
+        if path is None:
+            path = self._path
+        file_lock = FileLock(path.with_suffix(".lock"))
+        return file_lock
 
     def load(self, default: Any | None = None) -> Any | None:
-        if self._lock is None:
+        lock = self._lock
+
+        if not self._use_lock or lock is None:
             self._data = load_file(self._path, default)
             return self._data
 
-        with self._lock:
+        with lock:
             self._data = load_file(self._path, default)
             return self._data
 
     def save(self, data: Any | None = None) -> None:
         if data is None:
             data = self._data
-        if self._lock is None:
+        if not self._use_lock or self._lock is None:
             write_file(self._path, data)
             return
         with self._lock:
@@ -104,7 +126,7 @@ class FileManager:
 
     def update(self, fn: Callable[[Any], None]) -> None:
         """Atomic read-modify-write."""
-        if self._lock is None:
+        if not self._use_lock or self._lock is None:
             update_file(self._path, fn)
             return
         with self._lock:
@@ -116,14 +138,15 @@ class FileManager:
             return
         if path is None:
             path = self._path
-        if self._lock is None:
+        lock = self.create_file_lock(path)
+        if lock is None:
             append_text(path, data)
             return
-        with self._lock:
+        with lock:
             append_text(path, data)
 
     def delete(self) -> None:
-        self._path.unlink()
+        self._path.unlink(missing_ok=True)
 
     @staticmethod
     def create_dir(path: Path) -> None:
@@ -150,9 +173,16 @@ class FileManager:
 
     @staticmethod
     def delete_file(path: Path) -> None:
-        path.unlink()
+        path.unlink(missing_ok=True)
 
     @staticmethod
     def delete_multi_file(list_of_paths: list[Path]) -> None:
         for path in list_of_paths:
             FileManager.delete_file(path)
+
+
+if __name__ == "__main__":
+    fm = FileManager(Path("test.json"))
+    fm.create_json_file()
+    fm.save({"test": "test"})
+    print(fm.load())

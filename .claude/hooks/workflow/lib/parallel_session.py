@@ -1,7 +1,7 @@
 import shlex
 import subprocess
 
-SCRIPT = "~/avaris-ai/scripts/claude_hooks/lib/launch-claude.py"
+SCRIPT = "~/avaris-ai/.claude/hooks/workflow/lib/launch-claude.py"
 
 
 def parallel_sessions(prompts: list[str]) -> None:

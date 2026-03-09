@@ -3,13 +3,18 @@
 import json
 from pathlib import Path
 from typing import Any, Callable
+import sys
 
-from workflow.lib.file_manager_v2 import FileManager
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from workflow.lib.file_manager import FileManager
 
 
 class StateStore:
-    def __init__(self, state_path: Path, default_state: dict[str, Any] | None = None):
-        self._fm = FileManager(state_path, lock=True)
+    def __init__(
+        self, state_path: Path | str, default_state: dict[str, Any] | None = None
+    ):
+        self._fm = FileManager(Path(state_path), lock=True)
         self._fm.create_json_file(default_state)
 
     def load(self) -> dict[str, Any]:
@@ -22,15 +27,14 @@ class StateStore:
         self._fm.update(fn)
 
     def get(self, key: str, default: Any = None) -> Any:
-        data = self._fm._data
-        if data is None:
-            data = self.load()
+        data = self.load()
+        if key not in data and default is not None:
+            self.set(key, default)
+            return default
         return data.get(key, default)
 
     def set(self, key: str, value: Any) -> None:
-        data = self.load()
-        data.update({key: value})
-        self._fm.save(data)
+        self.update(lambda d: d.update({key: value}))
 
     def reset(self) -> None:
         self._fm.save({})

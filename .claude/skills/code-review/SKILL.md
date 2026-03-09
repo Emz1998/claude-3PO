@@ -1,8 +1,12 @@
 ---
-name: reviewing-code
+name: code-review
 description: Reviews code against project coding standards and provides a structured pass/fail verdict. Use when performing code reviews, checking code quality, validating coding standards compliance, or when user mentions "code review", "review code", or "check standards".
-context: fork
-agent: code-reviewer
+hooks:
+  PreToolUse:
+    - hooks:
+        - matcher: "*"
+          type: command
+          command: "python3 '/home/emhar/avaris-ai/.claude/hooks/tests/general_test.py'"
 ---
 
 ## Instructions

@@ -1,537 +1,107 @@
-# Plan: Fix `/implement` Default Behavior with Task Range Validation
-
-## Problem Statement
-
-1. `/implement` without args should default to current tasks from `project/state.json`
-2. `/implement TNNN` or `/implement TNNN - TNNN` must validate task IDs are in `current_tasks`
-3. Out-of-range or completed tasks should be blocked with an error
-4. `/implement --help` should show available tasks from current_tasks
-
-## Current State Example
-
-```json
-{
-  "current_tasks": {
-    "T009": "not_started",
-    "T010": "not_started"
-  },
-  "completed_tasks": ["T001", "T002", ..., "T008"]
-}
-```
-
-**Valid commands:**
-- `/implement` → resolves to T009, T010
-- `/implement T009` → valid (in current_tasks)
-- `/implement T009 - T010` → valid (both in current_tasks)
-- `/implement --help` → shows available tasks and exits
-
-**Invalid commands (should block):**
-- `/implement T001` → blocked (already completed)
-- `/implement T011` → blocked (not in current_tasks)
-- `/implement T009 - T015` → blocked (T011-T015 not in current_tasks)
-
-## Files to Modify
-
-1. `/home/emhar/avaris-ai/.claude/hooks/workflow/handlers/user_prompt.py`
-   - Update `is_valid_implement_args()` to validate against current_tasks
-   - Add helper method `_parse_task_ids()` to extract task IDs from args
-   - Add helper method `_validate_tasks_in_current()` to check tasks exist
-
-2. `/home/emhar/avaris-ai/.claude/hooks/workflow/tests/test_user_prompt_handler.py`
-   - Update tests for new validation behavior
-   - Add tests for range validation
-
-## Implementation Details
-
-**Step 1: Add helper to parse task IDs from prompt**
-
-```python
-def _parse_task_ids(self, prompt: str) -> list[str]:
-    """Parse task IDs from /implement command.
-
-    Args:
-        prompt: The prompt text
-
-    Returns:
-        List of task IDs, empty if no args or invalid format
-    """
-    cmd = self._triggers.implement.command
-    parts = prompt.split()
-
-    # No args case
-    if len(parts) == 1 and parts[0] == cmd:
-        return []
-
-    # Single task or range
-    if len(parts) >= 2 and parts[0] == cmd:
-        rest = " ".join(parts[1:])
-        # Check for range (T001 - T003)
-        range_match = re.match(r"(T\d{3})\s*-\s*(T\d{3})$", rest)
-        if range_match:
-            start, end = range_match.groups()
-            start_num = int(start[1:])
-            end_num = int(end[1:])
-            if start_num > end_num:
-                return []  # Invalid range
-            return [f"T{str(i).zfill(3)}" for i in range(start_num, end_num + 1)]
-        # Single task
-        single_match = re.match(r"T\d{3}$", rest)
-        if single_match:
-            return [rest]
-
-    return []
-```
-
-**Step 2: Add validation against current_tasks**
-
-```python
-def _validate_tasks_in_current(self, task_ids: list[str]) -> tuple[bool, str]:
-    """Validate task IDs exist in current_tasks.
-
-    Args:
-        task_ids: List of task IDs to validate
-
-    Returns:
-        Tuple of (is_valid, error_message)
-    """
-    if not task_ids:
-        return True, ""  # No args case, will use defaults
-
-    from release_plan.getters import get_current_tasks_ids  # type: ignore
-    current_tasks = get_current_tasks_ids()
+# Plan: Consolidate Workflow Hook Duplicates
 
-    if not current_tasks:
-        return False, "No current tasks available"
+## Context
 
-    invalid_tasks = [t for t in task_ids if t not in current_tasks]
-    if invalid_tasks:
-        return False, f"Tasks not in current_tasks: {', '.join(invalid_tasks)}. Available: {', '.join(current_tasks)}"
+After the recent subdirectory reorganization (18 root files → 7), there are still duplicate/versioned files that should be consolidated. This plan addresses the 3 highest-impact deduplication opportunities.
 
-    return True, ""
-```
+## Consolidation Items
 
-**Step 3: Update `is_valid_implement_args()`**
+### 1. Merge `file_manager.py` and `file_manager_v2.py` (HIGH)
 
-```python
-def is_valid_implement_args(self, prompt: str) -> bool:
-    """Validate /implement command arguments.
+**Files:** `lib/file_manager.py` (159 lines) + `lib/file_manager_v2.py` (195 lines)
 
-    Args:
-        prompt: The prompt text
+**Difference:** v2 uses lazy lock creation (`create_file_lock()`) instead of eager `FileLock()` in `__init__`. v2 also adds `create_json_file()` and `create_jsonl_file()` methods. Free functions (`append_text`, `load_jsonl`, `load_file`, `write_file`, `update_file`, `set_default`) are identical.
 
-    Returns:
-        True if valid (no args = default, or task IDs in current_tasks)
-    """
-    cmd = self._triggers.implement.command
-    parts = prompt.split()
+**Current imports:**
+- v2 used by: `state_store.py`, `context_injector.py`, `test/test.py`, `handlers/reminders.py`
+- v1 used by: `sprint/sprint_config.py` (only consumer)
 
-    if cmd not in parts:
-        return True
+**Action:**
+1. Delete `lib/file_manager.py`
+2. Rename `lib/file_manager_v2.py` → `lib/file_manager.py`
+3. Update import in `sprint/sprint_config.py`: `from workflow.lib.file_manager import FileManager` (no change needed — path stays the same after rename)
+4. Update imports in 4 files using v2: change `file_manager_v2` → `file_manager`
 
-    # Command must be first
-    if parts[0] != cmd:
-        return False
-
-    # No args - valid (defaults to current tasks)
-    if len(parts) == 1:
-        return True
-
-    # Parse and validate task IDs
-    task_ids = self._parse_task_ids(prompt)
-    if not task_ids:
-        return False  # Invalid format
+**Files to modify:**
+- `lib/file_manager.py` — DELETE
+- `lib/file_manager_v2.py` — RENAME to `lib/file_manager.py`
+- `state_store.py` line 7: `from workflow.lib.file_manager_v2` → `from workflow.lib.file_manager`
+- `lib/context_injector.py` line 7: same change
+- `test/test.py` line 19: same change
+- `handlers/reminders.py` line 8: same change
 
-    is_valid, _ = self._validate_tasks_in_current(task_ids)
-    return is_valid
-```
+### 2. Merge `hook_input.py` and `hook_input_v2.py` (HIGH)
 
-**Step 4: Add `--help` flag detection and handler**
+**Files:** `models/hook_input.py` (89 lines) + `models/hook_input_v2.py` (117 lines)
 
-```python
-def is_help_requested(self, prompt: str) -> bool:
-    """Check if --help flag is in prompt.
-
-    Args:
-        prompt: The prompt text
-
-    Returns:
-        True if --help is requested
-    """
-    cmd = self._triggers.implement.command
-    return f"{cmd} --help" in prompt or f"{cmd} -h" in prompt
-
-def handle_help(self) -> None:
-    """Handle /implement --help command."""
-    from release_plan.getters import get_current_tasks_ids, get_current_user_story  # type: ignore
-
-    current_tasks = get_current_tasks_ids()
-    current_story = get_current_user_story()
-
-    help_text = f"""
-/implement - Implement tasks from the current user story
-
-Usage:
-  /implement              Implement all current tasks ({', '.join(current_tasks) if current_tasks else 'none'})
-  /implement TNNN         Implement a specific task
-  /implement TNNN - TNNN  Implement a range of tasks
-  /implement --help       Show this help message
-
-Current User Story: {current_story}
-Available Tasks: {', '.join(current_tasks) if current_tasks else 'No tasks available'}
-"""
-    print(help_text)
-    sys.exit(0)
-```
-
-**Step 5: Update `handle_implement()` to show error message**
-
-```python
-def handle_implement(self, prompt: str) -> None:
-    """Handle /implement command."""
-    task_ids = self._parse_task_ids(prompt)
-    is_valid, error_msg = self._validate_tasks_in_current(task_ids)
-
-    if not is_valid:
-        print(f"Invalid args: {error_msg}", file=sys.stderr)
-        sys.exit(2)
-
-    self._state.activate_workflow()
-    # ... rest of validation logic
-```
-
-**Step 6: Update `run()` to check help before implement**
-
-In the `run()` method, add help check before implement handling:
-
-```python
-# Handle implement help
-if self.is_help_requested(prompt):
-    self.handle_help()
-    return
-
-# Handle implement
-if self.is_implement_triggered(prompt):
-    self.handle_implement(prompt)
-    return
-```
+**Difference:** v2 adds `EnterPlanModeTool` model, `ToolInputMap` dict for typed tool input instantiation via `@model_validator`, and changes `BaseToolUseInput` generics from `Generic[T]` to `Generic[T, U]`.
 
-**Step 7: Add method to get resolved tasks for downstream use**
+**Current imports:**
+- v2 used by: `guards/pre_coding_phase.py`, `guards/code_phase.py`, `handlers/reminders.py`, `handlers/recorder.py`, `handlers/implement_trigger.py`, `initialize_state.py`
+- v1 used by: `hook.py` (only consumer — imports `HookInput`, `PreToolUseInput`, `PostToolUseInput`, `UserPromptSubmitInput`, `StopInput`)
 
-```python
-def get_resolved_task_ids(self, prompt: str) -> list[str]:
-    """Get task IDs to implement.
-
-    Args:
-        prompt: The prompt text
-
-    Returns:
-        List of task IDs (from args or current state)
-    """
-    task_ids = self._parse_task_ids(prompt)
-    if not task_ids:
-        # No args - return all current tasks
-        from release_plan.getters import get_current_tasks_ids  # type: ignore
-        return get_current_tasks_ids()
-    return task_ids
-```
-
-## Test Cases
-
-**Note:** Existing tests use `MS-\d{3}` pattern but config uses `T\d{3}`. Will update fixture to use `T\d{3}` for consistency.
-
-**Update fixture in `test_user_prompt_handler.py`:**
-
-```python
-@pytest.fixture
-def handler():
-    """Provide a handler instance with mocked dependencies."""
-    with patch("handlers.user_prompt.get_manager") as mock_manager, \
-         patch("handlers.user_prompt.get_triggers") as mock_triggers:
-        mock_manager.return_value.is_workflow_active.return_value = False
-        mock_manager.return_value.is_dry_run_active.return_value = False
-        mock_manager.return_value.is_troubleshoot_active.return_value = False
-        mock_manager.return_value.activate_workflow = MagicMock()
-        mock_manager.return_value.deactivate_workflow = MagicMock()
-        mock_manager.return_value.activate_dry_run = MagicMock()
-        mock_manager.return_value.reset = MagicMock()
-        mock_manager.return_value.reset_deliverables_status = MagicMock()
-
-        # Setup triggers config - use T\d{3} pattern (matching workflow.config.yaml)
-        mock_implement = MagicMock()
-        mock_implement.command = "/implement"
-        mock_implement.arg_pattern = r"T\d{3}(\s*-\s*T\d{3})?$"
-
-        mock_deactivate = MagicMock()
-        mock_deactivate.command = "/deactivate-workflow"
-
-        mock_dry_run = MagicMock()
-        mock_dry_run.command = "/dry-run"
-
-        mock_troubleshoot = MagicMock()
-        mock_troubleshoot.command = "/troubleshoot"
-
-        mock_triggers.return_value.implement = mock_implement
-        mock_triggers.return_value.deactivate = mock_deactivate
-        mock_triggers.return_value.dry_run = mock_dry_run
-        mock_triggers.return_value.troubleshoot = mock_troubleshoot
-
-        yield UserPromptHandler()
-```
-
-**Existing tests to UPDATE (change MS-NNN to T-NNN pattern):**
-
-- `TestIsImplementTriggered` - update prompts to use `T001` format
-- `TestIsValidImplementArgs` - update to test new validation logic
-- `TestHandleImplement` - update pattern and add current_tasks mock
-- `TestRun` - update prompts
-
-**New tests to ADD in `test_user_prompt_handler.py`:**
-
-```python
-class TestParseTaskIds:
-    """Tests for _parse_task_ids method."""
-
-    def test_parse_no_args_returns_empty(self, handler):
-        """No args returns empty list."""
-        assert handler._parse_task_ids("/implement") == []
-
-    def test_parse_single_task(self, handler):
-        """Single task ID parsed correctly."""
-        assert handler._parse_task_ids("/implement T009") == ["T009"]
-
-    def test_parse_task_range(self, handler):
-        """Task range parsed correctly."""
-        assert handler._parse_task_ids("/implement T009 - T011") == ["T009", "T010", "T011"]
-
-    def test_parse_invalid_format_returns_empty(self, handler):
-        """Invalid format returns empty list."""
-        assert handler._parse_task_ids("/implement invalid") == []
-        assert handler._parse_task_ids("/implement T00") == []  # Too short
-
-    def test_parse_reversed_range_returns_empty(self, handler):
-        """Reversed range (end < start) returns empty."""
-        assert handler._parse_task_ids("/implement T010 - T005") == []
-
-
-class TestValidateTasksInCurrent:
-    """Tests for _validate_tasks_in_current method."""
-
-    def test_empty_list_is_valid(self, handler):
-        """Empty list (no args case) is valid."""
-        is_valid, msg = handler._validate_tasks_in_current([])
-        assert is_valid is True
-        assert msg == ""
-
-    def test_valid_task_in_current(self, handler, mocker):
-        """Task in current_tasks is valid."""
-        mocker.patch(
-            "handlers.user_prompt.get_current_tasks_ids",
-            return_value=["T009", "T010"]
-        )
-        is_valid, msg = handler._validate_tasks_in_current(["T009"])
-        assert is_valid is True
-
-    def test_invalid_task_not_in_current(self, handler, mocker):
-        """Task not in current_tasks is invalid."""
-        mocker.patch(
-            "handlers.user_prompt.get_current_tasks_ids",
-            return_value=["T009", "T010"]
-        )
-        is_valid, msg = handler._validate_tasks_in_current(["T001"])
-        assert is_valid is False
-        assert "T001" in msg
-
-    def test_partial_range_invalid(self, handler, mocker):
-        """Range with some tasks not in current_tasks is invalid."""
-        mocker.patch(
-            "handlers.user_prompt.get_current_tasks_ids",
-            return_value=["T009", "T010"]
-        )
-        is_valid, msg = handler._validate_tasks_in_current(["T009", "T010", "T011"])
-        assert is_valid is False
-        assert "T011" in msg
-
-    def test_no_current_tasks_is_invalid(self, handler, mocker):
-        """No current tasks available is invalid."""
-        mocker.patch(
-            "handlers.user_prompt.get_current_tasks_ids",
-            return_value=[]
-        )
-        is_valid, msg = handler._validate_tasks_in_current(["T009"])
-        assert is_valid is False
-        assert "No current tasks" in msg
-
-
-class TestIsValidImplementArgs:
-    """Tests for is_valid_implement_args method."""
-
-    def test_no_args_is_valid(self, handler):
-        """No arguments is valid (defaults to current tasks)."""
-        assert handler.is_valid_implement_args("/implement") is True
-
-    def test_valid_task_is_valid(self, handler, mocker):
-        """Valid task in current_tasks is valid."""
-        mocker.patch(
-            "handlers.user_prompt.get_current_tasks_ids",
-            return_value=["T009", "T010"]
-        )
-        assert handler.is_valid_implement_args("/implement T009") is True
-
-    def test_valid_range_is_valid(self, handler, mocker):
-        """Valid range within current_tasks is valid."""
-        mocker.patch(
-            "handlers.user_prompt.get_current_tasks_ids",
-            return_value=["T009", "T010"]
-        )
-        assert handler.is_valid_implement_args("/implement T009 - T010") is True
-
-    def test_invalid_task_is_invalid(self, handler, mocker):
-        """Task not in current_tasks is invalid."""
-        mocker.patch(
-            "handlers.user_prompt.get_current_tasks_ids",
-            return_value=["T009", "T010"]
-        )
-        assert handler.is_valid_implement_args("/implement T001") is False
-
-    def test_out_of_range_is_invalid(self, handler, mocker):
-        """Range extending beyond current_tasks is invalid."""
-        mocker.patch(
-            "handlers.user_prompt.get_current_tasks_ids",
-            return_value=["T009", "T010"]
-        )
-        assert handler.is_valid_implement_args("/implement T009 - T015") is False
-
-    def test_invalid_format_is_invalid(self, handler):
-        """Invalid format is invalid."""
-        assert handler.is_valid_implement_args("/implement invalid") is False
-
-    def test_non_implement_command_is_valid(self, handler):
-        """Non-implement commands pass through."""
-        assert handler.is_valid_implement_args("/other-command") is True
-
-
-class TestIsHelpRequested:
-    """Tests for is_help_requested method."""
-
-    def test_help_flag_detected(self, handler):
-        """--help flag is detected."""
-        assert handler.is_help_requested("/implement --help") is True
-
-    def test_short_help_flag_detected(self, handler):
-        """Short -h flag is detected."""
-        assert handler.is_help_requested("/implement -h") is True
-
-    def test_no_help_flag(self, handler):
-        """No help flag returns False."""
-        assert handler.is_help_requested("/implement") is False
-        assert handler.is_help_requested("/implement T001") is False
-
-
-class TestGetResolvedTaskIds:
-    """Tests for get_resolved_task_ids method."""
-
-    def test_no_args_returns_current_tasks(self, handler, mocker):
-        """No args returns all current tasks."""
-        mocker.patch(
-            "handlers.user_prompt.get_current_tasks_ids",
-            return_value=["T009", "T010"]
-        )
-        assert handler.get_resolved_task_ids("/implement") == ["T009", "T010"]
-
-    def test_single_task_returns_list(self, handler):
-        """Single task returns list with that task."""
-        assert handler.get_resolved_task_ids("/implement T009") == ["T009"]
-
-    def test_range_returns_expanded_list(self, handler):
-        """Range returns expanded list of tasks."""
-        assert handler.get_resolved_task_ids("/implement T009 - T011") == ["T009", "T010", "T011"]
-```
+**Action:**
+1. Delete `models/hook_input.py`
+2. Rename `models/hook_input_v2.py` → `models/hook_input.py`
+3. Update import in `hook.py` line 15: `from workflow.models.hook_input import ...` (no change needed — path stays the same after rename)
+4. Update imports in 6 files using v2: change `hook_input_v2` → `hook_input`
+
+**Files to modify:**
+- `models/hook_input.py` — DELETE
+- `models/hook_input_v2.py` — RENAME to `models/hook_input.py`
+- `guards/pre_coding_phase.py` line 8: `from workflow.models.hook_input_v2` → `from workflow.models.hook_input`
+- `guards/code_phase.py` line 8: same change
+- `handlers/reminders.py` line 9: same change
+- `handlers/recorder.py` line 8: same change
+- `handlers/implement_trigger.py` line 8: same change
+- `initialize_state.py` line 6: same change
+
+### 3. Deduplicate `validate_order()` (MEDIUM)
+
+**Files:** `utils/order_validation.py` (27 lines) + `guards/pre_coding_phase.py` (lines 16-41, identical copy)
+
+**Current usage:**
+- `guards/code_phase.py` imports from `workflow.utils.order_validation`
+- `guards/pre_coding_phase.py` has its own inline copy
+
+**Action:**
+1. Remove `validate_order()` function from `guards/pre_coding_phase.py` (lines 16-41)
+2. Add import: `from workflow.utils.order_validation import validate_order`
+
+**Files to modify:**
+- `guards/pre_coding_phase.py` — remove function, add import
+
+---
+
+## Execution Order
+
+1. FileManager consolidation (step 1)
+2. HookInput consolidation (step 2)
+3. validate_order dedup (step 3)
 
 ## Verification
 
-**Step 1: Run new unit tests**
 ```bash
-cd .claude/hooks/workflow && uv run pytest tests/test_user_prompt_handler.py -v
+# Run existing tests
+cd .claude/hooks/workflow && python -m pytest test/ -v
+
+# Import checks
+python -c "from workflow.lib.file_manager import FileManager; print('FileManager OK')"
+python -c "from workflow.models.hook_input import PreToolUseInput, HookInput, EnterPlanModeTool; print('HookInput OK')"
+python -c "from workflow.guards.pre_coding_phase import PreCodingPhaseGuard; print('PreCodingPhaseGuard OK')"
+
+# Dry-run decision_handler (uses HookInput indirectly)
+echo '{"tool_name":"Skill","tool_input":{"skill":"plan","args":""},"session_id":"x","transcript_path":"/tmp/x","cwd":"/tmp","permission_mode":"bypassPermissions","hook_event_name":"PreToolUse","tool_use_id":"t1"}' | python .claude/hooks/workflow/validation/decision_handler.py
 ```
 
-**Step 2: Run regression tests (all workflow tests)**
-```bash
-cd .claude/hooks/workflow && uv run pytest tests/ -v
-```
+## Critical Files
 
-**Step 3: Manual echo tests**
-
-Test no args (should pass):
-```bash
-echo '{"hook_event_name":"UserPromptSubmit","prompt":"/implement"}' | python .claude/hooks/workflow/handlers/user_prompt.py
-echo $?  # Should be 0
-```
-
-Test help flag (should print help and exit 0):
-```bash
-echo '{"hook_event_name":"UserPromptSubmit","prompt":"/implement --help"}' | python .claude/hooks/workflow/handlers/user_prompt.py
-echo $?  # Should be 0, prints available tasks
-```
-
-Test valid task in current_tasks:
-```bash
-echo '{"hook_event_name":"UserPromptSubmit","prompt":"/implement T009"}' | python .claude/hooks/workflow/handlers/user_prompt.py
-echo $?  # Should be 0
-```
-
-Test out-of-range task (should block):
-```bash
-echo '{"hook_event_name":"UserPromptSubmit","prompt":"/implement T001"}' | python .claude/hooks/workflow/handlers/user_prompt.py
-echo $?  # Should be 2 with error message
-```
-
-Test invalid format (should block):
-```bash
-echo '{"hook_event_name":"UserPromptSubmit","prompt":"/implement invalid"}' | python .claude/hooks/workflow/handlers/user_prompt.py
-echo $?  # Should be 2
-```
-
-**Step 4: Regression - Verify existing triggers still work**
-
-Test deactivate still works:
-```bash
-echo '{"hook_event_name":"UserPromptSubmit","prompt":"/deactivate-workflow"}' | python .claude/hooks/workflow/handlers/user_prompt.py
-echo $?  # Should be 0
-```
-
-Test dry-run still works:
-```bash
-echo '{"hook_event_name":"UserPromptSubmit","prompt":"/dry-run:explore"}' | python .claude/hooks/workflow/handlers/user_prompt.py
-echo $?  # Should be 0
-```
-
-Test troubleshoot still works (when workflow active):
-```bash
-echo '{"hook_event_name":"UserPromptSubmit","prompt":"/troubleshoot"}' | python .claude/hooks/workflow/handlers/user_prompt.py
-echo $?  # Depends on state
-```
-
-## Summary of Changes
-
-**Files to modify:**
-1. `.claude/hooks/workflow/handlers/user_prompt.py` - Add 4 new methods, update 2 existing
-2. `.claude/hooks/workflow/tests/test_user_prompt_handler.py` - Update fixture, update existing tests, add 6 new test classes
-
-**New methods:**
-- `_parse_task_ids()` - Parse task IDs from prompt
-- `_validate_tasks_in_current()` - Validate against current_tasks
-- `is_help_requested()` - Detect --help flag
-- `handle_help()` - Display help with available tasks
-- `get_resolved_task_ids()` - Get final task list for downstream
-
-**Updated methods:**
-- `is_valid_implement_args()` - Now validates against current_tasks
-- `run()` - Add help check before implement handling
-
-## Impact
-
-- **Prevents invalid task implementation**: Can't implement completed or non-existent tasks
-- **Clear error messages**: User sees which tasks are available
-- **Help flag**: `/implement --help` shows available tasks
-- **Backwards compatible**: Valid task IDs still work
-- **Uses existing infrastructure**: Leverages `get_current_tasks_ids()` from release_plan
+| File | Action |
+|------|--------|
+| `lib/file_manager.py` | DELETE (replaced by v2) |
+| `lib/file_manager_v2.py` | RENAME → `lib/file_manager.py` |
+| `models/hook_input.py` | DELETE (replaced by v2) |
+| `models/hook_input_v2.py` | RENAME → `models/hook_input.py` |
+| `state_store.py`, `lib/context_injector.py`, `test/test.py`, `handlers/reminders.py` | Update import path (file_manager_v2 → file_manager) |
+| `guards/pre_coding_phase.py`, `guards/code_phase.py`, `handlers/recorder.py`, `handlers/implement_trigger.py`, `initialize_state.py` | Update import path (hook_input_v2 → hook_input) |
+| `guards/pre_coding_phase.py` | Remove duplicate `validate_order()`, add import from utils |

@@ -1,12 +1,33 @@
 {
   "hooks": {
+    "SubagentStop": [
+      {
+        "matcher": "code-reviewer|test-reviewer|plan-reviewer",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/workflow/validation/validation_loop.py\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/dispatchers/stop.py\"",
-            "timeout": 15
+            "command": "rm -f \"$CLAUDE_PROJECT_DIR/.bash_profile\" \"$CLAUDE_PROJECT_DIR/.bashrc\" \"$CLAUDE_PROJECT_DIR/.profile\" \"$CLAUDE_PROJECT_DIR/.zprofile\" \"$CLAUDE_PROJECT_DIR/.zshrc\" \"$CLAUDE_PROJECT_DIR/.ripgreprc\" \"$CLAUDE_PROJECT_DIR/HEAD\" \"$CLAUDE_PROJECT_DIR/config\" && rm -rf \"$CLAUDE_PROJECT_DIR/hooks\" \"$CLAUDE_PROJECT_DIR/objects\" \"$CLAUDE_PROJECT_DIR/refs\" \"$CLAUDE_PROJECT_DIR/.idea\"",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/workflow/guards/stop_guard.py\"",
+            "timeout": 10
           }
         ]
       }
@@ -22,43 +43,75 @@
         ]
       },
       {
+        "matcher": "Skill",
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/dispatchers/pre_tool.py\"",
-            "timeout": 15
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/workflow/validation/decision_handler.py\"",
+            "timeout": 10
           }
         ]
-      }
-    ],
-    "PermissionRequest": [],
-    "SubagentStop": [],
-    "SessionEnd": [],
-    "PreCompact": [],
-    "UserPromptSubmit": [
+      },
       {
+        "matcher": "Agent",
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/dispatchers/user_prompt.py\"",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/workflow/guards/code_phase.py\"",
             "timeout": 10
           }
         ]
       }
     ],
-    "Notification": [],
-    "SessionStart": [],
-    "PostToolUse": [
+    "UserPromptSubmit": [
       {
-        "matcher": "Skill|Write|Edit|Read|Bash",
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/dispatchers/post_tool.py\"",
-            "timeout": 15
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/workflow/handlers/build_entry.py\"",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/workflow/handlers/implement_trigger.py\"",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/skills/hooks_toggler.py\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/workflow/handlers/recorder.py\"",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/workflow/handlers/reminders.py\"",
+            "timeout": 10
           }
         ]
       }
     ]
-  }
+  },
+  "last_action": "activate"
 }

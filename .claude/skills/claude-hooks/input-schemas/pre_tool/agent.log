@@ -1,0 +1,14 @@
+{
+    "session_id": "a499e088-d35b-4be0-a3cc-1e9452f5fa1c",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/a499e088-d35b-4be0-a3cc-1e9452f5fa1c.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Agent",
+    "tool_input": {
+        "description": "Exit immediately no work",
+        "prompt": "Exit immediately. Do not perform any work, analysis, or review. Simply acknowledge and terminate.",
+        "subagent_type": "plan-consultant"
+    },
+    "tool_use_id": "toolu_01PLHBMEYY9NUJHHVnWvvUJj"
+}

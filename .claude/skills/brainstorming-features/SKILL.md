@@ -1,6 +1,13 @@
 ---
-name: brainstorming-features
+name: brainstorm-features
 description: Facilitates creative ideation sessions for mobile and web app features, generating structured ideas with user stories, technical considerations, and implementation suggestions. Use when planning new features, exploring product direction, generating app ideas, feature discovery, product brainstorming, or when user mentions 'brainstorm', 'ideate', 'app ideas', or 'feature suggestions'.
+# context: fork
+hooks:
+  PreToolUse:
+    - hooks:
+        - matcher: "*"
+          type: command
+          command: 'python3 "/home/emhar/avaris-ai/.claude/hooks/tests/general_test.py"'
 ---
 
 # Brainstorming Features

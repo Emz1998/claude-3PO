@@ -5,6 +5,13 @@ from datetime import datetime
 from pathlib import Path
 from typing import Literal, get_args
 
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
+
+from workflow.config import get as cfg
+
 SessionDirs = Literal[
     "exploration",
     "planning",
@@ -14,7 +21,7 @@ SessionDirs = Literal[
     "reports",
 ]
 
-SESSION_DIRS = get_args(SessionDirs)
+SESSION_DIRS = tuple(cfg("session_dirs"))
 
 
 @dataclass(frozen=False)
@@ -25,7 +32,7 @@ class ProjectPaths:
 
     @property
     def base_path(self) -> Path:
-        return Path("project")
+        return Path(cfg("paths.base"))
 
     @property
     def sprints_path(self) -> Path:

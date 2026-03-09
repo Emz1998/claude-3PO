@@ -2,11 +2,13 @@
   "session_id": "55e03575-bd44-43b2-bcb2-2214bad7a612",
   "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/55e03575-bd44-43b2-bcb2-2214bad7a612.jsonl",
   "cwd": "/home/emhar/avaris-ai",
-  "permission_mode": "bypassPermissions",
+  "permission_mode": "plan",
   "hook_event_name": "PreToolUse",
-  "tool_name": "Skill",
+  "tool_name": "Agent",
   "tool_input": {
-    "skill": "hooks_toggler"
+    "description": "code-review",
+    "prompt": "code-review",
+    "subagent_type": "CodeReviewer"
   },
-  "tool_use_id": "toolu_01PsGUnKmeQmcLef63SzMYBP"
+  "tool_use_id": "toolu_01RbYELyUGtDAsqrk9CTgyEC"
 }

@@ -8,9 +8,14 @@ check_workflow_gate() to skip when the workflow is inactive.
 from typing import Any
 from pathlib import Path
 
-from workflow.state_store import StateStore
+import sys
 
-PATH = Path("project/state.json")
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from workflow.state_store import StateStore
+from workflow.config import get as cfg
+
+PATH = Path(cfg("paths.workflow_state"))
 WORKFLOW_ACTIVE_KEY = "workflow_active"
 
 state_store = StateStore(PATH, default_state={WORKFLOW_ACTIVE_KEY: False})
@@ -43,5 +48,5 @@ def check_workflow_gate() -> bool:
 
 
 if __name__ == "__main__":
-    activate_workflow()
-    # print(check_workflow_gate())
+    # activate_workflow()
+    print(is_workflow_active(state_store.load()))

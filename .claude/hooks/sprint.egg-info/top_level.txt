@@ -1,6 +1,8 @@
 dispatchers
 plans
+project
 security
+skills
 subagents
 tests
 utils

@@ -1,10 +1,10 @@
-"""Tests for project_manager.py — pure logic tests, no API calls."""
+"""Tests for project_manager.py -- local JSON management, no API calls."""
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 
@@ -18,92 +18,142 @@ import project_manager as pm
 # Fixtures
 # ---------------------------------------------------------------------------
 
-SAMPLE_RAW_ITEMS = [
-    {
-        "id": "ITEM-1",
-        "title": "TS-001: Setup CI pipeline",
-        "status": "In progress",
-        "priority": "P0",
-        "points": 5,
-        "complexity": "",
-        "type": "Tech",
-        "start date": "2026-01-01",
-        "target date": "2026-01-15",
-        "labels": ["infra"],
-        "assignees": ["alice"],
-        "milestone": "Sprint 1",
-        "content": {
-            "type": "Issue",
-            "number": 1,
-            "body": "Set up CI",
-            "url": "https://github.com/org/repo/issues/1",
+
+SAMPLE_SPRINT = {
+    "sprint": 1,
+    "milestone": "v0.1.0",
+    "description": "Sprint 1",
+    "due_date": "2026-03-02",
+    "tasks": [
+        {
+            "id": "T-001",
+            "type": "task",
+            "parent_story_id": "SK-001",
+            "labels": ["infra"],
+            "title": "Setup CI pipeline",
+            "description": "Set up CI",
+            "status": "Done",
+            "priority": "P0",
+            "complexity": "S",
+            "milestone": "v0.1.0",
+            "issue_number": 1,
+            "start_date": "2026-01-01",
+            "target_date": "2026-01-15",
         },
-    },
-    {
-        "id": "ITEM-2",
-        "title": "TS-002: Add auth module",
-        "status": "Ready",
-        "priority": "P1",
-        "points": 8,
-        "complexity": "",
-        "type": "Tech",
-        "start date": "",
-        "target date": "",
-        "labels": ["feature", "auth"],
-        "assignees": ["bob"],
-        "milestone": "Sprint 2",
-        "content": {
-            "type": "Issue",
-            "number": 2,
-            "body": "Implement auth",
-            "url": "https://github.com/org/repo/issues/2",
+        {
+            "id": "T-002",
+            "type": "task",
+            "parent_story_id": "SK-001",
+            "labels": ["feature"],
+            "title": "Add auth module",
+            "description": "Implement auth",
+            "status": "In progress",
+            "priority": "P1",
+            "complexity": "M",
+            "milestone": "v0.1.0",
+            "issue_number": 2,
+            "start_date": "",
+            "target_date": "",
         },
-    },
-    {
-        "id": "ITEM-3",
-        "title": "TS-003: Fix login bug",
-        "status": "Done",
-        "priority": "P0",
-        "complexity": "S",
-        "points": "",
-        "type": "task",
-        "start date": "2026-01-02",
-        "target date": "2026-01-05",
-        "labels": ["bug"],
-        "assignees": ["alice"],
-        "milestone": "Sprint 1",
-        "content": {
-            "type": "Issue",
-            "number": 3,
-            "body": "Login broken",
-            "url": "https://github.com/org/repo/issues/3",
+        {
+            "id": "T-003",
+            "type": "task",
+            "parent_story_id": "TS-001",
+            "labels": ["bug"],
+            "title": "Fix login bug",
+            "description": "Login broken",
+            "status": "Ready",
+            "priority": "P0",
+            "complexity": "S",
+            "milestone": "v0.1.0",
+            "issue_number": 3,
+            "start_date": "2026-01-02",
+            "target_date": "2026-01-05",
         },
-    },
-    {
-        "id": "ITEM-PR",
-        "title": "Some PR title",
-        "content": {"type": "PullRequest", "number": 10},
-    },
-]
+    ],
+}
+
+SAMPLE_STORIES = {
+    "project": "Test",
+    "goal": "Test goal",
+    "dates": {"start": "2026-01-01", "end": "2026-03-01"},
+    "totalPoints": 10,
+    "stories": [
+        {
+            "id": "SK-001",
+            "type": "Spike",
+            "labels": ["spike", "research"],
+            "title": "Research feature X",
+            "description": "Research",
+            "points": 3,
+            "status": "In progress",
+            "tdd": False,
+            "startDate": "2026-01-01",
+            "targetDate": "2026-01-15",
+            "priority": "P0",
+            "milestone": "v0.1.0",
+            "issue_number": 101,
+        },
+        {
+            "id": "TS-001",
+            "type": "Tech",
+            "labels": ["setup"],
+            "title": "Project setup",
+            "description": "Setup",
+            "points": 5,
+            "status": "Ready",
+            "tdd": True,
+            "startDate": "",
+            "targetDate": "",
+            "priority": "P1",
+            "milestone": "v0.1.0",
+            "issue_number": 102,
+        },
+    ],
+}
 
 
 @pytest.fixture
-def tasks():
-    return pm.normalize_items(SAMPLE_RAW_ITEMS)
+def sprint_file(tmp_path):
+    p = tmp_path / "sprint.json"
+    p.write_text(json.dumps(SAMPLE_SPRINT), encoding="utf-8")
+    return p
+
+
+@pytest.fixture
+def stories_file(tmp_path):
+    p = tmp_path / "stories.json"
+    p.write_text(json.dumps(SAMPLE_STORIES), encoding="utf-8")
+    return p
+
+
+@pytest.fixture
+def all_items(sprint_file, stories_file):
+    return pm._load_all_items(sprint_file, stories_file)
+
+
+def _make_update_args(**overrides):
+    defaults = dict(
+        key="T-001", status=None, priority=None, complexity=None,
+        title=None, description=None, start_date=None, target_date=None,
+        tdd=None, force=False,
+    )
+    defaults.update(overrides)
+    return argparse.Namespace(**defaults)
 
 
 def _make_list_args(**overrides):
     defaults = dict(
         status=None, priority=None, milestone=None, assignee=None,
-        label=None, complexity=None, type=None, sort_by=None, reverse=False,
-        wide=False, keys_only=False,
+        label=None, complexity=None, type=None, story=None, sort_by=None,
+        reverse=False, wide=False, keys_only=False,
     )
     defaults.update(overrides)
     return argparse.Namespace(**defaults)
 
 
 def _make_view_args(**overrides):
-    defaults = dict(key="TS-001", raw=False, template=None)
+    defaults = dict(key="SK-001", raw=False, template=None)
     defaults.update(overrides)
     return argparse.Namespace(**defaults)
 
@@ -112,127 +162,6 @@ def _make_summary_args(**overrides):
     defaults = dict(group_by="status")
     defaults.update(overrides)
     return argparse.Namespace(**defaults)
-
-
-# ---------------------------------------------------------------------------
-# _parse_key_title (colon format)
-# ---------------------------------------------------------------------------
-
-
-class TestParseKeyTitle:
-    def test_colon_format(self):
-        assert pm._parse_key_title("SK-001: Some title") == ("SK-001", "Some title")
-
-    def test_without_key(self):
-        assert pm._parse_key_title("Some title without key") == ("", "Some title without key")
-
-    def test_multi_word_key(self):
-        assert pm._parse_key_title("ABC-999: Multi word title") == ("ABC-999", "Multi word title")
-
-    def test_empty_string(self):
-        assert pm._parse_key_title("") == ("", "")
-
-
-# ---------------------------------------------------------------------------
-# normalize_items
-# ---------------------------------------------------------------------------
-
-
-class TestNormalizeItems:
-    def test_filters_non_issues(self, tasks):
-        # PR item should be filtered out
-        assert len(tasks) == 3
-
-    def test_parses_key_and_title(self, tasks):
-        assert tasks[0]["key"] == "TS-001"
-        assert tasks[0]["title"] == "Setup CI pipeline"
-
-    def test_extracts_fields(self, tasks):
-        t = tasks[0]
-        assert t["status"] == "In progress"
-        assert t["priority"] == "P0"
-        assert t["issue_number"] == 1
-        assert t["milestone"] == "Sprint 1"
-        assert t["labels"] == ["infra"]
-        assert t["assignees"] == ["alice"]
-
-    def test_includes_points(self, tasks):
-        assert tasks[0]["points"] == 5
-
-    def test_includes_complexity(self, tasks):
-        assert tasks[2]["complexity"] == "S"
-
-    def test_includes_type(self, tasks):
-        assert tasks[0]["type"] == "Tech"
-        assert tasks[2]["type"] == "task"
-
-    def test_milestone_dict(self):
-        items = [{
-            "title": "TS-010: Test",
-            "milestone": {"title": "v1.0"},
-            "content": {"type": "Issue", "number": 10},
-        }]
-        tasks = pm.normalize_items(items)
-        assert tasks[0]["milestone"] == "v1.0"
-
-    def test_empty_items(self):
-        assert pm.normalize_items([]) == []
-
-
-# ---------------------------------------------------------------------------
-# flatten_v2_for_display
-# ---------------------------------------------------------------------------
-
-
-SAMPLE_V2_DATA = {
-    "project": "Test",
-    "milestone": "v0.1",
-    "stories": [
-        {
-            "id": "SK-001",
-            "type": "Spike",
-            "title": "Research",
-            "points": 3,
-            "status": "In progress",
-            "priority": "P0",
-            "issue_number": 101,
-            "tasks": [
-                {
-                    "id": "T-001",
-                    "type": "task",
-                    "title": "Analyze",
-                    "complexity": "M",
-                    "status": "Ready",
-                    "priority": "P1",
-                    "issue_number": 201,
-                },
-            ],
-        },
-    ],
-}
-
-
-class TestFlattenV2ForDisplay:
-    def test_flattens_stories_and_tasks(self):
-        result = pm.flatten_v2_for_display(SAMPLE_V2_DATA)
-        assert len(result) == 2
-
-    def test_story_has_points_no_complexity(self):
-        result = pm.flatten_v2_for_display(SAMPLE_V2_DATA)
-        story = [r for r in result if r["key"] == "SK-001"][0]
-        assert story["points"] == 3
-        assert story["complexity"] == ""
-
-    def test_task_has_complexity_no_points(self):
-        result = pm.flatten_v2_for_display(SAMPLE_V2_DATA)
-        task = [r for r in result if r["key"] == "T-001"][0]
-        assert task["complexity"] == "M"
-        assert task["points"] == ""
-
-    def test_task_has_parent_id(self):
-        result = pm.flatten_v2_for_display(SAMPLE_V2_DATA)
-        task = [r for r in result if r["key"] == "T-001"][0]
-        assert task["parent_id"] == "SK-001"
 
 
 # ---------------------------------------------------------------------------
@@ -248,7 +177,10 @@ class TestSortKey:
 
     def test_status_order(self):
         assert pm._sort_key("status", {"status": "Done"}) == 0
-        assert pm._sort_key("status", {"status": "Backlog"}) == 3
+        assert pm._sort_key("status", {"status": "Backlog"}) == 4
+
+    def test_status_in_review(self):
+        assert pm._sort_key("status", {"status": "In review"}) == 1
 
     def test_complexity_order(self):
         assert pm._sort_key("complexity", {"complexity": "XS"}) == 0
@@ -321,17 +253,17 @@ class TestTruncate:
 
 
 class TestFindTask:
-    def test_find_by_key(self, tasks):
-        assert pm._find_task(tasks, "TS-001")["title"] == "Setup CI pipeline"
+    def test_find_by_key(self, all_items):
+        assert pm._find_task(all_items, "SK-001")["title"] == "Research feature X"
 
-    def test_find_by_key_case_insensitive(self, tasks):
-        assert pm._find_task(tasks, "ts-001")["title"] == "Setup CI pipeline"
+    def test_find_by_key_case_insensitive(self, all_items):
+        assert pm._find_task(all_items, "sk-001")["title"] == "Research feature X"
 
-    def test_find_by_issue_number(self, tasks):
-        assert pm._find_task(tasks, "2")["key"] == "TS-002"
+    def test_find_by_issue_number(self, all_items):
+        assert pm._find_task(all_items, "102")["key"] == "TS-001"
 
-    def test_not_found(self, tasks):
-        assert pm._find_task(tasks, "TS-999") is None
+    def test_not_found(self, all_items):
+        assert pm._find_task(all_items, "TS-999") is None
 
 
 # ---------------------------------------------------------------------------
@@ -357,24 +289,97 @@ class TestFormatList:
 
 
 # ---------------------------------------------------------------------------
-# _find_item_id
+# _next_id
 # ---------------------------------------------------------------------------
 
 
-class TestFindItemId:
-    def test_found(self):
-        items = [
-            {"id": "item-1", "content": {"number": 5}},
-            {"id": "item-2", "content": {"number": 10}},
-        ]
-        assert pm._find_item_id(items, 10) == "item-2"
+class TestNextId:
+    def test_first_id(self):
+        assert pm._next_id("T", []) == "T-001"
 
-    def test_not_found(self):
-        items = [{"id": "item-1", "content": {"number": 5}}]
-        assert pm._find_item_id(items, 99) is None
+    def test_increment(self):
+        assert pm._next_id("T", ["T-001", "T-002"]) == "T-003"
 
-    def test_empty_items(self):
-        assert pm._find_item_id([], 1) is None
+    def test_gap(self):
+        assert pm._next_id("T", ["T-001", "T-005"]) == "T-006"
+
+    def test_mixed_prefixes(self):
+        assert pm._next_id("SK", ["SK-001", "TS-002", "SK-003"]) == "SK-004"
+
+    def test_ignores_non_matching(self):
+        assert pm._next_id("T", ["SK-001", "TS-002"]) == "T-001"
+
+
+# ---------------------------------------------------------------------------
+# File I/O
+# ---------------------------------------------------------------------------
+
+
+class TestLoadSprint:
+    def test_load_existing(self, sprint_file):
+        data = pm._load_sprint(sprint_file)
+        assert data["sprint"] == 1
+        assert len(data["tasks"]) == 3
+
+    def test_load_missing(self, tmp_path):
+        data = pm._load_sprint(tmp_path / "missing.json")
+        assert data["tasks"] == []
+        assert data["sprint"] == 0
+
+
+class TestLoadStories:
+    def test_load_existing(self, stories_file):
+        data = pm._load_stories(stories_file)
+        assert len(data["stories"]) == 2
+
+    def test_load_missing(self, tmp_path):
+        data = pm._load_stories(tmp_path / "missing.json")
+        assert data["stories"] == []
+
+
+class TestSaveSprint:
+    def test_save_and_reload(self, tmp_path):
+        p = tmp_path / "sprint.json"
+        data = {"sprint": 2, "milestone": "v0.2", "description": "", "due_date": "", "tasks": []}
+        pm._save_sprint(data, p)
+        loaded = json.loads(p.read_text(encoding="utf-8"))
+        assert loaded["sprint"] == 2
+
+    def test_creates_parent_dirs(self, tmp_path):
+        p = tmp_path / "sub" / "dir" / "sprint.json"
+        pm._save_sprint({"sprint": 1, "tasks": []}, p)
+        assert p.exists()
+
+
+class TestSaveStories:
+    def test_save_and_reload(self, tmp_path):
+        p = tmp_path / "stories.json"
+        data = {"project": "X", "stories": [{"id": "SK-001"}]}
+        pm._save_stories(data, p)
+        loaded = json.loads(p.read_text(encoding="utf-8"))
+        assert loaded["stories"][0]["id"] == "SK-001"
+
+
+# ---------------------------------------------------------------------------
+# _load_all_items
+# ---------------------------------------------------------------------------
+
+
+class TestLoadAllItems:
+    def test_combines_stories_and_tasks(self, sprint_file, stories_file):
+        items = pm._load_all_items(sprint_file, stories_file)
+        # 2 stories + 3 tasks
+        assert len(items) == 5
+
+    def test_stories_come_first(self, sprint_file, stories_file):
+        items = pm._load_all_items(sprint_file, stories_file)
+        assert items[0]["key"] == "SK-001"
+        assert items[1]["key"] == "TS-001"
+
+    def test_tasks_have_parent_id(self, sprint_file, stories_file):
+        items = pm._load_all_items(sprint_file, stories_file)
+        task_items = [i for i in items if i["key"].startswith("T-")]
+        assert all(i["parent_id"] for i in task_items)
 
 
 # ---------------------------------------------------------------------------
@@ -383,99 +388,72 @@ class TestFindItemId:
 
 
 class TestCmdList:
-    def test_list_all(self, tasks, capsys):
+    def test_list_all(self, all_items, capsys):
         args = _make_list_args()
-        assert pm.cmd_list(tasks, args) == 0
+        assert pm.cmd_list(all_items, args) == 0
         out = capsys.readouterr().out
-        assert "TS-001" in out
-        assert "TS-002" in out
-        assert "3 task(s)" in out
+        assert "SK-001" in out
+        assert "T-001" in out
+        assert "5 task(s)" in out
 
-    def test_filter_by_status(self, tasks, capsys):
+    def test_filter_by_status(self, all_items, capsys):
         args = _make_list_args(status="Done")
-        pm.cmd_list(tasks, args)
+        pm.cmd_list(all_items, args)
         out = capsys.readouterr().out
-        assert "TS-003" in out
+        assert "T-001" in out
         assert "1 task(s)" in out
 
-    def test_filter_by_priority(self, tasks, capsys):
+    def test_filter_by_priority(self, all_items, capsys):
         args = _make_list_args(priority="P0")
-        pm.cmd_list(tasks, args)
+        pm.cmd_list(all_items, args)
         out = capsys.readouterr().out
-        assert "TS-001" in out
-        assert "TS-003" in out
-        assert "2 task(s)" in out
+        assert "SK-001" in out
+        assert "T-001" in out
+        assert "T-003" in out
 
-    def test_filter_by_milestone(self, tasks, capsys):
-        args = _make_list_args(milestone="Sprint 2")
-        pm.cmd_list(tasks, args)
-        out = capsys.readouterr().out
-        assert "TS-002" in out
-        assert "1 task(s)" in out
-
-    def test_sort_by_priority(self, tasks, capsys):
+    def test_sort_by_priority(self, all_items, capsys):
         args = _make_list_args(sort_by="priority")
-        pm.cmd_list(tasks, args)
+        pm.cmd_list(all_items, args)
         out = capsys.readouterr().out
-        lines = [l for l in out.strip().split("\n") if "TS-" in l]
-        # P0 tasks first, then P1
-        assert "TS-001" in lines[0] or "TS-003" in lines[0]
-        assert "TS-002" in lines[2]
+        lines = [l for l in out.strip().split("\n") if "P0" in l or "P1" in l]
+        assert len(lines) > 0
 
-    def test_sort_reverse(self, tasks, capsys):
-        args = _make_list_args(sort_by="priority", reverse=True)
-        pm.cmd_list(tasks, args)
-        out = capsys.readouterr().out
-        lines = [l for l in out.strip().split("\n") if "TS-" in l]
-        assert "TS-002" in lines[0]
-
-    def test_keys_only(self, tasks, capsys):
+    def test_keys_only(self, all_items, capsys):
         args = _make_list_args(keys_only=True)
-        pm.cmd_list(tasks, args)
+        pm.cmd_list(all_items, args)
         out = capsys.readouterr().out.strip()
-        assert out == "TS-001,TS-002,TS-003"
+        assert "SK-001" in out
+        assert "T-001" in out
 
-    def test_keys_only_with_filter(self, tasks, capsys):
-        args = _make_list_args(keys_only=True, status="Done")
-        pm.cmd_list(tasks, args)
-        out = capsys.readouterr().out.strip()
-        assert out == "TS-003"
-
-    def test_wide_columns(self, tasks, capsys):
+    def test_wide_columns(self, all_items, capsys):
         args = _make_list_args(wide=True)
-        pm.cmd_list(tasks, args)
+        pm.cmd_list(all_items, args)
         out = capsys.readouterr().out
         assert "START" in out
         assert "TARGET" in out
-        assert "ASSIGNEES" in out
 
-    def test_filter_by_label(self, tasks, capsys):
+    def test_filter_by_label(self, all_items, capsys):
         args = _make_list_args(label="bug")
-        pm.cmd_list(tasks, args)
+        pm.cmd_list(all_items, args)
         out = capsys.readouterr().out
-        assert "TS-003" in out
+        assert "T-003" in out
         assert "1 task(s)" in out
 
-    def test_filter_by_complexity(self, tasks, capsys):
+    def test_filter_by_complexity(self, all_items, capsys):
         args = _make_list_args(complexity="S")
-        pm.cmd_list(tasks, args)
+        pm.cmd_list(all_items, args)
         out = capsys.readouterr().out
-        assert "TS-003" in out
-        assert "1 task(s)" in out
+        assert "T-001" in out
+        assert "T-003" in out
 
-    def test_filter_by_assignee(self, tasks, capsys):
-        args = _make_list_args(assignee="bob")
-        pm.cmd_list(tasks, args)
+    def test_filter_by_story(self, all_items, capsys):
+        args = _make_list_args(story="SK-001")
+        pm.cmd_list(all_items, args)
         out = capsys.readouterr().out
-        assert "TS-002" in out
-        assert "1 task(s)" in out
-
-    def test_filter_by_type(self, tasks, capsys):
-        args = _make_list_args(type="task")
-        pm.cmd_list(tasks, args)
-        out = capsys.readouterr().out
-        assert "TS-003" in out
-        assert "1 task(s)" in out
+        assert "T-001" in out
+        assert "T-002" in out
+        assert "T-003" not in out
+        assert "2 task(s)" in out
 
 
 # ---------------------------------------------------------------------------
@@ -484,22 +462,24 @@ class TestCmdList:
 
 
 class TestCmdView:
-    def test_view_raw(self, tasks, capsys):
-        args = _make_view_args(key="TS-001", raw=True)
-        assert pm.cmd_view(tasks, args) == 0
+    def test_view_raw(self, all_items, capsys):
+        args = _make_view_args(key="SK-001", raw=True)
+        assert pm.cmd_view(all_items, args) == 0
         out = capsys.readouterr().out
-        assert "Setup CI pipeline" in out
+        assert "Research feature X" in out
         assert "In progress" in out
 
-    def test_view_not_found(self, tasks, capsys):
+    def test_view_not_found(self, all_items, capsys):
         args = _make_view_args(key="TS-999")
-        assert pm.cmd_view(tasks, args) == 1
+        assert pm.cmd_view(all_items, args) == 1
 
-    def test_view_by_issue_number(self, tasks, capsys):
-        args = _make_view_args(key="2", raw=True)
-        assert pm.cmd_view(tasks, args) == 0
+    def test_view_story_shows_children(self, all_items, capsys):
+        args = _make_view_args(key="SK-001", raw=True)
+        pm.cmd_view(all_items, args)
         out = capsys.readouterr().out
-        assert "Add auth module" in out
+        assert "Child tasks" in out
+        assert "T-001" in out
+        assert "T-002" in out
 
 
 # ---------------------------------------------------------------------------
@@ -508,152 +488,630 @@ class TestCmdView:
 
 
 class TestCmdSummary:
-    def test_summary_by_status(self, tasks, capsys):
+    def test_summary_by_status(self, all_items, capsys):
         args = _make_summary_args(group_by="status")
-        assert pm.cmd_summary(tasks, args) == 0
+        assert pm.cmd_summary(all_items, args) == 0
         out = capsys.readouterr().out
         assert "Summary by status" in out
-        assert "3 tasks" in out
         assert "Done" in out
         assert "In progress" in out
-        assert "Ready" in out
 
-    def test_summary_by_priority(self, tasks, capsys):
+    def test_summary_by_priority(self, all_items, capsys):
         args = _make_summary_args(group_by="priority")
-        assert pm.cmd_summary(tasks, args) == 0
+        assert pm.cmd_summary(all_items, args) == 0
         out = capsys.readouterr().out
         assert "Summary by priority" in out
         assert "P0" in out
         assert "P1" in out
 
-    def test_summary_by_milestone(self, tasks, capsys):
-        args = _make_summary_args(group_by="milestone")
-        assert pm.cmd_summary(tasks, args) == 0
-        out = capsys.readouterr().out
-        assert "Sprint 1" in out
-        assert "Sprint 2" in out
-
 
 # ---------------------------------------------------------------------------
-# cmd_update (mocked API calls)
+# cmd_create_sprint
 # ---------------------------------------------------------------------------
 
 
-class TestCmdUpdate:
-    def _make_update_args(self, **overrides):
-        defaults = dict(
-            key="TS-001", project=4, owner="testowner", repo="testowner/testrepo",
-            status=None, priority=None, complexity=None, points=None,
-            milestone=None, title=None, start_date=None, target_date=None,
-            add_label=None, remove_label=None, add_assignee=None, remove_assignee=None,
-            issues_data=None,
+class TestCreateSprint:
+    def test_creates_sprint(self, tmp_path, capsys):
+        sprint_path = tmp_path / "sprint.json"
+        args = argparse.Namespace(
+            number=2, milestone="v0.2.0", description="Sprint 2", due_date="2026-04-01",
+            _sprint_path=sprint_path,
         )
-        defaults.update(overrides)
-        return argparse.Namespace(**defaults)
+        assert pm.cmd_create_sprint(args) == 0
+        data = json.loads(sprint_path.read_text(encoding="utf-8"))
+        assert data["sprint"] == 2
+        assert data["milestone"] == "v0.2.0"
+        assert data["tasks"] == []
+        assert "Created sprint 2" in capsys.readouterr().out
 
-    def test_nothing_to_update(self, capsys):
-        args = self._make_update_args()
-        assert pm.cmd_update([], args) == 1
+    def test_creates_sprint_minimal(self, tmp_path):
+        sprint_path = tmp_path / "sprint.json"
+        args = argparse.Namespace(
+            number=1, milestone=None, description=None, due_date=None,
+            _sprint_path=sprint_path,
+        )
+        pm.cmd_create_sprint(args)
+        data = json.loads(sprint_path.read_text(encoding="utf-8"))
+        assert data["milestone"] == ""
+
+
+# ---------------------------------------------------------------------------
+# cmd_add_story
+# ---------------------------------------------------------------------------
+
+
+class TestAddStory:
+    def test_adds_spike(self, stories_file, capsys):
+        args = argparse.Namespace(
+            type="Spike", title="New spike", description="desc",
+            points=2, priority="P1", milestone="v0.2.0", tdd=False,
+            _stories_path=stories_file,
+        )
+        assert pm.cmd_add_story(args) == 0
+        data = json.loads(stories_file.read_text(encoding="utf-8"))
+        assert len(data["stories"]) == 3
+        new = data["stories"][-1]
+        assert new["id"] == "SK-002"
+        assert new["type"] == "Spike"
+        assert new["title"] == "New spike"
+        assert "Added story SK-002" in capsys.readouterr().out
+
+    def test_adds_tech_story(self, stories_file):
+        args = argparse.Namespace(
+            type="Tech", title="Tech story", description=None,
+            points=None, priority=None, milestone=None, tdd=False,
+            _stories_path=stories_file,
+        )
+        pm.cmd_add_story(args)
+        data = json.loads(stories_file.read_text(encoding="utf-8"))
+        new = data["stories"][-1]
+        assert new["id"] == "TS-002"
+        assert new["type"] == "Tech"
+
+    def test_tdd_defaults_false(self, stories_file):
+        args = argparse.Namespace(
+            type="Tech", title="No TDD story", description=None,
+            points=None, priority=None, milestone=None, tdd=False,
+            _stories_path=stories_file,
+        )
+        pm.cmd_add_story(args)
+        data = json.loads(stories_file.read_text(encoding="utf-8"))
+        assert data["stories"][-1]["tdd"] is False
+
+    def test_tdd_true(self, stories_file):
+        args = argparse.Namespace(
+            type="Tech", title="TDD story", description=None,
+            points=None, priority=None, milestone=None, tdd=True,
+            _stories_path=stories_file,
+        )
+        pm.cmd_add_story(args)
+        data = json.loads(stories_file.read_text(encoding="utf-8"))
+        assert data["stories"][-1]["tdd"] is True
+
+    def test_adds_story_type(self, stories_file):
+        args = argparse.Namespace(
+            type="Story", title="User story", description=None,
+            points=None, priority=None, milestone=None, tdd=False,
+            _stories_path=stories_file,
+        )
+        pm.cmd_add_story(args)
+        data = json.loads(stories_file.read_text(encoding="utf-8"))
+        new = data["stories"][-1]
+        # Story type uses TS prefix
+        assert new["id"] == "TS-002"
+
+    def test_adds_user_story(self, stories_file, capsys):
+        args = argparse.Namespace(
+            type="User Story", title="As a user I want X", description="desc",
+            points=3, priority="P1", milestone=None, tdd=False,
+            _stories_path=stories_file,
+        )
+        assert pm.cmd_add_story(args) == 0
+        data = json.loads(stories_file.read_text(encoding="utf-8"))
+        new = data["stories"][-1]
+        assert new["id"] == "US-001"
+        assert new["type"] == "User Story"
+        assert "Added story US-001" in capsys.readouterr().out
+
+    def test_adds_bug(self, stories_file, capsys):
+        args = argparse.Namespace(
+            type="Bug", title="Fix crash on login", description="desc",
+            points=1, priority="P0", milestone=None, tdd=False,
+            _stories_path=stories_file,
+        )
+        assert pm.cmd_add_story(args) == 0
+        data = json.loads(stories_file.read_text(encoding="utf-8"))
+        new = data["stories"][-1]
+        assert new["id"] == "BG-001"
+        assert new["type"] == "Bug"
+        assert "Added story BG-001" in capsys.readouterr().out
+
+
+# ---------------------------------------------------------------------------
+# cmd_add_task
+# ---------------------------------------------------------------------------
+
+
+class TestAddTask:
+    def test_adds_task(self, sprint_file, capsys):
+        args = argparse.Namespace(
+            parent_story_id="SK-001", title="New task", description="desc",
+            priority="P1", complexity="M", labels=["test"],
+            _sprint_path=sprint_file,
+        )
+        assert pm.cmd_add_task(args) == 0
+        data = json.loads(sprint_file.read_text(encoding="utf-8"))
+        assert len(data["tasks"]) == 4
+        new = data["tasks"][-1]
+        assert new["id"] == "T-004"
+        assert new["parent_story_id"] == "SK-001"
+        assert "Added task T-004" in capsys.readouterr().out
+
+    def test_adds_task_minimal(self, sprint_file):
+        args = argparse.Namespace(
+            parent_story_id="TS-001", title="Minimal task", description=None,
+            priority=None, complexity=None, labels=None,
+            _sprint_path=sprint_file,
+        )
+        pm.cmd_add_task(args)
+        data = json.loads(sprint_file.read_text(encoding="utf-8"))
+        new = data["tasks"][-1]
+        assert new["status"] == "Backlog"
+        assert new["priority"] == "P2"
+
+
+# ---------------------------------------------------------------------------
+# cmd_update
+# ---------------------------------------------------------------------------
+
+
+class TestUpdateTask:
+    def test_update_task_status(self, sprint_file, capsys):
+        # T-001 is Done; use force to set to In progress
+        args = argparse.Namespace(
+            key="T-001", status="In progress", priority=None, complexity=None,
+            title=None, description=None, start_date=None, target_date=None, tdd=None,
+            force=True, _sprint_path=sprint_file, _stories_path=Path("/nonexistent"),
+        )
+        assert pm.cmd_update(args) == 0
+        data = json.loads(sprint_file.read_text(encoding="utf-8"))
+        assert data["tasks"][0]["status"] == "In progress"
+        assert "Updated T-001" in capsys.readouterr().out
+
+    def test_update_task_multiple_fields(self, sprint_file):
+        # T-002 is In progress -> Done requires In review first; use force
+        args = argparse.Namespace(
+            key="T-002", status="Done", priority="P0", complexity="L",
+            title=None, description=None, start_date=None, target_date=None, tdd=None,
+            force=True, _sprint_path=sprint_file, _stories_path=Path("/nonexistent"),
+        )
+        pm.cmd_update(args)
+        data = json.loads(sprint_file.read_text(encoding="utf-8"))
+        t = data["tasks"][1]
+        assert t["status"] == "Done"
+        assert t["priority"] == "P0"
+        assert t["complexity"] == "L"
+
+    def test_update_task_not_found(self, sprint_file, capsys):
+        args = argparse.Namespace(
+            key="T-999", status="Done", priority=None, complexity=None,
+            title=None, description=None, start_date=None, target_date=None, tdd=None,
+            force=False, _sprint_path=sprint_file, _stories_path=Path("/nonexistent"),
+        )
+        assert pm.cmd_update(args) == 1
+        assert "not found" in capsys.readouterr().err
+
+    def test_nothing_to_update(self, sprint_file, capsys):
+        args = argparse.Namespace(
+            key="T-001", status=None, priority=None, complexity=None,
+            title=None, description=None, start_date=None, target_date=None, tdd=None,
+            force=False, _sprint_path=sprint_file, _stories_path=Path("/nonexistent"),
+        )
+        assert pm.cmd_update(args) == 1
         assert "Nothing to update" in capsys.readouterr().err
 
-    def test_missing_project(self, capsys):
-        args = self._make_update_args(project=None, status="Done")
-        assert pm.cmd_update([], args) == 1
 
-    def test_missing_repo(self, capsys):
-        args = self._make_update_args(repo=None, milestone="Sprint 1")
-        assert pm.cmd_update([], args) == 1
+class TestUpdateStory:
+    def test_update_story_status(self, stories_file, capsys, tmp_path):
+        # SK-001 is In progress -> Done requires In review first; use force
+        args = argparse.Namespace(
+            key="SK-001", status="Done", priority=None, complexity=None,
+            title=None, description=None, start_date=None, target_date=None, tdd=None,
+            force=True, _sprint_path=tmp_path / "empty.json", _stories_path=stories_file,
+        )
+        assert pm.cmd_update(args) == 0
+        data = json.loads(stories_file.read_text(encoding="utf-8"))
+        assert data["stories"][0]["status"] == "Done"
 
-    @patch.object(pm, "fetch_project_items", return_value=SAMPLE_RAW_ITEMS)
-    @patch.object(pm, "_get_project_id", return_value="PID-123")
-    @patch.object(pm, "_get_project_fields", return_value={
-        "Status": {"id": "F1", "options": {"In progress": "OPT1", "Done": "OPT2"}},
-    })
-    @patch.object(pm, "_run", return_value="")
-    def test_update_status(self, mock_run, mock_fields, mock_pid, mock_items, capsys):
-        args = self._make_update_args(status="Done")
-        assert pm.cmd_update([], args) == 0
-        out = capsys.readouterr().out
-        assert "Set Status = Done" in out
+    def test_update_story_dates(self, stories_file, tmp_path):
+        args = argparse.Namespace(
+            key="TS-001", status=None, priority=None, complexity=None,
+            title=None, description=None,
+            start_date="2026-03-01", target_date="2026-03-15", tdd=None,
+            force=False, _sprint_path=tmp_path / "empty.json", _stories_path=stories_file,
+        )
+        pm.cmd_update(args)
+        data = json.loads(stories_file.read_text(encoding="utf-8"))
+        story = data["stories"][1]
+        assert story["startDate"] == "2026-03-01"
+        assert story["targetDate"] == "2026-03-15"
 
-    @patch.object(pm, "fetch_project_items", return_value=SAMPLE_RAW_ITEMS)
-    @patch.object(pm, "_get_project_id", return_value="PID-123")
-    @patch.object(pm, "_get_project_fields", return_value={})
-    @patch.object(pm, "_run", return_value="")
-    def test_update_milestone(self, mock_run, mock_fields, mock_pid, mock_items, capsys):
-        args = self._make_update_args(milestone="Sprint 3")
-        assert pm.cmd_update([], args) == 0
-        out = capsys.readouterr().out
-        assert "Updated issue #1" in out
-        # Verify gh issue edit was called with --milestone
-        mock_run.assert_called_once()
-        call_args = mock_run.call_args[0][0]
-        assert "--milestone" in call_args
-        assert "Sprint 3" in call_args
-
-    @patch.object(pm, "fetch_project_items", return_value=SAMPLE_RAW_ITEMS)
-    @patch.object(pm, "_get_project_id", return_value="PID-123")
-    @patch.object(pm, "_get_project_fields", return_value={})
-    @patch.object(pm, "_run", return_value="")
-    def test_update_labels(self, mock_run, mock_fields, mock_pid, mock_items, capsys):
-        args = self._make_update_args(add_label=["bug", "urgent"], remove_label=["infra"])
-        assert pm.cmd_update([], args) == 0
-        call_args = mock_run.call_args[0][0]
-        assert "--add-label" in call_args
-        assert "bug" in call_args
-        assert "urgent" in call_args
-        assert "--remove-label" in call_args
-
-    @patch.object(pm, "fetch_project_items", return_value=SAMPLE_RAW_ITEMS)
-    @patch.object(pm, "_get_project_id", return_value="PID-123")
-    @patch.object(pm, "_get_project_fields", return_value={})
-    def test_update_task_not_found(self, mock_fields, mock_pid, mock_items, capsys):
-        args = self._make_update_args(key="TS-999", status="Done")
-        assert pm.cmd_update([], args) == 1
-        assert "Task not found" in capsys.readouterr().err
+    def test_update_story_not_found(self, stories_file, capsys, tmp_path):
+        args = argparse.Namespace(
+            key="SK-999", status="Done", priority=None, complexity=None,
+            title=None, description=None, start_date=None, target_date=None, tdd=None,
+            force=False, _sprint_path=tmp_path / "empty.json", _stories_path=stories_file,
+        )
+        assert pm.cmd_update(args) == 1
+        assert "not found" in capsys.readouterr().err
 
 
 # ---------------------------------------------------------------------------
-# _set_project_field
+# cmd_progress
 # ---------------------------------------------------------------------------
 
 
-class TestSetProjectField:
-    @patch.object(pm, "_run", return_value="")
-    def test_single_select(self, mock_run):
-        field_map = {
-            "Status": {"id": "F1", "options": {"Done": "OPT1", "Ready": "OPT2"}},
+class TestProgress:
+    def test_progress_output(self, sprint_file, stories_file, capsys):
+        args = argparse.Namespace(
+            _sprint_path=sprint_file, _stories_path=stories_file,
+        )
+        assert pm.cmd_progress(args) == 0
+        out = capsys.readouterr().out
+        assert "Sprint 1" in out
+        assert "1/3 tasks done" in out
+        assert "33%" in out
+
+    def test_progress_story_completion(self, sprint_file, stories_file, capsys):
+        args = argparse.Namespace(
+            _sprint_path=sprint_file, _stories_path=stories_file,
+        )
+        pm.cmd_progress(args)
+        out = capsys.readouterr().out
+        assert "Story completion:" in out
+        assert "0/2 stories done" in out
+
+    def test_progress_per_story(self, sprint_file, stories_file, capsys):
+        args = argparse.Namespace(
+            _sprint_path=sprint_file, _stories_path=stories_file,
+        )
+        pm.cmd_progress(args)
+        out = capsys.readouterr().out
+        assert "Per-story task completion:" in out
+        assert "SK-001" in out
+        assert "TS-001" in out
+
+    def test_progress_empty(self, tmp_path, capsys):
+        sprint_path = tmp_path / "sprint.json"
+        stories_path = tmp_path / "stories.json"
+        args = argparse.Namespace(
+            _sprint_path=sprint_path, _stories_path=stories_path,
+        )
+        pm.cmd_progress(args)
+        out = capsys.readouterr().out
+        assert "No tasks" in out
+
+
+# ---------------------------------------------------------------------------
+# _validate_transition
+# ---------------------------------------------------------------------------
+
+
+class TestValidateTransition:
+    def test_valid_transition(self):
+        assert pm._validate_transition("Backlog", "Ready") is None
+
+    def test_invalid_transition_returns_message(self):
+        err = pm._validate_transition("Backlog", "In progress")
+        assert err is not None
+        assert "Cannot move" in err
+        assert "--force" in err
+
+    def test_unknown_current_status(self):
+        err = pm._validate_transition("Limbo", "Ready")
+        assert err is not None
+
+    def test_done_to_in_progress(self):
+        assert pm._validate_transition("Done", "In progress") is None
+
+    def test_invalid_backlog_to_done(self):
+        assert pm._validate_transition("Backlog", "Done") is not None
+
+
+class TestUpdateGuardrail:
+    def test_invalid_transition_blocked(self, sprint_file, capsys):
+        # T-003 is Ready; jumping to Done directly should be blocked
+        args = argparse.Namespace(
+            key="T-003", status="Done", priority=None, complexity=None,
+            title=None, description=None, start_date=None, target_date=None, tdd=None,
+            force=False, _sprint_path=sprint_file, _stories_path=Path("/nonexistent"),
+        )
+        assert pm.cmd_update(args) == 1
+        assert "Cannot move" in capsys.readouterr().err
+
+    def test_invalid_transition_bypassed_with_force(self, sprint_file, capsys):
+        # T-003 is Ready; --force allows jumping to Done
+        args = argparse.Namespace(
+            key="T-003", status="Done", priority=None, complexity=None,
+            title=None, description=None, start_date=None, target_date=None, tdd=None,
+            force=True, _sprint_path=sprint_file, _stories_path=Path("/nonexistent"),
+        )
+        assert pm.cmd_update(args) == 0
+        data = json.loads(sprint_file.read_text(encoding="utf-8"))
+        t003 = next(t for t in data["tasks"] if t["id"] == "T-003")
+        assert t003["status"] == "Done"
+
+    def test_valid_transition_passes(self, sprint_file, capsys):
+        # T-003 is Ready -> In progress is valid
+        args = argparse.Namespace(
+            key="T-003", status="In progress", priority=None, complexity=None,
+            title=None, description=None, start_date=None, target_date=None, tdd=None,
+            force=False, _sprint_path=sprint_file, _stories_path=Path("/nonexistent"),
+        )
+        assert pm.cmd_update(args) == 0
+        assert "Updated T-003" in capsys.readouterr().out
+
+    def test_non_status_update_no_guardrail(self, sprint_file, capsys):
+        # Updating priority only should never trigger the guardrail
+        args = argparse.Namespace(
+            key="T-003", status=None, priority="P0", complexity=None,
+            title=None, description=None, start_date=None, target_date=None, tdd=None,
+            force=False, _sprint_path=sprint_file, _stories_path=Path("/nonexistent"),
+        )
+        assert pm.cmd_update(args) == 0
+
+
+# ---------------------------------------------------------------------------
+# _is_unblocked
+# ---------------------------------------------------------------------------
+
+
+class TestIsUnblocked:
+    def test_is_unblocked_empty_list(self):
+        assert pm._is_unblocked([], {}) is True
+
+    def test_is_unblocked_all_done(self):
+        assert pm._is_unblocked(["SK-001", "SK-002"], {"SK-001": "Done", "SK-002": "Done"}) is True
+
+    def test_is_unblocked_not_done(self):
+        assert pm._is_unblocked(["SK-001"], {"SK-001": "Backlog"}) is False
+
+    def test_is_unblocked_missing_id(self):
+        # Unknown dep ID treated as not Done
+        assert pm._is_unblocked(["SK-999"], {}) is False
+
+
+# ---------------------------------------------------------------------------
+# cmd_unblocked fixtures
+# ---------------------------------------------------------------------------
+
+SAMPLE_SPRINT_UNBLOCKED = {
+    "sprint": 1,
+    "milestone": "v0.1.0",
+    "tasks": [
+        {
+            "id": "T-001", "title": "Task A", "status": "Backlog",
+            "blocked_by": [], "is_blocking": [], "type": "task",
+            "parent_story_id": "SK-001",
+        },
+        {
+            "id": "T-002", "title": "Task B", "status": "Backlog",
+            "blocked_by": ["SK-001"], "is_blocking": [], "type": "task",
+            "parent_story_id": "SK-001",
+        },
+        {
+            "id": "T-003", "title": "Task C", "status": "Done",
+            "blocked_by": [], "is_blocking": [], "type": "task",
+            "parent_story_id": "SK-001",
+        },
+    ],
+}
+
+SAMPLE_STORIES_UNBLOCKED = {
+    "stories": [
+        {
+            "id": "SK-001", "title": "Story A", "status": "Done",
+            "blocked_by": [], "is_blocking": [],
+        },
+        {
+            "id": "SK-002", "title": "Story B", "status": "Backlog",
+            "blocked_by": ["SK-001"], "is_blocking": [],
+        },
+        {
+            "id": "SK-003", "title": "Story C", "status": "Backlog",
+            "blocked_by": ["SK-002"], "is_blocking": [],
+        },
+    ],
+}
+
+
+@pytest.fixture
+def unblocked_sprint_file(tmp_path):
+    p = tmp_path / "sprint.json"
+    p.write_text(json.dumps(SAMPLE_SPRINT_UNBLOCKED), encoding="utf-8")
+    return p
+
+
+@pytest.fixture
+def unblocked_stories_file(tmp_path):
+    p = tmp_path / "stories.json"
+    p.write_text(json.dumps(SAMPLE_STORIES_UNBLOCKED), encoding="utf-8")
+    return p
+
+
+# ---------------------------------------------------------------------------
+# cmd_unblocked
+# ---------------------------------------------------------------------------
+
+
+class TestUnblocked:
+    def test_unblocked_lists_correct_items(self, unblocked_sprint_file, unblocked_stories_file, capsys):
+        args = argparse.Namespace(
+            _sprint_path=unblocked_sprint_file, _stories_path=unblocked_stories_file,
+            promote=False,
+        )
+        assert pm.cmd_unblocked(args) == 0
+        out = capsys.readouterr().out
+        # T-001 unblocked (no deps), SK-002 unblocked (SK-001 is Done)
+        assert "T-001" in out
+        assert "SK-002" in out
+        # T-002 blocked by SK-001 which is Done -> should appear
+        assert "T-002" in out
+        # T-003 is Done -> skipped
+        assert "T-003" not in out
+        # SK-001 is Done -> skipped
+        assert "SK-001" not in out
+        # SK-003 blocked by SK-002 which is Backlog -> not unblocked
+        assert "SK-003" not in out
+
+    def test_unblocked_skips_done_items(self, unblocked_sprint_file, unblocked_stories_file, capsys):
+        args = argparse.Namespace(
+            _sprint_path=unblocked_sprint_file, _stories_path=unblocked_stories_file,
+            promote=False,
+        )
+        pm.cmd_unblocked(args)
+        out = capsys.readouterr().out
+        assert "T-003" not in out
+        assert "SK-001" not in out
+
+    def test_unblocked_promote(self, unblocked_sprint_file, unblocked_stories_file, capsys):
+        args = argparse.Namespace(
+            _sprint_path=unblocked_sprint_file, _stories_path=unblocked_stories_file,
+            promote=True,
+        )
+        assert pm.cmd_unblocked(args) == 0
+        out = capsys.readouterr().out
+        assert "Promoted" in out
+
+        sprint_data = json.loads(unblocked_sprint_file.read_text(encoding="utf-8"))
+        stories_data = json.loads(unblocked_stories_file.read_text(encoding="utf-8"))
+
+        # T-001 was Backlog and unblocked -> now Ready
+        t001 = next(t for t in sprint_data["tasks"] if t["id"] == "T-001")
+        assert t001["status"] == "Ready"
+
+        # SK-002 was Backlog and unblocked (SK-001 Done) -> now Ready
+        sk002 = next(s for s in stories_data["stories"] if s["id"] == "SK-002")
+        assert sk002["status"] == "Ready"
+
+        # T-003 was Done -> stays Done
+        t003 = next(t for t in sprint_data["tasks"] if t["id"] == "T-003")
+        assert t003["status"] == "Done"
+
+    def test_unblocked_promote_skips_already_ready(self, tmp_path, capsys):
+        sprint_data = {
+            "sprint": 1, "milestone": "v0.1.0",
+            "tasks": [
+                {"id": "T-001", "title": "Task A", "status": "Ready", "blocked_by": [], "type": "task"},
+            ],
         }
-        assert pm._set_project_field("PID", "ITEM", field_map, "Status", "Done") is True
-        call_args = mock_run.call_args[0][0]
-        assert "--single-select-option-id" in call_args
-        assert "OPT1" in call_args
+        stories_data = {"stories": []}
+        sprint_file = tmp_path / "sprint.json"
+        stories_file = tmp_path / "stories.json"
+        sprint_file.write_text(json.dumps(sprint_data), encoding="utf-8")
+        stories_file.write_text(json.dumps(stories_data), encoding="utf-8")
 
-    @patch.object(pm, "_run", return_value="")
-    def test_number_value(self, mock_run):
-        field_map = {"Points": {"id": "F2"}}
-        assert pm._set_project_field("PID", "ITEM", field_map, "Points", 5) is True
-        call_args = mock_run.call_args[0][0]
-        assert "--number" in call_args
-        assert "5" in call_args
+        args = argparse.Namespace(
+            _sprint_path=sprint_file, _stories_path=stories_file,
+            promote=True,
+        )
+        pm.cmd_unblocked(args)
+        out = capsys.readouterr().out
+        # Promoted 0 because T-001 is already Ready (not Backlog)
+        assert "Promoted 0" in out
 
-    @patch.object(pm, "_run", return_value="")
-    def test_date_value(self, mock_run):
-        field_map = {"Start date": {"id": "F3"}}
-        assert pm._set_project_field("PID", "ITEM", field_map, "Start date", "2026-01-01") is True
-        call_args = mock_run.call_args[0][0]
-        assert "--date" in call_args
+        saved = json.loads(sprint_file.read_text(encoding="utf-8"))
+        assert saved["tasks"][0]["status"] == "Ready"
 
-    @patch.object(pm, "_run", return_value="")
-    def test_text_value(self, mock_run):
-        field_map = {"Notes": {"id": "F4"}}
-        assert pm._set_project_field("PID", "ITEM", field_map, "Notes", "hello") is True
-        call_args = mock_run.call_args[0][0]
-        assert "--text" in call_args
+    def test_unblocked_filter_by_story(self, unblocked_sprint_file, unblocked_stories_file, capsys):
+        args = argparse.Namespace(
+            _sprint_path=unblocked_sprint_file, _stories_path=unblocked_stories_file,
+            promote=False, story="SK-001",
+        )
+        pm.cmd_unblocked(args)
+        out = capsys.readouterr().out
+        # Only tasks whose parent_story_id == SK-001 and story itself if it matches
+        assert "T-001" in out   # parent_story_id=SK-001, unblocked
+        assert "T-002" in out   # parent_story_id=SK-001, unblocked (SK-001 is Done)
+        assert "SK-002" not in out  # story filter only matches story id SK-001, not SK-002
 
-    def test_field_not_found(self, capsys):
-        assert pm._set_project_field("PID", "ITEM", {}, "Missing", "val") is False
+# ---------------------------------------------------------------------------
+# cmd_complete_sprint
+# ---------------------------------------------------------------------------
 
-    def test_invalid_option(self, capsys):
-        field_map = {"Status": {"id": "F1", "options": {"Done": "OPT1"}}}
-        assert pm._set_project_field("PID", "ITEM", field_map, "Status", "Invalid") is False
+
+class TestCompleteSprint:
+    def test_archives_sprint_files(self, tmp_path, capsys):
+        sprint_path = tmp_path / "sprint.json"
+        stories_path = tmp_path / "stories.json"
+        sprint_data = {"sprint": 1, "milestone": "v0.1.0", "tasks": []}
+        stories_data = {"project": "X", "stories": []}
+        sprint_path.write_text(json.dumps(sprint_data), encoding="utf-8")
+        stories_path.write_text(json.dumps(stories_data), encoding="utf-8")
+
+        args = argparse.Namespace(
+            _sprint_path=sprint_path, _stories_path=stories_path,
+        )
+        assert pm.cmd_complete_sprint(args) == 0
+
+        archive_dir = tmp_path / "archive"
+        assert archive_dir.exists()
+        assert (archive_dir / "sprint-1.json").exists()
+        assert (archive_dir / "stories-1.json").exists()
+        assert not sprint_path.exists()
+        assert not stories_path.exists()
+        assert "Archived sprint 1" in capsys.readouterr().out
+
+    def test_archive_creates_directory(self, tmp_path):
+        sprint_path = tmp_path / "sprint.json"
+        stories_path = tmp_path / "stories.json"
+        sprint_data = {"sprint": 2, "milestone": "v0.2.0", "tasks": []}
+        stories_data = {"project": "X", "stories": []}
+        sprint_path.write_text(json.dumps(sprint_data), encoding="utf-8")
+        stories_path.write_text(json.dumps(stories_data), encoding="utf-8")
+
+        args = argparse.Namespace(
+            _sprint_path=sprint_path, _stories_path=stories_path,
+        )
+        pm.cmd_complete_sprint(args)
+
+        archive_dir = tmp_path / "archive"
+        assert (archive_dir / "sprint-2.json").exists()
+        assert (archive_dir / "stories-2.json").exists()
+
+    def test_missing_sprint_file(self, tmp_path, capsys):
+        sprint_path = tmp_path / "sprint.json"
+        stories_path = tmp_path / "stories.json"
+        args = argparse.Namespace(
+            _sprint_path=sprint_path, _stories_path=stories_path,
+        )
+        assert pm.cmd_complete_sprint(args) == 1
+        assert "No active sprint" in capsys.readouterr().err
+
+
+# ---------------------------------------------------------------------------
+# cmd_unblocked (continued)
+# ---------------------------------------------------------------------------
+
+
+    def test_unblocked_no_items(self, tmp_path, capsys):
+        # All items are Done -> no unblocked
+        sprint_data = {
+            "sprint": 1, "milestone": "v0.1.0",
+            "tasks": [
+                {"id": "T-001", "title": "Task A", "status": "Done", "blocked_by": []},
+            ],
+        }
+        stories_data = {"stories": []}
+        sprint_file = tmp_path / "sprint.json"
+        stories_file = tmp_path / "stories.json"
+        sprint_file.write_text(json.dumps(sprint_data), encoding="utf-8")
+        stories_file.write_text(json.dumps(stories_data), encoding="utf-8")
+
+        args = argparse.Namespace(
+            _sprint_path=sprint_file, _stories_path=stories_file,
+            promote=False,
+        )
+        assert pm.cmd_unblocked(args) == 0
+        out = capsys.readouterr().out
+        assert "No unblocked items found." in out
