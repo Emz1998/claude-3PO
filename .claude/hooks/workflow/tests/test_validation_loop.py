@@ -321,10 +321,10 @@ class TestValidationLoop:
         )
         # Should allow stop (exit 0) but with escalation message
         assert result.returncode == 0, f"Expected exit 0 (escalation), got {result.returncode}"
-        assert "escalat" in result.stdout.lower()
+        assert "iteration exhausted" in result.stdout.lower()
 
-    def test_resets_validation_state_on_pass(self):
-        """Should reset validation state in state.json when review passes."""
+    def test_preserves_validation_state_on_pass(self):
+        """Validation state is NOT reset on pass — scores and flags remain."""
         write_state({
             "recent_phase": "explore",
             "validation": {
@@ -340,10 +340,11 @@ class TestValidationLoop:
             input=stdin_json, capture_output=True, text=True, cwd=str(PROJECT_ROOT),
         )
         state = read_state()
-        # Validation state should be reset
+        # Validation state is preserved (no reset on pass)
         val = state.get("validation", {})
-        assert val.get("decision_invoked") is False or val.get("decision_invoked") is None
-        assert val.get("iteration_count", 0) == 0
+        assert val.get("decision_invoked") is True
+        assert val.get("confidence_score") == 90
+        assert val.get("quality_score") == 90
         # Other state keys preserved
         assert state["recent_phase"] == "explore"
 

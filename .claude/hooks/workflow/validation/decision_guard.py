@@ -6,17 +6,23 @@ Reads state.json and checks validation.decision_invoked == true.
 
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 from workflow.state_store import StateStore
 from workflow.hook import Hook
 from workflow.validation.validation_log import log
 from workflow.config import get as cfg
+from workflow.workflow_gate import check_workflow_gate
 
 STATE_PATH = Path(cfg("paths.workflow_state"))
 
 
 def main() -> None:
+    is_workflow_active = check_workflow_gate()
+    if not is_workflow_active:
+        return
+
     store = StateStore(STATE_PATH)
     state = store.load()
     validation = state.get("validation", {})
@@ -27,9 +33,10 @@ def main() -> None:
         log("decision_guard", "BLOCK", msg)
         Hook.block(msg)
 
-    # log("decision_guard", "ALLOW", "decision_invoked=true")
+    log("decision_guard", "ALLOW", "decision_invoked=true")
     sys.exit(0)
 
 
 if __name__ == "__main__":
+
     main()

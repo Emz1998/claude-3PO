@@ -6,6 +6,7 @@ Reads config.yaml for thresholds and state.json for scores.
 
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 import json
@@ -13,14 +14,19 @@ import json
 from workflow.state_store import StateStore
 from workflow.hook import Hook
 from workflow.validation.validation_log import log
-from workflow.config import get as cfg
+from workflow.config import get as cfg, get_reviewers
+from workflow.workflow_gate import check_workflow_gate
 
 STATE_PATH = Path(cfg("paths.workflow_state"))
 
-REVIEWER_AGENTS = set(cfg("agents.reviewers"))
+REVIEWER_AGENTS = set(get_reviewers())
 
 
 def main() -> None:
+    is_workflow_active = check_workflow_gate()
+    if not is_workflow_active:
+        return
+
     hook_input = json.loads(sys.stdin.read())
     agent_type = hook_input.get("agent_type", "")
 
@@ -38,25 +44,30 @@ def main() -> None:
     threshold = cfg("validation.confidence_score")
 
     if confidence_score >= threshold:
-        # Pass — reset validation state
-        def reset_validation(s: dict) -> None:
-            s["validation"] = {
-                "decision_invoked": False,
-                "confidence_score": 0,
-                "quality_score": 0,
-                "iteration_count": 0,
-            }
-
-        store.update(reset_validation)
-        log("validation_loop", "ALLOW", f"agent='{agent_type}' confidence={confidence_score} >= threshold={threshold}, state reset")
-        sys.exit(0)
+        # Pass — reset iteration state but keep scores so repeat hook calls still pass
+        log(
+            "validation_loop",
+            "ALLOW",
+            f"agent='{agent_type}' confidence={confidence_score} >= threshold={threshold}, state reset",
+        )
+        Hook.advanced_output(
+            {"continue": False, "stopReason": f"Allowed", "systemMessage": f"Allowed"}
+        )
+        return
 
     # Score below threshold
     if iteration_count >= max_iterations:
         # Escalate — allow stop but warn
         msg = f"ESCALATION: Confidence score {confidence_score} still below threshold {threshold} after {max_iterations} iterations. Escalating to user."
         log("validation_loop", "ESCALATE", f"agent='{agent_type}' {msg}")
-        Hook.success_response(msg)
+        validation = store.get("validation")
+        validation["escalate_to_user"] = True
+        validation["escalated_by"] = agent_type
+        store.set("validation", validation)
+        Hook.advanced_output(
+            {"continue": False, "stopReason": f"Iteration Exhausted by {agent_type}"}
+        )
+        return
 
     # Block — iterate
     iteration_count += 1

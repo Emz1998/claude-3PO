@@ -1,4 +1,11 @@
-- If you explore the @.claude/hooks/workflow directory, you will see that configuration are mostly hardcoded. I want you to seperate the configuration from the code into a seperate yaml file in order to test it better.
+Create a pr-manager script that will manage the pull requests for the project.
 
-- Restructure the directory to be more organized and explore refactoring opportunities. 
-- Explore and make a plan first 
+The script will be used to:
+
+- Create a pull request
+- Review the pull request
+- Merge the pull request
+- Close the pull request
+- See the information of the pull request
+
+Write the script in @github_project directory.

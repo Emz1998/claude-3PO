@@ -121,7 +121,7 @@ class TestPreCodingPhaseGuard:
 
         from workflow.guards.pre_coding_phase import PreCodingPhaseGuard
 
-        data = make_pre_tool_input("Skill", {"skill": "Explore", "args": ""}, permission_mode="plan")
+        data = make_pre_tool_input("Agent", {"description": "explore", "prompt": "explore", "subagent_type": "Explore"}, permission_mode="plan")
         hook_input = PreToolUseInput.model_validate(data)
 
         with patch("workflow.guards.pre_coding_phase.validate_order", return_value=(True, "")):
@@ -213,17 +213,15 @@ class TestStopGuard:
         guard = StopGuard(hook_input)
         guard.run()  # Should not block
 
-    @patch("workflow.guards.stop_guard.subprocess")
     @patch("workflow.guards.stop_guard.cfg", return_value=".claude/hooks/workflow/state.json")
     @patch("workflow.guards.stop_guard.check_workflow_gate", return_value=True)
-    def test_story_done_allows(self, mock_gate, mock_cfg, mock_subprocess):
-        """Story marked Done allows stop."""
-        mock_result = MagicMock()
-        mock_result.stdout = "STORY-1,STORY-2"
-        mock_subprocess.run.return_value = mock_result
-
+    def test_story_done_and_pr_created_allows(self, mock_gate, mock_cfg):
+        """Story Done + PR created allows stop."""
         mock_store = MagicMock()
-        mock_store.get.return_value = {"test-session": "STORY-1"}
+        mock_store.get.side_effect = lambda k, d=None: {
+            "story": {"id": "STORY-1", "status": "Done"},
+            "pr_created": True,
+        }.get(k, d)
 
         with patch("workflow.guards.stop_guard.StateStore", return_value=mock_store):
             from workflow.guards.stop_guard import StopGuard
@@ -233,17 +231,35 @@ class TestStopGuard:
             guard = StopGuard(hook_input)
             guard.run()  # Should not block
 
-    @patch("workflow.guards.stop_guard.subprocess")
     @patch("workflow.guards.stop_guard.cfg", return_value=".claude/hooks/workflow/state.json")
     @patch("workflow.guards.stop_guard.check_workflow_gate", return_value=True)
-    def test_story_not_done_blocks(self, mock_gate, mock_cfg, mock_subprocess):
+    def test_story_not_done_blocks(self, mock_gate, mock_cfg):
         """Story not Done blocks stop."""
-        mock_result = MagicMock()
-        mock_result.stdout = "OTHER-STORY"
-        mock_subprocess.run.return_value = mock_result
-
         mock_store = MagicMock()
-        mock_store.get.return_value = {"test-session": "STORY-1"}
+        mock_store.get.side_effect = lambda k, d=None: {
+            "story": {"id": "STORY-1", "status": "In Progress"},
+            "pr_created": False,
+        }.get(k, d)
+
+        with patch("workflow.guards.stop_guard.StateStore", return_value=mock_store):
+            from workflow.guards.stop_guard import StopGuard
+
+            data = make_stop_input(session_id="test-session")
+            hook_input = StopInput.model_validate(data)
+            guard = StopGuard(hook_input)
+            with pytest.raises(SystemExit) as exc:
+                guard.run()
+            assert exc.value.code == 2
+
+    @patch("workflow.guards.stop_guard.cfg", return_value=".claude/hooks/workflow/state.json")
+    @patch("workflow.guards.stop_guard.check_workflow_gate", return_value=True)
+    def test_story_done_but_no_pr_blocks(self, mock_gate, mock_cfg):
+        """Story Done but no PR blocks stop."""
+        mock_store = MagicMock()
+        mock_store.get.side_effect = lambda k, d=None: {
+            "story": {"id": "STORY-1", "status": "Done"},
+            "pr_created": False,
+        }.get(k, d)
 
         with patch("workflow.guards.stop_guard.StateStore", return_value=mock_store):
             from workflow.guards.stop_guard import StopGuard

@@ -28,7 +28,7 @@ class CodingPhaseGuard:
         return self.CODE_AGENTS
 
     def validate_transition(self) -> tuple[bool, str]:
-        recent_phase = self._state.get("recent_phase", "Explore")
+        recent_phase = self._state.get("recent_agent", "Explore")
         hook_input = cast(PreToolUseInput, self._hook_input)
         return validate_order(
             recent_phase,
@@ -40,6 +40,7 @@ class CodingPhaseGuard:
         is_workflow_active = check_workflow_gate()
         if not is_workflow_active:
             return
+
         is_valid, reason = self.validate_transition()
         if not is_valid:
             Hook.block(reason)

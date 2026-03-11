@@ -2,6 +2,7 @@
 
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 import json
@@ -33,7 +34,7 @@ class Reminders:
         return self._file_manager.load(reminder_name) or ""
 
     def send_reminder(self, reminder: str) -> None:
-        Hook.success_response(reminder)
+        Hook.advanced_output({"systemMessage": reminder})
 
     def run(self) -> None:
         hook_event_name = self._hook_input.hook_event_name

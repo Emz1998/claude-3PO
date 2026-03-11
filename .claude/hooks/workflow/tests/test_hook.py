@@ -58,7 +58,7 @@ class TestDebug:
         with pytest.raises(SystemExit) as exc:
             Hook.debug("debug info")
         assert exc.value.code == 1
-        assert capsys.readouterr().out.strip() == "debug info"
+        assert capsys.readouterr().err.strip() == "debug info"
 
 
 class TestAdvancedOutput:

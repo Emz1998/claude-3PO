@@ -6,9 +6,9 @@
   "hook_event_name": "PostToolUse",
   "tool_name": "Agent",
   "tool_input": {
-    "description": "Plan a new feature",
-    "prompt": "Plan a new feature",
-    "subagent_type": "Plan"
+    "description": "Expert code review specialist. Proactively reviews code for quality, security, and maintainability. Use immediately after writing or modifying code.",
+    "prompt": "Review the following code and provide feedback on the quality, security, and maintainability of the code.",
+    "subagent_type": "code-reviewer"
   },
   "tool_response": {
     "status": "completed",

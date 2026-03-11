@@ -5,6 +5,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
+import re
 import subprocess
 import json
 
@@ -22,8 +23,24 @@ class BuildEntry:
     def validate_prompt(self) -> bool:
         return self._hook_input.prompt.startswith("/build")
 
+    @staticmethod
+    def _get_open_prs() -> list[str]:
+        """Return list of open PR numbers by running pr_manager.py list --active."""
+        result = subprocess.run(
+            ["python", "github_project/pr_manager.py", "list", "--active"],
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0 or not result.stdout.strip():
+            return []
+        return re.findall(r"PR #(\d+):", result.stdout)
+
     @property
     def prompts(self) -> list[str]:
+        open_prs = self._get_open_prs()
+        if open_prs:
+            return [f"/review {pr_number}" for pr_number in open_prs]
+
         result = subprocess.run(
             [
                 "python",

@@ -19,7 +19,7 @@ def reset_config_cache():
 
 SAMPLE_CONFIG = {
     "paths": {"base": "project", "state": "project/state.json"},
-    "agents": {"reviewers": ["code-reviewer", "test-reviewer"]},
+    "agents": {"test": ["test-engineer", "test-reviewer"], "code": ["code-reviewer"]},
     "phases": {"workflow": ["explore", "plan"]},
 }
 
@@ -44,10 +44,10 @@ class TestLoad:
 
 class TestGet:
     def test_get_dotted_key(self):
-        """get('agents.reviewers') returns nested value."""
+        """get('agents.test') returns nested value."""
         config._cache = SAMPLE_CONFIG
-        result = config.get("agents.reviewers")
-        assert result == ["code-reviewer", "test-reviewer"]
+        result = config.get("agents.test")
+        assert result == ["test-engineer", "test-reviewer"]
 
     def test_get_missing_key_returns_default(self):
         """Missing key returns the provided default."""

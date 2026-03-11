@@ -28,7 +28,7 @@ def load() -> dict[str, Any]:
 def get(dotted_key: str, default: Any = None) -> Any:
     """Dot-notation access into the config dict.
 
-    Example: get("agents.reviewers") -> ["code-reviewer", ...]
+    Example: get("agents.pre_coding") -> ["Explore", "Plan", ...]
     """
     data: Any = load()
     keys = dotted_key.split(".")
@@ -39,6 +39,12 @@ def get(dotted_key: str, default: Any = None) -> Any:
         if data is None:
             return default
     return data
+
+
+def get_reviewers() -> list[str]:
+    """Derive reviewer agents from all agent groups by naming convention."""
+    agents = get("agents", {})
+    return [a for group in agents.values() for a in group if a.endswith("-reviewer")]
 
 
 def reload() -> dict[str, Any]:

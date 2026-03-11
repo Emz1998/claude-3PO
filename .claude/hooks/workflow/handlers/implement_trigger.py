@@ -40,7 +40,7 @@ class ImplementTrigger:
             return
 
         activate_workflow()
-        record_pre_coding_phase("implement")
+        record_pre_coding_phase()
 
         # Update story status
         result = subprocess.run(
@@ -64,6 +64,9 @@ class ImplementTrigger:
         sessions = state.get("implement_sessions") or {}
         sessions[self._hook_input.session_id] = self.story_id
         state.set("implement_sessions", sessions)
+
+        # Reset PR state for new story
+        state.set("pr_created", False)
 
         # Render context via view
         result = subprocess.run(

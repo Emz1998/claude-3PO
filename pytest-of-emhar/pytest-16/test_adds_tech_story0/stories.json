@@ -1,0 +1,64 @@
+{
+  "project": "Test",
+  "goal": "Test goal",
+  "dates": {
+    "start": "2026-01-01",
+    "end": "2026-03-01"
+  },
+  "totalPoints": 10,
+  "stories": [
+    {
+      "id": "SK-001",
+      "type": "Spike",
+      "labels": [
+        "spike",
+        "research"
+      ],
+      "title": "Research feature X",
+      "description": "Research",
+      "points": 3,
+      "status": "In progress",
+      "tdd": false,
+      "startDate": "2026-01-01",
+      "targetDate": "2026-01-15",
+      "priority": "P0",
+      "milestone": "v0.1.0",
+      "issue_number": 101
+    },
+    {
+      "id": "TS-001",
+      "type": "Tech",
+      "labels": [
+        "setup"
+      ],
+      "title": "Project setup",
+      "description": "Setup",
+      "points": 5,
+      "status": "Ready",
+      "tdd": true,
+      "startDate": "",
+      "targetDate": "",
+      "priority": "P1",
+      "milestone": "v0.1.0",
+      "issue_number": 102
+    },
+    {
+      "id": "TS-002",
+      "type": "Tech",
+      "labels": [],
+      "title": "Tech story",
+      "description": "",
+      "points": 0,
+      "status": "Backlog",
+      "tdd": false,
+      "startDate": "",
+      "targetDate": "",
+      "priority": "P2",
+      "is_blocking": [],
+      "blocked_by": [],
+      "acceptance_criteria": [],
+      "item_type": "story",
+      "milestone": ""
+    }
+  ]
+}

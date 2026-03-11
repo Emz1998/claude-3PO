@@ -16,48 +16,42 @@ from helpers import make_post_tool_input, make_pre_tool_input, make_user_prompt_
 
 class TestRecorder:
     @patch("workflow.handlers.recorder.STATE_STORE")
-    def test_record_explore_agent(self, mock_store):
-        """record_agent_invoked sets explore_agent_invoked."""
-        from workflow.handlers.recorder import record_agent_invoked
-        record_agent_invoked("Explore")
-        mock_store.set.assert_called_with("explore_agent_invoked", True)
+    def test_record_recent_agent_explore(self, mock_store):
+        """record_recent_agent records agent name as recent_agent."""
+        from workflow.handlers.recorder import record_recent_agent
+        record_recent_agent("Explore")
+        mock_store.set.assert_called_with("recent_agent", "Explore")
 
     @patch("workflow.handlers.recorder.STATE_STORE")
-    def test_record_plan_agent(self, mock_store):
-        from workflow.handlers.recorder import record_agent_invoked
-        record_agent_invoked("Plan")
-        mock_store.set.assert_called_with("plan_agent_invoked", True)
+    def test_record_recent_agent_plan(self, mock_store):
+        from workflow.handlers.recorder import record_recent_agent
+        record_recent_agent("Plan")
+        mock_store.set.assert_called_with("recent_agent", "Plan")
 
     @patch("workflow.handlers.recorder.STATE_STORE")
-    def test_record_plan_reviewer_agent(self, mock_store):
-        from workflow.handlers.recorder import record_agent_invoked
-        record_agent_invoked("PlanReviewer")
-        mock_store.set.assert_called_with("plan_reviewer_agent_invoked", True)
+    def test_record_recent_agent_plan_reviewer(self, mock_store):
+        from workflow.handlers.recorder import record_recent_agent
+        record_recent_agent("PlanReviewer")
+        mock_store.set.assert_called_with("recent_agent", "PlanReviewer")
 
     @patch("workflow.handlers.recorder.STATE_STORE")
-    def test_record_test_engineer_agent(self, mock_store):
-        from workflow.handlers.recorder import record_agent_invoked
-        record_agent_invoked("TestEngineer")
-        mock_store.set.assert_called_with("test_engineer_agent_invoked", True)
+    def test_record_recent_agent_test_engineer(self, mock_store):
+        from workflow.handlers.recorder import record_recent_agent
+        record_recent_agent("TestEngineer")
+        mock_store.set.assert_called_with("recent_agent", "TestEngineer")
 
     @patch("workflow.handlers.recorder.STATE_STORE")
-    def test_record_test_reviewer_agent(self, mock_store):
-        from workflow.handlers.recorder import record_agent_invoked
-        record_agent_invoked("TestReviewer")
-        mock_store.set.assert_called_with("test_reviewer_agent_invoked", True)
+    def test_record_recent_agent_code_reviewer(self, mock_store):
+        from workflow.handlers.recorder import record_recent_agent
+        record_recent_agent("CodeReviewer")
+        mock_store.set.assert_called_with("recent_agent", "CodeReviewer")
 
     @patch("workflow.handlers.recorder.STATE_STORE")
-    def test_record_code_reviewer_agent(self, mock_store):
-        from workflow.handlers.recorder import record_agent_invoked
-        record_agent_invoked("CodeReviewer")
-        mock_store.set.assert_called_with("code_reviewer_agent_invoked", True)
-
-    @patch("workflow.handlers.recorder.STATE_STORE")
-    def test_record_unknown_agent_skips(self, mock_store):
-        """Unknown agent name does nothing."""
-        from workflow.handlers.recorder import record_agent_invoked
-        record_agent_invoked("UnknownAgent")
-        mock_store.set.assert_not_called()
+    def test_record_recent_agent_unknown(self, mock_store):
+        """Any agent name is recorded (no filtering)."""
+        from workflow.handlers.recorder import record_recent_agent
+        record_recent_agent("UnknownAgent")
+        mock_store.set.assert_called_with("recent_agent", "UnknownAgent")
 
     @patch("workflow.handlers.recorder.STATE_STORE")
     @patch("workflow.handlers.recorder.cfg")
@@ -131,6 +125,58 @@ class TestReminders:
             with pytest.raises(SystemExit) as exc:
                 r.run()
             assert exc.value.code == 0
+
+
+# ─── Initialize State ────────────────────────────────────────────────────────
+
+
+# ─── PrRecorder ─────────────────────────────────────────────────────────────
+
+
+class TestPrRecorder:
+    @patch("workflow.handlers.pr_recorder.check_workflow_gate", return_value=True)
+    @patch("workflow.handlers.pr_recorder.cfg", return_value=".claude/hooks/workflow/state.json")
+    @patch("workflow.handlers.pr_recorder.StateStore")
+    def test_gh_pr_create_sets_state(self, MockStore, mock_cfg, mock_gate):
+        """Detects gh pr create and sets pr_created=True."""
+        mock_store = MagicMock()
+        MockStore.return_value = mock_store
+
+        data = make_post_tool_input("Bash", {"command": "gh pr create --title test", "description": "Create PR"})
+        hook_input = PostToolUseInput.model_validate(data)
+
+        from workflow.handlers.pr_recorder import PrRecorder
+        PrRecorder(hook_input).run()
+        mock_store.set.assert_called_once_with("pr_created", True)
+
+    @patch("workflow.handlers.pr_recorder.check_workflow_gate", return_value=True)
+    def test_non_bash_tool_skips(self, mock_gate):
+        """Non-Bash tool does not record anything."""
+        data = make_post_tool_input("Skill", {"skill": "commit", "args": ""})
+        hook_input = PostToolUseInput.model_validate(data)
+
+        from workflow.handlers.pr_recorder import PrRecorder
+        PrRecorder(hook_input).run()  # Should not raise or set state
+
+    @patch("workflow.handlers.pr_recorder.check_workflow_gate", return_value=True)
+    def test_bash_without_gh_pr_create_skips(self, mock_gate):
+        """Bash command without gh pr create does not set state."""
+        data = make_post_tool_input("Bash", {"command": "git push origin main", "description": "Push"})
+        hook_input = PostToolUseInput.model_validate(data)
+
+        with patch("workflow.handlers.pr_recorder.StateStore") as MockStore:
+            from workflow.handlers.pr_recorder import PrRecorder
+            PrRecorder(hook_input).run()
+            MockStore.return_value.set.assert_not_called()
+
+    @patch("workflow.handlers.pr_recorder.check_workflow_gate", return_value=False)
+    def test_inactive_workflow_skips(self, mock_gate):
+        """Inactive workflow skips recorder."""
+        data = make_post_tool_input("Bash", {"command": "gh pr create --title test", "description": "Create PR"})
+        hook_input = PostToolUseInput.model_validate(data)
+
+        from workflow.handlers.pr_recorder import PrRecorder
+        PrRecorder(hook_input).run()  # Should not raise
 
 
 # ─── Initialize State ────────────────────────────────────────────────────────

@@ -8,7 +8,7 @@ hooks:
   Stop:
     - hooks:
         - type: command
-          command: "python3 '$CLAUDE_PROJECT_DIR/.claude/hooks/workflow/validation/decision_guard.py'"
+          command: "python3 '/home/emhar/avaris-ai/.claude/hooks/workflow/validation/decision_guard.py'"
           timeout: 10
 ---
 

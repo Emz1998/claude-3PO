@@ -58,10 +58,10 @@ class Hook:
 
     @staticmethod
     def debug(message: str) -> None:
-        print(message)
+        print(message, file=sys.stderr)
         sys.exit(1)
 
     @staticmethod
     def advanced_output(output: dict[str, Any]) -> None:
-        print(json.dumps(output))
+        print(json.dumps(output), flush=True, file=sys.stdout)
         sys.exit(0)

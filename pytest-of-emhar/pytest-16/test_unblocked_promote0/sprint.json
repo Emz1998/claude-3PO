@@ -1,0 +1,35 @@
+{
+  "sprint": 1,
+  "milestone": "v0.1.0",
+  "tasks": [
+    {
+      "id": "T-001",
+      "title": "Task A",
+      "status": "Ready",
+      "blocked_by": [],
+      "is_blocking": [],
+      "type": "task",
+      "parent_story_id": "SK-001"
+    },
+    {
+      "id": "T-002",
+      "title": "Task B",
+      "status": "Ready",
+      "blocked_by": [
+        "SK-001"
+      ],
+      "is_blocking": [],
+      "type": "task",
+      "parent_story_id": "SK-001"
+    },
+    {
+      "id": "T-003",
+      "title": "Task C",
+      "status": "Done",
+      "blocked_by": [],
+      "is_blocking": [],
+      "type": "task",
+      "parent_story_id": "SK-001"
+    }
+  ]
+}

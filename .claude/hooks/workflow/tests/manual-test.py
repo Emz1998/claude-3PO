@@ -40,7 +40,7 @@ ALL_EVENTS = {
 
 def camel_to_underscore(name: str) -> str:
     parts = re.findall(r"[A-Z][a-z]*", name)
-    return "_".join(parts).lower()
+    return "_".join(parts).lower()  # type: ignore
 
 
 def resolve_schema_path(hook_event: str, tool_name: str | None = None) -> Path:
@@ -86,18 +86,8 @@ def run_test(script: Path, input_json: str) -> None:
 
 
 if __name__ == "__main__":
-    script = Path(".claude/hooks/workflow/guards/pre_coding_phase.py")
-    schema = SchemaLoader("PreToolUse", "Agent")
-    schema.patch(
-        {
-            "tool_name": "Agent",
-            "permission_mode": "plan",
-            "tool_input": {
-                "description": "code-review",
-                "prompt": "code-review",
-                "subagent_type": "CodeReviewer",
-            },
-        }
-    )
-    # print(json.dumps(schema.data, indent=4))
+    script = Path(".claude/hooks/workflow/guards/stop_guard.py")
+    schema = SchemaLoader("Stop")
+
+    print(json.dumps(schema.data, indent=4))
     run_test(script, json.dumps(schema.data, indent=4))
