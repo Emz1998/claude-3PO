@@ -1,17 +1,17 @@
-"""PreToolUse handler — validates workflow phase ordering."""
+"""PreToolUse handler — validates coding phase agent ordering."""
 
-from typing import cast
+from typing import Any, cast
 from pathlib import Path
+import sys
 
-from workflow.state_store import StateStore
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
+
+from workflow.session_state import SessionState
 from workflow.hook import Hook
 from workflow.models.hook_input import PreToolUseInput
 from workflow.workflow_gate import check_workflow_gate
 from workflow.utils.order_validation import validate_order
 from workflow.config import get as cfg
-
-
-STATE_PATH = Path(cfg("paths.workflow_state"))
 
 
 class CodingPhaseGuard:
@@ -20,18 +20,37 @@ class CodingPhaseGuard:
 
     def __init__(self, hook_input: PreToolUseInput):
         self._hook_input = hook_input
-        self._state = StateStore(STATE_PATH)
+        self._session = SessionState()
+
+    def _get_session_data(self, key: str, default: Any = None) -> Any:
+        """Read a value from the current session."""
+        story_id = self._session.story_id
+        if not story_id:
+            return default
+        session = self._session.get_session(story_id)
+        if not session:
+            return default
+        return session.get(key, default)
 
     def resolve_agents_list(self) -> list[str]:
-        if self._state.get("TDD", False):
+        tdd = self._get_session_data("TDD", False)
+        if tdd:
             return self.TEST_AGENTS + self.CODE_AGENTS
         return self.CODE_AGENTS
 
     def validate_transition(self) -> tuple[bool, str]:
-        recent_phase = self._state.get("recent_agent", "Explore")
+        recent_agent = None
+        story_id = self._session.story_id
+        if story_id:
+            session = self._session.get_session(story_id)
+            if session:
+                recent_agent = session.get("phase", {}).get("recent_agent")
+        if not recent_agent:
+            recent_agent = "Explore"
+
         hook_input = cast(PreToolUseInput, self._hook_input)
         return validate_order(
-            recent_phase,
+            recent_agent,
             hook_input.tool_input.subagent_type,
             self.resolve_agents_list(),
         )
@@ -46,7 +65,7 @@ class CodingPhaseGuard:
             Hook.block(reason)
 
 
-# if __name__ == "__main__":
-#     hook_input = PreToolUseInput.model_validate(Hook.read_stdin())
-#     phase_guard = PreCodingPhaseGuard(hook_input)
-#     phase_guard.run()
+if __name__ == "__main__":
+    hook_input = PreToolUseInput.model_validate(Hook.read_stdin())
+    guard = CodingPhaseGuard(hook_input)
+    guard.run()

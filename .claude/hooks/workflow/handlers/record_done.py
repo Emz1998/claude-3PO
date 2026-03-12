@@ -1,18 +1,15 @@
-"""Stop handler — blocks stoppage when the current story is not completed."""
+"""PostToolUse handler — records story completion status."""
 
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-import subprocess
-
 from workflow.hook import Hook
-from workflow.state_store import StateStore
+from workflow.session_state import SessionState
 from workflow.workflow_gate import check_workflow_gate
-from workflow.config import get as cfg
 from workflow.models.hook_input import PostToolUseInput
-from workflow.constants.phases import STATUS_DONE
+from workflow.constants.phases import STATUS_COMPLETED
 
 
 class RecordCompletion:
@@ -39,8 +36,17 @@ class RecordCompletion:
         if status not in ["Backlog", "Ready", "In progress", "In review", "Done"]:
             Hook.block(f"Invalid status: {status}")
 
-        state = StateStore(state_path=cfg("paths.workflow_state"))
-        state.set("story", {"id": _id, "status": status})
+        session = SessionState()
+        story_id = session.story_id
+        if story_id:
+            try:
+                def update_status(s: dict) -> None:
+                    if status == "Done":
+                        s["control"]["status"] = STATUS_COMPLETED
+
+                session.update_session(story_id, update_status)
+            except KeyError:
+                pass
 
 
 if __name__ == "__main__":

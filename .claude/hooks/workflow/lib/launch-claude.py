@@ -46,13 +46,29 @@ def extract_story_id(prompt: str) -> str | None:
     return match.group(1) if match else None
 
 
+def extract_pr_number(prompt: str) -> str | None:
+    """Extract PR identifier from a prompt like '/review 42' → 'PR-42'."""
+    match = re.search(r"/review\s+(\d+)", prompt)
+    return f"PR-{match.group(1)}" if match else None
+
+
+def extract_session_id(prompt: str) -> str | None:
+    """Extract session identifier (story ID or PR ID) from a prompt."""
+    return extract_story_id(prompt) or extract_pr_number(prompt)
+
+
 def build_worktree_name(sprint_id: str, story_id: str) -> str:
     """Build worktree name as sprint_id/story_id (e.g. SPRINT-001/TS-001)."""
     return f"{sprint_id}/{story_id}"
 
 
-def build_claude_cmd(prompt: str | None, worktree_name: str | None = None) -> str:
-    parts = ["claude"]
+def build_claude_cmd(
+    prompt: str | None, worktree_name: str | None = None, story_id: str | None = None
+) -> str:
+    parts = []
+    if story_id:
+        parts.append(f"export STORY_ID={story_id} &&")
+    parts.append("yolo --verbose")
     if prompt:
         parts.append(f'"{prompt}"')
     if worktree_name:
@@ -62,9 +78,9 @@ def build_claude_cmd(prompt: str | None, worktree_name: str | None = None) -> st
 
 def launch_window(prompt: str | None, sprint_id: str, is_first: bool = False) -> None:
     """Launch a tmux window with claude in its own worktree."""
-    story_id = extract_story_id(prompt) if prompt else None
-    worktree_name = build_worktree_name(sprint_id, story_id) if story_id else None
-    window_name = story_id or "main"
+    session_id = extract_session_id(prompt) if prompt else None
+    worktree_name = build_worktree_name(sprint_id, session_id) if session_id else None
+    window_name = session_id or "main"
 
     if is_first:
         run(
@@ -89,7 +105,7 @@ def launch_window(prompt: str | None, sprint_id: str, is_first: bool = False) ->
             "send-keys",
             "-t",
             SESSION,
-            build_claude_cmd(prompt, worktree_name),
+            build_claude_cmd(prompt, worktree_name, session_id),
             "Enter",
         ]
     )

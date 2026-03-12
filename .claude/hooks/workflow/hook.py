@@ -63,5 +63,5 @@ class Hook:
 
     @staticmethod
     def advanced_output(output: dict[str, Any]) -> None:
-        print(json.dumps(output), flush=True, file=sys.stdout)
+        print(json.dumps(output), flush=True)
         sys.exit(0)

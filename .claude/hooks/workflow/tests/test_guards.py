@@ -28,74 +28,68 @@ class TestCodingPhaseGuard:
 
     @patch("workflow.guards.code_phase.check_workflow_gate", return_value=True)
     @patch("workflow.guards.code_phase.cfg")
-    @patch("workflow.guards.code_phase.StateStore")
-    def test_valid_transition_passes(self, MockStore, mock_cfg, mock_gate):
+    @patch("workflow.guards.code_phase.SessionState")
+    def test_valid_transition_passes(self, MockSession, mock_cfg, mock_gate):
         """Valid transition does not block."""
         mock_cfg.side_effect = lambda k: {
             "agents.test": ["TestEngineer"],
             "agents.code": ["CodeReviewer"],
-            "paths.workflow_state": "state.json",
         }.get(k)
 
-        mock_store = MagicMock()
-        mock_store.get.side_effect = lambda k, d=None: {
-            "recent_phase": None,
+        mock_session = MagicMock()
+        mock_session.story_id = "SK-TEST"
+        mock_session.get_session.return_value = {
+            "phase": {"recent_agent": None},
             "TDD": False,
-        }.get(k, d)
-        MockStore.return_value = mock_store
+        }
+        MockSession.return_value = mock_session
 
         from workflow.guards.code_phase import CodingPhaseGuard
 
-        # CodingPhaseGuard accesses tool_input.subagent_type, so mock it
         mock_hook_input = MagicMock()
         mock_hook_input.tool_input.subagent_type = "CodeReviewer"
 
         with patch("workflow.guards.code_phase.validate_order", return_value=(True, "")):
             guard = CodingPhaseGuard(mock_hook_input)
-            guard._state = mock_store
+            guard._session = mock_session
             guard.CODE_AGENTS = ["CodeReviewer"]
             guard.TEST_AGENTS = ["TestEngineer"]
             guard.run()
 
     @patch("workflow.guards.code_phase.check_workflow_gate", return_value=False)
     @patch("workflow.guards.code_phase.cfg")
-    @patch("workflow.guards.code_phase.StateStore")
-    def test_inactive_workflow_skips(self, MockStore, mock_cfg, mock_gate):
+    @patch("workflow.guards.code_phase.SessionState")
+    def test_inactive_workflow_skips(self, MockSession, mock_cfg, mock_gate):
         """Inactive workflow skips guard entirely."""
         mock_cfg.side_effect = lambda k: {
             "agents.test": ["TestEngineer"],
             "agents.code": ["CodeReviewer"],
-            "paths.workflow_state": "state.json",
         }.get(k)
-        MockStore.return_value = MagicMock()
+        MockSession.return_value = MagicMock()
 
         from workflow.guards.code_phase import CodingPhaseGuard
 
         hook_input = self._make_agent_input("CodeReviewer")
         guard = CodingPhaseGuard(hook_input)
-        # Should not block or raise
         guard.run()
 
     def test_resolve_agents_with_tdd(self):
         """With TDD=True, resolve_agents_list returns test + code agents."""
-        mock_store = MagicMock()
-        mock_store.get.side_effect = lambda k, d=None: {
-            "TDD": True,
-            "recent_phase": None,
-        }.get(k, d)
+        mock_session = MagicMock()
+        mock_session.story_id = "SK-TEST"
+        mock_session.get_session.return_value = {"TDD": True, "phase": {"recent_agent": None}}
 
         with patch("workflow.guards.code_phase.cfg") as mock_cfg, \
-             patch("workflow.guards.code_phase.StateStore", return_value=mock_store):
+             patch("workflow.guards.code_phase.SessionState", return_value=mock_session):
             mock_cfg.side_effect = lambda k: {
                 "agents.test": ["TestEngineer"],
                 "agents.code": ["CodeReviewer"],
-                "paths.workflow_state": "state.json",
             }.get(k)
 
             from workflow.guards.code_phase import CodingPhaseGuard
             hook_input = self._make_agent_input("TestEngineer")
             guard = CodingPhaseGuard(hook_input)
-            guard._state = mock_store
+            guard._session = mock_session
             guard.TEST_AGENTS = ["TestEngineer"]
             guard.CODE_AGENTS = ["CodeReviewer"]
             result = guard.resolve_agents_list()
@@ -108,16 +102,16 @@ class TestCodingPhaseGuard:
 class TestPreCodingPhaseGuard:
     @patch("workflow.guards.pre_coding_phase.check_workflow_gate", return_value=True)
     @patch("workflow.guards.pre_coding_phase.cfg")
-    @patch("workflow.guards.pre_coding_phase.StateStore")
-    def test_plan_mode_valid(self, MockStore, mock_cfg, mock_gate):
+    @patch("workflow.guards.pre_coding_phase.SessionState")
+    def test_plan_mode_valid(self, MockSession, mock_cfg, mock_gate):
         """In plan mode with valid transition, does not block."""
         mock_cfg.side_effect = lambda k: {
             "agents.pre_coding": ["Explore", "Plan", "PlanReviewer"],
-            "paths.workflow_state": "state.json",
         }.get(k)
-        mock_store = MagicMock()
-        mock_store.get.return_value = None
-        MockStore.return_value = mock_store
+        mock_session = MagicMock()
+        mock_session.story_id = "SK-TEST"
+        mock_session.get_session.return_value = {"phase": {"recent_agent": None}}
+        MockSession.return_value = mock_session
 
         from workflow.guards.pre_coding_phase import PreCodingPhaseGuard
 
@@ -126,20 +120,19 @@ class TestPreCodingPhaseGuard:
 
         with patch("workflow.guards.pre_coding_phase.validate_order", return_value=(True, "")):
             guard = PreCodingPhaseGuard(hook_input)
-            guard._state = mock_store
+            guard._session = mock_session
             guard.AGENTS = ["Explore", "Plan", "PlanReviewer"]
             guard.run()
 
     @patch("workflow.guards.pre_coding_phase.check_workflow_gate", return_value=True)
     @patch("workflow.guards.pre_coding_phase.cfg")
-    @patch("workflow.guards.pre_coding_phase.StateStore")
-    def test_non_plan_mode_skips(self, MockStore, mock_cfg, mock_gate):
+    @patch("workflow.guards.pre_coding_phase.SessionState")
+    def test_non_plan_mode_skips(self, MockSession, mock_cfg, mock_gate):
         """Non-plan permission mode skips guard."""
         mock_cfg.side_effect = lambda k: {
             "agents.pre_coding": ["Explore", "Plan"],
-            "paths.workflow_state": "state.json",
         }.get(k)
-        MockStore.return_value = MagicMock()
+        MockSession.return_value = MagicMock()
 
         from workflow.guards.pre_coding_phase import PreCodingPhaseGuard
 
@@ -213,60 +206,63 @@ class TestStopGuard:
         guard = StopGuard(hook_input)
         guard.run()  # Should not block
 
-    @patch("workflow.guards.stop_guard.cfg", return_value=".claude/hooks/workflow/state.json")
+    @patch("workflow.guards.stop_guard.SessionState")
     @patch("workflow.guards.stop_guard.check_workflow_gate", return_value=True)
-    def test_story_done_and_pr_created_allows(self, mock_gate, mock_cfg):
-        """Story Done + PR created allows stop."""
-        mock_store = MagicMock()
-        mock_store.get.side_effect = lambda k, d=None: {
-            "story": {"id": "STORY-1", "status": "Done"},
-            "pr_created": True,
-        }.get(k, d)
+    def test_completed_and_pr_created_allows(self, mock_gate, MockSession):
+        """Completed session + PR created allows stop."""
+        mock_session = MagicMock()
+        mock_session.story_id = "SK-TEST"
+        mock_session.get_session.return_value = {
+            "control": {"status": "completed"},
+            "pr": {"created": True},
+        }
+        MockSession.return_value = mock_session
 
-        with patch("workflow.guards.stop_guard.StateStore", return_value=mock_store):
-            from workflow.guards.stop_guard import StopGuard
+        from workflow.guards.stop_guard import StopGuard
 
-            data = make_stop_input(session_id="test-session")
-            hook_input = StopInput.model_validate(data)
-            guard = StopGuard(hook_input)
-            guard.run()  # Should not block
+        data = make_stop_input(session_id="test-session")
+        hook_input = StopInput.model_validate(data)
+        guard = StopGuard(hook_input)
+        guard.run()  # Should not block
 
-    @patch("workflow.guards.stop_guard.cfg", return_value=".claude/hooks/workflow/state.json")
+    @patch("workflow.guards.stop_guard.SessionState")
     @patch("workflow.guards.stop_guard.check_workflow_gate", return_value=True)
-    def test_story_not_done_blocks(self, mock_gate, mock_cfg):
-        """Story not Done blocks stop."""
-        mock_store = MagicMock()
-        mock_store.get.side_effect = lambda k, d=None: {
-            "story": {"id": "STORY-1", "status": "In Progress"},
-            "pr_created": False,
-        }.get(k, d)
+    def test_not_completed_blocks(self, mock_gate, MockSession):
+        """Running session blocks stop."""
+        mock_session = MagicMock()
+        mock_session.story_id = "SK-TEST"
+        mock_session.get_session.return_value = {
+            "control": {"status": "running"},
+            "pr": {"created": False},
+        }
+        MockSession.return_value = mock_session
 
-        with patch("workflow.guards.stop_guard.StateStore", return_value=mock_store):
-            from workflow.guards.stop_guard import StopGuard
+        from workflow.guards.stop_guard import StopGuard
 
-            data = make_stop_input(session_id="test-session")
-            hook_input = StopInput.model_validate(data)
-            guard = StopGuard(hook_input)
-            with pytest.raises(SystemExit) as exc:
-                guard.run()
-            assert exc.value.code == 2
+        data = make_stop_input(session_id="test-session")
+        hook_input = StopInput.model_validate(data)
+        guard = StopGuard(hook_input)
+        with pytest.raises(SystemExit) as exc:
+            guard.run()
+        assert exc.value.code == 2
 
-    @patch("workflow.guards.stop_guard.cfg", return_value=".claude/hooks/workflow/state.json")
+    @patch("workflow.guards.stop_guard.SessionState")
     @patch("workflow.guards.stop_guard.check_workflow_gate", return_value=True)
-    def test_story_done_but_no_pr_blocks(self, mock_gate, mock_cfg):
-        """Story Done but no PR blocks stop."""
-        mock_store = MagicMock()
-        mock_store.get.side_effect = lambda k, d=None: {
-            "story": {"id": "STORY-1", "status": "Done"},
-            "pr_created": False,
-        }.get(k, d)
+    def test_completed_but_no_pr_blocks(self, mock_gate, MockSession):
+        """Completed but no PR blocks stop."""
+        mock_session = MagicMock()
+        mock_session.story_id = "SK-TEST"
+        mock_session.get_session.return_value = {
+            "control": {"status": "completed"},
+            "pr": {"created": False},
+        }
+        MockSession.return_value = mock_session
 
-        with patch("workflow.guards.stop_guard.StateStore", return_value=mock_store):
-            from workflow.guards.stop_guard import StopGuard
+        from workflow.guards.stop_guard import StopGuard
 
-            data = make_stop_input(session_id="test-session")
-            hook_input = StopInput.model_validate(data)
-            guard = StopGuard(hook_input)
-            with pytest.raises(SystemExit) as exc:
-                guard.run()
-            assert exc.value.code == 2
+        data = make_stop_input(session_id="test-session")
+        hook_input = StopInput.model_validate(data)
+        guard = StopGuard(hook_input)
+        with pytest.raises(SystemExit) as exc:
+            guard.run()
+        assert exc.value.code == 2

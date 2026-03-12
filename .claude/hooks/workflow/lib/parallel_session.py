@@ -9,14 +9,13 @@ def parallel_sessions(prompts: list[str]) -> None:
     quoted = " ".join(shlex.quote(p) for p in prompts)
     subprocess.Popen(
         [
-            "cmd.exe",
-            "/c",
-            "start",
-            "",
+            "wt.exe",
+            "-w", "0",
+            "nt",
             "wsl.exe",
             "bash",
             "-lic",
-            f"python3 {SCRIPT} {quoted}; exec bash",
+            f"python3 {SCRIPT} {quoted}",
         ],
         stdin=subprocess.DEVNULL,
         stdout=subprocess.DEVNULL,

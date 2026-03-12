@@ -3,6 +3,9 @@
 
 Tests decision_handler, decision_guard, and validation_loop modules
 by running them as subprocesses (matching how Claude Code invokes hooks).
+
+These tests use flat state (no STORY_ID) to exercise the backward-compat
+fallback path, which writes to state.json top-level validation key.
 """
 
 import json
@@ -89,12 +92,30 @@ def make_subagent_stop_input(agent_type: str = "code-reviewer") -> str:
     })
 
 
+def run_hook(script: Path, stdin_json: str, env_extra: dict | None = None) -> subprocess.CompletedProcess:
+    """Run a hook script as subprocess with workflow_active state."""
+    import os
+    env = os.environ.copy()
+    if env_extra:
+        env.update(env_extra)
+    # Ensure STORY_ID is NOT set (tests use flat state fallback)
+    env.pop("STORY_ID", None)
+    return subprocess.run(
+        [sys.executable, str(script)],
+        input=stdin_json,
+        capture_output=True,
+        text=True,
+        cwd=str(PROJECT_ROOT),
+        env=env,
+    )
+
+
 @pytest.fixture(autouse=True)
 def preserve_state():
     """Backup state.json before each test, restore after."""
     original = backup_state()
-    # Ensure clean state for test (the real state.json may have invalid JSON)
-    write_state({})
+    # Ensure clean state with workflow_active for test
+    write_state({"workflow_active": True})
     yield
     restore_state(original)
 
@@ -107,11 +128,7 @@ class TestDecisionHandler:
 
     def test_valid_scores_write_to_state(self):
         """Skill(decision) with '75 80' should write validation scores to state.json."""
-        result = subprocess.run(
-            [sys.executable, str(DECISION_HANDLER)],
-            input=make_decision_input("75 80"),
-            capture_output=True, text=True, cwd=str(PROJECT_ROOT),
-        )
+        result = run_hook(DECISION_HANDLER, make_decision_input("75 80"))
         assert result.returncode == 0, f"stdout: {result.stdout}, stderr: {result.stderr}"
         state = read_state()
         assert state["validation"]["decision_invoked"] is True
@@ -120,60 +137,36 @@ class TestDecisionHandler:
 
     def test_missing_args_blocks(self):
         """Skill(decision) with empty args should exit 2 (block)."""
-        result = subprocess.run(
-            [sys.executable, str(DECISION_HANDLER)],
-            input=make_decision_input(""),
-            capture_output=True, text=True, cwd=str(PROJECT_ROOT),
-        )
+        result = run_hook(DECISION_HANDLER, make_decision_input(""))
         assert result.returncode == 2
         assert "2 arguments" in result.stderr.lower() or "/decision" in result.stderr.lower()
 
     def test_one_arg_blocks(self):
         """Skill(decision) with only one arg should exit 2 (block)."""
-        result = subprocess.run(
-            [sys.executable, str(DECISION_HANDLER)],
-            input=make_decision_input("7"),
-            capture_output=True, text=True, cwd=str(PROJECT_ROOT),
-        )
+        result = run_hook(DECISION_HANDLER, make_decision_input("7"))
         assert result.returncode == 2
 
     def test_non_integer_args_blocks(self):
         """Skill(decision) with non-integer args should exit 2 (block)."""
-        result = subprocess.run(
-            [sys.executable, str(DECISION_HANDLER)],
-            input=make_decision_input("high good"),
-            capture_output=True, text=True, cwd=str(PROJECT_ROOT),
-        )
+        result = run_hook(DECISION_HANDLER, make_decision_input("high good"))
         assert result.returncode == 2
         assert "integer" in result.stderr.lower()
 
     def test_out_of_range_blocks(self):
         """Skill(decision) with scores outside 1-100 should exit 2 (block)."""
-        result = subprocess.run(
-            [sys.executable, str(DECISION_HANDLER)],
-            input=make_decision_input("0 101"),
-            capture_output=True, text=True, cwd=str(PROJECT_ROOT),
-        )
+        result = run_hook(DECISION_HANDLER, make_decision_input("0 101"))
         assert result.returncode == 2
         assert "between 1 and 100" in result.stderr.lower()
 
     def test_skips_non_decision_skill(self):
         """Should exit 0 (skip) for non-decision skills."""
-        result = subprocess.run(
-            [sys.executable, str(DECISION_HANDLER)],
-            input=make_non_decision_skill_input("plan"),
-            capture_output=True, text=True, cwd=str(PROJECT_ROOT),
-        )
+        result = run_hook(DECISION_HANDLER, make_non_decision_skill_input("plan"))
         assert result.returncode == 0
 
     def test_preserves_existing_state_keys(self):
         """decision_handler should merge into existing state, not overwrite."""
-        write_state({"recent_phase": "explore", "recent_coding_phase": "plan"})
-        result = subprocess.run(
-            [sys.executable, str(DECISION_HANDLER)],
-            input=make_decision_input("90 90"),
-            capture_output=True, text=True, cwd=str(PROJECT_ROOT),
-        )
+        write_state({"workflow_active": True, "recent_phase": "explore", "recent_coding_phase": "plan"})
+        result = run_hook(DECISION_HANDLER, make_decision_input("90 90"))
         assert result.returncode == 0
         state = read_state()
         assert state["recent_phase"] == "explore"
@@ -188,33 +181,24 @@ class TestDecisionGuard:
 
     def test_blocks_when_decision_not_invoked(self):
         """Should exit 2 (block) when decision_invoked is false."""
-        write_state({"validation": {"decision_invoked": False}})
+        write_state({"workflow_active": True, "validation": {"decision_invoked": False}})
         stdin_json = make_subagent_stop_input()
-        result = subprocess.run(
-            [sys.executable, str(DECISION_GUARD)],
-            input=stdin_json, capture_output=True, text=True, cwd=str(PROJECT_ROOT),
-        )
+        result = run_hook(DECISION_GUARD, stdin_json)
         assert result.returncode == 2, f"Expected exit 2, got {result.returncode}. stdout: {result.stdout}"
         assert "/decision" in result.stderr.lower() or "decision" in result.stderr.lower()
 
     def test_blocks_when_no_validation_key(self):
         """Should exit 2 (block) when validation key is missing from state."""
-        write_state({"recent_phase": "explore"})
+        write_state({"workflow_active": True, "recent_phase": "explore"})
         stdin_json = make_subagent_stop_input()
-        result = subprocess.run(
-            [sys.executable, str(DECISION_GUARD)],
-            input=stdin_json, capture_output=True, text=True, cwd=str(PROJECT_ROOT),
-        )
+        result = run_hook(DECISION_GUARD, stdin_json)
         assert result.returncode == 2
 
     def test_allows_when_decision_invoked(self):
         """Should exit 0 (allow) when decision_invoked is true."""
-        write_state({"validation": {"decision_invoked": True, "confidence_score": 80, "quality_score": 80}})
+        write_state({"workflow_active": True, "validation": {"decision_invoked": True, "confidence_score": 80, "quality_score": 80}})
         stdin_json = make_subagent_stop_input()
-        result = subprocess.run(
-            [sys.executable, str(DECISION_GUARD)],
-            input=stdin_json, capture_output=True, text=True, cwd=str(PROJECT_ROOT),
-        )
+        result = run_hook(DECISION_GUARD, stdin_json)
         assert result.returncode == 0, f"Expected exit 0, got {result.returncode}. stdout: {result.stdout}"
 
 
@@ -227,15 +211,13 @@ class TestValidationLoop:
     def test_skips_non_reviewer_agent(self):
         """Should exit 0 (skip) for non-reviewer agent types."""
         stdin_json = make_subagent_stop_input(agent_type="general-purpose")
-        result = subprocess.run(
-            [sys.executable, str(VALIDATION_LOOP)],
-            input=stdin_json, capture_output=True, text=True, cwd=str(PROJECT_ROOT),
-        )
+        result = run_hook(VALIDATION_LOOP, stdin_json)
         assert result.returncode == 0
 
     def test_allows_passing_confidence_score(self):
         """Should exit 0 when confidence >= threshold (default 70)."""
         write_state({
+            "workflow_active": True,
             "validation": {
                 "decision_invoked": True,
                 "confidence_score": 80,
@@ -244,15 +226,13 @@ class TestValidationLoop:
             }
         })
         stdin_json = make_subagent_stop_input(agent_type="code-reviewer")
-        result = subprocess.run(
-            [sys.executable, str(VALIDATION_LOOP)],
-            input=stdin_json, capture_output=True, text=True, cwd=str(PROJECT_ROOT),
-        )
+        result = run_hook(VALIDATION_LOOP, stdin_json)
         assert result.returncode == 0
 
     def test_blocks_low_confidence_score(self):
         """Should exit 2 (block) when confidence < threshold."""
         write_state({
+            "workflow_active": True,
             "validation": {
                 "decision_invoked": True,
                 "confidence_score": 40,
@@ -261,16 +241,14 @@ class TestValidationLoop:
             }
         })
         stdin_json = make_subagent_stop_input(agent_type="code-reviewer")
-        result = subprocess.run(
-            [sys.executable, str(VALIDATION_LOOP)],
-            input=stdin_json, capture_output=True, text=True, cwd=str(PROJECT_ROOT),
-        )
+        result = run_hook(VALIDATION_LOOP, stdin_json)
         assert result.returncode == 2, f"Expected exit 2, got {result.returncode}"
         assert "threshold" in result.stderr.lower() or "re-review" in result.stderr.lower()
 
     def test_increments_iteration_count_on_block(self):
         """Should increment iteration_count in state when blocking."""
         write_state({
+            "workflow_active": True,
             "validation": {
                 "decision_invoked": True,
                 "confidence_score": 30,
@@ -279,16 +257,14 @@ class TestValidationLoop:
             }
         })
         stdin_json = make_subagent_stop_input(agent_type="test-reviewer")
-        subprocess.run(
-            [sys.executable, str(VALIDATION_LOOP)],
-            input=stdin_json, capture_output=True, text=True, cwd=str(PROJECT_ROOT),
-        )
+        run_hook(VALIDATION_LOOP, stdin_json)
         state = read_state()
         assert state["validation"]["iteration_count"] == 1
 
     def test_resets_decision_invoked_on_block(self):
         """Should reset decision_invoked to false when blocking (force re-invocation)."""
         write_state({
+            "workflow_active": True,
             "validation": {
                 "decision_invoked": True,
                 "confidence_score": 30,
@@ -297,16 +273,14 @@ class TestValidationLoop:
             }
         })
         stdin_json = make_subagent_stop_input(agent_type="code-reviewer")
-        subprocess.run(
-            [sys.executable, str(VALIDATION_LOOP)],
-            input=stdin_json, capture_output=True, text=True, cwd=str(PROJECT_ROOT),
-        )
+        run_hook(VALIDATION_LOOP, stdin_json)
         state = read_state()
         assert state["validation"]["decision_invoked"] is False
 
     def test_escalates_after_max_iterations(self):
         """Should allow stop but print escalation message after max iterations."""
         write_state({
+            "workflow_active": True,
             "validation": {
                 "decision_invoked": True,
                 "confidence_score": 30,
@@ -315,10 +289,7 @@ class TestValidationLoop:
             }
         })
         stdin_json = make_subagent_stop_input(agent_type="code-reviewer")
-        result = subprocess.run(
-            [sys.executable, str(VALIDATION_LOOP)],
-            input=stdin_json, capture_output=True, text=True, cwd=str(PROJECT_ROOT),
-        )
+        result = run_hook(VALIDATION_LOOP, stdin_json)
         # Should allow stop (exit 0) but with escalation message
         assert result.returncode == 0, f"Expected exit 0 (escalation), got {result.returncode}"
         assert "iteration exhausted" in result.stdout.lower()
@@ -326,6 +297,7 @@ class TestValidationLoop:
     def test_preserves_validation_state_on_pass(self):
         """Validation state is NOT reset on pass — scores and flags remain."""
         write_state({
+            "workflow_active": True,
             "recent_phase": "explore",
             "validation": {
                 "decision_invoked": True,
@@ -335,10 +307,7 @@ class TestValidationLoop:
             }
         })
         stdin_json = make_subagent_stop_input(agent_type="code-reviewer")
-        subprocess.run(
-            [sys.executable, str(VALIDATION_LOOP)],
-            input=stdin_json, capture_output=True, text=True, cwd=str(PROJECT_ROOT),
-        )
+        run_hook(VALIDATION_LOOP, stdin_json)
         state = read_state()
         # Validation state is preserved (no reset on pass)
         val = state.get("validation", {})
@@ -351,6 +320,7 @@ class TestValidationLoop:
     def test_works_with_plan_reviewer_agent(self):
         """Should apply validation to plan-reviewer agent type."""
         write_state({
+            "workflow_active": True,
             "validation": {
                 "decision_invoked": True,
                 "confidence_score": 80,
@@ -359,15 +329,13 @@ class TestValidationLoop:
             }
         })
         stdin_json = make_subagent_stop_input(agent_type="plan-reviewer")
-        result = subprocess.run(
-            [sys.executable, str(VALIDATION_LOOP)],
-            input=stdin_json, capture_output=True, text=True, cwd=str(PROJECT_ROOT),
-        )
+        result = run_hook(VALIDATION_LOOP, stdin_json)
         assert result.returncode == 0
 
     def test_block_message_includes_iteration_info(self):
         """Block message should include current iteration and max."""
         write_state({
+            "workflow_active": True,
             "validation": {
                 "decision_invoked": True,
                 "confidence_score": 20,
@@ -376,10 +344,7 @@ class TestValidationLoop:
             }
         })
         stdin_json = make_subagent_stop_input(agent_type="code-reviewer")
-        result = subprocess.run(
-            [sys.executable, str(VALIDATION_LOOP)],
-            input=stdin_json, capture_output=True, text=True, cwd=str(PROJECT_ROOT),
-        )
+        result = run_hook(VALIDATION_LOOP, stdin_json)
         assert result.returncode == 2
         # Should mention iteration count
         assert "2" in result.stderr and "3" in result.stderr

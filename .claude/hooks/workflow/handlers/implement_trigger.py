@@ -6,14 +6,14 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 import subprocess
+import uuid
 
 from workflow.hook import Hook
-from workflow.state_store import StateStore
+from workflow.session_state import SessionState
 from workflow.workflow_gate import activate_workflow
 from workflow.models.hook_input import UserPromptSubmitInput
 from workflow.config import get as cfg
 from workflow.constants.phases import STATUS_IN_PROGRESS
-from workflow.handlers.recorder import record_pre_coding_phase
 
 
 class ImplementTrigger:
@@ -40,7 +40,6 @@ class ImplementTrigger:
             return
 
         activate_workflow()
-        record_pre_coding_phase()
 
         # Update story status
         result = subprocess.run(
@@ -59,14 +58,13 @@ class ImplementTrigger:
         if result.returncode != 0:
             Hook.block(result.stderr.strip() or "Failed to start story")
 
-        # Track which story this session is implementing
-        state = StateStore(state_path=cfg("paths.workflow_state"))
-        sessions = state.get("implement_sessions") or {}
-        sessions[self._hook_input.session_id] = self.story_id
-        state.set("implement_sessions", sessions)
-
-        # Reset PR state for new story
-        state.set("pr_created", False)
+        # Create session entry
+        session = SessionState()
+        session_id = str(uuid.uuid4())
+        session.create_session(
+            self.story_id,
+            SessionState.default_implement_session(self.story_id, session_id),
+        )
 
         # Render context via view
         result = subprocess.run(

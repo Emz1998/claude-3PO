@@ -5,14 +5,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-import subprocess
-
 from workflow.hook import Hook
-from workflow.state_store import StateStore
+from workflow.session_state import SessionState
 from workflow.workflow_gate import check_workflow_gate
-from workflow.config import get as cfg
 from workflow.models.hook_input import StopInput
-from workflow.constants.phases import STATUS_DONE
+from workflow.constants.phases import STATUS_COMPLETED
 
 
 class StopGuard:
@@ -20,27 +17,27 @@ class StopGuard:
         self._hook_input = hook_input
         self._is_workflow_active = check_workflow_gate()
 
-    def is_story_completed(self) -> tuple[bool, str]:
-        state = StateStore(state_path=cfg("paths.workflow_state"))
-        story = state.get("story")
-        if not story:
-            return False, "Story not found"
-        return story.get("status") == STATUS_DONE, story.get("id")
-
-    def is_pr_created(self) -> bool:
-        state = StateStore(state_path=cfg("paths.workflow_state"))
-        return state.get("pr_created", False)
-
     def run(self) -> None:
         if not self._is_workflow_active:
             return
 
-        is_completed, story_id = self.is_story_completed()
+        session_state = SessionState()
+        story_id = session_state.story_id
+        if not story_id:
+            return
 
-        if not is_completed:
+        session = session_state.get_session(story_id)
+        if not session:
+            return
+
+        # Check control status
+        control_status = session.get("control", {}).get("status")
+        if control_status != STATUS_COMPLETED:
             Hook.block(f"Story '{story_id}' is not completed.")
 
-        if not self.is_pr_created():
+        # Check PR created
+        pr_created = session.get("pr", {}).get("created", False)
+        if not pr_created:
             Hook.block("PR has not been created yet.")
 
 

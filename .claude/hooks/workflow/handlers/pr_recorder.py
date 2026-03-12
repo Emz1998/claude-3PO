@@ -1,14 +1,14 @@
 """PostToolUse handler — records PR creation when gh pr create is detected."""
 
 import sys
+import re
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 from workflow.hook import Hook
-from workflow.state_store import StateStore
+from workflow.session_state import SessionState
 from workflow.workflow_gate import check_workflow_gate
-from workflow.config import get as cfg
 from workflow.models.hook_input import PostToolUseInput
 
 
@@ -25,9 +25,32 @@ class PrRecorder:
             return
 
         command = self._hook_input.tool_input.command
-        if "gh pr create" in command:
-            state = StateStore(state_path=cfg("paths.workflow_state"))
-            state.set("pr_created", True)
+        if "gh pr create" not in command:
+            return
+
+        session = SessionState()
+        story_id = session.story_id
+        if not story_id:
+            return
+
+        # Extract PR number from tool response if available
+        pr_number = None
+        response = getattr(self._hook_input, "tool_response", None)
+        if response:
+            content = response.get("content", "") if isinstance(response, dict) else str(response)
+            match = re.search(r"/pull/(\d+)", content)
+            if match:
+                pr_number = int(match.group(1))
+
+        try:
+            def update_pr(s: dict) -> None:
+                s["pr"]["created"] = True
+                if pr_number:
+                    s["pr"]["number"] = pr_number
+
+            session.update_session(story_id, update_pr)
+        except KeyError:
+            pass
 
 
 if __name__ == "__main__":

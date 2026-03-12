@@ -1,7 +1,7 @@
 """Validation loop — checks reviewer scores against config thresholds.
 
 Placement: settings.local.json as SubagentStop hook with reviewer matcher.
-Reads config.yaml for thresholds and state.json for scores.
+Reads config.yaml for thresholds and session state for scores.
 """
 
 import sys
@@ -11,15 +11,46 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 import json
 
+from workflow.session_state import SessionState
 from workflow.state_store import StateStore
 from workflow.hook import Hook
 from workflow.validation.validation_log import log
 from workflow.config import get as cfg, get_reviewers
 from workflow.workflow_gate import check_workflow_gate
 
-STATE_PATH = Path(cfg("paths.workflow_state"))
-
 REVIEWER_AGENTS = set(get_reviewers())
+
+
+def _get_validation_data(session: SessionState) -> tuple[dict, bool]:
+    """Get validation data from session or flat state. Returns (validation_dict, is_session)."""
+    story_id = session.story_id
+    if story_id:
+        session_data = session.get_session(story_id)
+        if session_data:
+            return session_data.get("validation", {}), True
+
+    # Fallback to flat state
+    store = StateStore(Path(cfg("paths.workflow_state")))
+    state = store.load()
+    return state.get("validation", {}), False
+
+
+def _update_validation(session: SessionState, fn) -> None:
+    """Update validation data in session or flat state."""
+    story_id = session.story_id
+    if story_id:
+        try:
+            session.update_session(story_id, lambda s: fn(s.get("validation", {}), s))
+            return
+        except KeyError:
+            pass
+
+    # Fallback to flat state
+    store = StateStore(Path(cfg("paths.workflow_state")))
+    state = store.load()
+    validation = state.get("validation", {})
+    fn(validation, state)
+    store.save(state)
 
 
 def main() -> None:
@@ -34,9 +65,8 @@ def main() -> None:
         log("validation_loop", "SKIP", f"agent_type='{agent_type}' not a reviewer")
         sys.exit(0)
 
-    store = StateStore(STATE_PATH)
-    state = store.load()
-    validation = state.get("validation", {})
+    session = SessionState()
+    validation, _ = _get_validation_data(session)
 
     confidence_score = validation.get("confidence_score", 0)
     iteration_count = validation.get("iteration_count", 0)
@@ -44,7 +74,6 @@ def main() -> None:
     threshold = cfg("validation.confidence_score")
 
     if confidence_score >= threshold:
-        # Pass — reset iteration state but keep scores so repeat hook calls still pass
         log(
             "validation_loop",
             "ALLOW",
@@ -60,10 +89,13 @@ def main() -> None:
         # Escalate — allow stop but warn
         msg = f"ESCALATION: Confidence score {confidence_score} still below threshold {threshold} after {max_iterations} iterations. Escalating to user."
         log("validation_loop", "ESCALATE", f"agent='{agent_type}' {msg}")
-        validation = store.get("validation")
-        validation["escalate_to_user"] = True
-        validation["escalated_by"] = agent_type
-        store.set("validation", validation)
+
+        def escalate(v: dict, s: dict) -> None:
+            v["escalate_to_user"] = True
+            v["escalated_by"] = agent_type
+
+        _update_validation(session, escalate)
+
         Hook.advanced_output(
             {"continue": False, "stopReason": f"Iteration Exhausted by {agent_type}"}
         )
@@ -72,11 +104,11 @@ def main() -> None:
     # Block — iterate
     iteration_count += 1
 
-    def update_for_retry(s: dict) -> None:
-        s["validation"]["decision_invoked"] = False
-        s["validation"]["iteration_count"] = iteration_count
+    def update_for_retry(v: dict, s: dict) -> None:
+        v["decision_invoked"] = False
+        v["iteration_count"] = iteration_count
 
-    store.update(update_for_retry)
+    _update_validation(session, update_for_retry)
 
     msg = f"Confidence score {confidence_score} below threshold {threshold}. Re-review needed (iteration {iteration_count}/{max_iterations})."
     log("validation_loop", "BLOCK", f"agent='{agent_type}' {msg}")

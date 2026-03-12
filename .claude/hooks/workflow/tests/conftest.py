@@ -1,5 +1,6 @@
 """Shared fixtures for workflow module tests."""
 
+import json
 import sys
 from pathlib import Path
 from typing import Any
@@ -42,6 +43,7 @@ def mock_config():
         "validation.iteration_loop": 3,
         "validation.confidence_score": 70,
         "validation.quality_score": 70,
+        "validation.ci_max_iterations": 2,
         "reminders.map": [
             {"event": "PostToolUse", "tool": "EnterPlanMode", "agent": None, "template": "pre_coding_phase.md"},
             {"event": "PostToolUse", "tool": "Agent", "agent": "Plan", "template": "plan_review.md"},
@@ -61,3 +63,21 @@ def mock_state_store(tmp_path):
     state_file = tmp_path / "state.json"
     state_file.write_text("{}")
     return state_file
+
+
+@pytest.fixture
+def mock_session_state(tmp_path):
+    """SessionState backed by a temp file with a pre-created session."""
+    from workflow.session_state import SessionState
+
+    state_file = tmp_path / "state.json"
+    session_data = SessionState.default_implement_session("SK-TEST", "test-uuid")
+    initial = {"sessions": {"SK-TEST": session_data}, "workflow_active": True}
+    state_file.write_text(json.dumps(initial))
+    return SessionState(state_path=state_file)
+
+
+@pytest.fixture
+def story_id_env(monkeypatch):
+    """Set STORY_ID=SK-TEST in the environment."""
+    monkeypatch.setenv("STORY_ID", "SK-TEST")

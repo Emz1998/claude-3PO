@@ -4,6 +4,12 @@ description: Implement the current task in the roadmap by delegating to the appr
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task, TodoWrite
 argument-hint: <task-id>
 model: sonnet
+hooks:
+  PreToolUse:
+    - hooks:
+        - type: command
+          command: "python3 '$CLAUDE_PROJECT_DIR/.claude/hooks/workflow/guards/phase_guard.py' pre-coding code"
+          timeout: 10
 ---
 
 **Goal**: Implement the current task in the roadmap by delegating to the appropriate subagent

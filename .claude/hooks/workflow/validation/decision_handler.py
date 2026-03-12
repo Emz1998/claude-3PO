@@ -1,7 +1,7 @@
 """Decision handler — PreToolUse hook for Skill(decision).
 
 Intercepts /decision <confidence_score> <quality_score> invocations,
-validates args, and writes scores to state.json.
+validates args, and writes scores to session state.
 Blocks with self-correction message if args are invalid.
 """
 
@@ -10,13 +10,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-from workflow.state_store import StateStore
+from workflow.session_state import SessionState
 from workflow.hook import Hook
 from workflow.validation.validation_log import log
-from workflow.config import get as cfg
 from workflow.workflow_gate import check_workflow_gate
-
-STATE_PATH = Path(cfg("paths.workflow_state"))
 
 
 def main() -> None:
@@ -56,16 +53,51 @@ def main() -> None:
         log("decision_handler", "BLOCK", msg)
         Hook.block(msg)
 
-    store = StateStore(STATE_PATH)
-    state = store.load() or {}
-    existing = state.get("validation") or {}
-    state["validation"] = {
-        "decision_invoked": True,
-        "confidence_score": confidence_score,
-        "quality_score": quality_score,
-        "iteration_count": existing.get("iteration_count", 0),
-    }
-    store.save(state)
+    session = SessionState()
+    story_id = session.story_id
+
+    if story_id:
+        try:
+            def update_validation(s: dict) -> None:
+                existing = s.get("validation", {})
+                s["validation"] = {
+                    "decision_invoked": True,
+                    "confidence_score": confidence_score,
+                    "quality_score": quality_score,
+                    "iteration_count": existing.get("iteration_count", 0),
+                    "escalate_to_user": existing.get("escalate_to_user", False),
+                }
+
+            session.update_session(story_id, update_validation)
+        except KeyError:
+            # Fallback: write to flat state for backward compat
+            from workflow.state_store import StateStore
+            from workflow.config import get as cfg
+            store = StateStore(Path(cfg("paths.workflow_state")))
+            state = store.load() or {}
+            existing = state.get("validation") or {}
+            state["validation"] = {
+                "decision_invoked": True,
+                "confidence_score": confidence_score,
+                "quality_score": quality_score,
+                "iteration_count": existing.get("iteration_count", 0),
+            }
+            store.save(state)
+    else:
+        # No STORY_ID: fallback to flat state
+        from workflow.state_store import StateStore
+        from workflow.config import get as cfg
+        store = StateStore(Path(cfg("paths.workflow_state")))
+        state = store.load() or {}
+        existing = state.get("validation") or {}
+        state["validation"] = {
+            "decision_invoked": True,
+            "confidence_score": confidence_score,
+            "quality_score": quality_score,
+            "iteration_count": existing.get("iteration_count", 0),
+        }
+        store.save(state)
+
     log(
         "decision_handler",
         "ALLOW",

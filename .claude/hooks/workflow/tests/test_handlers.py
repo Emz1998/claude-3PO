@@ -15,82 +15,69 @@ from helpers import make_post_tool_input, make_pre_tool_input, make_user_prompt_
 
 
 class TestRecorder:
-    @patch("workflow.handlers.recorder.STATE_STORE")
-    def test_record_recent_agent_explore(self, mock_store):
-        """record_recent_agent records agent name as recent_agent."""
+    @patch("workflow.handlers.recorder.SESSION")
+    def test_record_recent_agent_with_story_id(self, mock_session):
+        """record_recent_agent updates session phase.recent_agent."""
+        mock_session.story_id = "SK-TEST"
+        mock_session.update_session = MagicMock()
         from workflow.handlers.recorder import record_recent_agent
         record_recent_agent("Explore")
-        mock_store.set.assert_called_with("recent_agent", "Explore")
+        mock_session.update_session.assert_called_once()
+        args = mock_session.update_session.call_args
+        assert args[0][0] == "SK-TEST"
 
-    @patch("workflow.handlers.recorder.STATE_STORE")
-    def test_record_recent_agent_plan(self, mock_store):
+    @patch("workflow.handlers.recorder.SESSION")
+    def test_record_recent_agent_no_story_id(self, mock_session):
+        """record_recent_agent is no-op when STORY_ID not set."""
+        mock_session.story_id = None
         from workflow.handlers.recorder import record_recent_agent
-        record_recent_agent("Plan")
-        mock_store.set.assert_called_with("recent_agent", "Plan")
+        record_recent_agent("Explore")
+        mock_session.update_session.assert_not_called()
 
-    @patch("workflow.handlers.recorder.STATE_STORE")
-    def test_record_recent_agent_plan_reviewer(self, mock_store):
-        from workflow.handlers.recorder import record_recent_agent
-        record_recent_agent("PlanReviewer")
-        mock_store.set.assert_called_with("recent_agent", "PlanReviewer")
-
-    @patch("workflow.handlers.recorder.STATE_STORE")
-    def test_record_recent_agent_test_engineer(self, mock_store):
-        from workflow.handlers.recorder import record_recent_agent
-        record_recent_agent("TestEngineer")
-        mock_store.set.assert_called_with("recent_agent", "TestEngineer")
-
-    @patch("workflow.handlers.recorder.STATE_STORE")
-    def test_record_recent_agent_code_reviewer(self, mock_store):
-        from workflow.handlers.recorder import record_recent_agent
-        record_recent_agent("CodeReviewer")
-        mock_store.set.assert_called_with("recent_agent", "CodeReviewer")
-
-    @patch("workflow.handlers.recorder.STATE_STORE")
-    def test_record_recent_agent_unknown(self, mock_store):
-        """Any agent name is recorded (no filtering)."""
-        from workflow.handlers.recorder import record_recent_agent
-        record_recent_agent("UnknownAgent")
-        mock_store.set.assert_called_with("recent_agent", "UnknownAgent")
-
-    @patch("workflow.handlers.recorder.STATE_STORE")
+    @patch("workflow.handlers.recorder.SESSION")
     @patch("workflow.handlers.recorder.cfg")
-    def test_record_plan_file_created(self, mock_cfg, mock_store):
+    def test_record_plan_file_created(self, mock_cfg, mock_session):
         """Write in plans dir records plan_file_created."""
         mock_cfg.return_value = "~/.claude/plans"
+        mock_session.story_id = "SK-TEST"
+        mock_session.update_session = MagicMock()
         from workflow.handlers.recorder import record_plan_file_created
         plans_dir = str(Path("~/.claude/plans").expanduser())
         file_path = str(Path(plans_dir) / "my-plan.md")
         record_plan_file_created("Write", file_path)
-        mock_store.set.assert_called_with("plan_file_created", True)
+        mock_session.update_session.assert_called_once()
 
-    @patch("workflow.handlers.recorder.STATE_STORE")
+    @patch("workflow.handlers.recorder.SESSION")
     @patch("workflow.handlers.recorder.cfg")
-    def test_record_plan_file_wrong_dir_skips(self, mock_cfg, mock_store):
+    def test_record_plan_file_wrong_dir_skips(self, mock_cfg, mock_session):
         """Write outside plans dir does nothing."""
         mock_cfg.return_value = "~/.claude/plans"
+        mock_session.story_id = "SK-TEST"
         from workflow.handlers.recorder import record_plan_file_created
         record_plan_file_created("Write", "/tmp/other/file.md")
-        mock_store.set.assert_not_called()
+        mock_session.update_session.assert_not_called()
 
-    @patch("workflow.handlers.recorder.STATE_STORE")
+    @patch("workflow.handlers.recorder.SESSION")
     @patch("workflow.handlers.recorder.cfg")
-    def test_record_plan_file_non_write_skips(self, mock_cfg, mock_store):
+    def test_record_plan_file_non_write_skips(self, mock_cfg, mock_session):
         """Non-Write tool does nothing."""
         mock_cfg.return_value = "~/.claude/plans"
+        mock_session.story_id = "SK-TEST"
         from workflow.handlers.recorder import record_plan_file_created
         record_plan_file_created("Edit", "/plans/my-plan.md")
-        mock_store.set.assert_not_called()
+        mock_session.update_session.assert_not_called()
 
-    @patch("workflow.handlers.recorder.STATE_STORE")
-    def test_recorder_main_enter_plan_mode(self, mock_store):
-        """main() records enter_plan_mode_triggered on EnterPlanMode."""
+    @patch("workflow.handlers.recorder.SESSION")
+    def test_recorder_main_enter_plan_mode(self, mock_session):
+        """main() records pre-coding phase on EnterPlanMode."""
+        mock_session.story_id = "SK-TEST"
+        mock_session.update_session = MagicMock()
         data = make_post_tool_input("EnterPlanMode", {})
         with patch("workflow.handlers.recorder.Hook") as MockHook:
             MockHook.read_stdin.return_value = data
             from workflow.handlers.recorder import main
             main()
-        mock_store.set.assert_called_with("enter_plan_mode_triggered", True)
+        mock_session.update_session.assert_called_once()
 
 
 # ─── Reminders ───────────────────────────────────────────────────────────────
@@ -127,27 +114,25 @@ class TestReminders:
             assert exc.value.code == 0
 
 
-# ─── Initialize State ────────────────────────────────────────────────────────
-
-
 # ─── PrRecorder ─────────────────────────────────────────────────────────────
 
 
 class TestPrRecorder:
+    @patch("workflow.handlers.pr_recorder.SessionState")
     @patch("workflow.handlers.pr_recorder.check_workflow_gate", return_value=True)
-    @patch("workflow.handlers.pr_recorder.cfg", return_value=".claude/hooks/workflow/state.json")
-    @patch("workflow.handlers.pr_recorder.StateStore")
-    def test_gh_pr_create_sets_state(self, MockStore, mock_cfg, mock_gate):
-        """Detects gh pr create and sets pr_created=True."""
-        mock_store = MagicMock()
-        MockStore.return_value = mock_store
+    def test_gh_pr_create_sets_session(self, mock_gate, MockSession):
+        """Detects gh pr create and updates session pr state."""
+        mock_session = MagicMock()
+        mock_session.story_id = "SK-TEST"
+        mock_session.update_session = MagicMock()
+        MockSession.return_value = mock_session
 
         data = make_post_tool_input("Bash", {"command": "gh pr create --title test", "description": "Create PR"})
         hook_input = PostToolUseInput.model_validate(data)
 
         from workflow.handlers.pr_recorder import PrRecorder
         PrRecorder(hook_input).run()
-        mock_store.set.assert_called_once_with("pr_created", True)
+        mock_session.update_session.assert_called_once()
 
     @patch("workflow.handlers.pr_recorder.check_workflow_gate", return_value=True)
     def test_non_bash_tool_skips(self, mock_gate):
@@ -164,10 +149,13 @@ class TestPrRecorder:
         data = make_post_tool_input("Bash", {"command": "git push origin main", "description": "Push"})
         hook_input = PostToolUseInput.model_validate(data)
 
-        with patch("workflow.handlers.pr_recorder.StateStore") as MockStore:
+        with patch("workflow.handlers.pr_recorder.SessionState") as MockSession:
+            mock_session = MagicMock()
+            mock_session.story_id = "SK-TEST"
+            MockSession.return_value = mock_session
             from workflow.handlers.pr_recorder import PrRecorder
             PrRecorder(hook_input).run()
-            MockStore.return_value.set.assert_not_called()
+            mock_session.update_session.assert_not_called()
 
     @patch("workflow.handlers.pr_recorder.check_workflow_gate", return_value=False)
     def test_inactive_workflow_skips(self, mock_gate):
@@ -184,15 +172,39 @@ class TestPrRecorder:
 
 class TestInitializeState:
     @patch("workflow.initialize_state.cfg", return_value=".claude/hooks/workflow/state.json")
-    def test_initialize_state(self, mock_cfg):
-        """initialize_state saves correct initial keys."""
+    def test_initialize_state_preserves_sessions(self, mock_cfg):
+        """initialize_state preserves sessions dict."""
         mock_store = MagicMock()
+        mock_store.load.return_value = {
+            "sessions": {"SK-001": {"phase": {"current": "code"}}},
+            "workflow_active": True,
+        }
         with patch("workflow.initialize_state.StateStore", return_value=mock_store):
             from workflow.initialize_state import initialize_state
             data = make_user_prompt_input("test")
             hook_input = UserPromptSubmitInput.model_validate(data)
             initialize_state(hook_input)
-        mock_store.save.assert_called_once_with({
-            "recent_phase": "",
-            "recent_coding_phase": "",
-        })
+        saved = mock_store.save.call_args[0][0]
+        assert "sessions" in saved
+        assert "SK-001" in saved["sessions"]
+        assert saved["workflow_active"] is True
+
+
+# ─── RecordCompletion ───────────────────────────────────────────────────────
+
+
+class TestRecordCompletion:
+    @patch("workflow.handlers.record_done.SessionState")
+    @patch("workflow.handlers.record_done.check_workflow_gate", return_value=True)
+    def test_done_status_sets_completed(self, mock_gate, MockSession):
+        """Recording 'Done' status sets control.status to completed."""
+        mock_session = MagicMock()
+        mock_session.story_id = "SK-TEST"
+        MockSession.return_value = mock_session
+
+        data = make_post_tool_input("Skill", {"skill": "log", "args": "SK-001 Done"})
+        hook_input = PostToolUseInput.model_validate(data)
+
+        from workflow.handlers.record_done import RecordCompletion
+        RecordCompletion(hook_input).run()
+        mock_session.update_session.assert_called_once()

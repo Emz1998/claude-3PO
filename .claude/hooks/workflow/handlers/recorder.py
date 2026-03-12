@@ -3,33 +3,45 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-import json
-from typing import Any, cast
+import os
+from typing import Any
 
-from workflow.state_store import StateStore
-from workflow.models.hook_input import PreToolUseInput, PostToolUseInput, SkillTool
+from workflow.session_state import SessionState
+from workflow.models.hook_input import PostToolUseInput
 from workflow.hook import Hook
 from workflow.config import get as cfg
 
-STATE_PATH = Path(cfg("paths.workflow_state"))
-
-STATE_STORE = StateStore(STATE_PATH)
+SESSION = SessionState()
 
 
-def record(key: str, value: Any) -> None:
-    STATE_STORE.set(key, value)
+def record_phase(phase: str) -> None:
+    """Record phase to session if STORY_ID is set, otherwise no-op."""
+    story_id = SESSION.story_id
+    if not story_id:
+        return
+    try:
+        SESSION.update_session(story_id, lambda s: s["phase"].update({"current": phase}))
+    except KeyError:
+        pass
 
 
 def record_pre_coding_phase() -> None:
-    record("recent_phase", "Pre-Coding")
+    record_phase("pre-coding")
 
 
 def record_coding_phase() -> None:
-    record("recent_phase", "Coding")
+    record_phase("code")
 
 
 def record_recent_agent(agent_name: str) -> None:
-    record("recent_agent", agent_name)
+    """Record recent agent to session if STORY_ID is set."""
+    story_id = SESSION.story_id
+    if not story_id:
+        return
+    try:
+        SESSION.update_session(story_id, lambda s: s["phase"].update({"recent_agent": agent_name}))
+    except KeyError:
+        pass
 
 
 def record_plan_file_created(tool_name: str, file_path: str) -> None:
@@ -38,7 +50,12 @@ def record_plan_file_created(tool_name: str, file_path: str) -> None:
     plan_dir = str(Path(cfg("paths.plans_dir")).expanduser())
     file_path_parent_dir = str(Path(file_path).parent)
     if file_path_parent_dir == plan_dir:
-        record("plan_file_created", True)
+        story_id = SESSION.story_id
+        if story_id:
+            try:
+                SESSION.update_session(story_id, lambda s: s.update({"plan_file_created": True}))
+            except KeyError:
+                pass
 
 
 def main() -> None:
@@ -48,7 +65,7 @@ def main() -> None:
 
     match tool_name:
         case "EnterPlanMode":
-            record("enter_plan_mode_triggered", True)
+            record_pre_coding_phase()
         case "Skill":
             skill_name = hook_input.tool_input.skill
             if skill_name == "Code":

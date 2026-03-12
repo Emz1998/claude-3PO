@@ -6,15 +6,12 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-from workflow.state_store import StateStore
+from workflow.session_state import SessionState
 from workflow.hook import Hook
 from workflow.models.hook_input import PreToolUseInput, PostToolUseInput, StopInput
 from workflow.workflow_gate import check_workflow_gate
 from workflow.utils.order_validation import validate_order
 from workflow.config import get as cfg
-
-
-STATE_PATH = Path(cfg("paths.workflow_state"))
 
 
 T = TypeVar("T", bound=PreToolUseInput | PostToolUseInput | StopInput)
@@ -24,14 +21,24 @@ class PreCodingPhaseGuard(Generic[T]):
     AGENTS = cfg("agents.pre_coding")
 
     def __init__(self, hook_input: T):
-        self._state = StateStore(STATE_PATH)
+        self._session = SessionState()
         self._hook_input = hook_input
 
+    def _get_recent_agent(self) -> str | None:
+        """Read recent_agent from session state."""
+        story_id = self._session.story_id
+        if not story_id:
+            return None
+        session = self._session.get_session(story_id)
+        if session:
+            return session.get("phase", {}).get("recent_agent")
+        return None
+
     def validate_transition(self) -> tuple[bool, str]:
-        recent_phase = self._state.get("recent_agent", "Explore")
+        recent_agent = self._get_recent_agent() or "Explore"
         hook_input = cast(PreToolUseInput, self._hook_input)
         return validate_order(
-            recent_phase, hook_input.tool_input.subagent_type, self.AGENTS
+            recent_agent, hook_input.tool_input.subagent_type, self.AGENTS
         )
 
     @property

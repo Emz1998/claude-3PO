@@ -1,16 +1,15 @@
-"""PostToolUse handler — records recent_phase after pre-coding agent invocations."""
+"""PostToolUse handler — records recent_agent after pre-coding agent invocations."""
 
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-from workflow.state_store import StateStore
+from workflow.session_state import SessionState
 from workflow.models.hook_input import PostToolUseInput
 from workflow.hook import Hook
 from workflow.config import get as cfg
 
-STATE_PATH = Path(cfg("paths.workflow_state"))
 PRE_CODING_AGENTS: list[str] = cfg("agents.pre_coding")
 
 
@@ -24,8 +23,15 @@ def main() -> None:
     if agent_name not in PRE_CODING_AGENTS:
         return
 
-    state = StateStore(STATE_PATH)
-    state.set("recent_agent", agent_name)
+    session = SessionState()
+    story_id = session.story_id
+    if not story_id:
+        return
+
+    try:
+        session.update_session(story_id, lambda s: s["phase"].update({"recent_agent": agent_name}))
+    except KeyError:
+        pass
 
 
 if __name__ == "__main__":

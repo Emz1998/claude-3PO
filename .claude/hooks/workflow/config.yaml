@@ -28,6 +28,7 @@ validation:
   iteration_loop: 3
   confidence_score: 70
   quality_score: 70
+  ci_max_iterations: 2
 
 reminders:
   map:
@@ -51,6 +52,8 @@ reminders:
       tool: "Agent"
       agent: "code-reviewer"
       template: "code-reviewer.md"
+
+sessions_dir: ".claude/sessions"
 
 session_dirs:
   ["exploration", "planning", "review", "testing", "troubleshooting", "reports"]
