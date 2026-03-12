@@ -86,9 +86,15 @@ def run_test(script: Path, input_json: str) -> None:
 
 
 if __name__ == "__main__":
-    script = Path(".claude/hooks/workflow/handlers/review_trigger.py")
-    schema = SchemaLoader("UserPromptSubmit")
-    schema.patch({"prompt": "/review 287"})
+    script = Path(".claude/hooks/workflow/handlers/recorder.py")
+    schema = SchemaLoader("PostToolUse", "Skill")
+    schema.patch(
+        {
+            "session_id": "cdd22c22-b442-407a-88f8-c27825b707f5",
+            "tool_name": "Skill",
+            "tool_input": {"skill": "simplify"},
+        }
+    )
 
     print(json.dumps(schema.data, indent=4))
     run_test(script, json.dumps(schema.data, indent=4))

@@ -18,3 +18,7 @@ worktrees/
 
 # State Json
 .claude/hooks/workflow/state.json
+
+# CLaude Settings
+.claude/settings.local.json
+

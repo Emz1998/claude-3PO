@@ -52,6 +52,10 @@ reminders:
       tool: "Agent"
       agent: "code-reviewer"
       template: "code-reviewer.md"
+    - event: "PostToolUse"
+      tool: "Skill"
+      skill: "simplify"
+      template: "simplify.md"
 
 sessions_dir: ".claude/sessions"
 

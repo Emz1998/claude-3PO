@@ -12,13 +12,20 @@ from workflow.hook import Hook
 from workflow.lib.file_manager import FileManager
 from workflow.models.hook_input import PreToolUseInput, PostToolUseInput
 from workflow.config import get as cfg
+from workflow.workflow_gate import check_workflow_gate
+from workflow.workflow_log import log
 
 TEMPLATE_DIR = Path(__file__).resolve().parent / "templates" / "reminders"
 
 # Build tuple-keyed dict from config list
+# Qualifier is either "agent" (for Agent tool) or "skill" (for Skill tool)
 _reminder_entries = cfg("reminders.map", [])
 REMINDERS_MAP = {
-    (entry["event"], entry["tool"], entry.get("agent")): entry["template"]
+    (
+        entry["event"],
+        entry["tool"],
+        entry.get("agent") or entry.get("skill"),
+    ): entry["template"]
     for entry in _reminder_entries
 }
 
@@ -33,21 +40,42 @@ class Reminders:
     def load_template(self, reminder_name: str) -> str:
         return self._file_manager.load(reminder_name) or ""
 
-    def send_reminder(self, reminder: str) -> None:
-        Hook.advanced_output({"systemMessage": reminder})
-
-    def run(self) -> None:
-        hook_event_name = self._hook_input.hook_event_name
-        tool_name = self._hook_input.tool_name
-        agent_name = (
-            self._hook_input.tool_input.subagent_type if tool_name == "Agent" else None
+    def send_reminder(self, hook_event_name: str, reminder: str) -> None:
+        Hook.advanced_output(
+            {
+                "hookSpecificOutput": {
+                    "hookEventName": hook_event_name,
+                    "additionalContext": reminder,
+                }
+            }
         )
 
-        reminder = REMINDERS_MAP.get((hook_event_name, tool_name, agent_name))  # type: ignore
+    def run(self) -> None:
+        if not check_workflow_gate():
+            log("Reminders", "Skipped", "Workflow is not active")
+            return
+
+        hook_event_name = self._hook_input.hook_event_name
+        tool_name = self._hook_input.tool_name
+
+        qualifier = None
+        if tool_name == "Agent":
+            qualifier = self._hook_input.tool_input.subagent_type or None
+        elif tool_name == "Skill":
+            qualifier = self._hook_input.tool_input.skill or None
+
+        reminder = REMINDERS_MAP.get((hook_event_name, tool_name, qualifier))  # type: ignore
         if not reminder:
+            log("Reminders", "Skipped", "No reminder found")
             return
         reminder_path = REMINDERS_DIR / reminder
-        self.send_reminder(reminder_path.read_text())
+        reminder_text = reminder_path.read_text()
+        self.send_reminder(hook_event_name, reminder_text)
+        log(
+            "Reminders",
+            "Sent",
+            f"Reminder '{reminder_text}' sent for {hook_event_name}",
+        )
 
 
 def main():

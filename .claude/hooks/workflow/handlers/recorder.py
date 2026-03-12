@@ -20,7 +20,9 @@ def record_phase(phase: str) -> None:
     if not story_id:
         return
     try:
-        SESSION.update_session(story_id, lambda s: s["phase"].update({"current": phase}))
+        SESSION.update_session(
+            story_id, lambda s: s["phase"].update({"current": phase})
+        )
     except KeyError:
         pass
 
@@ -39,7 +41,9 @@ def record_recent_agent(agent_name: str) -> None:
     if not story_id:
         return
     try:
-        SESSION.update_session(story_id, lambda s: s["phase"].update({"recent_agent": agent_name}))
+        SESSION.update_session(
+            story_id, lambda s: s["phase"].update({"recent_agent": agent_name})
+        )
     except KeyError:
         pass
 
@@ -53,23 +57,43 @@ def record_plan_file_created(tool_name: str, file_path: str) -> None:
         story_id = SESSION.story_id
         if story_id:
             try:
-                SESSION.update_session(story_id, lambda s: s.update({"plan_file_created": True}))
+                SESSION.update_session(
+                    story_id, lambda s: s.update({"plan_file_created": True})
+                )
             except KeyError:
                 pass
 
 
-def main() -> None:
+def record_simplify_status(status: str, session_id: str) -> None:
+    session = SESSION.get_session_by_id(session_id)
+    if not session:
+        print(f"Session not found for session_id: {session_id}")
+        return
+    SESSION.update_session(
+        session["story_id"], lambda s: s["simplify"].update({"status": status})
+    )
 
+
+def main() -> None:
+    print("Recording phase...")
     hook_input = PostToolUseInput.model_validate(Hook.read_stdin())
     tool_name = hook_input.tool_name
-
+    session_id = hook_input.session_id
     match tool_name:
         case "EnterPlanMode":
             record_pre_coding_phase()
         case "Skill":
+            print("Recording skill...")
+            print(hook_input.tool_input)
             skill_name = hook_input.tool_input.skill
+            print(f"Skill name: {skill_name}")
             if skill_name == "Code":
                 record_coding_phase()
+                return
+            if skill_name == "simplify":
+                print("Recording simplify status...")
+                record_simplify_status("completed", session_id)
+                return
         case "Agent":
             agent_name = hook_input.tool_input.subagent_type
             record_recent_agent(agent_name)

@@ -9,6 +9,7 @@ from workflow.session_state import SessionState
 from workflow.models.hook_input import PostToolUseInput
 from workflow.hook import Hook
 from workflow.config import get as cfg
+from workflow.workflow_log import log
 
 PRE_CODING_AGENTS: list[str] = cfg("agents.pre_coding")
 
@@ -29,7 +30,10 @@ def main() -> None:
         return
 
     try:
-        session.update_session(story_id, lambda s: s["phase"].update({"recent_agent": agent_name}))
+        log("PhaseRecorder", "Recorded", f"Recent agent recorded: {agent_name}")
+        session.update_session(
+            story_id, lambda s: s["phase"].update({"recent_agent": agent_name})
+        )
     except KeyError:
         pass
 

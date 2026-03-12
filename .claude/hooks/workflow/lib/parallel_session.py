@@ -1,5 +1,6 @@
 import shlex
 import subprocess
+from pathlib import Path
 
 SCRIPT = "~/avaris-ai/.claude/hooks/workflow/lib/launch-claude.py"
 
@@ -15,7 +16,7 @@ def parallel_sessions(prompts: list[str]) -> None:
             "wsl.exe",
             "bash",
             "-lic",
-            f"python3 {SCRIPT} {quoted}",
+            f"source {Path.cwd()}/.venv/bin/activate && python3 {SCRIPT} {quoted}",
         ],
         stdin=subprocess.DEVNULL,
         stdout=subprocess.DEVNULL,

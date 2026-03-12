@@ -11,6 +11,7 @@ from workflow.hook import Hook
 from workflow.session_state import SessionState
 from workflow.workflow_gate import activate_workflow
 from workflow.models.hook_input import UserPromptSubmitInput
+from workflow.workflow_log import log
 
 _REVIEW_PATTERN = re.compile(r"/review\s+(\d+)")
 
@@ -24,8 +25,7 @@ class ReviewTrigger:
 
         match = _REVIEW_PATTERN.search(self._hook_input.prompt)
         if not match:
-            Hook.advanced_output({"systemMessage": "Review session created"})
-
+            log("ReviewTrigger", "Skipped", "No PR number found")
             return
 
         pr_number = int(match.group(1))
@@ -36,9 +36,7 @@ class ReviewTrigger:
         session_data = SessionState.default_pr_review_session(pr_number, session_id)
         session_state.create_session(story_id, session_data)
 
-        Hook.advanced_output(
-            {"systemMessage": f"Review session created for PR #{pr_number}"}
-        )
+        log("ReviewTrigger", "Created", f"Review session created for PR #{pr_number}")
 
 
 if __name__ == "__main__":

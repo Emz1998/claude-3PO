@@ -14,6 +14,7 @@ from workflow.workflow_gate import activate_workflow
 from workflow.models.hook_input import UserPromptSubmitInput
 from workflow.config import get as cfg
 from workflow.constants.phases import STATUS_IN_PROGRESS
+from workflow.workflow_log import log
 
 
 class ImplementTrigger:
@@ -36,6 +37,7 @@ class ImplementTrigger:
         return self._hook_input.prompt.startswith("/implement")
 
     def run(self) -> None:
+        log("ImplementTrigger", "Initiated", "Initialization Completed")
         if not self.validate_prompt():
             return
 
@@ -56,6 +58,7 @@ class ImplementTrigger:
             text=True,
         )
         if result.returncode != 0:
+            log("ImplementTrigger", "Blocked", "Failed to start story")
             Hook.block(result.stderr.strip() or "Failed to start story")
 
         # Create session entry
@@ -73,6 +76,8 @@ class ImplementTrigger:
             text=True,
         )
         Hook.success_response(result.stdout)
+
+        log("ImplementTrigger", "Allowed", "Implementation Allowed")
 
 
 if __name__ == "__main__":

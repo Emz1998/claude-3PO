@@ -32,8 +32,22 @@ class SessionState:
         sessions = state.get("sessions", {})
         return sessions.get(story_id)
 
+    def get_session_by_id(self, session_id: str) -> dict | None:
+        """Return the session dict for session_id, or None if missing."""
+        state = self._store.load()
+        sessions = state.get("sessions", {})
+        return next(
+            (
+                session
+                for session in sessions.values()
+                if session.get("session_id") == session_id
+            ),
+            None,
+        )
+
     def create_session(self, story_id: str, data: dict) -> None:
         """Create or overwrite a session entry under sessions.<story_id>."""
+
         def _create(state: dict) -> None:
             if "sessions" not in state:
                 state["sessions"] = {}
@@ -43,6 +57,7 @@ class SessionState:
 
     def update_session(self, story_id: str, fn: Callable[[dict], None]) -> None:
         """Apply fn to the session dict for story_id. Raises KeyError if missing."""
+
         def _update(state: dict) -> None:
             sessions = state.get("sessions", {})
             if story_id not in sessions:
@@ -53,6 +68,7 @@ class SessionState:
 
     def delete_session(self, story_id: str) -> None:
         """Remove the session for story_id. No-op if missing."""
+
         def _delete(state: dict) -> None:
             sessions = state.get("sessions", {})
             sessions.pop(story_id, None)

@@ -10,6 +10,7 @@ from workflow.hook import Hook
 from workflow.session_state import SessionState
 from workflow.workflow_gate import check_workflow_gate
 from workflow.models.hook_input import PostToolUseInput
+from workflow.workflow_log import log
 
 
 class PrRecorder:
@@ -19,13 +20,16 @@ class PrRecorder:
 
     def run(self) -> None:
         if not self._is_workflow_active:
+            log("PrRecorder", "Skipped", "Workflow is not active")
             return
 
         if self._hook_input.tool_name != "Bash":
+            log("PrRecorder", "Skipped", "Tool name is not Bash")
             return
 
         command = self._hook_input.tool_input.command
         if "gh pr create" not in command:
+            log("PrRecorder", "Skipped", "Command is not gh pr create")
             return
 
         session = SessionState()
@@ -37,17 +41,23 @@ class PrRecorder:
         pr_number = None
         response = getattr(self._hook_input, "tool_response", None)
         if response:
-            content = response.get("content", "") if isinstance(response, dict) else str(response)
+            content = (
+                response.get("content", "")
+                if isinstance(response, dict)
+                else str(response)
+            )
             match = re.search(r"/pull/(\d+)", content)
             if match:
                 pr_number = int(match.group(1))
 
         try:
+
             def update_pr(s: dict) -> None:
                 s["pr"]["created"] = True
                 if pr_number:
                     s["pr"]["number"] = pr_number
 
+            log("PrRecorder", "Recorded", f"PR number recorded: {pr_number}")
             session.update_session(story_id, update_pr)
         except KeyError:
             pass
