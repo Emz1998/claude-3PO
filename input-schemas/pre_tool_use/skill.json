@@ -6,7 +6,7 @@
   "hook_event_name": "PreToolUse",
   "tool_name": "Skill",
   "tool_input": {
-    "skill": "simplify"
+    "skill": "validate"
   },
   "tool_use_id": "toolu_01PsGUnKmeQmcLef63SzMYBP"
 }

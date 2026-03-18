@@ -6,7 +6,7 @@
   "hook_event_name": "PostToolUse",
   "tool_name": "Skill",
   "tool_input": {
-    "skill": "simplify"
+    "skill": "refactor"
   },
   "tool_response": {
     "success": true,

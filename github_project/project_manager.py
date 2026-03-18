@@ -27,7 +27,6 @@ import sys
 from pathlib import Path
 from typing import Any
 
-import yaml
 
 # ---------------------------------------------------------------------------
 # File paths
@@ -36,132 +35,11 @@ import yaml
 ISSUES_DIR = Path(__file__).parent / "issues"
 SPRINT_PATH = ISSUES_DIR / "sprint.json"
 STORIES_PATH = ISSUES_DIR / "stories.json"
+TEMPLATES_DIR = Path(__file__).parent / "templates"
+DEFAULT_TEMPLATE = TEMPLATES_DIR / "issue_view.txt"
 
 # ---------------------------------------------------------------------------
-# Config
-# ---------------------------------------------------------------------------
-
-CONFIG_FILE = Path(__file__).parent / "config.yaml"
-
-
-def _load_config() -> dict[str, Any]:
-    if CONFIG_FILE.exists():
-        return yaml.safe_load(CONFIG_FILE.read_text(encoding="utf-8")) or {}
-    return {}
-
-
-def _resolve_paths() -> tuple[Path, Path]:
-    """Return (sprint_path, stories_path) using config or defaults."""
-    cfg = _load_config()
-    dp = cfg.get("data_paths", {})
-    sprint = Path(dp.get("sprint", SPRINT_PATH))
-    stories = Path(dp.get("stories", STORIES_PATH))
-    return sprint, stories
-
-
-# ---------------------------------------------------------------------------
-# JSON I/O
-# ---------------------------------------------------------------------------
-
-
-def _load_sprint(path: Path | None = None) -> dict:
-    p = path or SPRINT_PATH
-    if not p.exists():
-        return {"sprint": 0, "milestone": "", "description": "", "due_date": "", "tasks": []}
-    return json.loads(p.read_text(encoding="utf-8"))
-
-
-def _load_stories(path: Path | None = None) -> dict:
-    p = path or STORIES_PATH
-    if not p.exists():
-        return {"project": "", "goal": "", "dates": {}, "totalPoints": 0, "stories": []}
-    return json.loads(p.read_text(encoding="utf-8"))
-
-
-def _save_sprint(data: dict, path: Path | None = None) -> None:
-    p = path or SPRINT_PATH
-    p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
-
-
-def _save_stories(data: dict, path: Path | None = None) -> None:
-    p = path or STORIES_PATH
-    p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
-
-
-# ---------------------------------------------------------------------------
-# ID generation
-# ---------------------------------------------------------------------------
-
-
-def _next_id(prefix: str, existing_ids: list[str]) -> str:
-    pattern = re.compile(rf"^{re.escape(prefix)}-(\d+)$")
-    max_num = 0
-    for eid in existing_ids:
-        m = pattern.match(eid)
-        if m:
-            max_num = max(max_num, int(m.group(1)))
-    return f"{prefix}-{max_num + 1:03d}"
-
-
-# ---------------------------------------------------------------------------
-# Load all items for display
-# ---------------------------------------------------------------------------
-
-
-def _load_all_items(sprint_path: Path | None = None, stories_path: Path | None = None) -> list[dict[str, Any]]:
-    """Combine sprint tasks + stories into a flat list for display."""
-    sprint_data = _load_sprint(sprint_path)
-    stories_data = _load_stories(stories_path)
-    result: list[dict[str, Any]] = []
-
-    for story in stories_data.get("stories", []):
-        result.append({
-            "key": story.get("id", ""),
-            "title": story.get("title", ""),
-            "issue_number": story.get("issue_number"),
-            "status": story.get("status", ""),
-            "priority": story.get("priority", ""),
-            "points": story.get("points", ""),
-            "complexity": "",
-            "type": story.get("type", ""),
-            "start_date": story.get("startDate", story.get("start_date", "")),
-            "target_date": story.get("targetDate", story.get("target_date", "")),
-            "milestone": story.get("milestone", stories_data.get("milestone", "")),
-            "labels": story.get("labels", []),
-            "assignees": story.get("assignees", []),
-            "parent_id": "",
-            "description": story.get("description", ""),
-            "acceptance_criteria": story.get("acceptance_criteria", []),
-            "tdd": story.get("tdd", False),
-        })
-
-    for task in sprint_data.get("tasks", []):
-        result.append({
-            "key": task.get("id", ""),
-            "title": task.get("title", ""),
-            "issue_number": task.get("issue_number"),
-            "status": task.get("status", ""),
-            "priority": task.get("priority", ""),
-            "points": "",
-            "complexity": task.get("complexity", ""),
-            "type": task.get("type", "task"),
-            "start_date": task.get("startDate", task.get("start_date", "")),
-            "target_date": task.get("targetDate", task.get("target_date", "")),
-            "milestone": task.get("milestone", sprint_data.get("milestone", "")),
-            "labels": task.get("labels", []),
-            "assignees": task.get("assignees", []),
-            "parent_id": task.get("parent_story_id", ""),
-            "description": task.get("description", ""),
-            "acceptance_criteria": task.get("acceptance_criteria", []),
-        })
-
-    return result
-
-
-# ---------------------------------------------------------------------------
-# Sorting helpers
+# Constants
 # ---------------------------------------------------------------------------
 
 PRIORITY_ORDER = {"P0": 0, "P1": 1, "P2": 2, "P3": 3}
@@ -173,107 +51,21 @@ STATUS_ORDER = {
     "Backlog": 4,
 }
 COMPLEXITY_ORDER = {"XS": 0, "S": 1, "M": 2, "L": 3, "XL": 4}
-
-
-def _sort_key(field: str, task: dict[str, Any]) -> Any:
-    val = task.get(field, "")
-    if val is None:
-        val = ""
-
-    if field == "priority":
-        return PRIORITY_ORDER.get(val, 99)
-    if field == "status":
-        return STATUS_ORDER.get(val, 99)
-    if field == "complexity":
-        return COMPLEXITY_ORDER.get(val, 99)
-    if field in ("points", "issue_number"):
-        return val if isinstance(val, (int, float)) else 0
-
-    return str(val).lower()
-
-
-# ---------------------------------------------------------------------------
-# Filtering
-# ---------------------------------------------------------------------------
-
-
-def _matches(task: dict[str, Any], filters: dict[str, str]) -> bool:
-    for field, value in filters.items():
-        task_val = task.get(field)
-        if task_val is None:
-            return False
-        if isinstance(task_val, list):
-            if value.lower() not in [str(v).lower() for v in task_val]:
-                return False
-        elif str(task_val).lower() != value.lower():
-            return False
-    return True
-
-
-# ---------------------------------------------------------------------------
-# Status transition
-# ---------------------------------------------------------------------------
+ACTIVE_STATUSES = {"Backlog", "Ready"}
 
 VALID_TRANSITIONS: dict[str, set[str]] = {
-    "Backlog":     {"Ready"},
-    "Ready":       {"In progress", "Backlog"},
+    "Backlog": {"Ready"},
+    "Ready": {"In progress", "Backlog"},
     "In progress": {"In review", "Ready"},
-    "In review":   {"Done", "In progress"},
-    "Done":        {"In progress"},
+    "In review": {"Done", "In progress"},
+    "Done": {"In progress"},
 }
 
-
-def _validate_transition(current: str, new: str) -> str | None:
-    """Return an error message if the transition is invalid, else None."""
-    allowed = VALID_TRANSITIONS.get(current)
-    if allowed is None:
-        return f"Unknown current status '{current}'"
-    if new not in allowed:
-        return f"Cannot move from '{current}' to '{new}' (allowed: {', '.join(sorted(allowed))}). Use --force to override."
-    return None
-
-
-# ---------------------------------------------------------------------------
-# Dependency helpers
-# ---------------------------------------------------------------------------
-
-
-def _is_unblocked(item_blocked_by: list[str], status_by_id: dict[str, str]) -> bool:
-    """Return True if all items in blocked_by are Done (or list is empty)."""
-    return all(status_by_id.get(dep, "") == "Done" for dep in item_blocked_by)
-
-
-# ---------------------------------------------------------------------------
-# Display helpers
-# ---------------------------------------------------------------------------
-
-
-def _truncate(text: str, width: int) -> str:
-    if len(text) <= width:
-        return text
-    return text[: width - 1] + "\u2026"
-
-
-def _print_table(
-    tasks: list[dict[str, Any]], columns: list[tuple[str, str, int]]
-) -> None:
-    header = "  ".join(h.ljust(w) for h, _, w in columns)
-    print(header)
-    print("-" * len(header))
-
-    for t in tasks:
-        parts: list[str] = []
-        for _, key, width in columns:
-            val = t.get(key, "")
-            if val is None:
-                val = ""
-            if isinstance(val, list):
-                val = ", ".join(str(v) for v in val)
-            parts.append(_truncate(str(val), width).ljust(width))
-        print("  ".join(parts))
-
-    print(f"\n{len(tasks)} task(s)")
-
+STORY_TYPE_PREFIXES: dict[str, str] = {
+    "Spike": "SK",
+    "Bug": "BG",
+    "User Story": "US",
+}
 
 DEFAULT_COLUMNS: list[tuple[str, str, int]] = [
     ("KEY", "key", 8),
@@ -301,20 +93,209 @@ WIDE_COLUMNS: list[tuple[str, str, int]] = [
     ("ASSIGNEES", "assignees", 16),
 ]
 
+# ---------------------------------------------------------------------------
+# JSON I/O
+# ---------------------------------------------------------------------------
+
+
+def _load_json(path: Path, default: dict) -> dict:
+    if not path.exists():
+        return default
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _load_sprint(path: Path | None = None) -> dict:
+    return _load_json(
+        path or SPRINT_PATH,
+        {"sprint": 0, "milestone": "", "description": "", "due_date": "", "tasks": []},
+    )
+
+
+def _load_stories(path: Path | None = None) -> dict:
+    return _load_json(
+        path or STORIES_PATH,
+        {"project": "", "goal": "", "dates": {}, "totalPoints": 0, "stories": []},
+    )
+
+
+def _save_json(data: dict, path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+
+
+def _save_sprint(data: dict, path: Path | None = None) -> None:
+    _save_json(data, path or SPRINT_PATH)
+
+
+def _save_stories(data: dict, path: Path | None = None) -> None:
+    _save_json(data, path or STORIES_PATH)
+
 
 # ---------------------------------------------------------------------------
-# Shared helpers
+# Path helpers
 # ---------------------------------------------------------------------------
 
 
-def _find_task(tasks: list[dict[str, Any]], key: str) -> dict[str, Any] | None:
-    upper = key.upper()
-    for t in tasks:
-        if str(t.get("key", "")).upper() == upper:
-            return t
-        if str(t.get("issue_number", "")) == key:
-            return t
+def _sprint_path(args: argparse.Namespace) -> Path:
+    return getattr(args, "_sprint_path", None) or SPRINT_PATH
+
+
+def _stories_path(args: argparse.Namespace) -> Path:
+    return getattr(args, "_stories_path", None) or STORIES_PATH
+
+
+# ---------------------------------------------------------------------------
+# ID generation
+# ---------------------------------------------------------------------------
+
+
+def _next_id(prefix: str, existing_ids: list[str]) -> str:
+    pattern = re.compile(rf"^{re.escape(prefix)}-(\d+)$")
+    max_num = 0
+    for eid in existing_ids:
+        m = pattern.match(eid)
+        if m:
+            max_num = max(max_num, int(m.group(1)))
+    return f"{prefix}-{max_num + 1:03d}"
+
+
+# ---------------------------------------------------------------------------
+# Item normalization
+# ---------------------------------------------------------------------------
+
+
+def _normalize_story(story: dict, milestone_fallback: str) -> dict:
+    return {
+        "key": story.get("id", ""),
+        "title": story.get("title", ""),
+        "issue_number": story.get("issue_number"),
+        "status": story.get("status", ""),
+        "priority": story.get("priority", ""),
+        "points": story.get("points", ""),
+        "complexity": "",
+        "type": story.get("type", ""),
+        "start_date": story.get("startDate", story.get("start_date", "")),
+        "target_date": story.get("targetDate", story.get("target_date", "")),
+        "milestone": story.get("milestone", milestone_fallback),
+        "labels": story.get("labels", []),
+        "assignees": story.get("assignees", []),
+        "parent_id": "",
+        "description": story.get("description", ""),
+        "acceptance_criteria": story.get("acceptance_criteria", []),
+        "tdd": story.get("tdd", False),
+    }
+
+
+def _normalize_task(task: dict, milestone_fallback: str) -> dict:
+    return {
+        "key": task.get("id", ""),
+        "title": task.get("title", ""),
+        "issue_number": task.get("issue_number"),
+        "status": task.get("status", ""),
+        "priority": task.get("priority", ""),
+        "points": "",
+        "complexity": task.get("complexity", ""),
+        "type": task.get("type", "task"),
+        "start_date": task.get("startDate", task.get("start_date", "")),
+        "target_date": task.get("targetDate", task.get("target_date", "")),
+        "milestone": task.get("milestone", milestone_fallback),
+        "labels": task.get("labels", []),
+        "assignees": task.get("assignees", []),
+        "parent_id": task.get("parent_story_id", ""),
+        "description": task.get("description", ""),
+        "acceptance_criteria": task.get("acceptance_criteria", []),
+    }
+
+
+def _load_all_items(
+    sprint_path: Path | None = None, stories_path: Path | None = None
+) -> list[dict[str, Any]]:
+    """Combine sprint tasks + stories into a flat list for display."""
+    sprint_data = _load_sprint(sprint_path)
+    stories_data = _load_stories(stories_path)
+
+    stories = [
+        _normalize_story(s, stories_data.get("milestone", ""))
+        for s in stories_data.get("stories", [])
+    ]
+    tasks = [
+        _normalize_task(t, sprint_data.get("milestone", ""))
+        for t in sprint_data.get("tasks", [])
+    ]
+    return stories + tasks
+
+
+# ---------------------------------------------------------------------------
+# Sorting / filtering
+# ---------------------------------------------------------------------------
+
+
+def _sort_key(field: str, task: dict[str, Any]) -> Any:
+    val = task.get(field, "")
+    if val is None:
+        val = ""
+
+    if field == "priority":
+        return PRIORITY_ORDER.get(val, 99)
+    if field == "status":
+        return STATUS_ORDER.get(val, 99)
+    if field == "complexity":
+        return COMPLEXITY_ORDER.get(val, 99)
+    if field in ("points", "issue_number"):
+        return val if isinstance(val, (int, float)) else 0
+
+    return str(val).lower()
+
+
+def _matches(task: dict[str, Any], filters: dict[str, str]) -> bool:
+    for field, value in filters.items():
+        task_val = task.get(field)
+        if task_val is None:
+            return False
+        if isinstance(task_val, list):
+            if value.lower() not in [str(v).lower() for v in task_val]:
+                return False
+        elif str(task_val).lower() != value.lower():
+            return False
+    return True
+
+
+# ---------------------------------------------------------------------------
+# Status transitions / dependency helpers
+# ---------------------------------------------------------------------------
+
+
+def _validate_transition(current: str, new: str) -> str | None:
+    """Return an error message if the transition is invalid, else None."""
+    allowed = VALID_TRANSITIONS.get(current)
+    if allowed is None:
+        return f"Unknown current status '{current}'"
+    if new not in allowed:
+        return f"Cannot move from '{current}' to '{new}' (allowed: {', '.join(sorted(allowed))}). Use --force to override."
     return None
+
+
+def _is_unblocked(item_blocked_by: list[str], status_by_id: dict[str, str]) -> bool:
+    """Return True if all items in blocked_by are Done (or list is empty)."""
+    return all(status_by_id.get(dep, "") == "Done" for dep in item_blocked_by)
+
+
+def _build_status_map(stories: list[dict], tasks: list[dict]) -> dict[str, str]:
+    return {
+        **{s.get("id", ""): s.get("status", "") for s in stories},
+        **{t.get("id", ""): t.get("status", "") for t in tasks},
+    }
+
+
+# ---------------------------------------------------------------------------
+# Display helpers
+# ---------------------------------------------------------------------------
+
+
+def _truncate(text: str, width: int) -> str:
+    if len(text) <= width:
+        return text
+    return text[: width - 1] + "\u2026"
 
 
 def _format_list(val: Any) -> str:
@@ -325,8 +306,25 @@ def _format_list(val: Any) -> str:
     return str(val)
 
 
-TEMPLATES_DIR = Path(__file__).parent / "templates"
-DEFAULT_TEMPLATE = TEMPLATES_DIR / "issue_view.txt"
+def _print_table(
+    tasks: list[dict[str, Any]], columns: list[tuple[str, str, int]]
+) -> None:
+    header = "  ".join(h.ljust(w) for h, _, w in columns)
+    print(header)
+    print("-" * len(header))
+
+    for t in tasks:
+        parts: list[str] = []
+        for _, key, width in columns:
+            val = t.get(key, "")
+            if val is None:
+                val = ""
+            if isinstance(val, list):
+                val = ", ".join(str(v) for v in val)
+            parts.append(_truncate(str(val), width).ljust(width))
+        print("  ".join(parts))
+
+    print(f"\n{len(tasks)} task(s)")
 
 
 def _render_template(task: dict[str, Any], template_path: Path) -> str:
@@ -353,6 +351,16 @@ def _view_raw(task: dict[str, Any]) -> None:
     for k, v in task.items():
         label = f"{k}:".ljust(max_label)
         print(f"  {label}  {_format_list(v)}")
+
+
+def _find_task(tasks: list[dict[str, Any]], key: str) -> dict[str, Any] | None:
+    upper = key.upper()
+    for t in tasks:
+        if str(t.get("key", "")).upper() == upper:
+            return t
+        if str(t.get("issue_number", "")) == key:
+            return t
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -383,10 +391,16 @@ def cmd_list(tasks: list[dict[str, Any]], args: argparse.Namespace) -> int:
 
     if story_filter:
         story_upper = story_filter.upper()
-        filtered = [t for t in filtered if t.get("parent_id", "").upper() == story_upper]
+        filtered = [
+            t for t in filtered if t.get("parent_id", "").upper() == story_upper
+        ]
 
     if args.sort_by:
         filtered.sort(key=lambda t: _sort_key(args.sort_by, t), reverse=args.reverse)
+
+    if getattr(args, "json", False):
+        print(json.dumps(filtered, indent=2))
+        return 0
 
     if args.keys_only:
         keys = [t.get("key", "") for t in filtered if t.get("key")]
@@ -420,7 +434,9 @@ def cmd_view(tasks: list[dict[str, Any]], args: argparse.Namespace) -> int:
         if children:
             print(f"\nChild tasks ({len(children)}):")
             for c in children:
-                print(f"  {c.get('key', ''):<8} {c.get('status', ''):<14} {c.get('title', '')}")
+                print(
+                    f"  {c.get('key', ''):<8} {c.get('status', ''):<14} {c.get('title', '')}"
+                )
 
     return 0
 
@@ -434,10 +450,14 @@ def cmd_summary(tasks: list[dict[str, Any]], args: argparse.Namespace) -> int:
         if val is None or val == "":
             val = "(none)"
         if isinstance(val, list):
-            val = ", ".join(str(v) for v in val) or "(none)"
+            val = _format_list(val)
         groups.setdefault(str(val), []).append(t)
 
-    order_map = {"status": STATUS_ORDER, "priority": PRIORITY_ORDER, "complexity": COMPLEXITY_ORDER}
+    order_map = {
+        "status": STATUS_ORDER,
+        "priority": PRIORITY_ORDER,
+        "complexity": COMPLEXITY_ORDER,
+    }
     order = order_map.get(group_field, {})
     sorted_keys = sorted(groups.keys(), key=lambda k: order.get(k, 99))
 
@@ -447,9 +467,7 @@ def cmd_summary(tasks: list[dict[str, Any]], args: argparse.Namespace) -> int:
         if isinstance(t.get("points"), (int, float))
     )
 
-    print(
-        f"Summary by {group_field}  ({len(tasks)} tasks, {total_points} pts total)\n"
-    )
+    print(f"Summary by {group_field}  ({len(tasks)} tasks, {total_points} pts total)\n")
 
     header = f"  {'GROUP'.ljust(16)}  {'COUNT':>5}  {'PTS':>5}"
     print(header)
@@ -467,13 +485,8 @@ def cmd_summary(tasks: list[dict[str, Any]], args: argparse.Namespace) -> int:
     return 0
 
 
-# ---------------------------------------------------------------------------
-# New commands
-# ---------------------------------------------------------------------------
-
-
 def cmd_create_sprint(args: argparse.Namespace) -> int:
-    sprint_path = getattr(args, "_sprint_path", None) or SPRINT_PATH
+    sprint_path = _sprint_path(args)
     data = {
         "sprint": args.number,
         "milestone": args.milestone or "",
@@ -487,20 +500,11 @@ def cmd_create_sprint(args: argparse.Namespace) -> int:
 
 
 def cmd_add_story(args: argparse.Namespace) -> int:
-    stories_path = getattr(args, "_stories_path", None) or STORIES_PATH
+    stories_path = _stories_path(args)
     data = _load_stories(stories_path)
 
     existing_ids = [s.get("id", "") for s in data.get("stories", [])]
-
-    if args.type == "Spike":
-        prefix = "SK"
-    elif args.type == "Bug":
-        prefix = "BG"
-    elif args.type == "User Story":
-        prefix = "US"
-    else:
-        prefix = "TS"
-
+    prefix = STORY_TYPE_PREFIXES.get(args.type, "TS")
     new_id = _next_id(prefix, existing_ids)
 
     story = {
@@ -529,7 +533,7 @@ def cmd_add_story(args: argparse.Namespace) -> int:
 
 
 def cmd_add_task(args: argparse.Namespace) -> int:
-    sprint_path = getattr(args, "_sprint_path", None) or SPRINT_PATH
+    sprint_path = _sprint_path(args)
     data = _load_sprint(sprint_path)
 
     existing_ids = [t.get("id", "") for t in data.get("tasks", [])]
@@ -561,8 +565,8 @@ def cmd_add_task(args: argparse.Namespace) -> int:
 
 
 def cmd_complete_sprint(args: argparse.Namespace) -> int:
-    sprint_path = getattr(args, "_sprint_path", None) or SPRINT_PATH
-    stories_path = getattr(args, "_stories_path", None) or STORIES_PATH
+    sprint_path = _sprint_path(args)
+    stories_path = _stories_path(args)
 
     if not sprint_path.exists():
         print("No active sprint found.", file=sys.stderr)
@@ -583,12 +587,11 @@ def cmd_complete_sprint(args: argparse.Namespace) -> int:
 
 
 def cmd_update(args: argparse.Namespace) -> int:
-    sprint_path = getattr(args, "_sprint_path", None) or SPRINT_PATH
-    stories_path = getattr(args, "_stories_path", None) or STORIES_PATH
+    sprint_path = _sprint_path(args)
+    stories_path = _stories_path(args)
 
     key = args.key.upper()
 
-    # Collect updates
     updates: dict[str, Any] = {}
     if args.status is not None:
         updates["status"] = args.status
@@ -608,18 +611,21 @@ def cmd_update(args: argparse.Namespace) -> int:
         updates["tdd"] = args.tdd
 
     if not updates:
-        print("Nothing to update. Use --help to see available options.", file=sys.stderr)
+        print(
+            "Nothing to update. Use --help to see available options.", file=sys.stderr
+        )
         return 1
 
     force = getattr(args, "force", False)
 
-    # Try sprint.json tasks first
     if key.startswith("T-"):
         data = _load_sprint(sprint_path)
         for task in data.get("tasks", []):
             if task.get("id", "").upper() == key:
                 if "status" in updates and not force:
-                    err = _validate_transition(task.get("status", ""), updates["status"])
+                    err = _validate_transition(
+                        task.get("status", ""), updates["status"]
+                    )
                     if err:
                         print(err, file=sys.stderr)
                         return 1
@@ -631,7 +637,6 @@ def cmd_update(args: argparse.Namespace) -> int:
         print(f"Task not found: {args.key}", file=sys.stderr)
         return 1
 
-    # Try stories.json
     data = _load_stories(stories_path)
     for story in data.get("stories", []):
         if story.get("id", "").upper() == key:
@@ -657,8 +662,8 @@ def cmd_update(args: argparse.Namespace) -> int:
 
 
 def cmd_progress(args: argparse.Namespace) -> int:
-    sprint_path = getattr(args, "_sprint_path", None) or SPRINT_PATH
-    stories_path = getattr(args, "_stories_path", None) or STORIES_PATH
+    sprint_path = _sprint_path(args)
+    stories_path = _stories_path(args)
 
     sprint_data = _load_sprint(sprint_path)
     stories_data = _load_stories(stories_path)
@@ -669,7 +674,9 @@ def cmd_progress(args: argparse.Namespace) -> int:
     total_tasks = len(tasks)
     done_tasks = sum(1 for t in tasks if t.get("status") == "Done")
 
-    print(f"Sprint {sprint_data.get('sprint', '?')} - {sprint_data.get('milestone', '')}")
+    print(
+        f"Sprint {sprint_data.get('sprint', '?')} - {sprint_data.get('milestone', '')}"
+    )
     print(f"{'=' * 40}")
 
     if total_tasks > 0:
@@ -678,7 +685,6 @@ def cmd_progress(args: argparse.Namespace) -> int:
     else:
         print("Overall: No tasks")
 
-    # Status distribution
     status_counts: dict[str, int] = {}
     for t in tasks:
         s = t.get("status", "(none)")
@@ -689,27 +695,33 @@ def cmd_progress(args: argparse.Namespace) -> int:
         for status in sorted(status_counts, key=lambda s: STATUS_ORDER.get(s, 99)):
             print(f"  {status:<14} {status_counts[status]}")
 
-    # Story status
     if stories:
         total_stories = len(stories)
         done_stories = sum(1 for s in stories if s.get("status") == "Done")
         print(f"\nStory completion: {done_stories}/{total_stories} stories done")
-        for story in sorted(stories, key=lambda s: STATUS_ORDER.get(s.get("status", ""), 99)):
+        for story in sorted(
+            stories, key=lambda s: STATUS_ORDER.get(s.get("status", ""), 99)
+        ):
             sid = story.get("id", "")
             status = story.get("status", "")
             print(f"  {sid:<8} {status:<14} {story.get('title', '')[:40]}")
 
-    # Per-story task completion
     if stories:
+        tasks_by_story: dict[str, list[dict]] = {}
+        for t in tasks:
+            tasks_by_story.setdefault(t.get("parent_story_id", ""), []).append(t)
+
         print(f"\nPer-story task completion:")
         for story in stories:
             sid = story.get("id", "")
-            story_tasks = [t for t in tasks if t.get("parent_story_id") == sid]
+            story_tasks = tasks_by_story.get(sid, [])
             story_done = sum(1 for t in story_tasks if t.get("status") == "Done")
             total = len(story_tasks)
             if total > 0:
                 pct = story_done / total * 100
-                print(f"  {sid:<8} {story.get('title', '')[:40]:<40} {story_done}/{total} ({pct:.0f}%)")
+                print(
+                    f"  {sid:<8} {story.get('title', '')[:40]:<40} {story_done}/{total} ({pct:.0f}%)"
+                )
             else:
                 print(f"  {sid:<8} {story.get('title', '')[:40]:<40} (no tasks)")
 
@@ -717,8 +729,8 @@ def cmd_progress(args: argparse.Namespace) -> int:
 
 
 def cmd_unblocked(args: argparse.Namespace) -> int:
-    sprint_path = getattr(args, "_sprint_path", None) or SPRINT_PATH
-    stories_path = getattr(args, "_stories_path", None) or STORIES_PATH
+    sprint_path = _sprint_path(args)
+    stories_path = _stories_path(args)
 
     sprint_data = _load_sprint(sprint_path)
     stories_data = _load_stories(stories_path)
@@ -726,49 +738,67 @@ def cmd_unblocked(args: argparse.Namespace) -> int:
     tasks = sprint_data.get("tasks", [])
     stories = stories_data.get("stories", [])
 
-    # Build {id: status} lookup for dependency resolution
-    status_by_id: dict[str, str] = {}
-    for s in stories:
-        status_by_id[s.get("id", "")] = s.get("status", "")
-    for t in tasks:
-        status_by_id[t.get("id", "")] = t.get("status", "")
+    status_by_id = _build_status_map(stories, tasks)
 
-    # Collect unblocked items (skip already Done items)
-    ACTIVE_STATUSES = {"Backlog", "Ready"}
     story_filter = getattr(args, "story", None)
     story_filter_upper = story_filter.upper() if story_filter else None
 
     unblocked_stories = [
-        s for s in stories
+        s
+        for s in stories
         if s.get("status") in ACTIVE_STATUSES
         and _is_unblocked(s.get("blocked_by", []), status_by_id)
-        and (story_filter_upper is None or s.get("id", "").upper() == story_filter_upper)
+        and (
+            story_filter_upper is None or s.get("id", "").upper() == story_filter_upper
+        )
     ]
     unblocked_tasks = [
-        t for t in tasks
+        t
+        for t in tasks
         if t.get("status") in ACTIVE_STATUSES
         and _is_unblocked(t.get("blocked_by", []), status_by_id)
-        and (story_filter_upper is None or t.get("parent_story_id", "").upper() == story_filter_upper)
+        and (
+            story_filter_upper is None
+            or t.get("parent_story_id", "").upper() == story_filter_upper
+        )
     ]
 
-    # Display
     all_unblocked = unblocked_stories + unblocked_tasks
     if not all_unblocked:
         print("No unblocked items found.")
         return 0
 
+    if getattr(args, "json", False):
+        output = []
+        for item in unblocked_stories:
+            output.append({
+                "id": item.get("id", ""),
+                "type": item.get("type", "story"),
+                "status": item.get("status", ""),
+                "title": item.get("title", ""),
+                "description": item.get("description", ""),
+                "blocked_by": item.get("blocked_by", []),
+            })
+        for item in unblocked_tasks:
+            output.append({
+                "id": item.get("id", ""),
+                "type": item.get("type", "task"),
+                "status": item.get("status", ""),
+                "title": item.get("title", ""),
+                "description": item.get("description", ""),
+                "blocked_by": item.get("blocked_by", []),
+                "parent_story_id": item.get("parent_story_id", ""),
+            })
+        print(json.dumps(output, indent=2))
+        return 0
+
     print(f"Unblocked items ({len(all_unblocked)}):")
     print("-" * 50)
     for item in unblocked_stories:
-        sid = item.get("id", "")
-        status = item.get("status", "")
-        print(f"  {sid:<8} {status:<12} {item.get('title', '')[:50]}")
+        print(f"  {item.get('id', ''):<8} {item.get('status', ''):<12} {item.get('title', '')[:50]}")
     for item in unblocked_tasks:
-        tid = item.get("id", "")
-        status = item.get("status", "")
-        print(f"  {tid:<8} {status:<12} {item.get('title', '')[:50]}")
+        print(f"  {item.get('id', ''):<8} {item.get('status', ''):<12} {item.get('title', '')[:50]}")
 
-    # Promote to Ready
     if getattr(args, "promote", False):
         promoted = 0
         unblocked_story_ids = {x.get("id") for x in unblocked_stories}
@@ -791,18 +821,18 @@ def cmd_unblocked(args: argparse.Namespace) -> int:
 
 
 def cmd_sprint_info(args: argparse.Namespace) -> int:
-    sprint_path = getattr(args, "_sprint_path", None) or SPRINT_PATH
+    sprint_path = _sprint_path(args)
     data = _load_sprint(sprint_path)
     print(data.get("sprint", 1))
     return 0
 
 
 # ---------------------------------------------------------------------------
-# Main
+# CLI parser
 # ---------------------------------------------------------------------------
 
 
-def main() -> int:
+def _build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(
         description="Manage project tasks and stories via local JSON files.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -837,7 +867,11 @@ examples:
     lp.add_argument("--type", help="Filter by type (task, Spike, Tech)")
     lp.add_argument("--story", help="Filter tasks by parent story ID (e.g. SK-001)")
     lp.add_argument("--wide", "-w", action="store_true", help="Show all columns")
-    lp.add_argument("--keys-only", "-k", action="store_true", help="Output only task keys (comma-separated)")
+    lp.add_argument(
+        "--keys-only", "-k", action="store_true",
+        help="Output only task keys (comma-separated)",
+    )
+    lp.add_argument("--json", action="store_true", help="Output results as JSON")
 
     # --- view ---
     vp = sub.add_parser("view", help="View a single task by key or issue number")
@@ -855,12 +889,19 @@ examples:
     ep.add_argument("--description", help="Set description")
     ep.add_argument("--start-date", help="Set start date (YYYY-MM-DD)")
     ep.add_argument("--target-date", help="Set target date (YYYY-MM-DD)")
-    ep.add_argument("--tdd", type=lambda v: v.lower() in ("true", "1", "yes"), metavar="BOOL", help="Set TDD flag (true/false)")
+    ep.add_argument(
+        "--tdd",
+        type=lambda v: v.lower() in ("true", "1", "yes"),
+        metavar="BOOL",
+        help="Set TDD flag (true/false)",
+    )
     ep.add_argument("--force", action="store_true", help="Bypass status transition guardrail")
 
     # --- summary ---
     sp = sub.add_parser("summary", help="Show task summary grouped by a field")
-    sp.add_argument("--group-by", "-g", default="status", help="Field to group by (default: status)")
+    sp.add_argument(
+        "--group-by", "-g", default="status", help="Field to group by (default: status)"
+    )
 
     # --- create-sprint ---
     cs = sub.add_parser("create-sprint", help="Create a new sprint")
@@ -874,7 +915,11 @@ examples:
 
     # --- add-story ---
     ast = sub.add_parser("add-story", help="Add a story to the project")
-    ast.add_argument("--type", required=True, choices=["Spike", "Tech", "Story", "User Story", "Bug"], help="Story type")
+    ast.add_argument(
+        "--type", required=True,
+        choices=["Spike", "Tech", "Story", "User Story", "Bug"],
+        help="Story type",
+    )
     ast.add_argument("--title", required=True, help="Story title")
     ast.add_argument("--description", help="Story description")
     ast.add_argument("--points", type=int, help="Story points")
@@ -898,39 +943,43 @@ examples:
     up = sub.add_parser("unblocked", help="List items with all dependencies met")
     up.add_argument("--promote", action="store_true", help="Set unblocked Backlog items to Ready")
     up.add_argument("--story", help="Filter by parent story ID (e.g. SK-001)")
+    up.add_argument("--json", action="store_true", help="Output results as JSON")
 
     # --- sprint-info ---
     sub.add_parser("sprint-info", help="Print current sprint number")
 
-    args = ap.parse_args()
+    return ap
 
-    # Commands that don't need the flat items list
-    if args.command == "create-sprint":
-        return cmd_create_sprint(args)
-    if args.command == "complete-sprint":
-        return cmd_complete_sprint(args)
-    if args.command == "add-story":
-        return cmd_add_story(args)
-    if args.command == "add-task":
-        return cmd_add_task(args)
-    if args.command == "update":
-        return cmd_update(args)
-    if args.command == "progress":
-        return cmd_progress(args)
-    if args.command == "unblocked":
-        return cmd_unblocked(args)
-    if args.command == "sprint-info":
-        return cmd_sprint_info(args)
 
-    # Commands that need flat items
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
+
+
+def main() -> int:
+    args = _build_parser().parse_args()
+
+    direct_commands = {
+        "create-sprint": cmd_create_sprint,
+        "complete-sprint": cmd_complete_sprint,
+        "add-story": cmd_add_story,
+        "add-task": cmd_add_task,
+        "update": cmd_update,
+        "progress": cmd_progress,
+        "unblocked": cmd_unblocked,
+        "sprint-info": cmd_sprint_info,
+    }
+    if args.command in direct_commands:
+        return direct_commands[args.command](args)
+
     tasks = _load_all_items()
-    commands = {
+    flat_commands = {
         "list": cmd_list,
         "ls": cmd_list,
         "view": cmd_view,
         "summary": cmd_summary,
     }
-    return commands[args.command](tasks, args)
+    return flat_commands[args.command](tasks, args)
 
 
 if __name__ == "__main__":

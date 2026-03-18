@@ -18,7 +18,9 @@ def remove_worktree(story_id: str) -> None:
     try:
         subprocess.run(
             ["git", "worktree", "remove", story_id, "--force"],
-            capture_output=True, text=True, check=True,
+            capture_output=True,
+            text=True,
+            check=True,
         )
     except subprocess.CalledProcessError:
         pass  # Worktree may not exist
@@ -27,6 +29,7 @@ def remove_worktree(story_id: str) -> None:
 class CleanupTrigger:
     def __init__(self, hook_input: PostToolUseInput):
         self._hook_input = hook_input
+        self._session = SessionState(Path(cfg("paths.workflow_state")))
 
     def run(self) -> None:
         if not check_workflow_gate():
@@ -38,17 +41,8 @@ class CleanupTrigger:
         if self._hook_input.tool_input.skill != "push":
             return
 
-        session_state = SessionState()
-        story_id = session_state.story_id
-        if not story_id:
-            return
-
-        session = session_state.get_session(story_id)
-        if not session:
-            return
-
-        ci_status = session.get("ci", {}).get("status")
-        if ci_status != CI_PASS:
+        pr_status = self._session.get("pr", {}).get("status")
+        if pr_status != "created":
             return
 
         remove_worktree(story_id)

@@ -1,13 +1,12 @@
 {
-    "session_id": "55e03575-bd44-43b2-bcb2-2214bad7a612",
-    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/55e03575-bd44-43b2-bcb2-2214bad7a612.jsonl",
-    "cwd": "/home/emhar/avaris-ai",
-    "permission_mode": "bypassPermissions",
-    "hook_event_name": "PreToolUse",
-    "tool_name": "Write",
-    "tool_input": {
-        "file_path": "/home/emhar/avaris-ai/.claude/hooks/utils/files.py",
-        "content": "\"\"\"File I/O utilities with error handling.\"\"\"\n\nimport json\nfrom pathlib import Path\nfrom typing import Any\n\n\nclass FileReadError(Exception):\n    \"\"\"Raised when a file cannot be read.\"\"\"\n    pass\n\n\ndef read_file(file_path: str) -> str:\n    \"\"\"Read file content with error handling.\"\"\"\n    try:\n        return Path(file_path).read_text(encoding=\"utf-8\")\n    except FileNotFoundError:\n        raise FileReadError(f\"File not found: {file_path}\")\n    except PermissionError:\n        raise FileReadError(f\"Permission denied: {file_path}\")\n    except UnicodeDecodeError:\n        raise FileReadError(f\"Invalid encoding: {file_path}\")\n\n\ndef write_file(file_path: str, content: str) -> None:\n    \"\"\"Write content to file, overwriting existing content.\"\"\"\n    Path(file_path).write_text(content, encoding=\"utf-8\")\n\n\ndef read_json(file_path: str, default: dict | None = None) -> dict[str, Any]:\n    \"\"\"Read JSON file with fallback to default.\"\"\"\n    try:\n        return json.loads(read_file(file_path))\n    except (FileReadError, json.JSONDecodeError):\n        return default if default is not None else {}\n\n\ndef write_json(data: dict[str, Any], file_path: str, indent: int = 2) -> None:\n    \"\"\"Write data to JSON file.\"\"\"\n    Path(file_path).write_text(json.dumps(data, indent=indent), encoding=\"utf-8\")\n\n\ndef output_json(data: dict[str, Any]) -> None:\n    \"\"\"Output JSON to stdout.\"\"\"\n    print(json.dumps(data))\n\n\ndef extract_slash_command_name(raw_command: str = \"\") -> str:\n    \"\"\"Extract command name from a slash-prefixed prompt.\"\"\"\n    if not raw_command or not raw_command.startswith(\"/\"):\n        return \"\"\n    return raw_command[1:].split(\" \")[0]\n"
-    },
-    "tool_use_id": "toolu_0142eG1nv1oi1qGK6HT75sjf"
+  "session_id": "55e03575-bd44-43b2-bcb2-2214bad7a612",
+  "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/55e03575-bd44-43b2-bcb2-2214bad7a612.jsonl",
+  "cwd": "/home/emhar/avaris-ai",
+  "permission_mode": "bypassPermissions",
+  "hook_event_name": "PreToolUse",
+  "tool_name": "Write",
+  "tool_input": {
+    "content": "---\nconfidence_score: 60\nquality_score: 55\niteration_count: 0\n---\nThis is a test content."
+  },
+  "tool_use_id": "toolu_0142eG1nv1oi1qGK6HT75sjf"
 }

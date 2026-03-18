@@ -6,9 +6,9 @@
   "hook_event_name": "PostToolUse",
   "tool_name": "Agent",
   "tool_input": {
-    "description": "Expert code review specialist. Proactively reviews code for quality, security, and maintainability. Use immediately after writing or modifying code.",
-    "prompt": "Review the following code and provide feedback on the quality, security, and maintainability of the code.",
-    "subagent_type": "code-reviewer"
+    "description": "Explore the project",
+    "prompt": "sonnet",
+    "subagent_type": "Explore"
   },
   "tool_response": {
     "status": "completed",

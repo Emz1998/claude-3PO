@@ -5,6 +5,6 @@
     "permission_mode": "bypassPermissions",
     "hook_event_name": "SubagentStart",
     "agent_id": "ae60f8a",
-"agent_type": "planner",
+    "agent_type": "plan-reviewer",
     "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-ae60f8a.jsonl"
 }

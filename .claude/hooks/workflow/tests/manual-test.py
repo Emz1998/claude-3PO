@@ -71,6 +71,10 @@ class SchemaLoader:
         self._data.update(overrides)
         self._file.save(self._data)
 
+    def patch_by_key(self, key: str, value: Any) -> None:
+        self._data[key] = self._data.get(key, {}).update(value)
+        self._file.save(self._data)
+
     def to_json(self) -> str:
         return json.dumps(self._data)
 
@@ -86,15 +90,8 @@ def run_test(script: Path, input_json: str) -> None:
 
 
 if __name__ == "__main__":
-    script = Path(".claude/hooks/workflow/handlers/recorder.py")
-    schema = SchemaLoader("PostToolUse", "Skill")
-    schema.patch(
-        {
-            "session_id": "cdd22c22-b442-407a-88f8-c27825b707f5",
-            "tool_name": "Skill",
-            "tool_input": {"skill": "simplify"},
-        }
-    )
+    script = Path(".claude/hooks/workflow/guards/fully_blocked.py")
+    schema = SchemaLoader("PreToolUse", "Agent")
 
     print(json.dumps(schema.data, indent=4))
     run_test(script, json.dumps(schema.data, indent=4))

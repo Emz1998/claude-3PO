@@ -53,7 +53,7 @@ def write_file(path: Path, data: Any) -> None:
 
 
 def update_file(path: Path, fn: Callable[[Any], None]) -> None:
-    data = load_file(path)
+    data = load_file(path, default=set_default(path))
     fn(data)
     write_file(path, data)
 

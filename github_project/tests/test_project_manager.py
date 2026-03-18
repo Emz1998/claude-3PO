@@ -948,7 +948,7 @@ class TestUnblocked:
     def test_unblocked_lists_correct_items(self, unblocked_sprint_file, unblocked_stories_file, capsys):
         args = argparse.Namespace(
             _sprint_path=unblocked_sprint_file, _stories_path=unblocked_stories_file,
-            promote=False,
+            promote=False, json=False,
         )
         assert pm.cmd_unblocked(args) == 0
         out = capsys.readouterr().out
@@ -967,7 +967,7 @@ class TestUnblocked:
     def test_unblocked_skips_done_items(self, unblocked_sprint_file, unblocked_stories_file, capsys):
         args = argparse.Namespace(
             _sprint_path=unblocked_sprint_file, _stories_path=unblocked_stories_file,
-            promote=False,
+            promote=False, json=False,
         )
         pm.cmd_unblocked(args)
         out = capsys.readouterr().out
@@ -977,7 +977,7 @@ class TestUnblocked:
     def test_unblocked_promote(self, unblocked_sprint_file, unblocked_stories_file, capsys):
         args = argparse.Namespace(
             _sprint_path=unblocked_sprint_file, _stories_path=unblocked_stories_file,
-            promote=True,
+            promote=True, json=False,
         )
         assert pm.cmd_unblocked(args) == 0
         out = capsys.readouterr().out
@@ -1013,7 +1013,7 @@ class TestUnblocked:
 
         args = argparse.Namespace(
             _sprint_path=sprint_file, _stories_path=stories_file,
-            promote=True,
+            promote=True, json=False,
         )
         pm.cmd_unblocked(args)
         out = capsys.readouterr().out
@@ -1026,7 +1026,7 @@ class TestUnblocked:
     def test_unblocked_filter_by_story(self, unblocked_sprint_file, unblocked_stories_file, capsys):
         args = argparse.Namespace(
             _sprint_path=unblocked_sprint_file, _stories_path=unblocked_stories_file,
-            promote=False, story="SK-001",
+            promote=False, story="SK-001", json=False,
         )
         pm.cmd_unblocked(args)
         out = capsys.readouterr().out
@@ -1110,8 +1110,37 @@ class TestCompleteSprint:
 
         args = argparse.Namespace(
             _sprint_path=sprint_file, _stories_path=stories_file,
-            promote=False,
+            promote=False, json=False,
         )
         assert pm.cmd_unblocked(args) == 0
         out = capsys.readouterr().out
         assert "No unblocked items found." in out
+
+    def test_unblocked_json_output(self, unblocked_sprint_file, unblocked_stories_file, capsys):
+        args = argparse.Namespace(
+            _sprint_path=unblocked_sprint_file, _stories_path=unblocked_stories_file,
+            promote=False, json=True,
+        )
+        assert pm.cmd_unblocked(args) == 0
+        out = capsys.readouterr().out
+        data = json.loads(out)
+        assert isinstance(data, list)
+        ids = [item["id"] for item in data]
+        assert "T-001" in ids
+        assert "SK-002" in ids
+        assert "T-002" in ids
+        # Done items excluded
+        assert "T-003" not in ids
+        assert "SK-001" not in ids
+        # Each item has required fields
+        for item in data:
+            assert "id" in item
+            assert "type" in item
+            assert "status" in item
+            assert "title" in item
+            assert "description" in item
+            assert "blocked_by" in item
+        # Tasks have parent_story_id
+        tasks = [i for i in data if i["type"] == "task"]
+        for t in tasks:
+            assert "parent_story_id" in t

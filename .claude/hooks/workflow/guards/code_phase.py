@@ -12,60 +12,53 @@ from workflow.models.hook_input import PreToolUseInput
 from workflow.workflow_gate import check_workflow_gate
 from workflow.utils.order_validation import validate_order
 from workflow.config import get as cfg
+from workflow.state_store import StateStore
 
 
-class CodingPhaseGuard:
-    TEST_AGENTS = cfg("agents.test")
-    CODE_AGENTS = cfg("agents.code")
+def resolve_coding_agents(session: SessionState) -> list[str]:
+    if session.TDD:
+        return cfg("agents.test").append("code-reviewer")
+    return ["code-reviewer"]
 
-    def __init__(self, hook_input: PreToolUseInput):
-        self._hook_input = hook_input
-        self._session = SessionState()
 
-    def _get_session_data(self, key: str, default: Any = None) -> Any:
-        """Read a value from the current session."""
-        story_id = self._session.story_id
-        if not story_id:
-            return default
-        session = self._session.get_session(story_id)
-        if not session:
-            return default
-        return session.get(key, default)
+def resolve_agents_list(session: SessionState) -> list[str]:
+    match session.current_phase:
+        case "pre_coding":
+            return cfg("agents.pre_coding")
+        case "code":
+            return resolve_coding_agents(session)
+        case _:
+            raise ValueError(f"Invalid phase: {session.current_phase}")
 
-    def resolve_agents_list(self) -> list[str]:
-        tdd = self._get_session_data("TDD", False)
-        if tdd:
-            return self.TEST_AGENTS + self.CODE_AGENTS
-        return self.CODE_AGENTS
 
-    def validate_transition(self) -> tuple[bool, str]:
-        recent_agent = None
-        story_id = self._session.story_id
-        if story_id:
-            session = self._session.get_session(story_id)
-            if session:
-                recent_agent = session.get("phase", {}).get("recent_agent")
-        if not recent_agent:
-            recent_agent = "Explore"
+def validate_transition(
+    raw_input: dict[str, Any], session: SessionState
+) -> tuple[bool, str]:
+    previous_phase = session.previous_phase
+    current_phase = raw_input.get("tool_input", {}).get("skill", None)
+    if current_phase is None:
+        raise ValueError("skill key is not found in hook input")
+    return validate_order(previous_phase, current_phase, resolve_agents_list(session))
 
-        hook_input = cast(PreToolUseInput, self._hook_input)
-        return validate_order(
-            recent_agent,
-            hook_input.tool_input.subagent_type,
-            self.resolve_agents_list(),
-        )
 
-    def run(self) -> None:
-        is_workflow_active = check_workflow_gate()
-        if not is_workflow_active:
-            return
+def main() -> None:
+    raw_input = Hook.read_stdin()
+    session_id = raw_input.get("session_id", "")
+    if not session_id:
+        raise ValueError("Session ID is required")
+    session = SessionState(session_id)
 
-        is_valid, reason = self.validate_transition()
-        if not is_valid:
-            Hook.block(reason)
+    if not session.workflow_active:
+        return
+
+    if not session.plan_mode:
+        Hook.block("Please enter plan mode (EnterPlanMode) first.")
+        return
+
+    is_valid, reason = validate_transition(raw_input, session)
+    if not is_valid:
+        Hook.block(reason)
 
 
 if __name__ == "__main__":
-    hook_input = PreToolUseInput.model_validate(Hook.read_stdin())
-    guard = CodingPhaseGuard(hook_input)
-    guard.run()
+    main()

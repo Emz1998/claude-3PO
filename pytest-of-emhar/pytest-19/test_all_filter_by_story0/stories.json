@@ -1,0 +1,1 @@
+{"stories": [{"id": "SK-001", "title": "Story A", "status": "Done", "blocked_by": [], "is_blocking": []}, {"id": "SK-002", "title": "Story B", "status": "Backlog", "blocked_by": ["SK-001"], "is_blocking": []}, {"id": "SK-003", "title": "Story C", "status": "Backlog", "blocked_by": ["SK-002"], "is_blocking": []}]}

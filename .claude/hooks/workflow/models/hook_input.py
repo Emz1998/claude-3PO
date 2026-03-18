@@ -10,12 +10,15 @@ HookEventType = Literal[
     "SessionStart",
     "SessionEnd",
     "Stop",
+    "SubagentStart",
     "SubagentStop",
 ]
 
 
 PermissionMode = Literal["default", "plan", "acceptEdits", "bypassPermissions"]
-ToolName = Literal["Skill", "Bash", "Write", "Edit", "Read", "EnterPlanMode", "Agent"]
+ToolName = Literal[
+    "Skill", "Bash", "Write", "Edit", "Read", "EnterPlanMode", "ExitPlanMode", "Agent"
+]
 
 
 class HookInput(BaseModel):
@@ -61,13 +64,26 @@ class EnterPlanModeTool(BaseModel):
     pass
 
 
+class ExitPlanModeTool(BaseModel):
+    pass
+
+
 class AgentTool(BaseModel):
     description: str
     prompt: str
     subagent_type: str = ""
 
 
-ToolInputType = Union[SkillTool, BashTool, WriteTool, EditTool, ReadTool, EnterPlanModeTool, AgentTool]
+ToolInputType = Union[
+    SkillTool,
+    BashTool,
+    WriteTool,
+    EditTool,
+    ReadTool,
+    EnterPlanModeTool,
+    AgentTool,
+    ExitPlanModeTool,
+]
 
 ToolInputMap: dict[str, type[ToolInputType]] = {
     "Skill": SkillTool,
@@ -76,6 +92,7 @@ ToolInputMap: dict[str, type[ToolInputType]] = {
     "Edit": EditTool,
     "Read": ReadTool,
     "EnterPlanMode": EnterPlanModeTool,
+    "ExitPlanMode": ExitPlanModeTool,
     "Agent": AgentTool,
 }
 
@@ -96,6 +113,9 @@ class BaseToolUseInput(HookInput, Generic[T, U]):
             data["tool_input"] = ToolInputMap[tool_name](**data["tool_input"])
         return data
 
+    def to_dict(self) -> dict[str, Any]:
+        return self.model_dump()
+
 
 class PreToolUseInput(BaseToolUseInput):
     pass
@@ -113,11 +133,39 @@ class StopInput(HookInput):
     stop_hook_active: bool
 
 
-if __name__ == "__main__":
-    import json
-    import sys
+class SubagentStartInput(BaseModel):
+    session_id: str
+    transcript_path: str
+    cwd: str
+    hook_event_name: HookEventType
+    agent_id: str
+    agent_type: str
 
-    hook_input = json.load(sys.stdin)
 
-    input = PreToolUseInput.model_validate(hook_input)
-    print(json.dumps(input.model_dump(), indent=4))
+class SubagentStopInput(HookInput):
+    stop_hook_active: bool
+    agent_type: str
+    agent_id: str
+    agent_transcript_path: str
+    last_assistant_message: str
+
+
+# if __name__ == "__main__":
+#     import json
+#     import sys
+
+#     hook_input = {
+#         "session_id": "0f83f668-71fc-44cb-a8ec-379a00ead35e",
+#         "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/0f83f668-71fc-44cb-a8ec-379a00ead35e.jsonl",
+#         "cwd": "/home/emhar/avaris-ai",
+#         "permission_mode": "default",
+#         "hook_event_name": "SubagentStop",
+#         "stop_hook_active": False,
+#         "agent_type": "code-reviewer",
+#         "agent_id": "adc7ac1",
+#         "agent_transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/agent-adc7ac1.jsonl",
+#         "last_assistant_message": "Analysis complete. Found 3 potential issues...",
+#     }
+
+#     input = SubagentStopInput.model_validate(hook_input)
+#     print(json.dumps(input.model_dump(), indent=4))

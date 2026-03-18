@@ -45,8 +45,3 @@ def check_workflow_gate() -> bool:
     if state is None:
         return False
     return is_workflow_active(state)
-
-
-if __name__ == "__main__":
-    # activate_workflow()
-    print(is_workflow_active(state_store.load()))

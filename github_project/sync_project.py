@@ -190,7 +190,9 @@ def set_blocking_relationships(
     """
     # Collect all unique issue numbers that participate in blocking relationships
     involved_nums: set[int] = set()
-    pairs: list[tuple[int, int, str, str]] = []  # (blocked_num, blocker_num, blocked_id, blocker_id)
+    pairs: list[tuple[int, int, str, str]] = (
+        []
+    )  # (blocked_num, blocker_num, blocked_id, blocker_id)
     for item in items:
         item_num = item.get("issue_number")
         if not item_num:
@@ -221,7 +223,9 @@ def set_blocking_relationships(
         if not blocked_node or not blocker_node:
             print(f"  ⚠ Missing node ID for #{blocked_num} or #{blocker_num}")
             continue
-        print(f"  #{blocked_num} ({blocked_id}) blocked by #{blocker_num} ({blocker_id})")
+        print(
+            f"  #{blocked_num} ({blocked_id}) blocked by #{blocker_num} ({blocker_id})"
+        )
         mutation = f"""
         mutation {{
           addBlockedBy(input: {{
@@ -986,11 +990,17 @@ def _fetch_all_issues(repo: str, state: str = "all") -> list[dict[str, Any]]:
         return open_issues + closed_issues
     out = run(
         [
-            "gh", "issue", "list",
-            "--repo", repo,
-            "--state", state,
-            "--json", "title,number",
-            "--limit", "500",
+            "gh",
+            "issue",
+            "list",
+            "--repo",
+            repo,
+            "--state",
+            state,
+            "--json",
+            "title,number",
+            "--limit",
+            "500",
         ],
         check=False,
     )
@@ -1064,7 +1074,9 @@ def _delete_all_tasks(
     if items_to_remove:
         with ThreadPoolExecutor(max_workers=MAX_WORKERS) as pool:
             remove_futures = {
-                pool.submit(_remove_from_project, args.project, args.owner, item_id): issue
+                pool.submit(
+                    _remove_from_project, args.project, args.owner, item_id
+                ): issue
                 for issue, item_id in items_to_remove
             }
             for rf in as_completed(remove_futures):
@@ -1272,7 +1284,9 @@ examples:
         )
 
         if needs_creation:
-            print(f"\nPass 1b: Creating {len(needs_creation)} new {label} (parallel)...")
+            print(
+                f"\nPass 1b: Creating {len(needs_creation)} new {label} (parallel)..."
+            )
             with ThreadPoolExecutor(max_workers=MAX_WORKERS) as pool:
                 futures = {
                     pool.submit(_create_issue, t, args.repo): t for t in needs_creation
@@ -1329,7 +1343,9 @@ examples:
         if story_id:
             story_num = id_map.get(story_id)
             if story_num and t.get("issue_number"):
-                print(f"  Setting #{t['issue_number']} ({t['id']}) as sub-issue of #{story_num} ({story_id})")
+                print(
+                    f"  Setting #{t['issue_number']} ({t['id']}) as sub-issue of #{story_num} ({story_id})"
+                )
                 set_parent_issue(args.repo, t["issue_number"], story_num)
 
     # --- Pass 4: Set blocking relationships ---
@@ -1343,7 +1359,9 @@ examples:
             for story in stories_data.get("stories", []):
                 if story["id"] in id_to_num:
                     story["issue_number"] = id_to_num[story["id"]]
-            stories_path.write_text(json.dumps(stories_data, indent=2), encoding="utf-8")
+            stories_path.write_text(
+                json.dumps(stories_data, indent=2), encoding="utf-8"
+            )
             print(f"\nUpdated: {stories_path}")
         if sync_tasks:
             for task in sprint_data.get("tasks", []):

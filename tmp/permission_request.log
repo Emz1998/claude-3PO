@@ -1,0 +1,13 @@
+
+{
+    "session_id": "77cec0b6-1367-415d-83ff-78027f74f89a",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/77cec0b6-1367-415d-83ff-78027f74f89a.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "plan",
+    "hook_event_name": "PermissionRequest",
+    "tool_name": "ExitPlanMode",
+    "tool_input": {
+        "plan": "# Mock Plan (Test)\n\n## Context\nThis is a mock plan created for testing the plan mode workflow. No real implementation is needed.\n\n## Goal\nVerify that plan mode works correctly \u2014 the plan file is created, ExitPlanMode is called, and the user can approve or reject the plan.\n\n## Steps\n\n1. **Create a test file** \u2014 `src/test_mock.py` with a single hello-world function\n2. **Run the file** \u2014 confirm it prints output\n3. **Delete the file** \u2014 clean up after verification\n\n## Files to Modify\n- `src/test_mock.py` (new, temporary)\n\n## Verification\nRun `python src/test_mock.py` and confirm output is `Hello, world!`.\n",
+        "planFilePath": "/home/emhar/.claude/plans/shimmering-coalescing-glade.md"
+    }
+}

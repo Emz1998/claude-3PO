@@ -2,7 +2,7 @@
 
 import json
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Literal
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -36,8 +36,8 @@ class StateStore:
     def set(self, key: str, value: Any) -> None:
         self.update(lambda d: d.update({key: value}))
 
-    def reset(self) -> None:
-        self._fm.save({})
+    def reset(self, default_state: dict[str, Any] | None = None) -> None:
+        self._fm.save(default_state or {})
 
     def delete(self) -> None:
         self._fm.delete()
@@ -56,8 +56,3 @@ class StateStore:
         if not entries:
             return None
         return entries[-1] if isinstance(entries, list) else None
-
-
-if __name__ == "__main__":
-    state_store = StateStore(Path("project/test.json"), default_state={"test": "test"})
-    print(state_store.load())

@@ -1,14 +1,14 @@
 {
-  "session_id": "55e03575-bd44-43b2-bcb2-2214bad7a612",
+  "session_id": "1dec6780-0da1-424e-b42c-ad72127af154",
   "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/55e03575-bd44-43b2-bcb2-2214bad7a612.jsonl",
   "cwd": "/home/emhar/avaris-ai",
   "permission_mode": "plan",
   "hook_event_name": "PreToolUse",
   "tool_name": "Agent",
   "tool_input": {
-    "description": "code-review",
-    "prompt": "code-review",
-    "subagent_type": "CodeReviewer"
+    "description": "Review the code",
+    "prompt": "Review the code",
+    "subagent_type": "code-reviewer"
   },
   "tool_use_id": "toolu_01RbYELyUGtDAsqrk9CTgyEC"
 }

@@ -1,19 +1,19 @@
 {
-    "session_id": "55e03575-bd44-43b2-bcb2-2214bad7a612",
-    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/55e03575-bd44-43b2-bcb2-2214bad7a612.jsonl",
-    "cwd": "/home/emhar/avaris-ai",
-    "permission_mode": "bypassPermissions",
-    "hook_event_name": "PostToolUse",
-    "tool_name": "Bash",
-    "tool_input": {
-        "command": "rm /home/emhar/avaris-ai/.claude/hooks/utils/log_manager.py",
-        "description": "Remove unused log_manager.py"
-    },
-    "tool_response": {
-        "stdout": "",
-        "stderr": "",
-        "interrupted": false,
-        "isImage": false
-    },
-    "tool_use_id": "toolu_01Qko4h5Q1SZHZMphdMwUhyd"
+  "session_id": "55e03575-bd44-43b2-bcb2-2214bad7a612",
+  "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/55e03575-bd44-43b2-bcb2-2214bad7a612.jsonl",
+  "cwd": "/home/emhar/avaris-ai",
+  "permission_mode": "bypassPermissions",
+  "hook_event_name": "PostToolUse",
+  "tool_name": "Bash",
+  "tool_input": {
+    "description": "gh pr create",
+    "command": "gh pr create"
+  },
+  "tool_response": {
+    "stdout": "",
+    "stderr": "",
+    "interrupted": false,
+    "isImage": false
+  },
+  "tool_use_id": "toolu_01Qko4h5Q1SZHZMphdMwUhyd"
 }

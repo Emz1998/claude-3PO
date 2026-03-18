@@ -3,7 +3,7 @@ def validate_order(
 ) -> tuple[bool, str]:
     """Validate transition based on item order."""
     if next_item not in order:
-        return False, f"Invalid next item: '{next_item}'"
+        return True, f"Please skip '{next_item}'"
 
     if current_item is None:
         if next_item == order[0]:

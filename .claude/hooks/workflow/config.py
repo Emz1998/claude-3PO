@@ -2,6 +2,9 @@
 
 from pathlib import Path
 from typing import Any
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import yaml
 
@@ -39,6 +42,18 @@ def get(dotted_key: str, default: Any = None) -> Any:
         if data is None:
             return default
     return data
+
+
+def get_workflow_phases() -> list[str]:
+    """Get the workflow phases from the config."""
+    from session_state import SessionState  # type: ignore
+
+    session = SessionState()
+    phases = get("phases.workflow", [])
+
+    if session.get("dry_run", False):
+        return [f"dry-run:{phase}" for phase in phases]
+    return phases
 
 
 def get_reviewers() -> list[str]:
