@@ -27,3 +27,30 @@ def normalize_block_data(
 
         case _:
             raise ValueError(f"Invalid tool name: {raw_tool_name}")
+
+
+def normalize_tool_data(
+    raw_tool_name: str, raw_tool_input: dict[str, Any]
+) -> tuple[str, str | None]:
+
+    match raw_tool_name:
+        case "Skill":
+            skill_name = raw_tool_input.get("skill", None)
+            return (raw_tool_name.lower(), skill_name)
+        case "Agent":
+            agent_name = raw_tool_input.get("subagent_type", None)
+            return (raw_tool_name.lower(), agent_name)
+        case "Write" | "Edit":
+            file_path = raw_tool_input.get("file_path", None)
+            return (raw_tool_name.lower(), file_path)
+        case "Bash":
+            raw_tool_name = "command"
+            command = raw_tool_input.get("command", None)
+            return (raw_tool_name, command)
+
+        case "ExitPlanMode":
+            raw_tool_name = "exit_plan_mode"
+            return (raw_tool_name, None)
+
+        case _:
+            raise ValueError(f"Invalid tool name: {raw_tool_name}")

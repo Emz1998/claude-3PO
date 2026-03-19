@@ -2,7 +2,7 @@
 
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
@@ -12,24 +12,29 @@ from workflow.session_state import SessionState
 from workflow.utils.order_validation import validate_order
 from workflow.config import get as cfg
 from workflow.utils.resolve_session import resolve_session
+from workflow.tool_enforcement.resolver import resolve_tool
+from workflow.utils.normalize_tool import normalize_tool_data
 
-AGENTS = cfg("agents")
-
-
-def validate_transition(raw_input: dict, session: SessionState) -> None:
-    current_agent = raw_input.get("tool_input", {}).get("current_agent", "")
-    previous_agent = session.get("agent", {}).get("previous", "")
-
-    is_valid, message = validate_order(current_agent, previous_agent, AGENTS)
-    if not is_valid:
-        Hook.block(message=message)
-        return
+PHASE = [
+    ("agent", "Explore"),
+    ("agent", "Plan"),
+    ("agent", "plan-reviewer"),
+]
 
 
 def main() -> None:
     raw_input = Hook.read_stdin()
-    session = resolve_session(raw_input)
-    validate_transition(raw_input, session)
+    session_id = raw_input.get("session_id", "")
+    if not session_id:
+        raise ValueError("Session ID is required")
+    session = SessionState(session_id)
+    if not session.workflow_active:
+        return
+    raw_tool_name = raw_input.get("tool_name", "")
+    raw_tool_value = raw_input.get("tool_input", {}).get("current_agent", "")
+    tool_data = normalize_tool_data(raw_tool_name, raw_tool_value)
+    agents = cast(list[tuple[str, str | None]], PHASE)
+    resolve_tool(tool_data, session, agents)
 
 
 if __name__ == "__main__":

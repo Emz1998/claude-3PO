@@ -24,6 +24,15 @@
       }
     ]
   },
+  "tool_enforcement": {
+    "status": "bypass",
+    "tools": [
+      {
+        "matcher": "Write",
+        "name": "src/utils.py"
+      }
+    ]
+  },
   "force_stop": {
     "reason": null,
     "status": "inactive"
@@ -69,7 +78,11 @@
     "report_written": false,
     "confidence_score": 0,
     "quality_score": 0,
-    "iteration_left": 2
+    "iteration_left": 2,
+    "files_to_revise": [
+      "/home/emhar/avaris-ai/tmp/permission_request.log",
+      "/home/emhar/avaris-ai/prompt.md"
+    ]
   },
   "fully_blocked": {}
 }

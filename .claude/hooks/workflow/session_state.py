@@ -26,6 +26,61 @@ class SessionState(StateStore):
         path = resolve_path(session_id)
         super().__init__(path)
 
+    @property
+    def story_id(self) -> str:
+        return self.get("story_id")
+
+    @property
+    def commit_status(self) -> Literal["pending", "committed", "inactive"]:
+        return self.get("commit", {}).get("status", "inactive")
+
+    @property
+    def current_phase(self) -> str:
+        return self.get("phase", {}).get("current")
+
+    @property
+    def previous_phase(self) -> str | None:
+        return self.get("phase", {}).get("previous")
+
+    @property
+    def previous_agent(self) -> str | None:
+        return self.get("agent", {}).get("previous")
+
+    @property
+    def workflow_active(self) -> bool:
+        return self.get("workflow_active", False)
+
+    @property
+    def permission_mode(self) -> str:
+        return self.get("permission_mode", "default")
+
+    @property
+    def plan_mode(self) -> bool:
+        return self.get("plan_mode", {}).get("status", "inactive") == "active"
+
+    @property
+    def _tool_block(self) -> dict:
+        return self.get("tool_block", {})
+
+    @property
+    def TDD(self) -> bool:
+        return self.get("TDD", False)
+
+    @property
+    def _tool_enforcement(self) -> dict:
+        return self.get("tool_enforcement", {})
+
+    @property
+    def enforced_tools(self) -> list[tuple[str, str | None]]:
+        return [
+            (tool["matcher"], tool["name"])
+            for tool in self._tool_enforcement.get("tools", [])
+        ]
+
+    @property
+    def tool_enforcement_status(self) -> str:
+        return self._tool_enforcement.get("status", "inactive")
+
     def set_phase(
         self, query: Literal["current", "previous", "recent_agent"], value: str
     ) -> None:
@@ -83,6 +138,16 @@ class SessionState(StateStore):
     def set_force_stop(self, reason: str) -> None:
         self.set("force_stop", {"reason": reason, "status": "active"})
 
+    def set_enforced_tools(self, tool_data: list[dict[str, str | None]]) -> None:
+        self.update(
+            lambda d: d.get("tool_enforcement", {}).update({"tools": tool_data})
+        )
+
+    def set_tool_enforcement_status(
+        self, status: Literal["active", "inactive", "bypass"]
+    ) -> None:
+        self.update(lambda d: d.get("tool_enforcement", {}).update({"status": status}))
+
     def update_full_block(
         self, key: Literal["status", "exceptions"], value: Any
     ) -> None:
@@ -100,6 +165,23 @@ class SessionState(StateStore):
                 )
             case "tool_block":
                 self.update(lambda d: d.get("tool_block", {}).update({"list": value}))
+
+    # Helpers
+
+    def enforce_tool(self, tool_name: str, tool_value: str | None) -> None:
+        current_tools = self.get("tool_enforcement", {}).get("tools", [])
+
+        current_tools.append({"matcher": tool_name, "name": tool_value})
+
+        self.set_enforced_tools(current_tools)
+
+    def remove_enforced_tool(self, tool_name: str, tool_value: str | None) -> None:
+        current_tools = self.get("tool_enforcement", {}).get("tools", [])
+        normalized_tool = {"matcher": tool_name, "name": tool_value}
+        if normalized_tool not in current_tools:
+            return
+        current_tools.remove(normalized_tool)
+        self.set_enforced_tools(current_tools)
 
     def check_exist_in_list(
         self,
@@ -183,46 +265,6 @@ class SessionState(StateStore):
         elif list_type == "tool_block":
             list_of_items.pop(index)
             self.update_block_list("tool_block", list_of_items)
-
-    @property
-    def story_id(self) -> str:
-        return self.get("story_id")
-
-    @property
-    def commit_status(self) -> Literal["pending", "committed", "inactive"]:
-        return self.get("commit", {}).get("status", "inactive")
-
-    @property
-    def current_phase(self) -> str:
-        return self.get("phase", {}).get("current")
-
-    @property
-    def previous_phase(self) -> str | None:
-        return self.get("phase", {}).get("previous")
-
-    @property
-    def previous_agent(self) -> str | None:
-        return self.get("agent", {}).get("previous")
-
-    @property
-    def workflow_active(self) -> bool:
-        return self.get("workflow_active", False)
-
-    @property
-    def permission_mode(self) -> str:
-        return self.get("permission_mode", "default")
-
-    @property
-    def plan_mode(self) -> bool:
-        return self.get("plan_mode", {}).get("status", "inactive") == "active"
-
-    @property
-    def _tool_block(self) -> dict:
-        return self.get("tool_block", {})
-
-    @property
-    def TDD(self) -> bool:
-        return self.get("TDD", False)
 
     def tool_block(
         self, query: Literal["status", "reason", "list"]

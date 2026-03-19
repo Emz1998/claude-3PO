@@ -11,3 +11,108 @@
         "planFilePath": "/home/emhar/.claude/plans/shimmering-coalescing-glade.md"
     }
 }
+{
+    "session_id": "8c86d8d3-e5cc-44bf-850e-55e8a0ebdb7a",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/8c86d8d3-e5cc-44bf-850e-55e8a0ebdb7a.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "default",
+    "hook_event_name": "PermissionRequest",
+    "tool_name": "Edit",
+    "tool_input": {
+        "file_path": "/home/emhar/avaris-ai/.claude/hooks/workflow/review/report_guard.py",
+        "old_string": "def validate_files_to_revise(files_to_revise: Any) -> tuple[bool, str]:\n    if not isinstance(files_to_revise, list):\n        return (\n            False,\n            \"Files to revise must be a list. Please add files_to_revise to the frontmatter.\",\n        )\n\n    if not files_to_revise:\n        return (\n            False,\n            \"Files to revise are missing. Please add files_to_revise to the frontmatter.\",\n        )\n\n    all_files_exist = all(\n        Path(file_to_revise).exists() for file_to_revise in files_to_revise\n    )\n\n    non_existent_files = [\n        file_to_revise\n        for file_to_revise in files_to_revise\n        if not Path(file_to_revise).exists()\n    ]\n    formatted_non_existent_files = \", \".join(non_existent_files)\n\n    if not all_files_exist:\n        return (\n            False,\n            f\"Some files to revise do not exist: '{formatted_non_existent_files}'. Please add valid file paths to the files_to_revise list.\",\n        )\n\n    return True, \"Files to revise are valid.\"",
+        "new_string": "def validate_files_to_revise(files_to_revise: Any) -> tuple[bool, str]:\n    if not isinstance(files_to_revise, list):\n        return (\n            False,\n            \"Files to revise must be a list. Please add files_to_revise to the frontmatter.\",\n        )\n\n    if not files_to_revise:\n        return (\n            False,\n            \"Files to revise are missing. Please add files_to_revise to the frontmatter.\",\n        )\n\n    non_existent_files = [f for f in files_to_revise if not Path(f).exists()]\n    if non_existent_files:\n        return (\n            False,\n            f\"Some files to revise do not exist: '{', '.join(non_existent_files)}'. Please add valid file paths to the files_to_revise list.\",\n        )\n\n    return True, \"Files to revise are valid.\"",
+        "replace_all": false
+    },
+    "permission_suggestions": [
+        {
+            "type": "setMode",
+            "mode": "acceptEdits",
+            "destination": "session"
+        }
+    ]
+}
+{
+    "session_id": "8c86d8d3-e5cc-44bf-850e-55e8a0ebdb7a",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/8c86d8d3-e5cc-44bf-850e-55e8a0ebdb7a.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "default",
+    "hook_event_name": "PermissionRequest",
+    "tool_name": "Edit",
+    "tool_input": {
+        "file_path": "/home/emhar/avaris-ai/.claude/hooks/workflow/review/report_guard.py",
+        "old_string": "    if score not in range(0, 101):\n        return (\n            False,\n            \"Confidence score must be between 0 and 100.\",\n        )",
+        "new_string": "    if score not in range(0, 101):\n        return (\n            False,\n            f\"{score_name} score must be between 0 and 100.\",\n        )",
+        "replace_all": false
+    },
+    "permission_suggestions": [
+        {
+            "type": "setMode",
+            "mode": "acceptEdits",
+            "destination": "session"
+        }
+    ]
+}
+{
+    "session_id": "8c86d8d3-e5cc-44bf-850e-55e8a0ebdb7a",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/8c86d8d3-e5cc-44bf-850e-55e8a0ebdb7a.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "default",
+    "hook_event_name": "PermissionRequest",
+    "tool_name": "Edit",
+    "tool_input": {
+        "file_path": "/home/emhar/avaris-ai/.claude/hooks/workflow/review/report_guard.py",
+        "old_string": "    validation_results = [\n        validate_files_to_revise(files_to_revise),\n        validate_score(\"confidence_score\", confidence_score),\n        validate_score(\"quality_score\", quality_score),\n    ]\n\n    match validation_results:\n        case [True, True, True]:\n            return True, \"Report is valid.\"\n        case [False, True, True]:\n            return False, validation_results[0][1]\n        case [True, False, True]:\n            return False, validation_results[2][1]\n        case [True, True, False]:\n            return False, validation_results[3][1]\n        case _:\n            return False, \"Report is not valid.\"",
+        "new_string": "    validations = [\n        validate_files_to_revise(files_to_revise),\n        validate_score(\"confidence_score\", confidence_score),\n        validate_score(\"quality_score\", quality_score),\n    ]\n\n    for valid, message in validations:\n        if not valid:\n            return False, message\n\n    return True, \"Report is valid.\"",
+        "replace_all": false
+    },
+    "permission_suggestions": [
+        {
+            "type": "setMode",
+            "mode": "acceptEdits",
+            "destination": "session"
+        }
+    ]
+}
+{
+    "session_id": "8c86d8d3-e5cc-44bf-850e-55e8a0ebdb7a",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/8c86d8d3-e5cc-44bf-850e-55e8a0ebdb7a.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "default",
+    "hook_event_name": "PermissionRequest",
+    "tool_name": "Edit",
+    "tool_input": {
+        "file_path": "/home/emhar/avaris-ai/.claude/hooks/workflow/review/report_guard.py",
+        "old_string": "    validations = [\n        validate_files_to_revise(files_to_revise),\n        validate_score(\"confidence_score\", confidence_score),\n        validate_score(\"quality_score\", quality_score),\n    ]\n\n    for valid, message in validations:\n        if not valid:\n            return False, message\n\n    return True, \"Report is valid.\"",
+        "new_string": "    validations = [\n        validate_files_to_revise(files_to_revise),\n        validate_score(\"confidence_score\", confidence_score),\n        validate_score(\"quality_score\", quality_score),\n    ]\n\n    errors = [message for valid, message in validations if not valid]\n    if errors:\n        return False, \"\\n\".join(errors)\n\n    return True, \"Report is valid.\"",
+        "replace_all": false
+    },
+    "permission_suggestions": [
+        {
+            "type": "setMode",
+            "mode": "acceptEdits",
+            "destination": "session"
+        }
+    ]
+}
+{
+    "session_id": "dfee6248-eef2-4060-acab-6746232d05fe",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/dfee6248-eef2-4060-acab-6746232d05fe.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "default",
+    "hook_event_name": "PermissionRequest",
+    "tool_name": "Edit",
+    "tool_input": {
+        "file_path": "/home/emhar/avaris-ai/.claude/hooks/workflow/review/report_guard.py",
+        "old_string": "def validate_report(content: str) -> tuple[bool, str]:\n    frontmatter = extract_frontmatter(content)\n\n    if not frontmatter:\n        return (\n            False,\n            \"Frontmatter is not present in the review report. Please add frontmatter with confidence_score and quality_score.\",\n        )\n\n    confidence_score = frontmatter.get(\"confidence_score\")\n    quality_score = frontmatter.get(\"quality_score\")\n    files_to_revise = frontmatter.get(\"files_to_revise\")\n\n    valid_files_to_revise, files_to_revise_message = validate_files_to_revise(\n        files_to_revise\n    )\n    valid_confidence_score, confidence_score_message = validate_score(\n        \"confidence_score\", confidence_score\n    )\n    valid_quality_score, quality_score_message = validate_score(\n        \"quality_score\", quality_score\n    )\n\n    if (\n        not valid_files_to_revise\n        and not valid_confidence_score\n        and not valid_quality_score\n    ):\n        return (\n            False,\n            f\"{'/n'.join([files_to_revise_message, confidence_score_message, quality_score_message])}\",\n        )\n\n    if valid_confidence_score and not valid_quality_score and not valid_files_to_revise:\n        return (\n            False,\n            f\"{'/n'.join([quality_score_message, files_to_revise_message])}\",\n        )\n\n    if valid_quality_score and not valid_confidence_score and not valid_files_to_revise:\n        return (\n            False,\n            f\"{'/n'.join([confidence_score_message, files_to_revise_message])}\",\n        )\n\n    if valid_files_to_revise and not valid_confidence_score and not valid_quality_score:\n        return (\n            False,\n            f\"{'/n'.join([confidence_score_message, quality_score_message])}\",\n        )\n\n    if valid_files_to_revise and valid_confidence_score and not valid_quality_score:\n        return (\n            False,\n            files_to_revise_message,\n        )\n\n    if valid_confidence_score and valid_quality_score and not valid_files_to_revise:\n        return (\n            False,\n            files_to_revise_message,\n        )\n\n    if valid_quality_score and valid_files_to_revise and not valid_confidence_score:\n        return (\n            False,\n            confidence_score_message,\n        )\n\n    return True, \"Report is valid.\"",
+        "new_string": "def validate_report(content: str) -> tuple[bool, str]:\n    frontmatter = extract_frontmatter(content)\n\n    if not frontmatter:\n        return (\n            False,\n            \"Frontmatter is not present in the review report. Please add frontmatter with confidence_score and quality_score.\",\n        )\n\n    confidence_score = frontmatter.get(\"confidence_score\")\n    quality_score = frontmatter.get(\"quality_score\")\n    files_to_revise = frontmatter.get(\"files_to_revise\")\n\n    validations = [\n        validate_files_to_revise(files_to_revise),\n        validate_score(\"confidence_score\", confidence_score),\n        validate_score(\"quality_score\", quality_score),\n    ]\n\n    errors = [message for valid, message in validations if not valid]\n    if errors:\n        return False, \"\\n\".join(errors)\n\n    return True, \"Report is valid.\"",
+        "replace_all": false
+    },
+    "permission_suggestions": [
+        {
+            "type": "setMode",
+            "mode": "acceptEdits",
+            "destination": "session"
+        }
+    ]
+}
