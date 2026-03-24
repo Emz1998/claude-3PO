@@ -1,0 +1,4 @@
+#!/usr/bin/env python3
+import json
+result = "---\nconfidence_score: 85\nquality_score: 80\nfiles_to_revise:\n  - /home/emhar/avaris-ai/.claude/hooks/workflow/review/review.py\n---\n\n## Review\n\nThe code is clean and well-structured. No issues found."
+print(json.dumps({"session_id": "claude-inspect-session", "result": result}))

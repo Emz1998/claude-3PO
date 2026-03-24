@@ -1,88 +1,51 @@
 {
-  "workflow_active": false,
-  "workflow_type": "implement",
-  "session_id": "123",
-  "story_id": "SK-001",
+  "workflow_active": true,
+  "workflow_type": null,
+  "session_id": null,
+  "story_id": null,
   "TDD": false,
-  "full_block": {
-    "status": "active",
-    "exceptions": [
-      {
-        "tool_name": "skill",
-        "tool_value": "refactor",
-        "reason": "Confidence and quality scores are below the thresholds. Please refactor."
-      }
-    ]
-  },
-  "tool_block": {
-    "status": "active",
-    "list": [
-      {
-        "tool_name": "skill",
-        "tool_value": "refactor",
-        "reason": "Tool not found in list"
-      }
-    ]
-  },
   "tool_enforcement": {
-    "status": "bypass",
-    "tools": [
-      {
-        "matcher": "Write",
-        "name": "src/utils.py"
-      }
-    ]
+    "status": "inactive",
+    "tools": []
   },
   "force_stop": {
     "reason": null,
     "status": "inactive"
   },
-  "phase": {
-    "current": null,
-    "previous": "create-pr"
+  "files": {
+    "codebase_status_report": {
+      "path": null,
+      "status": "not_reviewed"
+    },
+    "plan": {
+      "path": null,
+      "status": "not_reviewed"
+    },
+    "test": [
+      {
+        "path": "test/test_file.py",
+        "status": "needs_revision"
+      }
+    ],
+    "code": [
+      {
+        "path": "src/code_file.py",
+        "status": "needs_revision"
+      }
+    ]
   },
-  "skill": {
-    "current": null,
-    "previous": null
-  },
-  "agent": {
-    "current": null,
-    "previous": "code-reviewer"
+  "phases": {
+    "current": "pre-coding",
+    "completed": []
   },
   "plan_mode": {
     "status": "inactive"
   },
-  "written_files": {
-    "recent": null
-  },
-  "edited_files": {
-    "recent": null
-  },
-  "commands": {
-    "recent": null
-  },
-  "commit": {
-    "status": "inactive"
-  },
   "pr": {
-    "status": "created",
-    "number": 21
+    "status": "not_created",
+    "number": null
   },
   "ci": {
-    "status": "failed",
-    "failure_count": 1
-  },
-  "review": {
-    "status": "inactive",
-    "phase": "refactor",
-    "report_written": false,
-    "confidence_score": 0,
-    "quality_score": 0,
-    "iteration_left": 2,
-    "files_to_revise": [
-      "/home/emhar/avaris-ai/tmp/permission_request.log",
-      "/home/emhar/avaris-ai/prompt.md"
-    ]
-  },
-  "fully_blocked": {}
+    "status": "inactive"
+  }
 }

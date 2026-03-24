@@ -90,7 +90,7 @@ def run_test(script: Path, input_json: str) -> None:
 
 
 if __name__ == "__main__":
-    script = Path(".claude/hooks/workflow/guards/fully_blocked.py")
+    script = Path(".claude/hooks/tests/hook_test.py")
     schema = SchemaLoader("PreToolUse", "Agent")
 
     print(json.dumps(schema.data, indent=4))

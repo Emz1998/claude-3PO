@@ -1,1 +1,1 @@
-What is the date today?
+hello world

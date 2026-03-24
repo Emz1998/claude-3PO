@@ -5,12 +5,13 @@ argument-hint: <task-to-be-performed> <instructions>
 ---
 
 **Goal**: Create, update or troubleshoot Claude Code hook scripts
+**Claude Code Hooks Documentation**: @.claude/skills/claude-hooks/references/hooks.md
 
 **IMPORTANT**: Infer the task to be performed based on the user's request. If not clear, ask the user for more details.
 
 ## Instructions
 
-**IMPORTANT**: For all tasks, you must always read the `.claude/skills/claude-hooks/references/hooks.md` file and `.claude/skills/claude-hooks/references/input-patterns.md` file to understand the hooks configuration and structure.
+**IMPORTANT**: Please explore the input schemas in `.claude/skills/claude-hooks/input-schemas/` to understand the hooks configuration and structure.
 
 ### If the task is to create a new hook
 
@@ -24,10 +25,10 @@ argument-hint: <task-to-be-performed> <instructions>
 - Test the hook using `echo` to pipe JSON input
 - Provide report to main agent
 
-### If the task is to refactor hooks
+### If the task is to refactor or review hooks
 
 - Analyze the user revision request. If revision request is vague, ask the user for more details.
-- Invoke `EnterPlanMode` tool to enter plan mode.
+- Invoke `EnterPlanMode` tool to enter plan mode if not already in plan mode.
 - Identify all the files that are needed to be revised. If not provided, ask the user for the file path.
 - Choose the appropriate hook schema sample to read from `.claude/skills/claude-hooks/input-schemas/` based on the task
 - Explore the hooks directory in `.claude/hooks/` to understand the structure and identify useful patterns
@@ -66,6 +67,7 @@ argument-hint: <task-to-be-performed> <instructions>
 When adding hooks to agent `.md` files (in `.claude/agents/`), use the nested `hooks:` array structure. This is **critical** — a flat structure will silently fail.
 
 **Correct format:**
+
 ```yaml
 ---
 name: my-agent
@@ -79,6 +81,7 @@ hooks:
 ```
 
 **Wrong format (hook will NOT fire):**
+
 ```yaml
 ---
 name: my-agent
@@ -90,6 +93,7 @@ hooks:
 ```
 
 Key rules for frontmatter hooks:
+
 - Each event (e.g. `Stop`) contains a list of hook groups, each with a nested `hooks:` array
 - The `command` value must be wrapped in double quotes
 - File paths inside the command must be wrapped in single quotes

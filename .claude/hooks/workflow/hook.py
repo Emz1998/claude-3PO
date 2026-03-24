@@ -47,9 +47,25 @@ class Hook:
             sys.exit(1)
 
     @staticmethod
+    def advanced_output(output: dict[str, Any]) -> None:
+        print(json.dumps(output))
+        sys.exit(0)
+
+    @staticmethod
     def block(message: str) -> None:
         print(message, file=sys.stderr)
         sys.exit(2)
+
+    @staticmethod
+    def advanced_block(hook_event_name: str, message: str) -> None:
+        output = {
+            "hookSpecificOutput": {
+                "hookEventName": hook_event_name,
+                "permissionDecision": "deny",
+                "permissionDecisionReason": message,
+            },
+        }
+        Hook.advanced_output(output)
 
     @staticmethod
     def success_response(message: str) -> None:
@@ -62,6 +78,6 @@ class Hook:
         sys.exit(1)
 
     @staticmethod
-    def advanced_output(output: dict[str, Any]) -> None:
-        print(json.dumps(output), flush=True)
+    def system_message(message: str) -> None:
+        print(json.dumps({"systemMessage": message}))
         sys.exit(0)

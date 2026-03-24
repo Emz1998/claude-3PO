@@ -44,11 +44,11 @@ class TestValidateOrder:
         assert valid is False
         assert "invalid next item" in msg.lower()
 
-    def test_invalid_current_item(self):
+    def test_invalid_previous_item(self):
         """Unknown current_item is invalid."""
         valid, msg = validate_order("unknown", "explore", ORDER)
         assert valid is False
-        assert "invalid current item" in msg.lower()
+        assert "invalid previous item" in msg.lower()
 
     def test_none_current_valid_first(self):
         """None current with first item is valid."""

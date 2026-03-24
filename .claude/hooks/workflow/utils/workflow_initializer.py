@@ -42,7 +42,7 @@ def main() -> None:
     story_id = parse_story_id(args.story_id)
     dry_run = args.dry_run
 
-    session = SessionState()
+    session = SessionState(session_id)
     initialize_session(session, story_id, session_id, args.workflow_type)
 
     if dry_run:

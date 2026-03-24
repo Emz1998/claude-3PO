@@ -1,0 +1,65 @@
+{
+  "workflow_active": true,
+  "workflow_type": "implement",
+  "session_id": "666d1a90-13ff-4fa5-8968-5625b83ef784",
+  "story_id": "SK-001",
+  "TDD": false,
+  "fully_blocked": {
+    "status": "inactive",
+    "reason": null,
+    "exception": null
+  },
+  "tool_block": {
+    "status": "active",
+    "reason": null,
+    "list": [
+      [
+        "command",
+        "gh pr create"
+      ]
+    ]
+  },
+  "force_stop": {
+    "reason": null,
+    "status": "inactive"
+  },
+  "phase": {
+    "current": "pre-coding",
+    "previous": null
+  },
+  "skill": {
+    "current": null,
+    "previous": null
+  },
+  "agent": {
+    "current": null,
+    "previous": null
+  },
+  "plan_mode": {
+    "status": "inactive"
+  },
+  "written_files": {
+    "recent": null
+  },
+  "edited_files": {
+    "recent": null
+  },
+  "commands": {
+    "recent": null
+  },
+  "pr": {
+    "status": "not_created",
+    "number": null
+  },
+  "ci": {
+    "status": "inactive"
+  },
+  "review": {
+    "status": "inactive",
+    "phase": null,
+    "report_written": false,
+    "confidence_score": 0,
+    "quality_score": 0,
+    "iteration_left": 3
+  }
+}
