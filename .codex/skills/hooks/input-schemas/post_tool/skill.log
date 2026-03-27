@@ -1,0 +1,21 @@
+{
+    "session_id": "5ed5ca29-e42e-4ef6-9d59-b7883d5a3f5f",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/5ed5ca29-e42e-4ef6-9d59-b7883d5a3f5f.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PostToolUse",
+    "tool_name": "Skill",
+    "tool_input": {
+        "skill": "test",
+        "args": "random args here 123 foo bar"
+    },
+    "tool_response": {
+        "success": true,
+        "commandName": "test",
+        "allowedTools": [
+            "Bash(python3 :*)"
+        ],
+        "model": "claude-sonnet-4-5-20250929"
+    },
+    "tool_use_id": "toolu_017pe4uBkraCJAFpnMEigCR8"
+}

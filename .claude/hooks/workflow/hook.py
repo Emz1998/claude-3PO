@@ -1,11 +1,5 @@
 from typing import (
-    ClassVar,
-    Generic,
-    TypeVar,
     Any,
-    get_args,
-    get_origin,
-    Self,
 )
 
 import sys
@@ -14,22 +8,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import json
-from dataclasses import dataclass
-from workflow.models.hook_input import (
-    PreToolUseInput,
-    PostToolUseInput,
-    UserPromptSubmitInput,
-    StopInput,
-    ToolInputType,
-)
-from workflow.models.hook_output import (
-    PreToolUseOutput,
-    PreToolUseHSO,
-    GeneralHSO,
-    PostToolUseOutput,
-    UserPromptSubmitOutput,
-    StopOutput,
-)
 
 
 class Hook:

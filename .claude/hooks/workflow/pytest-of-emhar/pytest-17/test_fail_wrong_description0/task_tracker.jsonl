@@ -1,0 +1,3 @@
+{"id": "1", "subject": "T-017: Feature importance analysis documented", "description": "COMPLETELY WRONG DESCRIPTION"}
+{"id": "2", "subject": "T-018: Model evaluation report", "description": "Evaluate model performance metrics"}
+{"id": "3", "subject": "T-019: Deploy model to staging", "description": "Deploy trained model to staging environment"}

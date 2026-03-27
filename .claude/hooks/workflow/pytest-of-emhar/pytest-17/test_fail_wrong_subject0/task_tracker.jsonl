@@ -1,0 +1,3 @@
+{"id": "1", "subject": "WRONG: Not the right task", "description": "Perform feature importance analysis using SHAP values"}
+{"id": "2", "subject": "T-018: Model evaluation report", "description": "Evaluate model performance metrics"}
+{"id": "3", "subject": "T-019: Deploy model to staging", "description": "Deploy trained model to staging environment"}

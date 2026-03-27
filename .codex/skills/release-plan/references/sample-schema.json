@@ -1,0 +1,132 @@
+{
+  "product": "NEXLY RN",
+  "vision": "AI-powered note-taking for nursing students",
+  "releases": [
+    {
+      "version": "1.0.0",
+      "name": "MVP",
+      "target_date": "2026-02-28",
+      "epics": [
+        {
+          "id": "EPIC-001",
+          "title": "Foundation - Environment and Data Models",
+          "requirements": {
+            "functional": [
+            {
+              "id": "FR-001",
+              "description": "All foundation features are operational and integrated"
+            }
+          ],
+            "non_functional": [
+            {
+              "id": "NFR-001",
+              "description": "All foundation features are operational and integrated"
+            }
+            ]
+          },
+    
+          "features": [
+            {
+              "id": "FEAT-001",
+              "title": "Project Setup and Configuration",
+              "outcome": "The project is setup and configured with all required tooling and configuration",
+              "tdd": true,
+              "success_criteria": [
+                {
+                  "id": "SC-001",
+                  "description": "All tasks in this feature are completed"
+                }
+              ],
+              "user_stories": [
+                {
+                  "id": "US-001",
+                  "story": "As a developer, I want the project initialized so I can start building features",
+                  "context": "The project should be initialized with all required tooling and configuration",
+                  "acceptance_criteria": [
+                    {
+                      "id": "AC-001",
+                      "description": "Next.js 15.1 project initializes without errors"
+                    },
+                    {
+                      "id": "AC-002",
+                      "description": "TypeScript strict mode is enabled and compiles successfully"
+                    }
+                  ],
+                  "tasks": [
+                    {
+                      "id": "T001",
+                      "description": "Initialize Next.js 15.1 project with TypeScript strict mode",
+                      "dod": "Next.js 15.1 project initializes and runs dev server without errors",
+                      "dependencies": []
+                    },
+                    {
+                      "id": "T002",
+                      "description": "Configure Tailwind CSS v4 with design tokens",
+                      "dod": "Tailwind v4 configured with project design tokens applied",
+                      "dependencies": ["T001"]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "FEAT-002",
+              "title": "Data Models and TypeScript Interfaces",
+              "outcome": "Core data structures defined for the application",
+              "tdd": true,
+              "success_criteria": [
+                {
+                  "id": "SC-002",
+                  "description": "All TypeScript interfaces are defined and validated"
+                }
+              ],
+              "user_stories": [
+                {
+                  "id": "US-002",
+                  "story": "As a developer, I want core data models defined so I can build features against them",
+                  "context": "Core TypeScript interfaces and validation schemas are defined",
+                  "acceptance_criteria": [
+                    {
+                      "id": "AC-003",
+                      "description": "Core interfaces include all required fields"
+                    },
+                    {
+                      "id": "AC-004",
+                      "description": "All interfaces pass TypeScript strict mode compilation"
+                    }
+                  ],
+                  "tasks": [
+                    {
+                      "id": "T003",
+                      "description": "Create core TypeScript interfaces",
+                      "dod": "All core interfaces compile with strict mode enabled",
+                      "dependencies": ["T002"]
+                    },
+                    {
+                      "id": "T004",
+                      "description": "Create validation schemas for core data structures",
+                      "dod": "Validation schemas pass all test cases",
+                      "dependencies": ["T003"]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "version": "1.1.0",
+      "name": "Enhanced AI",
+      "target_date": "2026-Q2",
+      "epics": []
+    },
+    {
+      "version": "2.0.0",
+      "name": "Collaboration",
+      "target_date": "2026-Q4",
+      "epics": []
+    }
+  ]
+}

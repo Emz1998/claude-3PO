@@ -9,14 +9,18 @@ Examples:
     python github_project/project_manager.py list -s priority
     python github_project/project_manager.py list --status "In progress" -w
     python github_project/project_manager.py view SK-001
+    python github_project/project_manager.py view SK-001 --tasks
+    python github_project/project_manager.py view SK-001 --tasks --json
+    python github_project/project_manager.py view SK-001 --ac
+    python github_project/project_manager.py view SK-001 --ac --json
     python github_project/project_manager.py summary -g priority
     python github_project/project_manager.py progress
     python github_project/project_manager.py update T-017 --status Done
     python github_project/project_manager.py add-task --parent-story-id SK-001 --title "New task"
     python github_project/project_manager.py add-story --type Spike --title "Research X"
     python github_project/project_manager.py create-sprint --number 2 --milestone v0.2.0
-    python github_project/project_manager.py unblocked
-    python github_project/project_manager.py unblocked --promote
+    python github_project/project_manager.py view SK-001 --ready-tasks
+    python github_project/project_manager.py view SK-001 --ready-tasks --json
 """
 from __future__ import annotations
 
@@ -68,7 +72,7 @@ STORY_TYPE_PREFIXES: dict[str, str] = {
 }
 
 DEFAULT_COLUMNS: list[tuple[str, str, int]] = [
-    ("KEY", "key", 8),
+    ("ID", "id", 8),
     ("#", "issue_number", 5),
     ("STATUS", "status", 14),
     ("PRI", "priority", 4),
@@ -79,7 +83,7 @@ DEFAULT_COLUMNS: list[tuple[str, str, int]] = [
 ]
 
 WIDE_COLUMNS: list[tuple[str, str, int]] = [
-    ("KEY", "key", 8),
+    ("ID", "id", 8),
     ("#", "issue_number", 5),
     ("STATUS", "status", 14),
     ("PRI", "priority", 4),
@@ -166,7 +170,7 @@ def _next_id(prefix: str, existing_ids: list[str]) -> str:
 
 def _normalize_story(story: dict, milestone_fallback: str) -> dict:
     return {
-        "key": story.get("id", ""),
+        "id": story.get("id", ""),
         "title": story.get("title", ""),
         "issue_number": story.get("issue_number"),
         "status": story.get("status", ""),
@@ -183,12 +187,13 @@ def _normalize_story(story: dict, milestone_fallback: str) -> dict:
         "description": story.get("description", ""),
         "acceptance_criteria": story.get("acceptance_criteria", []),
         "tdd": story.get("tdd", False),
+        "blocked_by": story.get("blocked_by", []),
     }
 
 
 def _normalize_task(task: dict, milestone_fallback: str) -> dict:
     return {
-        "key": task.get("id", ""),
+        "id": task.get("id", ""),
         "title": task.get("title", ""),
         "issue_number": task.get("issue_number"),
         "status": task.get("status", ""),
@@ -204,6 +209,7 @@ def _normalize_task(task: dict, milestone_fallback: str) -> dict:
         "parent_id": task.get("parent_story_id", ""),
         "description": task.get("description", ""),
         "acceptance_criteria": task.get("acceptance_criteria", []),
+        "blocked_by": task.get("blocked_by", []),
     }
 
 
@@ -356,7 +362,7 @@ def _view_raw(task: dict[str, Any]) -> None:
 def _find_task(tasks: list[dict[str, Any]], key: str) -> dict[str, Any] | None:
     upper = key.upper()
     for t in tasks:
-        if str(t.get("key", "")).upper() == upper:
+        if str(t.get("id", "")).upper() == upper:
             return t
         if str(t.get("issue_number", "")) == key:
             return t
@@ -403,8 +409,14 @@ def cmd_list(tasks: list[dict[str, Any]], args: argparse.Namespace) -> int:
         return 0
 
     if args.keys_only:
-        keys = [t.get("key", "") for t in filtered if t.get("key")]
-        print(",".join(keys))
+        keys = [t.get("id", "") for t in filtered if t.get("id")]
+        fmt = getattr(args, "keys_format", "comma")
+        if fmt == "newline":
+            print("\n".join(keys))
+        elif fmt == "json":
+            print(json.dumps(keys))
+        else:
+            print(",".join(keys))
         return 0
 
     columns = WIDE_COLUMNS if args.wide else DEFAULT_COLUMNS
@@ -418,6 +430,75 @@ def cmd_view(tasks: list[dict[str, Any]], args: argparse.Namespace) -> int:
         print(f"Task not found: {args.key}", file=sys.stderr)
         return 1
 
+    key = task.get("id", "")
+    tasks_only = getattr(args, "tasks", False)
+    ready_tasks = getattr(args, "ready_tasks", False)
+    ac_only = getattr(args, "ac", False)
+    tdd_only = getattr(args, "tdd", False)
+    as_json = getattr(args, "json", False)
+
+    if ready_tasks:
+        status_by_key = {t.get("id", ""): t.get("status", "") for t in tasks}
+        children = [
+            t
+            for t in tasks
+            if t.get("parent_id") == key
+            and t.get("status") in ACTIVE_STATUSES
+            and _is_unblocked(t.get("blocked_by", []), status_by_key)
+        ]
+        if as_json:
+            print(json.dumps(children, indent=2))
+        else:
+            if children:
+                print(f"Ready tasks ({key}) — {len(children)}:")
+                for c in children:
+                    print(
+                        f"  {c.get('key', ''):<8} {c.get('status', ''):<14} {c.get('title', '')}"
+                    )
+            else:
+                print("No ready tasks found.")
+        return 0
+
+    if tdd_only:
+        tdd = task.get("tdd", False)
+        if as_json:
+            print(json.dumps({"tdd": tdd}, indent=2))
+        else:
+            print(f"TDD ({key}): {tdd}")
+        return 0
+
+    if ac_only:
+        ac = task.get("acceptance_criteria", [])
+        if as_json:
+            print(json.dumps(ac, indent=2))
+        else:
+            if ac:
+                print(f"Acceptance Criteria ({key}):")
+                for i, criterion in enumerate(ac, 1):
+                    print(f"  {i}. {criterion}")
+            else:
+                print("No acceptance criteria found.")
+        return 0
+
+    if tasks_only:
+        children = [t for t in tasks if t.get("parent_id") == key]
+        if as_json:
+            print(json.dumps(children, indent=2))
+        else:
+            if children:
+                print(f"Child tasks ({len(children)}):")
+                for c in children:
+                    print(
+                        f"  {c.get('key', ''):<8} {c.get('status', ''):<14} {c.get('title', '')}"
+                    )
+            else:
+                print("No child tasks found.")
+        return 0
+
+    if as_json:
+        print(json.dumps(task, indent=2))
+        return 0
+
     if args.raw:
         _view_raw(task)
     else:
@@ -428,7 +509,6 @@ def cmd_view(tasks: list[dict[str, Any]], args: argparse.Namespace) -> int:
         print(_render_template(task, template))
 
     # If viewing a story, also show its child tasks
-    key = task.get("key", "")
     if not key.startswith("T-"):
         children = [t for t in tasks if t.get("parent_id") == key]
         if children:
@@ -771,33 +851,41 @@ def cmd_unblocked(args: argparse.Namespace) -> int:
     if getattr(args, "json", False):
         output = []
         for item in unblocked_stories:
-            output.append({
-                "id": item.get("id", ""),
-                "type": item.get("type", "story"),
-                "status": item.get("status", ""),
-                "title": item.get("title", ""),
-                "description": item.get("description", ""),
-                "blocked_by": item.get("blocked_by", []),
-            })
+            output.append(
+                {
+                    "id": item.get("id", ""),
+                    "type": item.get("type", "story"),
+                    "status": item.get("status", ""),
+                    "title": item.get("title", ""),
+                    "description": item.get("description", ""),
+                    "blocked_by": item.get("blocked_by", []),
+                }
+            )
         for item in unblocked_tasks:
-            output.append({
-                "id": item.get("id", ""),
-                "type": item.get("type", "task"),
-                "status": item.get("status", ""),
-                "title": item.get("title", ""),
-                "description": item.get("description", ""),
-                "blocked_by": item.get("blocked_by", []),
-                "parent_story_id": item.get("parent_story_id", ""),
-            })
+            output.append(
+                {
+                    "id": item.get("id", ""),
+                    "type": item.get("type", "task"),
+                    "status": item.get("status", ""),
+                    "title": item.get("title", ""),
+                    "description": item.get("description", ""),
+                    "blocked_by": item.get("blocked_by", []),
+                    "parent_story_id": item.get("parent_story_id", ""),
+                }
+            )
         print(json.dumps(output, indent=2))
         return 0
 
     print(f"Unblocked items ({len(all_unblocked)}):")
     print("-" * 50)
     for item in unblocked_stories:
-        print(f"  {item.get('id', ''):<8} {item.get('status', ''):<12} {item.get('title', '')[:50]}")
+        print(
+            f"  {item.get('id', ''):<8} {item.get('status', ''):<12} {item.get('title', '')[:50]}"
+        )
     for item in unblocked_tasks:
-        print(f"  {item.get('id', ''):<8} {item.get('status', ''):<12} {item.get('title', '')[:50]}")
+        print(
+            f"  {item.get('id', ''):<8} {item.get('status', ''):<12} {item.get('title', '')[:50]}"
+        )
 
     if getattr(args, "promote", False):
         promoted = 0
@@ -868,20 +956,37 @@ examples:
     lp.add_argument("--story", help="Filter tasks by parent story ID (e.g. SK-001)")
     lp.add_argument("--wide", "-w", action="store_true", help="Show all columns")
     lp.add_argument(
-        "--keys-only", "-k", action="store_true",
-        help="Output only task keys (comma-separated)",
+        "--keys-only",
+        "-k",
+        action="store_true",
+        help="Output only task keys",
+    )
+    lp.add_argument(
+        "--keys-format",
+        choices=["comma", "newline", "json"],
+        default="comma",
+        help="Format for -k output: comma (default), newline, json",
     )
     lp.add_argument("--json", action="store_true", help="Output results as JSON")
 
     # --- view ---
     vp = sub.add_parser("view", help="View a single task by key or issue number")
-    vp.add_argument("key", help="Task key (e.g. TS-004) or issue number")
+    vp.add_argument("key", help="Task ID (e.g. TS-004) or issue number")
     vp.add_argument("--raw", action="store_true", help="Show raw key-value pairs")
     vp.add_argument("--template", help="Path to a custom template")
+    vp.add_argument("--tasks", action="store_true", help="Show only child tasks")
+    vp.add_argument(
+        "--ready-tasks",
+        action="store_true",
+        help="Show unblocked child tasks in Backlog/Ready status",
+    )
+    vp.add_argument("--ac", action="store_true", help="Show only acceptance criteria")
+    vp.add_argument("--tdd", action="store_true", help="Show TDD flag value")
+    vp.add_argument("--json", action="store_true", help="Output results as JSON")
 
     # --- update ---
     ep = sub.add_parser("update", help="Update a task or story")
-    ep.add_argument("key", help="Task/story key (e.g. T-017, SK-001)")
+    ep.add_argument("key", help="Task/story ID (e.g. T-017, SK-001)")
     ep.add_argument("--status", help="Set status")
     ep.add_argument("--priority", help="Set priority")
     ep.add_argument("--complexity", help="Set complexity")
@@ -895,7 +1000,9 @@ examples:
         metavar="BOOL",
         help="Set TDD flag (true/false)",
     )
-    ep.add_argument("--force", action="store_true", help="Bypass status transition guardrail")
+    ep.add_argument(
+        "--force", action="store_true", help="Bypass status transition guardrail"
+    )
 
     # --- summary ---
     sp = sub.add_parser("summary", help="Show task summary grouped by a field")
@@ -916,7 +1023,8 @@ examples:
     # --- add-story ---
     ast = sub.add_parser("add-story", help="Add a story to the project")
     ast.add_argument(
-        "--type", required=True,
+        "--type",
+        required=True,
         choices=["Spike", "Tech", "Story", "User Story", "Bug"],
         help="Story type",
     )
@@ -925,11 +1033,15 @@ examples:
     ast.add_argument("--points", type=int, help="Story points")
     ast.add_argument("--priority", help="Priority (P0-P3)")
     ast.add_argument("--milestone", help="Milestone")
-    ast.add_argument("--tdd", action="store_true", default=False, help="Mark story as TDD")
+    ast.add_argument(
+        "--tdd", action="store_true", default=False, help="Mark story as TDD"
+    )
 
     # --- add-task ---
     at = sub.add_parser("add-task", help="Add a task to the sprint")
-    at.add_argument("--parent-story-id", required=True, help="Parent story ID (e.g. SK-001)")
+    at.add_argument(
+        "--parent-story-id", required=True, help="Parent story ID (e.g. SK-001)"
+    )
     at.add_argument("--title", required=True, help="Task title")
     at.add_argument("--description", help="Task description")
     at.add_argument("--priority", help="Priority (P0-P3)")
@@ -938,12 +1050,6 @@ examples:
 
     # --- progress ---
     sub.add_parser("progress", help="Show sprint completion stats")
-
-    # --- unblocked ---
-    up = sub.add_parser("unblocked", help="List items with all dependencies met")
-    up.add_argument("--promote", action="store_true", help="Set unblocked Backlog items to Ready")
-    up.add_argument("--story", help="Filter by parent story ID (e.g. SK-001)")
-    up.add_argument("--json", action="store_true", help="Output results as JSON")
 
     # --- sprint-info ---
     sub.add_parser("sprint-info", help="Print current sprint number")
@@ -966,7 +1072,6 @@ def main() -> int:
         "add-task": cmd_add_task,
         "update": cmd_update,
         "progress": cmd_progress,
-        "unblocked": cmd_unblocked,
         "sprint-info": cmd_sprint_info,
     }
     if args.command in direct_commands:

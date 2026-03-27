@@ -1,0 +1,21 @@
+Attempting to modify critical system file: /etc/passwd
+BLOCKED: Attempting to modify critical system file: /etc/passwd
+BLOCKED: Attempting to modify critical system file: /etc/passwd
+PASSED: Tool name is not a file operation. Skipping security check.
+PASSED: Tool name is not a file operation. Skipping security check.
+PASSED: Tool name is not a file operation. Skipping security check.
+Security hook error: file_path is required
+Security hook error: file_path is required
+Security hook error: file_path is required
+Security hook error: file_path is required
+Security hook error: file_path is required
+Security hook error: file_path is required
+Security hook error: file_path is required
+Security hook error: file_path is required
+BLOCKED: System-damaging command detected: rm -rf / (wipes root filesystem)
+BLOCKED: System-damaging command detected: rm -rf / (wipes root filesystem)
+BLOCKED: Attempting to modify critical system file: /etc/passwd
+BLOCKED: Attempting to modify critical system file: /etc/passwd
+BLOCKED: Attempting to modify critical system file: /etc/passwd
+BLOCKED: Attempting to modify critical system file: /etc/passwd
+BLOCKED: System-damaging command detected: rm -rf / (wipes root filesystem)

@@ -1,0 +1,709 @@
+
+{
+    "session_id": "00405901-237f-44af-95f7-831ea498afd9",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/00405901-237f-44af-95f7-831ea498afd9.jsonl",
+    "cwd": "/home/emhar/avaris-ai/.claude/hooks/workflow",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Grep",
+    "tool_input": {
+        "pattern": "hook_input",
+        "path": "/home/emhar/avaris-ai/.claude/hooks/workflow",
+        "glob": "*.py",
+        "output_mode": "files_with_matches"
+    },
+    "tool_use_id": "toolu_01DEJ4Q4fBnhuwX6KmUeo9o7"
+}
+{
+    "session_id": "00405901-237f-44af-95f7-831ea498afd9",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/00405901-237f-44af-95f7-831ea498afd9.jsonl",
+    "cwd": "/home/emhar/avaris-ai/.claude/hooks/workflow",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Grep",
+    "tool_input": {
+        "pattern": "from workflow.models.hook_input|from models.hook_input|import hook_input",
+        "path": "/home/emhar/avaris-ai/.claude/hooks/workflow",
+        "glob": "*.py",
+        "output_mode": "content"
+    },
+    "tool_use_id": "toolu_012MearzmbMd1GkVrGjFvXyq"
+}
+{
+    "session_id": "00405901-237f-44af-95f7-831ea498afd9",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/00405901-237f-44af-95f7-831ea498afd9.jsonl",
+    "cwd": "/home/emhar/avaris-ai/.claude/hooks/workflow",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+        "command": "grep -n \"HookInput\\|PreToolUseInput\\|PostToolUseInput\\|SubagentStopInput\\|StopInput\\|UserPromptSubmitInput\\|HookEventType\\|AgentTool\\|SkillTool\\|BashTool\\|WriteTool\\|ToolInputMap\" utils/normalize_tool.py session_state.py hook.py lib/stop_guard.py 2>/dev/null | head -60"
+    },
+    "tool_use_id": "toolu_01QJXfJUtWde7jVJBRvxLw9g"
+}
+{
+    "session_id": "00405901-237f-44af-95f7-831ea498afd9",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/00405901-237f-44af-95f7-831ea498afd9.jsonl",
+    "cwd": "/home/emhar/avaris-ai/.claude/hooks/workflow",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+        "command": "wc -l utils/normalize_tool.py hook.py lib/stop_guard.py session_state.py 2>/dev/null"
+    },
+    "tool_use_id": "toolu_01HtKCfh4EEZE7w9fZQnecJc"
+}
+{
+    "session_id": "00405901-237f-44af-95f7-831ea498afd9",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/00405901-237f-44af-95f7-831ea498afd9.jsonl",
+    "cwd": "/home/emhar/avaris-ai/.claude/hooks/workflow",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+        "command": "python3 -m pytest tests/test_models.py tests/test_guards.py tests/test_new_guards.py tests/test_handlers.py tests/test_new_handlers.py tests/test_build_entry.py -q 2>&1 | tail -10"
+    },
+    "tool_use_id": "toolu_01LnP5Gm2MNikVsYc2pyLors"
+}
+{
+    "session_id": "00405901-237f-44af-95f7-831ea498afd9",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/00405901-237f-44af-95f7-831ea498afd9.jsonl",
+    "cwd": "/home/emhar/avaris-ai/.claude/hooks/workflow",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+        "command": "python3 -m pytest tests/test_models.py tests/test_guards.py tests/test_new_guards.py tests/test_handlers.py tests/test_new_handlers.py -q 2>&1 | tail -10"
+    },
+    "tool_use_id": "toolu_017ndbpXTKT2mPTfpXWJdwgm"
+}
+{
+    "session_id": "00405901-237f-44af-95f7-831ea498afd9",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/00405901-237f-44af-95f7-831ea498afd9.jsonl",
+    "cwd": "/home/emhar/avaris-ai/.claude/hooks/workflow",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Glob",
+    "tool_input": {
+        "pattern": ".claude/hooks/workflow/lib/*.py"
+    },
+    "tool_use_id": "toolu_013SzQo3nYnWGwwFfu2cT3Bq"
+}
+{
+    "session_id": "00405901-237f-44af-95f7-831ea498afd9",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/00405901-237f-44af-95f7-831ea498afd9.jsonl",
+    "cwd": "/home/emhar/avaris-ai/.claude/hooks/workflow",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Glob",
+    "tool_input": {
+        "pattern": ".claude/hooks/workflow/models/*.py"
+    },
+    "tool_use_id": "toolu_01NTjUVLdks2XqHH9sBCZ2pz"
+}
+{
+    "session_id": "00405901-237f-44af-95f7-831ea498afd9",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/00405901-237f-44af-95f7-831ea498afd9.jsonl",
+    "cwd": "/home/emhar/avaris-ai/.claude/hooks/workflow",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Glob",
+    "tool_input": {
+        "pattern": ".claude/hooks/workflow/utils/*.py"
+    },
+    "tool_use_id": "toolu_01UcQAtjuoRwBfvS6Ubqa4Sy"
+}
+{
+    "session_id": "00405901-237f-44af-95f7-831ea498afd9",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/00405901-237f-44af-95f7-831ea498afd9.jsonl",
+    "cwd": "/home/emhar/avaris-ai/.claude/hooks/workflow",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+        "command": "grep -rn \"from workflow.models\\|import models\\|from models\" --include=\"*.py\" . | grep -v \"test_\\|\\.pyc\""
+    },
+    "tool_use_id": "toolu_01WmuiyqzGVSB32ALSnAjCKA"
+}
+{
+    "session_id": "00405901-237f-44af-95f7-831ea498afd9",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/00405901-237f-44af-95f7-831ea498afd9.jsonl",
+    "cwd": "/home/emhar/avaris-ai/.claude/hooks/workflow",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+        "command": "grep -rn \"from workflow.lib.stop_guard\\|from lib.stop_guard\\|normalize_tool\\|hook_output\\|hook\\.py\\|from workflow\\.hook\\|import hook$\" --include=\"*.py\" . | grep -v \"test_\\|\\.pyc\""
+    },
+    "tool_use_id": "toolu_018htJxumKbw4hhgjZSgDm6n"
+}
+{
+    "session_id": "00405901-237f-44af-95f7-831ea498afd9",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/00405901-237f-44af-95f7-831ea498afd9.jsonl",
+    "cwd": "/home/emhar/avaris-ai/.claude/hooks/workflow",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+        "command": "grep -rn \"from workflow.session_state\\|import session_state\" --include=\"*.py\" . | grep -v \"test_\\|\\.pyc\""
+    },
+    "tool_use_id": "toolu_01V25dJvMbH1w6ZndDA3JF8X"
+}
+{
+    "session_id": "00405901-237f-44af-95f7-831ea498afd9",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/00405901-237f-44af-95f7-831ea498afd9.jsonl",
+    "cwd": "/home/emhar/avaris-ai/.claude/hooks/workflow",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+        "command": "ls dispatchers/ 2>/dev/null || echo \"no dispatchers dir\""
+    },
+    "tool_use_id": "toolu_018brHDc4d8dXwqRhhDYji4C"
+}
+{
+    "session_id": "00405901-237f-44af-95f7-831ea498afd9",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/00405901-237f-44af-95f7-831ea498afd9.jsonl",
+    "cwd": "/home/emhar/avaris-ai/.claude/hooks/workflow",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+        "command": "grep -rn \"dispatchers\\|from workflow.lib.stop_guard\\|normalize_tool\" --include=\"*.py\" . | grep -v \"test_\\|\\.pyc\\|dispatchers/\""
+    },
+    "tool_use_id": "toolu_01DLaAHd9Mho85vxbCFzZGC5"
+}
+{
+    "session_id": "00405901-237f-44af-95f7-831ea498afd9",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/00405901-237f-44af-95f7-831ea498afd9.jsonl",
+    "cwd": "/home/emhar/avaris-ai/.claude/hooks/workflow",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+        "command": "grep -rn \"from workflow.hook\\b\\|import hook\\b\" --include=\"*.py\" . | grep -v \"test_\\|\\.pyc\\|dispatchers/\""
+    },
+    "tool_use_id": "toolu_01D8BEUkmbVe1VQtkCbp5Kf5"
+}
+{
+    "session_id": "00405901-237f-44af-95f7-831ea498afd9",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/00405901-237f-44af-95f7-831ea498afd9.jsonl",
+    "cwd": "/home/emhar/avaris-ai/.claude/hooks/workflow",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+        "command": "head -20 tests/test_models.py tests/test_guards.py tests/test_new_guards.py tests/test_handlers.py tests/test_new_handlers.py tests/manual-test.py 2>/dev/null | grep -E \"^==>|^from|^import|^class|^def \" | head -50"
+    },
+    "tool_use_id": "toolu_01LnANKzR6RUPYUf8DQM9wJs"
+}
+{
+    "session_id": "00405901-237f-44af-95f7-831ea498afd9",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/00405901-237f-44af-95f7-831ea498afd9.jsonl",
+    "cwd": "/home/emhar/avaris-ai/.claude/hooks/workflow",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Read",
+    "tool_input": {
+        "file_path": "/home/emhar/avaris-ai/.claude/hooks/workflow/session_state.py",
+        "offset": 1,
+        "limit": 25
+    },
+    "tool_use_id": "toolu_01TMEACDgy8FX4PXp39RHqnr"
+}
+{
+    "session_id": "00405901-237f-44af-95f7-831ea498afd9",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/00405901-237f-44af-95f7-831ea498afd9.jsonl",
+    "cwd": "/home/emhar/avaris-ai/.claude/hooks/workflow",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Grep",
+    "tool_input": {
+        "pattern": "HookEventType",
+        "path": "/home/emhar/avaris-ai/.claude/hooks/workflow/session_state.py",
+        "output_mode": "content"
+    },
+    "tool_use_id": "toolu_01L8F6NkhNXqDZyAc2M6HXo6"
+}
+{
+    "session_id": "00405901-237f-44af-95f7-831ea498afd9",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/00405901-237f-44af-95f7-831ea498afd9.jsonl",
+    "cwd": "/home/emhar/avaris-ai/.claude/hooks/workflow",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+        "command": "grep -n \"HookEventType\" .claude/hooks/workflow/session_state.py"
+    },
+    "tool_use_id": "toolu_01NpFfdnHd4QGrMPrZNvHUBV"
+}
+{
+    "session_id": "00405901-237f-44af-95f7-831ea498afd9",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/00405901-237f-44af-95f7-831ea498afd9.jsonl",
+    "cwd": "/home/emhar/avaris-ai/.claude/hooks/workflow",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Read",
+    "tool_input": {
+        "file_path": "/home/emhar/avaris-ai/.claude/hooks/workflow/session_state.py",
+        "offset": 160,
+        "limit": 10
+    },
+    "tool_use_id": "toolu_01VLW8uFF7M6nRTSs1rPZYMt"
+}
+{
+    "session_id": "00405901-237f-44af-95f7-831ea498afd9",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/00405901-237f-44af-95f7-831ea498afd9.jsonl",
+    "cwd": "/home/emhar/avaris-ai/.claude/hooks/workflow",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+        "command": "rm /home/emhar/avaris-ai/.claude/hooks/workflow/models/hook_input.py \\\n   /home/emhar/avaris-ai/.claude/hooks/workflow/models/hook_output.py \\\n   /home/emhar/avaris-ai/.claude/hooks/workflow/hook.py \\\n   /home/emhar/avaris-ai/.claude/hooks/workflow/lib/stop_guard.py \\\n   /home/emhar/avaris-ai/.claude/hooks/workflow/utils/normalize_tool.py \\\n   /home/emhar/avaris-ai/.claude/hooks/workflow/dispatchers/post_tool_use.py \\\n   /home/emhar/avaris-ai/.claude/hooks/workflow/dispatchers/pre_tool_use.py \\\n   /home/emhar/avaris-ai/.claude/hooks/workflow/dispatchers/subagent_stop.py \\\n   /home/emhar/avaris-ai/.claude/hooks/workflow/dispatchers/tasks.py \\\n   /home/emhar/avaris-ai/.claude/hooks/workflow/tests/test_models.py \\\n   /home/emhar/avaris-ai/.claude/hooks/workflow/tests/test_guards.py \\\n   /home/emhar/avaris-ai/.claude/hooks/workflow/tests/test_new_guards.py \\\n   /home/emhar/avaris-ai/.claude/hooks/workflow/tests/test_handlers.py \\\n   /home/emhar/avaris-ai/.claude/hooks/workflow/tests/test_new_handlers.py \\\n   /home/emhar/avaris-ai/.claude/hooks/workflow/tests/manual-test.py"
+    },
+    "tool_use_id": "toolu_01K2FMtta5kAzUvN3fY4L6PC"
+}
+{
+    "session_id": "00405901-237f-44af-95f7-831ea498afd9",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/00405901-237f-44af-95f7-831ea498afd9.jsonl",
+    "cwd": "/home/emhar/avaris-ai/.claude/hooks/workflow",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Edit",
+    "tool_input": {
+        "file_path": "/home/emhar/avaris-ai/.claude/hooks/workflow/session_state.py",
+        "old_string": "from workflow.models.hook_input import HookEventType",
+        "new_string": "HookEventType = Literal[\n    \"PreToolUse\", \"PostToolUse\", \"Notification\", \"UserPromptSubmit\",\n    \"SessionStart\", \"SessionEnd\", \"Stop\", \"SubagentStart\", \"SubagentStop\",\n]",
+        "replace_all": false
+    },
+    "tool_use_id": "toolu_01DqJFD7yxpzySyUWkrCvSLx"
+}
+{
+    "session_id": "00405901-237f-44af-95f7-831ea498afd9",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/00405901-237f-44af-95f7-831ea498afd9.jsonl",
+    "cwd": "/home/emhar/avaris-ai/.claude/hooks/workflow",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Grep",
+    "tool_input": {
+        "pattern": "from typing import",
+        "path": "/home/emhar/avaris-ai/.claude/hooks/workflow/session_state.py",
+        "output_mode": "content"
+    },
+    "tool_use_id": "toolu_01EgqYJPc39YxHKTVgB2eKkT"
+}
+{
+    "session_id": "00405901-237f-44af-95f7-831ea498afd9",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/00405901-237f-44af-95f7-831ea498afd9.jsonl",
+    "cwd": "/home/emhar/avaris-ai/.claude/hooks/workflow",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+        "command": "python3 -m pytest tests/ -q 2>&1 | tail -20"
+    },
+    "tool_use_id": "toolu_01HTWzdhDsymaaXHiJSn9fcR"
+}
+{
+    "session_id": "00405901-237f-44af-95f7-831ea498afd9",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/00405901-237f-44af-95f7-831ea498afd9.jsonl",
+    "cwd": "/home/emhar/avaris-ai/.claude/hooks/workflow",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+        "command": "head -15 tests/test_build_entry.py tests/test_context_injector.py tests/test_file_manager.py tests/test_hook.py tests/test_paths.py tests/test_review.py tests/test_workflow_gate.py 2>/dev/null | grep -E \"^==>|^from|^import\""
+    },
+    "tool_use_id": "toolu_01Sw8HcPAGe5r4YTNFmGJ6gE"
+}
+{
+    "session_id": "00405901-237f-44af-95f7-831ea498afd9",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/00405901-237f-44af-95f7-831ea498afd9.jsonl",
+    "cwd": "/home/emhar/avaris-ai/.claude/hooks/workflow",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+        "command": "ls /home/emhar/avaris-ai/.claude/hooks/workflow/lib/ && echo \"---\" && ls /home/emhar/avaris-ai/.claude/hooks/workflow/ | grep -v __pycache__"
+    },
+    "tool_use_id": "toolu_01XyA1wtSxXcFkftpC4hwQQa"
+}
+{
+    "session_id": "00405901-237f-44af-95f7-831ea498afd9",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/00405901-237f-44af-95f7-831ea498afd9.jsonl",
+    "cwd": "/home/emhar/avaris-ai/.claude/hooks/workflow",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+        "command": "rm /home/emhar/avaris-ai/.claude/hooks/workflow/tests/test_build_entry.py \\\n   /home/emhar/avaris-ai/.claude/hooks/workflow/tests/test_context_injector.py \\\n   /home/emhar/avaris-ai/.claude/hooks/workflow/tests/test_hook.py \\\n   /home/emhar/avaris-ai/.claude/hooks/workflow/tests/test_paths.py \\\n   /home/emhar/avaris-ai/.claude/hooks/workflow/tests/test_review.py \\\n   /home/emhar/avaris-ai/.claude/hooks/workflow/tests/test_workflow_gate.py"
+    },
+    "tool_use_id": "toolu_01B7m72b55YkfAe4qzVc3MKj"
+}
+{
+    "session_id": "00405901-237f-44af-95f7-831ea498afd9",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/00405901-237f-44af-95f7-831ea498afd9.jsonl",
+    "cwd": "/home/emhar/avaris-ai/.claude/hooks/workflow",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+        "command": "python3 -m pytest tests/ -q 2>&1 | tail -15"
+    },
+    "tool_use_id": "toolu_019QffU4oWPWJNTYopAEdRvB"
+}
+{
+    "session_id": "00405901-237f-44af-95f7-831ea498afd9",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/00405901-237f-44af-95f7-831ea498afd9.jsonl",
+    "cwd": "/home/emhar/avaris-ai/.claude/hooks/workflow",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+        "command": "head -15 /home/emhar/avaris-ai/.claude/hooks/workflow/tests/test_file_manager.py"
+    },
+    "tool_use_id": "toolu_01YFub3pEHm87EuZmDjSo2Bj"
+}
+{
+    "session_id": "00405901-237f-44af-95f7-831ea498afd9",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/00405901-237f-44af-95f7-831ea498afd9.jsonl",
+    "cwd": "/home/emhar/avaris-ai/.claude/hooks/workflow",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+        "command": "grep \"^def \\|^class \" /home/emhar/avaris-ai/.claude/hooks/workflow/lib/file_manager.py"
+    },
+    "tool_use_id": "toolu_01AUCnFdFauSkTW2nVDaD59U"
+}
+{
+    "session_id": "00405901-237f-44af-95f7-831ea498afd9",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/00405901-237f-44af-95f7-831ea498afd9.jsonl",
+    "cwd": "/home/emhar/avaris-ai/.claude/hooks/workflow",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+        "command": "rm /home/emhar/avaris-ai/.claude/hooks/workflow/tests/test_file_manager.py"
+    },
+    "tool_use_id": "toolu_014LYbCMHmmgYniieKEQt91d"
+}
+{
+    "session_id": "00405901-237f-44af-95f7-831ea498afd9",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/00405901-237f-44af-95f7-831ea498afd9.jsonl",
+    "cwd": "/home/emhar/avaris-ai/.claude/hooks/workflow",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+        "command": "python3 -m pytest tests/ -q 2>&1 | tail -10"
+    },
+    "tool_use_id": "toolu_016DgGQPXDo429dGfQCRnrX3"
+}
+{
+    "session_id": "00405901-237f-44af-95f7-831ea498afd9",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/00405901-237f-44af-95f7-831ea498afd9.jsonl",
+    "cwd": "/home/emhar/avaris-ai/.claude/hooks/workflow",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+        "command": "head -15 /home/emhar/avaris-ai/.claude/hooks/workflow/tests/test_validation_loop.py | grep \"^from\\|^import\""
+    },
+    "tool_use_id": "toolu_014wVXcUNtC8yNJPu8gP98Wy"
+}
+{
+    "session_id": "00405901-237f-44af-95f7-831ea498afd9",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/00405901-237f-44af-95f7-831ea498afd9.jsonl",
+    "cwd": "/home/emhar/avaris-ai/.claude/hooks/workflow",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+        "command": "python3 -m pytest tests/test_validation_loop.py -q 2>&1 | head -20"
+    },
+    "tool_use_id": "toolu_011hYv4R4PxUnWe7nts3a1wn"
+}
+{
+    "session_id": "00405901-237f-44af-95f7-831ea498afd9",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/00405901-237f-44af-95f7-831ea498afd9.jsonl",
+    "cwd": "/home/emhar/avaris-ai/.claude/hooks/workflow",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+        "command": "python3 -m pytest tests/ -q 2>&1 | grep \"^FAILED\" | sed 's/FAILED tests\\///' | sed 's/::.*//' | sort -u"
+    },
+    "tool_use_id": "toolu_01S37g4xswqkVU8GEYoXpkYU"
+}
+{
+    "session_id": "00405901-237f-44af-95f7-831ea498afd9",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/00405901-237f-44af-95f7-831ea498afd9.jsonl",
+    "cwd": "/home/emhar/avaris-ai/.claude/hooks/workflow",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+        "command": "python3 -m pytest tests/test_config.py tests/test_session_state.py tests/test_state_store.py tests/test_review_e2e.py tests/test_validation_loop.py tests/test_tasks_guardrail.py -q 2>&1 | grep \"FAILED\\|ERROR\\|passed\\|failed\" | tail -20"
+    },
+    "tool_use_id": "toolu_01G7QhFnR6aDuYr7RXhBPEiY"
+}
+{
+    "session_id": "00405901-237f-44af-95f7-831ea498afd9",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/00405901-237f-44af-95f7-831ea498afd9.jsonl",
+    "cwd": "/home/emhar/avaris-ai/.claude/hooks/workflow",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+        "command": "python3 -m pytest tests/test_config.py tests/test_session_state.py tests/test_state_store.py tests/test_review_e2e.py -q 2>&1 | tail -5"
+    },
+    "tool_use_id": "toolu_017B6YkJJdCWyE3cj9rpcrK3"
+}
+{
+    "session_id": "00405901-237f-44af-95f7-831ea498afd9",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/00405901-237f-44af-95f7-831ea498afd9.jsonl",
+    "cwd": "/home/emhar/avaris-ai/.claude/hooks/workflow",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+        "command": "python3 -m pytest tests/test_review_e2e.py -q 2>&1 | head -15"
+    },
+    "tool_use_id": "toolu_01CqvAufQJKbLYetByDWQBEz"
+}
+{
+    "session_id": "00405901-237f-44af-95f7-831ea498afd9",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/00405901-237f-44af-95f7-831ea498afd9.jsonl",
+    "cwd": "/home/emhar/avaris-ai/.claude/hooks/workflow",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+        "command": "python3 -m pytest tests/test_config.py tests/test_session_state.py tests/test_state_store.py -q 2>&1 | tail -5"
+    },
+    "tool_use_id": "toolu_016jGdfcCFNayywfGHui6idP"
+}
+{
+    "session_id": "00405901-237f-44af-95f7-831ea498afd9",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/00405901-237f-44af-95f7-831ea498afd9.jsonl",
+    "cwd": "/home/emhar/avaris-ai/.claude/hooks/workflow",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+        "command": "python3 -m pytest tests/test_state_store.py -q 2>&1 | head -20"
+    },
+    "tool_use_id": "toolu_016d5T7JaPm2Nz7AMVLjwBQS"
+}
+{
+    "session_id": "00405901-237f-44af-95f7-831ea498afd9",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/00405901-237f-44af-95f7-831ea498afd9.jsonl",
+    "cwd": "/home/emhar/avaris-ai/.claude/hooks/workflow",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+        "command": "python3 -m pytest tests/test_guardrail.py tests/test_task_guardrail.py tests/test_order_validation.py tests/test_session_state.py tests/test_state_store.py -v 2>&1 | tail -25"
+    },
+    "tool_use_id": "toolu_01PotF3UULqUtA6T2mJcyrEH"
+}
+{
+    "session_id": "00405901-237f-44af-95f7-831ea498afd9",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/00405901-237f-44af-95f7-831ea498afd9.jsonl",
+    "cwd": "/home/emhar/avaris-ai/.claude/hooks/workflow",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+        "command": "git stash && python3 -m pytest tests/test_state_store.py tests/test_session_state.py -q 2>&1 | tail -5 && git stash pop"
+    },
+    "tool_use_id": "toolu_017FiDgjtv4m7CC49usF15f3"
+}
+{
+    "session_id": "00405901-237f-44af-95f7-831ea498afd9",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/00405901-237f-44af-95f7-831ea498afd9.jsonl",
+    "cwd": "/home/emhar/avaris-ai/.claude/hooks/workflow",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+        "command": "python3 -m pytest tests/test_guardrail.py tests/test_task_guardrail.py tests/test_order_validation.py -v 2>&1 | tail -15"
+    },
+    "tool_use_id": "toolu_013mGXjbKCrvLsRSJ4qdqo1z"
+}
+{
+    "session_id": "00405901-237f-44af-95f7-831ea498afd9",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/00405901-237f-44af-95f7-831ea498afd9.jsonl",
+    "cwd": "/home/emhar/avaris-ai/.claude/hooks/workflow",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+        "command": "python3 github_project/project_manager.py view SK-001 --tasks --json 2>&1 | head -5"
+    },
+    "tool_use_id": "toolu_015aKdmL1yz6SV6mmvYd12Dj"
+}
+{
+    "session_id": "00405901-237f-44af-95f7-831ea498afd9",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/00405901-237f-44af-95f7-831ea498afd9.jsonl",
+    "cwd": "/home/emhar/avaris-ai/.claude/hooks/workflow",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+        "command": "python3 /home/emhar/avaris-ai/github_project/project_manager.py view SK-001 --tasks --json 2>&1 | head -5"
+    },
+    "tool_use_id": "toolu_01MnfVUXiaH5jSpveH6T6xuh"
+}
+{
+    "session_id": "00405901-237f-44af-95f7-831ea498afd9",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/00405901-237f-44af-95f7-831ea498afd9.jsonl",
+    "cwd": "/home/emhar/avaris-ai/.claude/hooks/workflow",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+        "command": "grep -n '\"key\"\\|\"KEY\"\\|\"id\"\\|\"ID\"' /home/emhar/avaris-ai/github_project/project_manager.py | head -15"
+    },
+    "tool_use_id": "toolu_01JeXt5auACU9emvUUMQSLNX"
+}
+{
+    "session_id": "00405901-237f-44af-95f7-831ea498afd9",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/00405901-237f-44af-95f7-831ea498afd9.jsonl",
+    "cwd": "/home/emhar/avaris-ai/.claude/hooks/workflow",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+        "command": "grep -n \"tasks\\|ready.tasks\" /home/emhar/avaris-ai/github_project/project_manager.py | grep \"add_argument\" | head -5"
+    },
+    "tool_use_id": "toolu_01YXDRss5VZKXouVAvAWwgFg"
+}
+{
+    "session_id": "00405901-237f-44af-95f7-831ea498afd9",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/00405901-237f-44af-95f7-831ea498afd9.jsonl",
+    "cwd": "/home/emhar/avaris-ai/.claude/hooks/workflow",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+        "command": "grep -n \"tasks\\|--tasks\\|ready_tasks\" /home/emhar/avaris-ai/github_project/project_manager.py | head -10"
+    },
+    "tool_use_id": "toolu_01DrBz14B61rLWs8oCsafyot"
+}
+{
+    "session_id": "00405901-237f-44af-95f7-831ea498afd9",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/00405901-237f-44af-95f7-831ea498afd9.jsonl",
+    "cwd": "/home/emhar/avaris-ai/.claude/hooks/workflow",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+        "command": "grep -n \"\\\"view\\\"\\|'view'\\|add_parser.*view\\|tasks_only\\|ready_tasks\\|ac_only\" /home/emhar/avaris-ai/github_project/project_manager.py | head -15"
+    },
+    "tool_use_id": "toolu_01UMKKibn2YNKP5oY611vJe6"
+}
+{
+    "session_id": "00405901-237f-44af-95f7-831ea498afd9",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/00405901-237f-44af-95f7-831ea498afd9.jsonl",
+    "cwd": "/home/emhar/avaris-ai/.claude/hooks/workflow",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Read",
+    "tool_input": {
+        "file_path": "/home/emhar/avaris-ai/github_project/project_manager.py",
+        "offset": 877,
+        "limit": 20
+    },
+    "tool_use_id": "toolu_01WjZCN8P6Hq45hGtSve22HJ"
+}
+{
+    "session_id": "00405901-237f-44af-95f7-831ea498afd9",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/00405901-237f-44af-95f7-831ea498afd9.jsonl",
+    "cwd": "/home/emhar/avaris-ai/.claude/hooks/workflow",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+        "command": "cd /home/emhar/avaris-ai && git status --short -- github_project/project_manager.py"
+    },
+    "tool_use_id": "toolu_01YKnmPBuSENbgsgGKDqyYAx"
+}
+{
+    "session_id": "00405901-237f-44af-95f7-831ea498afd9",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/00405901-237f-44af-95f7-831ea498afd9.jsonl",
+    "cwd": "/home/emhar/avaris-ai/.claude/hooks/workflow",
+    "permission_mode": "default",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+        "command": "cd /home/emhar/avaris-ai && git stash pop 2>&1",
+        "dangerouslyDisableSandbox": true
+    },
+    "tool_use_id": "toolu_01MV8ewPW5BCMGrWLN758aXB"
+}
+{
+    "session_id": "00405901-237f-44af-95f7-831ea498afd9",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/00405901-237f-44af-95f7-831ea498afd9.jsonl",
+    "cwd": "/home/emhar/avaris-ai/.claude/hooks/workflow",
+    "permission_mode": "default",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+        "command": "cd /home/emhar/avaris-ai && git stash drop && git checkout -- github_project/project_manager.py && python3 github_project/project_manager.py view SK-001 --tasks --json 2>&1 | head -5",
+        "dangerouslyDisableSandbox": true
+    },
+    "tool_use_id": "toolu_016FmRnkb73cngLV5uXNDmBT"
+}
+{
+    "session_id": "00405901-237f-44af-95f7-831ea498afd9",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/00405901-237f-44af-95f7-831ea498afd9.jsonl",
+    "cwd": "/home/emhar/avaris-ai/.claude/hooks/workflow",
+    "permission_mode": "default",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+        "command": "cd /home/emhar/avaris-ai && git stash show -p -- github_project/project_manager.py 2>&1"
+    },
+    "tool_use_id": "toolu_015XStqjaH7yqv2heFg9p1MF"
+}
+{
+    "session_id": "00405901-237f-44af-95f7-831ea498afd9",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/00405901-237f-44af-95f7-831ea498afd9.jsonl",
+    "cwd": "/home/emhar/avaris-ai/.claude/hooks/workflow",
+    "permission_mode": "default",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+        "command": "cd /home/emhar/avaris-ai && git stash show -p 2>&1 | grep \"project_manager\" | head -5"
+    },
+    "tool_use_id": "toolu_017AZbARST2zAEyfq7jPPcNt"
+}
+{
+    "session_id": "00405901-237f-44af-95f7-831ea498afd9",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/00405901-237f-44af-95f7-831ea498afd9.jsonl",
+    "cwd": "/home/emhar/avaris-ai/.claude/hooks/workflow",
+    "permission_mode": "default",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Read",
+    "tool_input": {
+        "file_path": "/home/emhar/avaris-ai/.claude/hooks/workflow/session_state.py"
+    },
+    "tool_use_id": "toolu_01HjPCFqfjXraWk2FAabqfGh"
+}
+{
+    "session_id": "00405901-237f-44af-95f7-831ea498afd9",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/00405901-237f-44af-95f7-831ea498afd9.jsonl",
+    "cwd": "/home/emhar/avaris-ai/.claude/hooks/workflow",
+    "permission_mode": "default",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Grep",
+    "tool_input": {
+        "pattern": "session_state",
+        "path": "/home/emhar/avaris-ai/.claude/hooks/workflow",
+        "glob": "*.py",
+        "output_mode": "files_with_matches"
+    },
+    "tool_use_id": "toolu_01WBR1SeSTrgvEENjctHr1Lt"
+}

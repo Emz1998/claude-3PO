@@ -1,0 +1,16 @@
+
+{
+    "session_id": "2bf310a1-ca9b-4c11-829b-b8c2eec97ebb",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/2bf310a1-ca9b-4c11-829b-b8c2eec97ebb.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "default",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Agent",
+    "tool_input": {
+        "description": "Research note taking app UI",
+        "prompt": "Research the best UI patterns and design principles for a note-taking app. Cover the following:\n\n1. **Layout patterns** - sidebar navigation, card-based, full-screen editor, split-pane\n2. **Popular apps to reference** - Notion, Obsidian, Apple Notes, Roam Research, Bear, Evernote, Logseq \u2014 what makes each UI effective\n3. **Key UX features** - quick capture, search, tagging/organization, rich text vs markdown vs WYSIWYG, keyboard shortcuts\n4. **Mobile vs desktop considerations**\n5. **Trending patterns in 2024-2025** - AI integration, bi-directional linking, canvas/whiteboard notes\n6. **Accessibility and readability best practices** for note-taking interfaces\n7. **Color schemes and typography** commonly used\n\nProvide a comprehensive research report with citations/sources where applicable, and actionable recommendations for building a modern note-taking app UI.",
+        "subagent_type": "research-specialist",
+        "run_in_background": true
+    },
+    "tool_use_id": "toolu_01D8PivwK8tK5WJA8iWo97o2"
+}

@@ -3,14 +3,14 @@
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
-
 import re
 import subprocess
 import json
 
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
+
 from workflow.hook import Hook
-from workflow.workflow_gate import activate_workflow
 from workflow.models.hook_input import UserPromptSubmitInput
 from workflow.lib.parallel_session import parallel_sessions
 from workflow.constants.phases import STATUS_READY

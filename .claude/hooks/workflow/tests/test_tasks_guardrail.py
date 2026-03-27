@@ -75,7 +75,9 @@ class TestGetTasks:
 
     def test_returns_empty_list_on_subprocess_error(self):
         """Bug: CalledProcessError propagates instead of returning []."""
-        with patch("subprocess.run", side_effect=subprocess.CalledProcessError(1, "cmd")):
+        with patch(
+            "subprocess.run", side_effect=subprocess.CalledProcessError(1, "cmd")
+        ):
             result = guardrail.get_tasks("SK-1")
         assert result == []
 
