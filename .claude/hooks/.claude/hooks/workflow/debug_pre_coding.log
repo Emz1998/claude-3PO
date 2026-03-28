@@ -1,4 +1,0 @@
-permission_mode=plan
-tool_name=Skill
-tool_input={'skill': 'workflow:finalize-plan'}
-workflow_active=True

@@ -12,9 +12,9 @@ from typing import Any, Literal, cast
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from workflow.state_store import StateStore
-from workflow.config import get as cfg
 
-MAX_ITERATIONS = cfg("validation.iteration_loop", 3)
+
+DEFAULT_STATE_PATH = Path(__file__).resolve().parent / "state.json"
 
 
 def resolve_path(session_id: str) -> Path:
@@ -22,8 +22,11 @@ def resolve_path(session_id: str) -> Path:
 
 
 class SessionState(StateStore):
-    def __init__(self, session_id: str):
-        path = resolve_path(session_id)
+    def __init__(self, session_id: str | None = None):
+        if session_id is None:
+            path = DEFAULT_STATE_PATH
+        else:
+            path = resolve_path(session_id)
         super().__init__(path)
 
     @property

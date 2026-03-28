@@ -12,7 +12,7 @@ from typing import Any
 
 import yaml
 
-from gh_utils import gh_json, run
+from utils.gh_utils import gh_json, run
 
 MAX_WORKERS = 8  # concurrent subprocess calls
 

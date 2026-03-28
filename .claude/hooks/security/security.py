@@ -5,6 +5,8 @@ PreToolUse Hook: Security validation for dangerous commands and paths.
 Blocks critical system-damaging operations using exit code 2.
 """
 
+import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -12,13 +14,14 @@ from pathlib import Path
 # Add parent directory to import from utils
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from utils import read_stdin_json, log  # type: ignore
+from utils.stdin import read_stdin_json  # type: ignore
 
-# Risk levels
-CRITICAL = 20
-HIGH = 10
-MEDIUM = 5
-LOW = 1
+
+def log(message: str) -> None:
+    """Append a log entry to the security log."""
+    log_file = Path(__file__).parent / "security.log"
+    with open(log_file, "a") as f:
+        f.write(f"{message}\n")
 
 # Critical paths that should never be modified
 CRITICAL_PATHS = {
@@ -40,6 +43,9 @@ CRITICAL_COMMAND_PATTERNS = [
     (r"rm\s+-[rf]+\s+/etc(?:\s|$)", "rm -rf /etc (destroys system config)"),
     (r"rm\s+-[rf]+\s+/boot(?:\s|$)", "rm -rf /boot (destroys bootloader)"),
     (r"rm\s+-[rf]+\s+/sys(?:\s|$)", "rm -rf /sys (destroys system interface)"),
+    (r"rm\s+-[rf]+\s+/home(?:\s|$)", "rm -rf /home (destroys user data)"),
+    (r"rm\s+-[rf]+\s+/usr(?:\s|$)", "rm -rf /usr (destroys system binaries)"),
+    (r"rm\s+-[rf]+\s+/var(?:\s|$)", "rm -rf /var (destroys system data)"),
     (r"dd\s+if=/dev/zero\s+of=/dev/", "dd to device (overwrites disk)"),
     (r"mkfs\.(ext|xfs|btrfs)", "mkfs (formats filesystem)"),
     (r">\s*/dev/sd", "redirect to disk device"),
@@ -48,8 +54,13 @@ CRITICAL_COMMAND_PATTERNS = [
     (r"chmod\s+-[rR]+\s+777\s+/\s*$", "chmod 777 / (destroys permissions)"),
 ]
 
-# Safe directories (operations here are allowed)
-SAFE_DIRECTORIES = {"/.claude/", "/src/", "/tests/"}
+# Safe directories (operations here are allowed), anchored to project root
+_PROJECT_DIR = os.environ.get("CLAUDE_PROJECT_DIR", "")
+SAFE_DIRECTORIES = {
+    f"{_PROJECT_DIR}/.claude/",
+    f"{_PROJECT_DIR}/src/",
+    f"{_PROJECT_DIR}/tests/",
+}
 
 
 def is_safe_path(file_path: str) -> bool:
@@ -119,7 +130,8 @@ def validate_security(input_data: dict | None) -> None:
 
     except Exception as e:
         log(f"Security hook error: {e}")
-        # Fail-safe: allow on error
+        print(f"Security hook error: {e}", file=sys.stderr)
+        sys.exit(2)
 
 
 def main():

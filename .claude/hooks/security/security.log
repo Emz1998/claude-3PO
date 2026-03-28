@@ -1,0 +1,2 @@
+BLOCKED: System-damaging command detected: rm -rf /home (destroys user data)
+BLOCKED: Attempting to modify critical system file: /etc/passwd

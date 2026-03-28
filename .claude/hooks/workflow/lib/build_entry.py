@@ -11,17 +11,20 @@ import json
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 from workflow.hook import Hook
-from workflow.models.hook_input import UserPromptSubmitInput
 from workflow.lib.parallel_session import parallel_sessions
-from workflow.constants.phases import STATUS_READY
+from workflow.state_store import StateStore
+
+
+STATE_PATH = Path(__file__).resolve().parent.parent.parent / "state.json"
+state_store = StateStore(STATE_PATH)
 
 
 class BuildEntry:
-    def __init__(self, hook_input: UserPromptSubmitInput):
-        self._hook_input = hook_input
+    def __init__(self, raw_input: dict):
+        self._raw_input = raw_input
 
     def validate_prompt(self) -> bool:
-        return self._hook_input.prompt.startswith("/build")
+        return self._raw_input.get("prompt", "").startswith("/build")
 
     @staticmethod
     def _get_open_prs() -> list[str]:
@@ -35,6 +38,9 @@ class BuildEntry:
             return []
         return re.findall(r"PR #(\d+):", result.stdout)
 
+    def activate_workflow(self) -> None:
+        state_store.update(lambda s: s.update({"workflow_active": True}))
+
     @property
     def prompts(self) -> list[str]:
         open_prs = self._get_open_prs()
@@ -47,7 +53,7 @@ class BuildEntry:
                 "github_project/project_manager.py",
                 "list",
                 "--status",
-                STATUS_READY,
+                "ready",
                 "-k",
             ],
             capture_output=True,
@@ -69,7 +75,8 @@ class BuildEntry:
         if not self.validate_prompt():
             return
 
-        activate_workflow()
+        self.activate_workflow()
+
         prompts = self.prompts
         if not prompts:
             return
@@ -79,7 +86,11 @@ class BuildEntry:
         )
 
 
-if __name__ == "__main__":
-    hook_input = UserPromptSubmitInput.model_validate(Hook.read_stdin())
-    build_entry = BuildEntry(hook_input)
+def main() -> None:
+    raw_input = Hook.read_stdin()
+    build_entry = BuildEntry(raw_input)
     build_entry.run()
+
+
+if __name__ == "__main__":
+    main()

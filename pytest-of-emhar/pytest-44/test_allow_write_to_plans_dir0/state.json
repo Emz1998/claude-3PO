@@ -1,0 +1,22 @@
+{
+  "plan_workflow": {
+    "plan_workflow_active": true,
+    "phase": "write",
+    "skip": {
+      "skip_explore": false,
+      "skip_research": false
+    },
+    "agents": [],
+    "plan_file": ".claude/plans/my-plan.md",
+    "review": {
+      "iteration": 0,
+      "max_iterations": 3,
+      "threshold": {
+        "confidence": 80,
+        "quality": 80
+      },
+      "scores": null,
+      "status": null
+    }
+  }
+}

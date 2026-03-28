@@ -11,7 +11,8 @@ def parallel_sessions(prompts: list[str]) -> None:
     subprocess.Popen(
         [
             "wt.exe",
-            "-w", "0",
+            "-w",
+            "0",
             "nt",
             "wsl.exe",
             "bash",
