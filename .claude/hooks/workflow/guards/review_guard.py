@@ -6,6 +6,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
+from workflow.guards.agent_guard import count_completed
+from workflow.guards.phase_guard import PHASE_ORDER
 from workflow.state_store import StateStore
 
 DEFAULT_STATE_PATH = Path(__file__).resolve().parent.parent / "state.json"
@@ -23,17 +25,6 @@ PHASE_COMPLETION: dict[str, dict[str, int]] = {
     "pr-create": {"version-manager": 1},
 }
 
-PHASE_ORDER = [
-    "explore",
-    "decision",
-    "plan",
-    "write-tests",
-    "write-code",
-    "validate",
-    "pr-create",
-]
-
-
 def parse_scores(text: str) -> dict[str, int | None]:
     """Extract confidence and quality scores from free-form reviewer text."""
     confidence = None
@@ -50,11 +41,7 @@ def parse_scores(text: str) -> dict[str, int | None]:
     return {"confidence": confidence, "quality": quality}
 
 
-def _count_completed(agents: list[dict], agent_type: str) -> int:
-    return sum(1 for a in agents if a.get("agent_type") == agent_type and a.get("status") == "completed")
-
-
-def _advance_next_phase(phases: list[dict], current_name: str) -> None:
+def advance_next_phase(phases: list[dict], current_name: str) -> None:
     """Mark current phase completed and next pending phase in_progress."""
     for p in phases:
         if p["name"] == current_name:
@@ -122,7 +109,7 @@ def handle(hook_input: dict, state_path: Path | None = None) -> tuple[str, str]:
 
             if passed:
                 state["review"][review_key]["status"] = "approved"
-                _advance_next_phase(phases, phase_name)
+                advance_next_phase(phases, phase_name)
             elif iteration + 1 >= max_iter:
                 state["review"][review_key]["status"] = "max_iterations_reached"
                 state["review"][review_key]["iteration"] = iteration + 1
@@ -139,11 +126,11 @@ def handle(hook_input: dict, state_path: Path | None = None) -> tuple[str, str]:
         completion = PHASE_COMPLETION.get(phase_name)
         if completion:
             all_done = all(
-                _count_completed(agents, atype) >= required
+                count_completed(agents, atype) >= required
                 for atype, required in completion.items()
             )
             if all_done:
-                _advance_next_phase(phases, phase_name)
+                advance_next_phase(phases, phase_name)
 
     store.update(_process)
     return "allow", ""

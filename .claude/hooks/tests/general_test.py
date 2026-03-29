@@ -29,26 +29,7 @@ def read_content(file_path: Path) -> str:
 
 def main() -> None:
     hook_input = read_stdin_json()
-    file_path = hook_input.get("tool_input", {}).get("file_path")
-    if not file_path.endswith("prompt.md"):
-        return
-
-    file_path = Path(file_path)
-
-    if not file_path.exists():
-        return
-
-    content = read_content(file_path)
-
-    output = {
-        "hookSpecificOutput": {
-            "hookEventName": "PreToolUse",
-            "permissionDecision": "ask",
-            "permissionDecisionReason": "Testing Block",
-        }
-    }
-    print(json.dumps(output))
-    sys.exit(0)
+    test_log(json.dumps(hook_input, indent=4))
 
 
 if __name__ == "__main__":

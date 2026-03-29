@@ -25,6 +25,14 @@ from urllib.parse import urlparse
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from workflow.guards.agent_guard import (
+    count as _count,
+    count_completed as _count_completed,
+)
+from workflow.guards.review_guard import (
+    advance_next_phase as _advance_next_phase,
+    parse_scores as _parse_review_scores,
+)
 from workflow.state_store import StateStore
 
 DEFAULT_STATE_PATH = Path(__file__).resolve().parent / "state.json"
@@ -111,17 +119,6 @@ def _default_plan_workflow(skip: dict | None = None, instructions: str = "") -> 
     }
 
 
-def _count(agents: list[dict], agent_type: str) -> int:
-    return sum(1 for a in agents if a.get("agent_type") == agent_type)
-
-
-def _count_completed(agents: list[dict], agent_type: str) -> int:
-    return sum(
-        1 for a in agents
-        if a.get("agent_type") == agent_type and a.get("status") == "completed"
-    )
-
-
 def _validate_plan_template(content: str) -> tuple[bool, list[str]]:
     """Check plan content has all required sections. Returns (passed, missing)."""
     missing = []
@@ -129,7 +126,12 @@ def _validate_plan_template(content: str) -> tuple[bool, list[str]]:
         if not re.search(pattern, content, re.MULTILINE):
             # Human-readable label
             label = re.sub(r"\^##\\s\+", "", pattern)
-            label = label.replace("(", "").replace(")", "").replace("|", " or ").replace("\\", "")
+            label = (
+                label.replace("(", "")
+                .replace(")", "")
+                .replace("|", " or ")
+                .replace("\\", "")
+            )
             missing.append(label.strip())
     return len(missing) == 0, missing
 
@@ -150,13 +152,27 @@ def _is_safe_domain(url: str) -> bool:
         return False
 
 
+def get_skill_and_args(hook_input: dict) -> tuple[str, str]:
+    hook_event_name = hook_input.get("hook_event_name", "")
+    match hook_event_name:
+        case "UserPromptSubmit":
+            prompt = hook_input.get("prompt", "")
+            parsed = prompt.split(" ", 1)
+            return parsed[0].replace("/", ""), parsed[1] if len(parsed) > 1 else ""
+        case "PostToolUse":
+            tool_input = hook_input.get("tool_input", {})
+            skill = tool_input.get("skill", "")
+            args = tool_input.get("args", "")
+            return skill, args
+        case _:
+            return "", ""
+
+
 def _handle_skill(hook_input: dict, store: StateStore) -> tuple[str, str]:
-    tool_input = hook_input.get("tool_input", {})
-    skill = tool_input.get("skill", "")
+    skill, args = get_skill_and_args(hook_input)
     if skill != "plan":
         return "allow", ""
 
-    args = tool_input.get("args", "") or ""
     skip = _parse_skip_args(args)
     instructions = _parse_instructions(args)
     workflow = _default_plan_workflow(skip, instructions)
@@ -190,7 +206,10 @@ def _handle_agent(hook_input: dict, store: StateStore) -> tuple[str, str]:
 
     # Block background execution for Explore and Research agents
     if agent_type in ("Explore", "Research") and tool_input.get("run_in_background"):
-        return "block", f"Agent '{agent_type}' must not run in background — set run_in_background to false"
+        return (
+            "block",
+            f"Agent '{agent_type}' must not run in background — set run_in_background to false",
+        )
 
     # Explore agents — only in explore phase
     if agent_type == "Explore":
@@ -227,7 +246,10 @@ def _handle_agent(hook_input: dict, store: StateStore) -> tuple[str, str]:
                     for atype, count in required.items()
                 )
                 if not all_done:
-                    return "block", "Plan agent requires all explore/research agents to complete first"
+                    return (
+                        "block",
+                        "Plan agent requires all explore/research agents to complete first",
+                    )
             else:
                 return "block", f"Plan agent not allowed in phase '{phase}'"
         current = _count(agents, "Plan")
@@ -239,7 +261,10 @@ def _handle_agent(hook_input: dict, store: StateStore) -> tuple[str, str]:
     # Plan-Review agent — only in review phase
     if agent_type == "Plan-Review":
         if phase != "review":
-            return "block", f"Plan-Review agent not allowed in phase '{phase}'. Must be in review phase."
+            return (
+                "block",
+                f"Plan-Review agent not allowed in phase '{phase}'. Must be in review phase.",
+            )
         current = _count(agents, "Plan-Review")
         if current >= PLAN_REVIEW_MAX:
             return "block", f"Max agents ({PLAN_REVIEW_MAX}) for 'Plan-Review' reached"
@@ -247,17 +272,22 @@ def _handle_agent(hook_input: dict, store: StateStore) -> tuple[str, str]:
         return "allow", ""
 
     allowed = ["Explore", "Research", "Plan", "Plan-Review"]
-    return "block", f"Agent '{agent_type}' not allowed in plan workflow. Allowed: {', '.join(allowed)}"
+    return (
+        "block",
+        f"Agent '{agent_type}' not allowed in plan workflow. Allowed: {', '.join(allowed)}",
+    )
 
 
 def _record_agent(store: StateStore, agent_type: str, tool_use_id: str) -> None:
     def _update(state: dict) -> None:
         pw = state.get("plan_workflow", {})
-        pw.setdefault("agents", []).append({
-            "agent_type": agent_type,
-            "status": "running",
-            "tool_use_id": tool_use_id,
-        })
+        pw.setdefault("agents", []).append(
+            {
+                "agent_type": agent_type,
+                "status": "running",
+                "tool_use_id": tool_use_id,
+            }
+        )
         state["plan_workflow"] = pw
 
     store.update(_update)
@@ -266,18 +296,11 @@ def _record_agent(store: StateStore, agent_type: str, tool_use_id: str) -> None:
 def _handle_webfetch(hook_input: dict) -> tuple[str, str]:
     url = hook_input.get("tool_input", {}).get("url", "")
     if not _is_safe_domain(url):
-        return "block", f"Domain not allowed. URL must be from approved domains: {', '.join(SAFE_DOMAINS[:5])}..."
+        return (
+            "block",
+            f"Domain not allowed. URL must be from approved domains: {', '.join(SAFE_DOMAINS[:5])}...",
+        )
     return "allow", ""
-
-
-def _handle_websearch(hook_input: dict) -> tuple[str, str]:
-    tool_input = hook_input.get("tool_input", {})
-    query = tool_input.get("query", "")
-    updated = {
-        "query": query,
-        "allowed_domains": SAFE_DOMAINS,
-    }
-    return json.dumps({"updatedInput": updated}), ""
 
 
 def _handle_write(hook_input: dict, store: StateStore) -> tuple[str, str]:
@@ -289,7 +312,10 @@ def _handle_write(hook_input: dict, store: StateStore) -> tuple[str, str]:
     file_path = hook_input.get("tool_input", {}).get("file_path", "")
     plans_dir = ".claude/plans/"
     if not (file_path.startswith(plans_dir) or f"/{plans_dir}" in file_path):
-        return "block", f"Plan files must be written to .claude/plans/ directory. Got: '{file_path}'"
+        return (
+            "block",
+            f"Plan files must be written to .claude/plans/ directory. Got: '{file_path}'",
+        )
 
     def _record_file(s: dict) -> None:
         s.get("plan_workflow", {}).update({"plan_file": file_path})
@@ -318,18 +344,6 @@ def _handle_exit_plan_mode(hook_input: dict, store: StateStore) -> tuple[str, st
         return "block", f"Plan missing required sections: {', '.join(missing)}"
 
     return json.dumps({"additionalContext": f"Plan content:\n\n{content}"}), ""
-
-
-def _parse_review_scores(text: str) -> dict[str, int | None]:
-    confidence = None
-    quality = None
-    m = re.search(r'confidence\s*(?:score)?[\s:=is]+(\d+)', text, re.IGNORECASE)
-    if m:
-        confidence = int(m.group(1))
-    m = re.search(r'quality\s*(?:score)?[\s:=is]+(\d+)', text, re.IGNORECASE)
-    if m:
-        quality = int(m.group(1))
-    return {"confidence": confidence, "quality": quality}
 
 
 def _handle_subagent_stop(hook_input: dict, store: StateStore) -> tuple[str, str]:
@@ -405,8 +419,6 @@ def _dispatch(hook_input: dict, state_path: Path) -> tuple[str, str]:
     tool = hook_input.get("tool_name", "")
 
     if event == "PreToolUse":
-        if tool == "Skill":
-            return _handle_skill(hook_input, store)
         if tool == "Agent":
             return _handle_agent(hook_input, store)
         if tool == "WebFetch":
@@ -414,18 +426,20 @@ def _dispatch(hook_input: dict, state_path: Path) -> tuple[str, str]:
             if state.get("workflow_active"):
                 return _handle_webfetch(hook_input)
             return "allow", ""
-        if tool == "WebSearch":
-            state = store.load()
-            if state.get("workflow_active"):
-                return _handle_websearch(hook_input)
-            return "allow", ""
         if tool == "Write":
             return _handle_write(hook_input, store)
         if tool == "ExitPlanMode":
             return _handle_exit_plan_mode(hook_input, store)
 
+    if event == "PostToolUse":
+        if tool == "Skill":
+            return _handle_skill(hook_input, store)
+
     if event == "SubagentStop":
         return _handle_subagent_stop(hook_input, store)
+
+    if event == "UserPromptSubmit":
+        return _handle_skill(hook_input, store)
 
     return "allow", ""
 
@@ -433,7 +447,9 @@ def _dispatch(hook_input: dict, state_path: Path) -> tuple[str, str]:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Plan workflow guardrail hook")
     parser.add_argument("--hook-input", type=str, help="JSON hook input string")
-    parser.add_argument("--reason", action="store_true", help="Include block reason in output")
+    parser.add_argument(
+        "--reason", action="store_true", help="Include block reason in output"
+    )
     args = parser.parse_args()
 
     if not args.hook_input:

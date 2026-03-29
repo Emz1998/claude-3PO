@@ -15,6 +15,12 @@ def main() -> None:
     raw_input = Hook.read_stdin()
     hook_event_name = raw_input.get("hook_event_name", "PreToolUse")
 
+    temp_log_path = Path("hooks.log")
+    if not temp_log_path.exists():
+        temp_log_path.touch()
+
+    temp_log_path.write_text(json.dumps(raw_input, indent=4))
+
     result = subprocess.run(
         [
             "python3",
@@ -28,7 +34,9 @@ def main() -> None:
     ).stdout.strip()
 
     if result.startswith("block"):
-        reason = result.split(", ", 1)[-1] if ", " in result else "Blocked by plan guardrail"
+        reason = (
+            result.split(", ", 1)[-1] if ", " in result else "Blocked by plan guardrail"
+        )
         Hook.advanced_block(hook_event_name, reason)
     elif result.startswith("{"):
         # JSON passthrough: ExitPlanMode additionalContext or WebSearch updatedInput

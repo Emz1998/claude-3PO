@@ -1,1 +1,0 @@
-{"plan_workflow": {"plan_workflow_active": true, "phase": "write", "skip": {"skip_explore": false, "skip_research": false}, "agents": [], "plan_file": "/home/emhar/avaris-ai/pytest-of-emhar/pytest-43/test_blocks_when_template_inva0/bad-plan.md", "review": {"iteration": 0, "max_iterations": 3, "threshold": {"confidence": 80, "quality": 80}, "scores": null, "status": null}}}

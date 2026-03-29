@@ -1,0 +1,357 @@
+
+{
+    "session_id": "3f2e3113-21cb-4f3d-b1e6-23714f2c0855",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/3f2e3113-21cb-4f3d-b1e6-23714f2c0855.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "agent_id": "a33223f0ac50fde0a",
+    "agent_type": "Research",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Read",
+    "tool_input": {
+        "file_path": "/home/emhar/avaris-ai"
+    },
+    "tool_use_id": "toolu_01W8vxXtJPGNK4PdtLYu4jke"
+}
+{
+    "session_id": "3f2e3113-21cb-4f3d-b1e6-23714f2c0855",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/3f2e3113-21cb-4f3d-b1e6-23714f2c0855.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "agent_id": "a33223f0ac50fde0a",
+    "agent_type": "Research",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Read",
+    "tool_input": {
+        "file_path": "/home/emhar/avaris-ai/.claude/skills/claude-skills/references/hooks-config.md"
+    },
+    "tool_use_id": "toolu_012PK6tQRNXEgrwuo8uV5BmB"
+}
+{
+    "session_id": "3f2e3113-21cb-4f3d-b1e6-23714f2c0855",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/3f2e3113-21cb-4f3d-b1e6-23714f2c0855.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "agent_id": "a33223f0ac50fde0a",
+    "agent_type": "Research",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Read",
+    "tool_input": {
+        "file_path": "/home/emhar/avaris-ai/.claude/hooks/security/README.md"
+    },
+    "tool_use_id": "toolu_016zV9DaHFX69wC4AdHSF9kx"
+}
+{
+    "session_id": "3f2e3113-21cb-4f3d-b1e6-23714f2c0855",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/3f2e3113-21cb-4f3d-b1e6-23714f2c0855.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "agent_id": "a33223f0ac50fde0a",
+    "agent_type": "Research",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Read",
+    "tool_input": {
+        "file_path": "/home/emhar/avaris-ai/.claude/skills/claude-hooks/references/hooks.md"
+    },
+    "tool_use_id": "toolu_01BenRGxhzSfKnDQZ6DBTWoB"
+}
+{
+    "session_id": "3f2e3113-21cb-4f3d-b1e6-23714f2c0855",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/3f2e3113-21cb-4f3d-b1e6-23714f2c0855.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "agent_id": "a33223f0ac50fde0a",
+    "agent_type": "Research",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Read",
+    "tool_input": {
+        "file_path": "/home/emhar/avaris-ai/.claude/skills/claude-hooks/SKILL.md"
+    },
+    "tool_use_id": "toolu_0125f7QAJtFKTYMt6LeqdNVC"
+}
+{
+    "session_id": "452fad71-a51c-49b7-8622-f803631715d8",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/452fad71-a51c-49b7-8622-f803631715d8.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "agent_id": "a07db57154b64dbff",
+    "agent_type": "Research",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Read",
+    "tool_input": {
+        "file_path": "/home/emhar/avaris-ai/.claude/skills/claude-hooks/references/hooks.md"
+    },
+    "tool_use_id": "toolu_01Afuk7YQS9n7PvqK9WrjApN"
+}
+{
+    "session_id": "452fad71-a51c-49b7-8622-f803631715d8",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/452fad71-a51c-49b7-8622-f803631715d8.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "agent_id": "a07db57154b64dbff",
+    "agent_type": "Research",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Read",
+    "tool_input": {
+        "file_path": "/home/emhar/avaris-ai/.claude/skills/claude-hooks/references/hooks.md",
+        "limit": 100
+    },
+    "tool_use_id": "toolu_01EwV4dAzdiCYFghYnCeWqLt"
+}
+{
+    "session_id": "452fad71-a51c-49b7-8622-f803631715d8",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/452fad71-a51c-49b7-8622-f803631715d8.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "agent_id": "a07db57154b64dbff",
+    "agent_type": "Research",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Read",
+    "tool_input": {
+        "file_path": "/home/emhar/avaris-ai/.claude/skills/claude-hooks/references/hooks.md",
+        "offset": 100,
+        "limit": 150
+    },
+    "tool_use_id": "toolu_01WS2jr94eAW7z9h593NrmAq"
+}
+{
+    "session_id": "452fad71-a51c-49b7-8622-f803631715d8",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/452fad71-a51c-49b7-8622-f803631715d8.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "agent_id": "a07db57154b64dbff",
+    "agent_type": "Research",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Read",
+    "tool_input": {
+        "file_path": "/home/emhar/avaris-ai/.claude/skills/claude-hooks/SKILL.md"
+    },
+    "tool_use_id": "toolu_018R9EKU2xPiPMBcNCe4x3Ri"
+}
+{
+    "session_id": "452fad71-a51c-49b7-8622-f803631715d8",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/452fad71-a51c-49b7-8622-f803631715d8.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "agent_id": "a07db57154b64dbff",
+    "agent_type": "Research",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Read",
+    "tool_input": {
+        "file_path": "/home/emhar/avaris-ai/.claude/skills/claude-skills/references/hooks-config.md",
+        "limit": 100
+    },
+    "tool_use_id": "toolu_01UrxqQnjXyBX92QsftuWC2m"
+}
+{
+    "session_id": "452fad71-a51c-49b7-8622-f803631715d8",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/452fad71-a51c-49b7-8622-f803631715d8.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "agent_id": "a07db57154b64dbff",
+    "agent_type": "Research",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Read",
+    "tool_input": {
+        "file_path": "/home/emhar/avaris-ai/.claude/hooks/workflow/plan_guardrail.py",
+        "limit": 80
+    },
+    "tool_use_id": "toolu_014bDhQKpSdWpqEKKnYiGCmt"
+}
+{
+    "session_id": "452fad71-a51c-49b7-8622-f803631715d8",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/452fad71-a51c-49b7-8622-f803631715d8.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "agent_id": "a07db57154b64dbff",
+    "agent_type": "Research",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Read",
+    "tool_input": {
+        "file_path": "/home/emhar/avaris-ai/.claude/hooks/workflow/dispatchers/pre_tool_use.py",
+        "limit": 60
+    },
+    "tool_use_id": "toolu_01RRfZKociQxTdjmq3NfCT6s"
+}
+{
+    "session_id": "452fad71-a51c-49b7-8622-f803631715d8",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/452fad71-a51c-49b7-8622-f803631715d8.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "agent_id": "a07db57154b64dbff",
+    "agent_type": "Research",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Read",
+    "tool_input": {
+        "file_path": "/home/emhar/avaris-ai/.claude/hooks/workflow/state_store.py",
+        "limit": 80
+    },
+    "tool_use_id": "toolu_01PTjzEjGXd6yMTRxKMXifAv"
+}
+{
+    "session_id": "452fad71-a51c-49b7-8622-f803631715d8",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/452fad71-a51c-49b7-8622-f803631715d8.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "agent_id": "a07db57154b64dbff",
+    "agent_type": "Research",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Read",
+    "tool_input": {
+        "file_path": "/home/emhar/avaris-ai/.claude/hooks/workflow/hook.py"
+    },
+    "tool_use_id": "toolu_01JbRRQdqiHNpADm7umB2QGQ"
+}
+{
+    "session_id": "452fad71-a51c-49b7-8622-f803631715d8",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/452fad71-a51c-49b7-8622-f803631715d8.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "agent_id": "a07db57154b64dbff",
+    "agent_type": "Research",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Read",
+    "tool_input": {
+        "file_path": "/home/emhar/avaris-ai/.claude/skills/claude-hooks/references/hooks.md",
+        "offset": 250,
+        "limit": 150
+    },
+    "tool_use_id": "toolu_01Mt1LMRRgxykUtQUnQx2rZi"
+}
+{
+    "session_id": "452fad71-a51c-49b7-8622-f803631715d8",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/452fad71-a51c-49b7-8622-f803631715d8.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "agent_id": "a07db57154b64dbff",
+    "agent_type": "Research",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Read",
+    "tool_input": {
+        "file_path": "/home/emhar/avaris-ai/.claude/skills/claude-hooks/references/hooks.md",
+        "offset": 400,
+        "limit": 200
+    },
+    "tool_use_id": "toolu_01PgCDdy5eFH2JYRS8T1CBAr"
+}
+{
+    "session_id": "452fad71-a51c-49b7-8622-f803631715d8",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/452fad71-a51c-49b7-8622-f803631715d8.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "agent_id": "a07db57154b64dbff",
+    "agent_type": "Research",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Read",
+    "tool_input": {
+        "file_path": "/home/emhar/avaris-ai/.claude/hooks/workflow/guards/agent_guard.py",
+        "limit": 60
+    },
+    "tool_use_id": "toolu_01PapUae121SPr3PVDjnJ4Rw"
+}
+{
+    "session_id": "452fad71-a51c-49b7-8622-f803631715d8",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/452fad71-a51c-49b7-8622-f803631715d8.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "agent_id": "a07db57154b64dbff",
+    "agent_type": "Research",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Read",
+    "tool_input": {
+        "file_path": "/home/emhar/avaris-ai/.claude/skills/claude-hooks/references/hooks.md",
+        "offset": 600,
+        "limit": 200
+    },
+    "tool_use_id": "toolu_01Rmrh7zGCz94xgtM85rx4o7"
+}
+{
+    "session_id": "452fad71-a51c-49b7-8622-f803631715d8",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/452fad71-a51c-49b7-8622-f803631715d8.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "agent_id": "a07db57154b64dbff",
+    "agent_type": "Research",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Read",
+    "tool_input": {
+        "file_path": "/home/emhar/avaris-ai/.claude/hooks/workflow/guards/phase_guard.py",
+        "limit": 60
+    },
+    "tool_use_id": "toolu_01MWANbWdygxCNy1T2kXWE9m"
+}
+{
+    "session_id": "452fad71-a51c-49b7-8622-f803631715d8",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/452fad71-a51c-49b7-8622-f803631715d8.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "agent_id": "a07db57154b64dbff",
+    "agent_type": "Research",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Read",
+    "tool_input": {
+        "file_path": "/home/emhar/avaris-ai/.claude/skills/claude-hooks/references/hooks.md",
+        "offset": 800,
+        "limit": 250
+    },
+    "tool_use_id": "toolu_0166sf3zKNC9yEXJWWZ1LyEc"
+}
+{
+    "session_id": "452fad71-a51c-49b7-8622-f803631715d8",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/452fad71-a51c-49b7-8622-f803631715d8.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "agent_id": "a07db57154b64dbff",
+    "agent_type": "Research",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Read",
+    "tool_input": {
+        "file_path": "/home/emhar/avaris-ai/.claude/hooks/tests/general_test.py",
+        "limit": 80
+    },
+    "tool_use_id": "toolu_01DPWtkCBJchWqirkxLYxLgU"
+}
+{
+    "session_id": "452fad71-a51c-49b7-8622-f803631715d8",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/452fad71-a51c-49b7-8622-f803631715d8.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "agent_id": "a07db57154b64dbff",
+    "agent_type": "Research",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Read",
+    "tool_input": {
+        "file_path": "/home/emhar/avaris-ai/.claude/skills/claude-hooks/references/hooks.md",
+        "offset": 1100,
+        "limit": 200
+    },
+    "tool_use_id": "toolu_0111ddYwCGYQBADG7ybEdWe8"
+}
+{
+    "session_id": "452fad71-a51c-49b7-8622-f803631715d8",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/452fad71-a51c-49b7-8622-f803631715d8.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "agent_id": "a07db57154b64dbff",
+    "agent_type": "Research",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "WebSearch",
+    "tool_input": {
+        "query": "Claude hooks reference configuration 2026"
+    },
+    "tool_use_id": "toolu_017BeNuFvmNf3fHJjFCpPTRS"
+}
+{
+    "session_id": "452fad71-a51c-49b7-8622-f803631715d8",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/452fad71-a51c-49b7-8622-f803631715d8.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "agent_id": "a07db57154b64dbff",
+    "agent_type": "Research",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "WebSearch",
+    "tool_input": {
+        "query": "Claude Code hooks guide best practices examples"
+    },
+    "tool_use_id": "toolu_01Cp3ZnjNrBNCELMQjEzvJoo"
+}

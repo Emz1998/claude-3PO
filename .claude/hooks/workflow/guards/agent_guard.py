@@ -41,11 +41,11 @@ PHASE_RULES: dict[str, dict] = {
 }
 
 
-def _count(agents: list[dict], agent_type: str) -> int:
+def count(agents: list[dict], agent_type: str) -> int:
     return sum(1 for a in agents if a.get("agent_type") == agent_type)
 
 
-def _count_completed(agents: list[dict], agent_type: str) -> int:
+def count_completed(agents: list[dict], agent_type: str) -> int:
     return sum(1 for a in agents if a.get("agent_type") == agent_type and a.get("status") == "completed")
 
 
@@ -94,13 +94,13 @@ def validate(hook_input: dict, state_path: Path | None = None) -> tuple[str, str
     # Ordering constraint
     for dependent, required in rules.get("ordered", []):
         if subagent_type == dependent:
-            completed_required = _count_completed(agents, required)
-            completed_dependent = _count_completed(agents, dependent)
+            completed_required = count_completed(agents, required)
+            completed_dependent = count_completed(agents, dependent)
             if completed_required <= completed_dependent:
                 return "block", f"'{subagent_type}' requires '{required}' to complete first"
 
     # Max count check (running + completed)
-    current_count = _count(agents, subagent_type)
+    current_count = count(agents, subagent_type)
     max_count = allowed[subagent_type]
     if current_count >= max_count:
         return "block", f"Max agents ({max_count}) for '{subagent_type}' in phase '{phase_name}' reached. Iteration limit exceeded."
