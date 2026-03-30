@@ -1,8 +1,8 @@
 ---
-name: scrum-master
+name: ScrumMaster
 description: Use PROACTIVELY this agent when you need to track sprint health, detect blockers, generate daily standup reports, or produce sprint close-out reports for the NEXLY RN project.
 tools: Read, Grep, Glob
-model: sonnet
+model: opus
 color: yellow
 ---
 

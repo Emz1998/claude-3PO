@@ -1,5 +1,5 @@
 ---
-name: specs-reviewer
+name: SpecsReviewer
 description: Use PROACTIVELY this agent when you need to analyze product requirements documents, technical specifications, user stories, system design documentation, or evaluate completeness, clarity, consistency, and technical feasibility of specifications
 tools: Read, Grep, Glob
 model: opus

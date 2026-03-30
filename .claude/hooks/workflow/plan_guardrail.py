@@ -3,8 +3,8 @@
 Enforces the /plan skill workflow:
   1. Skill interception: /plan triggers explore phase (Explore x3 + Research x2)
   2. Plan agent runs after explore is complete
-  3. Plan-Review agent reviews the plan (confidence/quality >= 80, max 3 iterations)
-  4. Main agent writes plan file to .claude/plans/
+  3. Main agent writes plan file to .claude/plans/
+  4. Plan-Review agent reviews the written plan (confidence/quality >= 80, max 3 iterations)
   5. ExitPlanMode validates plan against template
 
 Usage:
@@ -29,10 +29,7 @@ from workflow.guards.agent_guard import (
     count as _count,
     count_completed as _count_completed,
 )
-from workflow.guards.review_guard import (
-    advance_next_phase as _advance_next_phase,
-    parse_scores as _parse_review_scores,
-)
+from workflow.guards.review_guard import parse_scores as _parse_review_scores
 from workflow.state_store import StateStore
 
 DEFAULT_STATE_PATH = Path(__file__).resolve().parent / "state.json"
@@ -109,6 +106,7 @@ def _default_plan_workflow(skip: dict | None = None, instructions: str = "") -> 
         "instructions": instructions,
         "agents": [],
         "plan_file": None,
+        "plan_written": False,
         "review": {
             "iteration": 0,
             "max_iterations": 3,
@@ -150,6 +148,17 @@ def _is_safe_domain(url: str) -> bool:
         return False
     except Exception:
         return False
+
+
+def _is_plan_file_path(file_path: str) -> bool:
+    plans_dir = ".claude/plans/"
+    return file_path.startswith(plans_dir) or f"/{plans_dir}" in file_path
+
+
+def _get_write_file_path(hook_input: dict) -> str:
+    tool_input = hook_input.get("tool_input", {})
+    tool_response = hook_input.get("tool_response", {})
+    return tool_input.get("file_path", "") or tool_response.get("filePath", "")
 
 
 def get_skill_and_args(hook_input: dict) -> tuple[str, str]:
@@ -265,6 +274,11 @@ def _handle_agent(hook_input: dict, store: StateStore) -> tuple[str, str]:
                 "block",
                 f"Plan-Review agent not allowed in phase '{phase}'. Must be in review phase.",
             )
+        if not pw.get("plan_written") or not pw.get("plan_file"):
+            return (
+                "block",
+                "Plan-Review requires a successful Write to .claude/plans/ first",
+            )
         current = _count(agents, "Plan-Review")
         if current >= PLAN_REVIEW_MAX:
             return "block", f"Max agents ({PLAN_REVIEW_MAX}) for 'Plan-Review' reached"
@@ -309,18 +323,37 @@ def _handle_write(hook_input: dict, store: StateStore) -> tuple[str, str]:
     if not pw or not pw.get("plan_workflow_active"):
         return "allow", ""
 
-    file_path = hook_input.get("tool_input", {}).get("file_path", "")
-    plans_dir = ".claude/plans/"
-    if not (file_path.startswith(plans_dir) or f"/{plans_dir}" in file_path):
+    file_path = _get_write_file_path(hook_input)
+    if not _is_plan_file_path(file_path):
         return (
             "block",
             f"Plan files must be written to .claude/plans/ directory. Got: '{file_path}'",
         )
+    return "allow", ""
 
-    def _record_file(s: dict) -> None:
-        s.get("plan_workflow", {}).update({"plan_file": file_path})
 
-    store.update(_record_file)
+def _handle_write_post(hook_input: dict, store: StateStore) -> tuple[str, str]:
+    state = store.load()
+    pw = state.get("plan_workflow")
+    if not pw or not pw.get("plan_workflow_active"):
+        return "allow", ""
+
+    file_path = _get_write_file_path(hook_input)
+    if not _is_plan_file_path(file_path):
+        return "allow", ""
+
+    phase = pw.get("phase")
+    if phase not in {"write", "review"}:
+        return "allow", ""
+
+    def _record_written_plan(s: dict) -> None:
+        workflow = s.get("plan_workflow", {})
+        workflow["plan_file"] = file_path
+        workflow["plan_written"] = True
+        workflow["phase"] = "review"
+        s["plan_workflow"] = workflow
+
+    store.update(_record_written_plan)
     return "allow", ""
 
 
@@ -329,6 +362,19 @@ def _handle_exit_plan_mode(hook_input: dict, store: StateStore) -> tuple[str, st
     pw = state.get("plan_workflow")
     if not pw or not pw.get("plan_workflow_active"):
         return "allow", ""
+
+    if not pw.get("plan_written"):
+        return (
+            "block",
+            "No written plan recorded. Write the plan to .claude/plans/ first.",
+        )
+
+    review = pw.get("review", {})
+    if review.get("status") != "approved":
+        return (
+            "block",
+            "Plan review is not approved yet. Run Plan-Review after writing the plan.",
+        )
 
     plan_file = pw.get("plan_file")
     if not plan_file:
@@ -376,7 +422,7 @@ def _handle_subagent_stop(hook_input: dict, store: StateStore) -> tuple[str, str
                 pw["phase"] = "plan"
 
         elif agent_type == "Plan":
-            pw["phase"] = "review"
+            pw["phase"] = "write"
 
         elif agent_type == "Plan-Review":
             review = pw.get("review", {})
@@ -396,7 +442,7 @@ def _handle_subagent_stop(hook_input: dict, store: StateStore) -> tuple[str, str
 
             if passed:
                 review["status"] = "approved"
-                pw["phase"] = "write"
+                pw["phase"] = "approved"
             elif iteration + 1 >= max_iter:
                 review["status"] = "max_iterations_reached"
                 review["iteration"] = iteration + 1
@@ -434,6 +480,8 @@ def _dispatch(hook_input: dict, state_path: Path) -> tuple[str, str]:
     if event == "PostToolUse":
         if tool == "Skill":
             return _handle_skill(hook_input, store)
+        if tool == "Write":
+            return _handle_write_post(hook_input, store)
 
     if event == "SubagentStop":
         return _handle_subagent_stop(hook_input, store)

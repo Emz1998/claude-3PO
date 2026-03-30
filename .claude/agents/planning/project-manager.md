@@ -1,5 +1,5 @@
 ---
-name: project-manager
+name: ProjectManager
 description: Use this agent to manage project roadmap tasks, ACs, and SCs. Reads user-provided roadmap-report and produces actionable roadmap items with status updates.
 tools: Read, Write
 model: opus

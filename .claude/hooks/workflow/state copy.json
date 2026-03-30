@@ -1,0 +1,122 @@
+{
+  "workflow_active": true,
+  "workflow_type": "plan",
+  "TDD": true,
+  "plan_workflow": {
+    "plan_workflow_active": true,
+    "phase": "review",
+    "skip": {
+      "skip_explore": false,
+      "skip_research": false
+    },
+    "instructions": "can you revise @.claude/hooks/workflow/guardrail.py to be a coding guardrail instead. Explore @.claude/hooks/workflow/ and find helpers that can be reused. The flow of the guardrail is this:\n\n1. After the ExitPlanMode is accepted (PostToolUse of ExitPlanMode signal plan acceptance), TDD approach must be checked. If TDD is true, TestEngineer agent must be triggered to create tests. \n\n2. The TestReviewer agent must be invoked afterwards to review tests. The reviewer agent will need to give a score of Pass or Fail only. Pass means test is correct, coverage is good and not overfitting. Fail is otherwise. Iterate until review is passed\n\n3. Main agent must do the coding and implementation and to pass the tests. \n\n4. Stoppage should be prevented until the test passes and also until the validator stated that acceptance criteria is met and until PR is created. \n\n5. Once implementation passed, PR must be created. (Keep the guardrail for premature PR creation as well as for premature coding. \n\n6. If TDD is not indicated, TestEngineer must be skipped and should go straight to implementation (Main agent + Validator)\n\nRead @.claude/skills/claude-hooks/references/hooks.md for hooks reference",
+    "agents": [
+      {
+        "agent_type": "Explore",
+        "status": "completed",
+        "tool_use_id": "toolu_01JYtahCnPC2LgQLTVomutko"
+      },
+      {
+        "agent_type": "Explore",
+        "status": "completed",
+        "tool_use_id": "toolu_01GWzJyKFQLBrPQQg9Yimhkc"
+      },
+      {
+        "agent_type": "Explore",
+        "status": "completed",
+        "tool_use_id": "toolu_01TQUNwwz861Z9i6bFcg9bqm"
+      },
+      {
+        "agent_type": "Research",
+        "status": "completed",
+        "tool_use_id": "toolu_01X8dFLwEhyK25UU9HE3Y1Ua"
+      },
+      {
+        "agent_type": "Research",
+        "status": "completed",
+        "tool_use_id": "toolu_01KMWSNr7j6KGdjh8jvJVFTU"
+      },
+      {
+        "agent_type": "Plan",
+        "status": "completed",
+        "tool_use_id": "toolu_01XpU7wH2reZth7UHZNAa7kS"
+      },
+      {
+        "agent_type": "Plan-Review",
+        "status": "completed",
+        "tool_use_id": "toolu_01EcVTNtF8oqgfWBST6M2dvP"
+      }
+    ],
+    "plan_file": null,
+    "review": {
+      "iteration": 1,
+      "max_iterations": 3,
+      "threshold": {
+      "confidence": 80,
+        "quality": 80
+      },
+      "scores": {
+        "confidence": 72,
+        "quality": 63
+      },
+      "status": "revision_needed"
+    }
+  },
+  "coding_workflow": {
+    "coding_workflow_active": true,
+    "phase": "completed",
+    "TDD": true,
+    "activated_by_exit_plan_mode": true,
+    "review": {
+      "tests": {
+        "review_called": true,
+        "status": "approved",
+        "last_result": "Pass"
+      },
+      "validation": {
+        "review_called": true,
+        "status": "approved",
+        "last_result": "Pass"
+      }
+    },
+    "agents": [
+      {
+        "agent_type": "TestReviewer",
+        "status": "completed",
+        "tool_use_id": "t1",
+        "iteration": 1
+      },
+      {
+        "agent_type": "TestReviewer",
+        "status": "completed",
+        "tool_use_id": "t2",
+        "iteration": 2
+      },
+      {
+        "agent_type": "Validator",
+        "status": "completed",
+        "tool_use_id": "t3",
+        "iteration": 1
+      },
+      {
+        "agent_type": "Validator",
+        "status": "completed",
+        "tool_use_id": "t4",
+        "iteration": 2
+      }
+    ],
+    "tests": {
+      "status": "approved",
+      "files_created": [
+        "/project/tests/test_app.py"
+      ]
+    },
+    "implementation": {
+      "status": "completed"
+    },
+    "pr": {
+      "status": "created",
+      "command": "gh pr create --fill"
+    }
+  }
+}

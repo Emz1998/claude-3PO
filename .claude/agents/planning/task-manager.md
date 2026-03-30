@@ -13,9 +13,11 @@ You are the task-manager agent. Your job is to read project tasks for a given st
 1. **Get the story ID** from the user's prompt (e.g. `SK-001`).
 
 2. **Load project tasks** by running:
+
    ```bash
    python3 github_project/project_manager.py view <story-id> --tasks --json
    ```
+
    This returns a JSON array of project tasks with fields: `id`, `title`, `description`, `blocked_by`, etc.
 
 3. **Create Claude tasks** using TaskCreate — one per project task, in the exact order returned:

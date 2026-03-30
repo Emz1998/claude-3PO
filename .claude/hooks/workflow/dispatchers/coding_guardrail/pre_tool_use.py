@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Dispatcher for plan_guardrail PreToolUse events."""
+"""Dispatcher for coding_guardrail PreToolUse events."""
 
 import json
 import subprocess
@@ -10,16 +10,14 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
 from workflow.hook import Hook
 
-PLAN_GUARDRAIL = Path(__file__).resolve().parents[2] / "plan_guardrail.py"
-
 
 def main() -> None:
     raw_input = Hook.read_stdin()
-
-    subprocess.run(
+    hook_event_name = raw_input.get("hook_event_name", "PreToolUse")
+    result = subprocess.run(
         [
             "python3",
-            str(PLAN_GUARDRAIL),
+            ".claude/hooks/workflow/coding_guardrail.py",
             "--hook-input",
             json.dumps(raw_input),
             "--reason",
@@ -28,7 +26,13 @@ def main() -> None:
         text=True,
     ).stdout.strip()
 
-    Hook.system_message(f"Plan Guardrail Activated")
+    if result.startswith("block"):
+        reason = (
+            result.split(", ", 1)[-1]
+            if ", " in result
+            else "Blocked by coding guardrail"
+        )
+        Hook.advanced_block(hook_event_name, reason)
 
 
 if __name__ == "__main__":

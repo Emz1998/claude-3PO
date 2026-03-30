@@ -34,9 +34,10 @@ results: list[dict] = []
 
 def skill_payload(skill: str, args: str = "") -> dict:
     return {
-        "hook_event_name": "PreToolUse",
+        "hook_event_name": "PostToolUse",
         "tool_name": "Skill",
         "tool_input": {"skill": skill, "args": args},
+        "tool_response": {"success": True},
         "tool_use_id": "t0",
         "session_id": "s", "transcript_path": "t", "cwd": ".", "permission_mode": "default",
     }
@@ -82,6 +83,17 @@ def write_payload(file_path: str) -> dict:
     }
 
 
+def post_write_payload(file_path: str) -> dict:
+    return {
+        "hook_event_name": "PostToolUse",
+        "tool_name": "Write",
+        "tool_input": {"file_path": file_path, "content": "# Plan"},
+        "tool_response": {"type": "update", "filePath": file_path, "content": "# Plan"},
+        "tool_use_id": "t1",
+        "session_id": "s", "transcript_path": "t", "cwd": ".", "permission_mode": "default",
+    }
+
+
 def exit_plan_mode_payload() -> dict:
     return {
         "hook_event_name": "PreToolUse",
@@ -118,7 +130,7 @@ def run(pre: str, payload: dict, expected: str, state_path: Path, post: str = ""
     passed = actual.startswith(expected)
     results.append({"label": pre, "expected": expected, "actual": actual, "passed": passed})
 
-    time.sleep(5)
+    time.sleep(0.1)
 
     if not passed:
         status = f"{RED}FAIL{RESET}"
@@ -243,9 +255,8 @@ def simulate_workflow(state_path: Path, skip_args: str, tmp_dir: Path) -> None:
     run("WebFetch unsafe domain → block",
         webfetch_payload("https://evil.example.com/page"), "block", state_path,
         "Domain not allowed")
-    run("WebSearch → inject allowed_domains",
-        websearch_payload("python async patterns"), "{", state_path,
-        "allowed_domains injected")
+    run("WebSearch → allow",
+        websearch_payload("python async patterns"), "allow", state_path)
 
     # ------------------------------------------------------------------
     # Plan agent blocked before explorers done
@@ -285,9 +296,33 @@ def simulate_workflow(state_path: Path, skip_args: str, tmp_dir: Path) -> None:
     run("Plan-Review before plan done → block",
         agent_payload("Plan-Review", "tr1"), "block", state_path,
         "Not in review phase")
-    run("Plan agent SubagentStop → phase=review",
+    run("Plan agent SubagentStop → phase=write",
         stop_payload("Plan", "I have created the plan."), "allow", state_path,
-        "Phase → review")
+        "Phase → write")
+
+    # ------------------------------------------------------------------
+    # Write phase
+    # ------------------------------------------------------------------
+    print("\n--- Write phase ---")
+    run("Write outside .claude/plans/ → block",
+        write_payload("src/app.py"), "block", state_path,
+        "Must write to .claude/plans/")
+
+    run("Plan-Review before plan write → block",
+        agent_payload("Plan-Review", "tr1"), "block", state_path,
+        "Write must succeed first")
+
+    plan_path = str(tmp_dir / ".claude/plans/my-plan.md")
+
+    run("Write to .claude/plans/my-plan.md (pre) → allow",
+        write_payload(plan_path), "allow", state_path)
+
+    Path(plan_path).parent.mkdir(parents=True, exist_ok=True)
+    Path(plan_path).write_text(VALID_PLAN)
+
+    run("Write to .claude/plans/my-plan.md (post) → allow",
+        post_write_payload(plan_path), "allow", state_path,
+        "Phase → review, plan_file recorded")
 
     # ------------------------------------------------------------------
     # Review phase
@@ -305,32 +340,15 @@ def simulate_workflow(state_path: Path, skip_args: str, tmp_dir: Path) -> None:
     run("Plan-Review [tr2] → allow (iteration 2)",
         agent_payload("Plan-Review", "tr2"), "allow", state_path)
 
-    # Passing review → write phase
-    run("Plan-Review done (high scores) → approved, phase=write",
+    # Passing review → approved phase
+    run("Plan-Review done (high scores) → approved, phase=approved",
         stop_payload("Plan-Review", "Confidence score: 92, Quality score: 88"),
-        "allow", state_path, "Phase → write")
-
-    # ------------------------------------------------------------------
-    # Write phase
-    # ------------------------------------------------------------------
-    print("\n--- Write phase ---")
-    run("Write outside .claude/plans/ → block",
-        write_payload("src/app.py"), "block", state_path,
-        "Must write to .claude/plans/")
-
-    plan_path = str(tmp_dir / ".claude/plans/my-plan.md")
-    run(f"Write to .claude/plans/my-plan.md → allow",
-        write_payload(plan_path), "allow", state_path,
-        "plan_file recorded in state")
+        "allow", state_path, "Phase → approved")
 
     # ------------------------------------------------------------------
     # ExitPlanMode — valid plan
     # ------------------------------------------------------------------
     print("\n--- ExitPlanMode: valid plan ---")
-    # Write actual plan file
-    Path(plan_path).parent.mkdir(parents=True, exist_ok=True)
-    Path(plan_path).write_text(VALID_PLAN)
-
     result_raw = subprocess.run(
         [sys.executable, str(PLAN_GUARDRAIL), "--hook-input", json.dumps(exit_plan_mode_payload())],
         capture_output=True, text=True,

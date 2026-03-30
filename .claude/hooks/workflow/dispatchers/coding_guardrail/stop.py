@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Dispatcher for plan_guardrail SubagentStop events."""
+"""Dispatcher for coding_guardrail Stop events."""
 
 import json
 import subprocess
@@ -10,23 +10,25 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
 from workflow.hook import Hook
 
-PLAN_GUARDRAIL = Path(__file__).resolve().parents[2] / "plan_guardrail.py"
-
 
 def main() -> None:
     raw_input = Hook.read_stdin()
-
-    subprocess.run(
+    hook_event_name = raw_input.get("hook_event_name", "Stop")
+    result = subprocess.run(
         [
             "python3",
-            str(PLAN_GUARDRAIL),
+            ".claude/hooks/workflow/coding_guardrail.py",
             "--hook-input",
             json.dumps(raw_input),
+            "--reason",
         ],
         capture_output=True,
         text=True,
-    )
-    # SubagentStop always allows — just records state
+    ).stdout.strip()
+
+    if result.startswith("block"):
+        reason = result.split(", ", 1)[-1] if ", " in result else "Blocked by coding guardrail"
+        Hook.advanced_block(hook_event_name, reason)
 
 
 if __name__ == "__main__":

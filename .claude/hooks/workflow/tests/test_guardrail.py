@@ -437,6 +437,8 @@ class TestReviewGuard:
         assert parse_scores("confidence = 85\nquality is 90") == {"confidence": 85, "quality": 90}
         assert parse_scores("Confidence Score: 75\nQuality score: 80") == {"confidence": 75, "quality": 80}
         assert parse_scores("CONFIDENCE SCORE = 88\nQUALITY SCORE = 92") == {"confidence": 88, "quality": 92}
+        assert parse_scores("**Confidence Score**: **91/100**\n**Quality Score**: **89/100**") == {"confidence": 91, "quality": 89}
+        assert parse_scores("Previous confidence score: 72\nUpdated confidence score: 90\nPrevious quality score: 63\nUpdated quality score: 85") == {"confidence": 90, "quality": 85}
         assert parse_scores("no scores here") == {"confidence": None, "quality": None}
 
     def test_always_returns_allow(self, tmp_path):

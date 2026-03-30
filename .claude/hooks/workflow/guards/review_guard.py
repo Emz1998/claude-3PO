@@ -30,13 +30,20 @@ def parse_scores(text: str) -> dict[str, int | None]:
     confidence = None
     quality = None
 
-    m = re.search(r'confidence\s*(?:score)?[\s:=is]+(\d+)', text, re.IGNORECASE)
-    if m:
-        confidence = int(m.group(1))
+    def _last_score(label: str) -> int | None:
+        patterns = [
+            rf"{label}\s*(?:score|rating)?\s*(?:\*\*)?\s*[:=\-]?\s*(?:\*\*)?\s*(\d+)(?:\s*/\s*100)?",
+            rf"{label}\s*(?:score|rating)?\s+(?:is\s+)?(?:\*\*)?\s*(\d+)(?:\s*/\s*100)?",
+        ]
+        matches: list[str] = []
+        for pattern in patterns:
+            matches.extend(re.findall(pattern, text, re.IGNORECASE))
+        if not matches:
+            return None
+        return int(matches[-1])
 
-    m = re.search(r'quality\s*(?:score)?[\s:=is]+(\d+)', text, re.IGNORECASE)
-    if m:
-        quality = int(m.group(1))
+    confidence = _last_score("confidence")
+    quality = _last_score("quality")
 
     return {"confidence": confidence, "quality": quality}
 

@@ -14,6 +14,9 @@ sys.path.insert(0, str(WORKFLOW_DIR.parent))
 import importlib.util
 
 PLAN_GUARDRAIL = WORKFLOW_DIR / "plan_guardrail.py"
+PLAN_GUARDRAIL_SUBAGENT_STOP_DISPATCHER = (
+    WORKFLOW_DIR / "dispatchers/plan_guardrail/subagent_stop.py"
+)
 
 
 def _load_guardrail():
@@ -32,6 +35,7 @@ def make_plan_state(
     skip=None,
     agents=None,
     plan_file=None,
+    plan_written=False,
     review=None,
 ):
     return {
@@ -40,6 +44,7 @@ def make_plan_state(
         "skip": skip or {"skip_explore": False, "skip_research": False},
         "agents": agents or [],
         "plan_file": plan_file,
+        "plan_written": plan_written,
         "review": review or {
             "iteration": 0,
             "max_iterations": 3,
@@ -63,9 +68,10 @@ def make_state_file(tmp_path, plan_state=None):
 
 def skill_input(skill="plan", args=""):
     return {
-        "hook_event_name": "PreToolUse",
+        "hook_event_name": "PostToolUse",
         "tool_name": "Skill",
         "tool_input": {"skill": skill, "args": args},
+        "tool_response": {"success": True},
         "tool_use_id": "t1",
         "session_id": "s", "transcript_path": "t", "cwd": ".", "permission_mode": "default",
     }
@@ -109,6 +115,17 @@ def write_input(file_path):
         "hook_event_name": "PreToolUse",
         "tool_name": "Write",
         "tool_input": {"file_path": file_path, "content": "x"},
+        "tool_use_id": "t1",
+        "session_id": "s", "transcript_path": "t", "cwd": ".", "permission_mode": "default",
+    }
+
+
+def post_write_input(file_path):
+    return {
+        "hook_event_name": "PostToolUse",
+        "tool_name": "Write",
+        "tool_input": {"file_path": file_path, "content": "x"},
+        "tool_response": {"type": "update", "filePath": file_path, "content": "x"},
         "tool_use_id": "t1",
         "session_id": "s", "transcript_path": "t", "cwd": ".", "permission_mode": "default",
     }
@@ -366,7 +383,15 @@ class TestAgentGuard:
 
     def test_allow_plan_review_in_review_phase(self, tmp_path):
         agents = [{"agent_type": "Plan", "status": "completed", "tool_use_id": "t1"}]
-        state_file = make_state_file(tmp_path, make_plan_state(phase="review", agents=agents))
+        state_file = make_state_file(
+            tmp_path,
+            make_plan_state(
+                phase="review",
+                agents=agents,
+                plan_file=".claude/plans/my-plan.md",
+                plan_written=True,
+            ),
+        )
         decision, _ = self.mod._dispatch(agent_input("Plan-Review"), state_file)
         assert decision == "allow"
 
@@ -375,13 +400,28 @@ class TestAgentGuard:
         decision, reason = self.mod._dispatch(agent_input("Plan-Review"), state_file)
         assert decision == "block"
 
+    def test_block_plan_review_without_written_plan(self, tmp_path):
+        agents = [{"agent_type": "Plan", "status": "completed", "tool_use_id": "t1"}]
+        state_file = make_state_file(tmp_path, make_plan_state(phase="review", agents=agents))
+        decision, reason = self.mod._dispatch(agent_input("Plan-Review"), state_file)
+        assert decision == "block"
+        assert "successful Write" in reason
+
     def test_block_plan_review_over_max_iterations(self, tmp_path):
         agents = [
             {"agent_type": "Plan-Review", "status": "running", "tool_use_id": "t1"},
             {"agent_type": "Plan-Review", "status": "running", "tool_use_id": "t2"},
             {"agent_type": "Plan-Review", "status": "running", "tool_use_id": "t3"},
         ]
-        state_file = make_state_file(tmp_path, make_plan_state(phase="review", agents=agents))
+        state_file = make_state_file(
+            tmp_path,
+            make_plan_state(
+                phase="review",
+                agents=agents,
+                plan_file=".claude/plans/my-plan.md",
+                plan_written=True,
+            ),
+        )
         decision, reason = self.mod._dispatch(agent_input("Plan-Review"), state_file)
         assert decision == "block"
 
@@ -440,28 +480,23 @@ class TestWebSearchGuard:
     def setup_method(self):
         self.mod = _load_guardrail()
 
-    def test_injects_allowed_domains(self, tmp_path):
+    def test_allows_websearch_during_plan_workflow(self, tmp_path):
         state_file = make_state_file(tmp_path, make_plan_state(phase="explore"))
         decision, _ = self.mod._dispatch(websearch_input("python async"), state_file)
-        # Returns JSON string with updatedInput
-        assert decision.startswith("{")
-        data = json.loads(decision)
-        assert "updatedInput" in data
-        assert "allowed_domains" in data["updatedInput"]
-        assert len(data["updatedInput"]["allowed_domains"]) > 0
+        assert decision == "allow"
 
-    def test_preserves_original_query(self, tmp_path):
+    def test_preserves_state_on_websearch(self, tmp_path):
         state_file = make_state_file(tmp_path, make_plan_state(phase="explore"))
-        decision, _ = self.mod._dispatch(websearch_input("react hooks"), state_file)
-        data = json.loads(decision)
-        assert data["updatedInput"]["query"] == "react hooks"
+        self.mod._dispatch(websearch_input("react hooks"), state_file)
+        state = json.loads(state_file.read_text())
+        assert state["plan_workflow"]["phase"] == "explore"
 
-    def test_overrides_user_allowed_domains_with_safe_list(self, tmp_path):
+    def test_preserves_user_allowed_domains_input(self, tmp_path):
         state_file = make_state_file(tmp_path, make_plan_state(phase="explore"))
         inp = websearch_input("query", allowed_domains=["evil.com"])
         decision, _ = self.mod._dispatch(inp, state_file)
-        data = json.loads(decision)
-        assert "evil.com" not in data["updatedInput"]["allowed_domains"]
+        assert decision == "allow"
+        assert inp["tool_input"]["allowed_domains"] == ["evil.com"]
 
 
 # ---------------------------------------------------------------------------
@@ -493,25 +528,41 @@ class TestSubagentStop:
         state = json.loads(state_file.read_text())
         assert state["plan_workflow"]["phase"] == "plan"
 
-    def test_transitions_to_review_after_plan_completion(self, tmp_path):
+    def test_transitions_to_write_after_plan_completion(self, tmp_path):
         agents = [{"agent_type": "Plan", "status": "running", "tool_use_id": "t1"}]
         state_file = make_state_file(tmp_path, make_plan_state(phase="plan", agents=agents))
         self.mod._dispatch(subagent_stop_input("Plan"), state_file)
         state = json.loads(state_file.read_text())
-        assert state["plan_workflow"]["phase"] == "review"
+        assert state["plan_workflow"]["phase"] == "write"
 
-    def test_review_pass_transitions_to_write(self, tmp_path):
+    def test_review_pass_transitions_to_approved(self, tmp_path):
         agents = [{"agent_type": "Plan-Review", "status": "running", "tool_use_id": "t1"}]
-        state_file = make_state_file(tmp_path, make_plan_state(phase="review", agents=agents))
+        state_file = make_state_file(
+            tmp_path,
+            make_plan_state(
+                phase="review",
+                agents=agents,
+                plan_file=".claude/plans/my-plan.md",
+                plan_written=True,
+            ),
+        )
         msg = "The plan looks great. Confidence score: 90, Quality score: 85"
         self.mod._dispatch(subagent_stop_input("Plan-Review", msg), state_file)
         state = json.loads(state_file.read_text())
-        assert state["plan_workflow"]["phase"] == "write"
+        assert state["plan_workflow"]["phase"] == "approved"
         assert state["plan_workflow"]["review"]["status"] == "approved"
 
     def test_review_fail_triggers_revision(self, tmp_path):
         agents = [{"agent_type": "Plan-Review", "status": "running", "tool_use_id": "t1"}]
-        state_file = make_state_file(tmp_path, make_plan_state(phase="review", agents=agents))
+        state_file = make_state_file(
+            tmp_path,
+            make_plan_state(
+                phase="review",
+                agents=agents,
+                plan_file=".claude/plans/my-plan.md",
+                plan_written=True,
+            ),
+        )
         msg = "Needs work. Confidence score: 60, Quality score: 55"
         self.mod._dispatch(subagent_stop_input("Plan-Review", msg), state_file)
         state = json.loads(state_file.read_text())
@@ -528,7 +579,16 @@ class TestSubagentStop:
             "scores": None,
             "status": "revision_needed",
         }
-        state_file = make_state_file(tmp_path, make_plan_state(phase="review", agents=agents, review=review))
+        state_file = make_state_file(
+            tmp_path,
+            make_plan_state(
+                phase="review",
+                agents=agents,
+                plan_file=".claude/plans/my-plan.md",
+                plan_written=True,
+                review=review,
+            ),
+        )
         msg = "Still not great. Confidence score: 50, Quality score: 50"
         self.mod._dispatch(subagent_stop_input("Plan-Review", msg), state_file)
         state = json.loads(state_file.read_text())
@@ -537,13 +597,44 @@ class TestSubagentStop:
 
     def test_review_parses_confidence_and_quality_scores(self, tmp_path):
         agents = [{"agent_type": "Plan-Review", "status": "running", "tool_use_id": "t1"}]
-        state_file = make_state_file(tmp_path, make_plan_state(phase="review", agents=agents))
+        state_file = make_state_file(
+            tmp_path,
+            make_plan_state(
+                phase="review",
+                agents=agents,
+                plan_file=".claude/plans/my-plan.md",
+                plan_written=True,
+            ),
+        )
         msg = "Confidence score is 92 and quality score is 88."
         self.mod._dispatch(subagent_stop_input("Plan-Review", msg), state_file)
         state = json.loads(state_file.read_text())
         scores = state["plan_workflow"]["review"]["scores"]
         assert scores["confidence"] == 92
         assert scores["quality"] == 88
+
+    def test_review_prefers_last_scores_when_multiple_are_present(self, tmp_path):
+        agents = [{"agent_type": "Plan-Review", "status": "running", "tool_use_id": "t1"}]
+        state_file = make_state_file(
+            tmp_path,
+            make_plan_state(
+                phase="review",
+                agents=agents,
+                plan_file=".claude/plans/my-plan.md",
+                plan_written=True,
+            ),
+        )
+        msg = (
+            "Previous confidence score: 72\n"
+            "Updated confidence score: 90\n"
+            "Previous quality score: 63\n"
+            "Updated quality score: 85"
+        )
+        self.mod._dispatch(subagent_stop_input("Plan-Review", msg), state_file)
+        state = json.loads(state_file.read_text())
+        scores = state["plan_workflow"]["review"]["scores"]
+        assert scores["confidence"] == 90
+        assert scores["quality"] == 85
 
 
 # ---------------------------------------------------------------------------
@@ -565,11 +656,105 @@ class TestWriteGuard:
         assert decision == "block"
         assert ".claude/plans" in reason or "plans" in reason.lower()
 
-    def test_record_plan_file_path_in_state(self, tmp_path):
+    def test_pre_write_does_not_record_plan_file_path_in_state(self, tmp_path):
         state_file = make_state_file(tmp_path, make_plan_state(phase="write"))
         self.mod._dispatch(write_input(".claude/plans/my-plan.md"), state_file)
         state = json.loads(state_file.read_text())
+        assert state["plan_workflow"]["plan_file"] is None
+        assert state["plan_workflow"]["plan_written"] is False
+
+    def test_post_write_records_plan_file_and_unlocks_review(self, tmp_path):
+        state_file = make_state_file(tmp_path, make_plan_state(phase="write"))
+        self.mod._dispatch(post_write_input(".claude/plans/my-plan.md"), state_file)
+        state = json.loads(state_file.read_text())
         assert state["plan_workflow"]["plan_file"] == ".claude/plans/my-plan.md"
+        assert state["plan_workflow"]["plan_written"] is True
+        assert state["plan_workflow"]["phase"] == "review"
+
+    def test_post_write_outside_plans_dir_does_not_unlock_review(self, tmp_path):
+        state_file = make_state_file(tmp_path, make_plan_state(phase="write"))
+        self.mod._dispatch(post_write_input("src/app.py"), state_file)
+        state = json.loads(state_file.read_text())
+        assert state["plan_workflow"]["phase"] == "write"
+        assert state["plan_workflow"]["plan_written"] is False
+        assert state["plan_workflow"]["plan_file"] is None
+
+    def test_post_write_before_write_phase_does_not_unlock_review(self, tmp_path):
+        state_file = make_state_file(tmp_path, make_plan_state(phase="plan"))
+        self.mod._dispatch(post_write_input(".claude/plans/my-plan.md"), state_file)
+        state = json.loads(state_file.read_text())
+        assert state["plan_workflow"]["phase"] == "plan"
+        assert state["plan_workflow"]["plan_written"] is False
+        assert state["plan_workflow"]["plan_file"] is None
+
+    def test_post_write_in_legacy_review_phase_records_written_plan(self, tmp_path):
+        state_file = make_state_file(tmp_path, make_plan_state(phase="review"))
+        self.mod._dispatch(post_write_input(".claude/plans/my-plan.md"), state_file)
+        state = json.loads(state_file.read_text())
+        assert state["plan_workflow"]["phase"] == "review"
+        assert state["plan_workflow"]["plan_written"] is True
+        assert state["plan_workflow"]["plan_file"] == ".claude/plans/my-plan.md"
+
+    def test_post_write_uses_tool_response_filepath_when_tool_input_missing(self, tmp_path):
+        payload = post_write_input(".claude/plans/my-plan.md")
+        del payload["tool_input"]["file_path"]
+        state_file = make_state_file(tmp_path, make_plan_state(phase="write"))
+        self.mod._dispatch(payload, state_file)
+        state = json.loads(state_file.read_text())
+        assert state["plan_workflow"]["phase"] == "review"
+        assert state["plan_workflow"]["plan_written"] is True
+        assert state["plan_workflow"]["plan_file"] == ".claude/plans/my-plan.md"
+
+
+class TestExitPlanModeGuard:
+    def setup_method(self):
+        self.mod = _load_guardrail()
+
+    def test_block_exit_when_plan_not_written(self, tmp_path):
+        state_file = make_state_file(tmp_path, make_plan_state(phase="write"))
+        decision, reason = self.mod._dispatch(exit_plan_mode_input(), state_file)
+        assert decision == "block"
+        assert "Write the plan" in reason
+
+    def test_block_exit_when_review_not_approved(self, tmp_path):
+        plan_path = tmp_path / ".claude/plans/my-plan.md"
+        plan_path.parent.mkdir(parents=True, exist_ok=True)
+        plan_path.write_text(VALID_PLAN_CONTENT)
+        state_file = make_state_file(
+            tmp_path,
+            make_plan_state(
+                phase="review",
+                plan_file=str(plan_path),
+                plan_written=True,
+            ),
+        )
+        decision, reason = self.mod._dispatch(exit_plan_mode_input(), state_file)
+        assert decision == "block"
+        assert "not approved" in reason
+
+    def test_allow_exit_when_review_approved_and_plan_valid(self, tmp_path):
+        plan_path = tmp_path / ".claude/plans/my-plan.md"
+        plan_path.parent.mkdir(parents=True, exist_ok=True)
+        plan_path.write_text(VALID_PLAN_CONTENT)
+        review = {
+            "iteration": 1,
+            "max_iterations": 3,
+            "threshold": {"confidence": 80, "quality": 80},
+            "scores": {"confidence": 90, "quality": 85},
+            "status": "approved",
+        }
+        state_file = make_state_file(
+            tmp_path,
+            make_plan_state(
+                phase="approved",
+                plan_file=str(plan_path),
+                plan_written=True,
+                review=review,
+            ),
+        )
+        decision, reason = self.mod._dispatch(exit_plan_mode_input(), state_file)
+        assert decision.startswith("{")
+        assert reason == ""
 
 
 # ---------------------------------------------------------------------------
@@ -632,9 +817,22 @@ class TestExitPlanMode:
         self.mod = _load_guardrail()
 
     def test_surfaces_plan_content_when_template_valid(self, tmp_path):
-        plan_file = tmp_path / "my-plan.md"
+        plan_file = tmp_path / ".claude/plans/my-plan.md"
+        plan_file.parent.mkdir(parents=True, exist_ok=True)
         plan_file.write_text(VALID_PLAN_CONTENT)
-        state = make_plan_state(phase="write", plan_file=str(plan_file))
+        review = {
+            "iteration": 1,
+            "max_iterations": 3,
+            "threshold": {"confidence": 80, "quality": 80},
+            "scores": {"confidence": 90, "quality": 85},
+            "status": "approved",
+        }
+        state = make_plan_state(
+            phase="approved",
+            plan_file=str(plan_file),
+            plan_written=True,
+            review=review,
+        )
         state_file = make_state_file(tmp_path, state)
         decision, _ = self.mod._dispatch(exit_plan_mode_input(), state_file)
         # Should return JSON with additionalContext
@@ -642,17 +840,42 @@ class TestExitPlanMode:
         data = json.loads(decision)
         assert "additionalContext" in data
 
-    def test_blocks_when_template_invalid(self, tmp_path):
-        plan_file = tmp_path / "bad-plan.md"
+    def test_blocks_when_template_invalid_after_approved_review(self, tmp_path):
+        plan_file = tmp_path / ".claude/plans/bad-plan.md"
+        plan_file.parent.mkdir(parents=True, exist_ok=True)
         plan_file.write_text(INVALID_PLAN_CONTENT)
-        state = make_plan_state(phase="write", plan_file=str(plan_file))
+        review = {
+            "iteration": 1,
+            "max_iterations": 3,
+            "threshold": {"confidence": 80, "quality": 80},
+            "scores": {"confidence": 90, "quality": 85},
+            "status": "approved",
+        }
+        state = make_plan_state(
+            phase="approved",
+            plan_file=str(plan_file),
+            plan_written=True,
+            review=review,
+        )
         state_file = make_state_file(tmp_path, state)
         decision, reason = self.mod._dispatch(exit_plan_mode_input(), state_file)
         assert decision == "block"
         assert "missing" in reason.lower() or "Context" in reason
 
     def test_handles_missing_plan_file_gracefully(self, tmp_path):
-        state = make_plan_state(phase="write", plan_file=None)
+        review = {
+            "iteration": 1,
+            "max_iterations": 3,
+            "threshold": {"confidence": 80, "quality": 80},
+            "scores": {"confidence": 90, "quality": 85},
+            "status": "approved",
+        }
+        state = make_plan_state(
+            phase="approved",
+            plan_file=None,
+            plan_written=True,
+            review=review,
+        )
         state_file = make_state_file(tmp_path, state)
         decision, reason = self.mod._dispatch(exit_plan_mode_input(), state_file)
         assert decision == "block"
@@ -708,3 +931,38 @@ class TestCLI:
         output = result.stdout.strip()
         assert output.startswith("block,") or output.startswith("block, ")
         assert len(output) > len("block")
+
+    def test_subagent_stop_dispatcher_updates_state_outside_repo_cwd(self, tmp_path):
+        import subprocess, os
+
+        plan_path = tmp_path / ".claude/plans/my-plan.md"
+        state = {
+            "workflow_active": True,
+            "workflow_type": "plan",
+            "plan_workflow": make_plan_state(
+                phase="review",
+                agents=[{"agent_type": "Plan-Review", "status": "running", "tool_use_id": "t1"}],
+                plan_file=str(plan_path),
+                plan_written=True,
+            ),
+        }
+        state_file = tmp_path / "state.json"
+        state_file.write_text(json.dumps(state))
+        inp = subagent_stop_input(
+            "Plan-Review",
+            "Confidence Score: 88 / 100 .\nQuality Score: 84 / 100 .",
+        )
+        env = {**os.environ, "PLAN_GUARDRAIL_STATE_PATH": str(state_file)}
+        result = subprocess.run(
+            [sys.executable, str(PLAN_GUARDRAIL_SUBAGENT_STOP_DISPATCHER)],
+            input=json.dumps(inp),
+            capture_output=True,
+            text=True,
+            cwd="/",
+            env=env,
+        )
+        assert result.returncode == 0
+        updated = json.loads(state_file.read_text())["plan_workflow"]
+        assert updated["review"]["scores"] == {"confidence": 88, "quality": 84}
+        assert updated["review"]["status"] == "approved"
+        assert updated["phase"] == "approved"

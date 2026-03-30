@@ -1,8 +1,8 @@
 ---
-name: security-expert
+name: SecurityExpert
 description: Use PROACTIVELY this agent when you need to identify security vulnerabilities, detect security anti-patterns, analyze potential attack vectors, verify dependency security, and document security risks with actionable remediation recommendations. This agent ONLY identifies and documents security issues, never implements fixes.
 tools: Read, Grep, WebSearch
-model: sonnet
+model: opus
 color: red
 ---
 

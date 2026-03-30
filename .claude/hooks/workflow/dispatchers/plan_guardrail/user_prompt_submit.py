@@ -10,6 +10,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
 from workflow.hook import Hook
 
+PLAN_GUARDRAIL = Path(__file__).resolve().parents[2] / "plan_guardrail.py"
+
 
 def main() -> None:
     raw_input = Hook.read_stdin()
@@ -17,7 +19,7 @@ def main() -> None:
     subprocess.run(
         [
             "python3",
-            ".claude/hooks/workflow/plan_guardrail.py",
+            str(PLAN_GUARDRAIL),
             "--hook-input",
             json.dumps(raw_input),
             "--reason",

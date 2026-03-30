@@ -38,22 +38,23 @@ Skip with `--skip-explore`, `--skip-research`, or `--skip-all`.
 - The Plan agent produces a structured implementation plan following the plan template
 - Plan must include: `## Context`, `## Approach` or `## Steps`, `## Files to Modify` or `## Critical Files`, `## Verification`
 
-### Phase 3: Review
-
-- Invoke the **`Plan-Review` agent** to review the plan
-- Scores are parsed automatically (confidence + quality, threshold: 80/80)
-- If scores are below threshold: revise and re-review (max 3 iterations)
-- If max iterations reached without passing: phase transitions to `failed`
-
-### Phase 4: Write
+### Phase 3: Write
 
 - Write the finalized plan to **`.claude/plans/<plan-name>.md`**
 - The guardrail blocks writes outside `.claude/plans/`
+- A successful `Write` to `.claude/plans/` is the signal that unlocks review
+
+### Phase 4: Review
+
+- Invoke the **`Plan-Review` agent** only after the plan has been written
+- Scores are parsed automatically (confidence + quality, threshold: 80/80)
+- If scores are below threshold: revise the written plan and re-review (max 3 iterations)
+- If max iterations reached without passing: phase transitions to `failed`
 
 ### Phase 5: Exit
 
 - Call `ExitPlanMode`
-- The guardrail validates the plan file against the template
+- The guardrail requires an approved review, then validates the plan file against the template
 - If required sections are missing: blocked with a list of what's missing
 - If valid: plan content is surfaced as additional context
 
@@ -61,13 +62,14 @@ Skip with `--skip-explore`, `--skip-research`, or `--skip-all`.
 
 - **MUST** follow the phase sequence — the guardrail enforces it and will block out-of-order agents
 - **MUST** save the plan to `.claude/plans/` — writes elsewhere are blocked
+- **MUST** write the plan before invoking `Plan-Review`
 - **MUST** call `ExitPlanMode` after writing — required for template validation
 - **DO NOT** use agent types other than `Explore`, `Research`, `Plan`, `Plan-Review`
-- **DO NOT** proceed to write until the Plan-Review agent approves (scores >= 80/80)
+- **DO NOT** call `ExitPlanMode` until the `Plan-Review` agent approves (scores >= 80/80)
 
 ## Acceptance Criteria
 
 - All required explore/research agents completed (or skipped via flags)
-- Plan created by `Plan` agent and approved by `Plan-Review` agent
+- Plan created by `Plan` agent, written to `.claude/plans/`, and approved by `Plan-Review` agent
 - Plan saved to `.claude/plans/` with all required template sections
 - `ExitPlanMode` called and template validation passed
