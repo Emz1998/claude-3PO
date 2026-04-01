@@ -1,0 +1,11 @@
+{
+  "workflow_active": true,
+  "workflow_type": "implement",
+  "phase": "review",
+  "tdd": true,
+  "plan_file": ".claude/plans/my-plan.md",
+  "plan_written": true,
+  "test_files_created": [],
+  "report_written": false,
+  "agents": []
+}

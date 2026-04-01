@@ -1,0 +1,29 @@
+{
+  "workflow_active": true,
+  "workflow_type": "implement",
+  "phase": "plan",
+  "tdd": true,
+  "skip_explore": false,
+  "skip_research": true,
+  "agents": [
+    {
+      "agent_type": "Explore",
+      "status": "completed"
+    },
+    {
+      "agent_type": "Explore",
+      "status": "completed"
+    },
+    {
+      "agent_type": "Explore",
+      "status": "completed",
+      "tool_use_id": "t1"
+    }
+  ],
+  "plan_review_iteration": 0,
+  "plan_review_scores": null,
+  "plan_review_status": null,
+  "story_id": null,
+  "test_review_result": null,
+  "validation_result": null
+}

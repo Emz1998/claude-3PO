@@ -1,0 +1,21 @@
+{
+  "workflow_active": true,
+  "workflow_type": "implement",
+  "phase": "write-tests",
+  "tdd": true,
+  "skip_explore": false,
+  "skip_research": false,
+  "agents": [
+    {
+      "agent_type": "TestReviewer",
+      "status": "running",
+      "tool_use_id": "t1"
+    }
+  ],
+  "plan_written": false,
+  "plan_file": null,
+  "tasks_created": 0,
+  "test_files_created": [
+    "tests/test_foo.py"
+  ]
+}

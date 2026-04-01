@@ -1,4 +1,8 @@
-"""Review guard — handles SubagentStop: records completion, parses review scores, auto-advances phases."""
+"""review_guard.py — SubagentStop handler for all agent types.
+
+Marks agents completed, parses review scores, auto-advances phases.
+Uses flat state model.
+"""
 
 import re
 import sys
@@ -6,24 +10,13 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-from workflow.guards.agent_guard import count_completed
-from workflow.guards.phase_guard import PHASE_ORDER
 from workflow.state_store import StateStore
 
 DEFAULT_STATE_PATH = Path(__file__).resolve().parent.parent / "state.json"
 
-REVIEWER_TO_REVIEW_KEY = {
-    "plan-reviewer": "plan",
-    "test-reviewer":  "tests",
-}
+PLAN_REVIEW_THRESHOLD = {"confidence": 80, "quality": 80}
+PLAN_REVIEW_MAX = 3
 
-# Phase completion requirements: agent_type → minimum completed count
-PHASE_COMPLETION: dict[str, dict[str, int]] = {
-    "explore":  {"codebase-explorer": 3, "research-specialist": 2},
-    "decision": {"tech-lead": 1},
-    "validate": {"qa-expert": 1},
-    "pr-create": {"version-manager": 1},
-}
 
 def parse_scores(text: str) -> dict[str, int | None]:
     """Extract confidence and quality scores from free-form reviewer text."""
@@ -44,100 +37,124 @@ def parse_scores(text: str) -> dict[str, int | None]:
 
     confidence = _last_score("confidence")
     quality = _last_score("quality")
-
     return {"confidence": confidence, "quality": quality}
 
 
-def advance_next_phase(phases: list[dict], current_name: str) -> None:
-    """Mark current phase completed and next pending phase in_progress."""
-    for p in phases:
-        if p["name"] == current_name:
-            p["status"] = "completed"
+def _required_explore_agents(state: dict) -> dict[str, int]:
+    """Return the required agent types/counts for explore phase."""
+    required = {}
+    if not state.get("skip_explore"):
+        required["Explore"] = 3
+    if not state.get("skip_research"):
+        required["Research"] = 2
+    return required
+
+
+def _count_completed(agents: list[dict], agent_type: str) -> int:
+    return sum(1 for a in agents if a.get("agent_type") == agent_type and a.get("status") == "completed")
+
+
+def _mark_first_running_completed(agents: list[dict], agent_type: str) -> None:
+    for a in agents:
+        if a.get("agent_type") == agent_type and a.get("status") == "running":
+            a["status"] = "completed"
             break
-    current_idx = PHASE_ORDER.index(current_name)
-    if current_idx + 1 < len(PHASE_ORDER):
-        next_name = PHASE_ORDER[current_idx + 1]
-        for p in phases:
-            if p["name"] == next_name and p["status"] == "pending":
-                p["status"] = "in_progress"
-                break
 
 
-def handle(hook_input: dict, state_path: Path | None = None) -> tuple[str, str]:
-    """Handle SubagentStop: mark agent completed, parse review scores, auto-advance phases.
+def handle(hook_input: dict, store: StateStore) -> tuple[str, str]:
+    """Handle SubagentStop: mark agent completed, auto-advance phases.
 
     Always returns ("allow", "") — never blocks a subagent from stopping.
     """
     agent_type: str = hook_input.get("agent_type", "")
     last_message: str = hook_input.get("last_assistant_message", "")
 
-    path = state_path or DEFAULT_STATE_PATH
-    store = StateStore(path)
-
-    result: dict = {}
-
     def _process(state: dict) -> None:
-        phases: list[dict] = state.get("phases", [])
-        current = next((p for p in phases if p["status"] == "in_progress"), None)
-        if current is None:
+        if not state.get("workflow_active"):
             return
 
-        phase_name = current["name"]
-        agents: list[dict] = current.get("agents", [])
+        phase = state.get("phase", "")
+        agents = state.get("agents", [])
 
-        # Mark first matching "running" agent as completed
-        for a in agents:
-            if a.get("agent_type") == agent_type and a.get("status") == "running":
-                a["status"] = "completed"
-                break
+        # Mark first matching running agent as completed
+        _mark_first_running_completed(agents, agent_type)
 
-        # Handle reviewer agents
-        review_key = REVIEWER_TO_REVIEW_KEY.get(agent_type)
-        if review_key:
-            review = state.get("review", {}).get(review_key, {})
+        # -----------------------------------------------------------------------
+        # Explore / Research: check if all required agents done → advance to plan
+        # -----------------------------------------------------------------------
+        if agent_type in ("Explore", "Research") and phase == "explore":
+            required = _required_explore_agents(state)
+            all_done = all(
+                _count_completed(agents, atype) >= cnt
+                for atype, cnt in required.items()
+            )
+            if all_done:
+                state["phase"] = "plan"
+
+        # -----------------------------------------------------------------------
+        # Plan: advance to write-plan
+        # -----------------------------------------------------------------------
+        elif agent_type == "Plan" and phase == "plan":
+            state["phase"] = "write-plan"
+
+        # -----------------------------------------------------------------------
+        # PlanReview: parse scores, advance or iterate
+        # -----------------------------------------------------------------------
+        elif agent_type == "PlanReview" and phase == "review":
             scores = parse_scores(last_message)
-            threshold = review.get("threshold", {"confidence": 80, "quality": 80})
-            iteration = review.get("iteration", 0)
-            max_iter = review.get("max_iterations", 3)
-
-            # Update scores in state
-            if "review" not in state:
-                state["review"] = {}
-            if review_key not in state["review"]:
-                state["review"][review_key] = {}
-            state["review"][review_key]["scores"] = scores
+            state["plan_review_scores"] = scores
+            iteration = state.get("plan_review_iteration", 0)
 
             passed = (
                 scores["confidence"] is not None
                 and scores["quality"] is not None
-                and scores["confidence"] >= threshold["confidence"]
-                and scores["quality"] >= threshold["quality"]
+                and scores["confidence"] >= PLAN_REVIEW_THRESHOLD["confidence"]
+                and scores["quality"] >= PLAN_REVIEW_THRESHOLD["quality"]
             )
 
             if passed:
-                state["review"][review_key]["status"] = "approved"
-                advance_next_phase(phases, phase_name)
-            elif iteration + 1 >= max_iter:
-                state["review"][review_key]["status"] = "max_iterations_reached"
-                state["review"][review_key]["iteration"] = iteration + 1
-                for p in phases:
-                    if p["name"] == phase_name:
-                        p["status"] = "failed"
-                        break
+                state["plan_review_status"] = "approved"
+                state["phase"] = "approved"
+            elif iteration + 1 >= PLAN_REVIEW_MAX:
+                state["plan_review_status"] = "max_iterations_reached"
+                state["plan_review_iteration"] = iteration + 1
+                state["phase"] = "failed"
             else:
-                state["review"][review_key]["status"] = "revision_needed"
-                state["review"][review_key]["iteration"] = iteration + 1
-            return
+                state["plan_review_status"] = "revision_needed"
+                state["plan_review_iteration"] = iteration + 1
 
-        # Non-reviewer: check if phase completion criteria met
-        completion = PHASE_COMPLETION.get(phase_name)
-        if completion:
-            all_done = all(
-                count_completed(agents, atype) >= required
-                for atype, required in completion.items()
-            )
-            if all_done:
-                advance_next_phase(phases, phase_name)
+        # -----------------------------------------------------------------------
+        # TaskManager: advance to write-tests or write-code
+        # -----------------------------------------------------------------------
+        elif agent_type == "TaskManager" and phase == "task-create":
+            if state.get("tdd"):
+                state["phase"] = "write-tests"
+            else:
+                state["phase"] = "write-code"
+
+        # -----------------------------------------------------------------------
+        # TestReviewer: Parse Pass/Fail → advance or stay
+        # -----------------------------------------------------------------------
+        elif agent_type == "TestReviewer" and phase == "write-tests":
+            verdict = last_message.strip()
+            if verdict == "Pass":
+                state["test_review_result"] = "Pass"
+                state["phase"] = "write-code"
+            else:
+                state["test_review_result"] = "Fail"
+                # Stay in write-tests
+
+        # -----------------------------------------------------------------------
+        # Validator: Parse Pass/Fail → advance or return to write-code
+        # -----------------------------------------------------------------------
+        elif agent_type == "Validator" and phase == "validate":
+            verdict = last_message.strip()
+            if verdict == "Pass":
+                state["validation_result"] = "Pass"
+                state["phase"] = "pr-create"
+            else:
+                state["validation_result"] = "Fail"
+                state["phase"] = "write-code"
 
     store.update(_process)
     return "allow", ""

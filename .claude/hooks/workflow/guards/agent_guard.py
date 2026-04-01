@@ -1,4 +1,4 @@
-"""Agent type/count guard — validates Agent tool invocations per phase."""
+"""agent_guard.py — Phase-based agent validation using flat state model."""
 
 import sys
 from pathlib import Path
@@ -9,36 +9,13 @@ from workflow.state_store import StateStore
 
 DEFAULT_STATE_PATH = Path(__file__).resolve().parent.parent / "state.json"
 
-# Phase rules:
-#   allowed  — maps agent_type → max count
-#   ordered  — list of (dependent_agent, required_agent): dependent requires required to have run first
-#   tdd_only — phase only active when TDD=true
-PHASE_RULES: dict[str, dict] = {
-    "explore": {
-        "allowed": {"codebase-explorer": 3, "research-specialist": 2},
-    },
-    "decision": {
-        "allowed": {"tech-lead": 1},
-    },
-    "plan": {
-        "allowed": {"plan-specialist": 3, "plan-reviewer": 3},
-        "ordered": [("plan-reviewer", "plan-specialist")],
-    },
-    "write-tests": {
-        "allowed": {"test-engineer": 3, "test-reviewer": 3},
-        "ordered": [("test-reviewer", "test-engineer")],
-        "tdd_only": True,
-    },
-    "write-code": {
-        "allowed": {},
-    },
-    "validate": {
-        "allowed": {"qa-expert": 1},
-    },
-    "pr-create": {
-        "allowed": {"version-manager": 1},
-    },
-}
+EXPLORE_MAX = 3
+RESEARCH_MAX = 2
+PLAN_MAX = 1
+PLAN_REVIEW_MAX = 3
+TASK_MANAGER_MAX = 1
+TEST_REVIEWER_MAX = 3
+VALIDATOR_MAX = 1
 
 
 def count(agents: list[dict], agent_type: str) -> int:
@@ -49,72 +26,132 @@ def count_completed(agents: list[dict], agent_type: str) -> int:
     return sum(1 for a in agents if a.get("agent_type") == agent_type and a.get("status") == "completed")
 
 
-def validate(hook_input: dict, state_path: Path | None = None) -> tuple[str, str]:
-    """Validate an Agent tool invocation against the current phase rules.
+def _record_agent(store: StateStore, agent_type: str, tool_use_id: str) -> None:
+    def _update(state: dict) -> None:
+        state.setdefault("agents", []).append({
+            "agent_type": agent_type,
+            "status": "running",
+            "tool_use_id": tool_use_id,
+        })
+    store.update(_update)
+
+
+def validate(hook_input: dict, store: StateStore) -> tuple[str, str]:
+    """Validate an Agent tool invocation against the current phase.
 
     Returns ("allow", "") or ("block", reason).
     Side effect: records the agent as "running" in state on allow.
     """
     tool_input = hook_input.get("tool_input", {})
-    subagent_type = tool_input.get("subagent_type", "")
+    agent_type = tool_input.get("subagent_type", "")
     tool_use_id = hook_input.get("tool_use_id", "")
+    run_in_background = tool_input.get("run_in_background", False)
 
-    path = state_path or DEFAULT_STATE_PATH
-    store = StateStore(path)
     state = store.load()
-    phases: list[dict] = state.get("phases", [])
-
-    # task-manager runs before any phase — always allow
-    if subagent_type == "task-manager":
+    if not state.get("workflow_active"):
         return "allow", ""
 
-    # Find current in_progress phase
-    current = next((p for p in phases if p["status"] == "in_progress"), None)
-    if current is None:
-        return "block", "No active phase. Invoke a phase skill first (e.g. /explore)"
+    phase = state.get("phase", "")
+    agents = state.get("agents", [])
+    skip_explore = state.get("skip_explore", False)
+    skip_research = state.get("skip_research", False)
 
-    phase_name = current["name"]
-    rules = PHASE_RULES.get(phase_name, {})
-    allowed = rules.get("allowed", {})
-    agents: list[dict] = current.get("agents", [])
+    # -----------------------------------------------------------------------
+    # explore phase: Explore + Research agents
+    # -----------------------------------------------------------------------
+    if phase == "explore":
+        if agent_type in ("Explore", "Research"):
+            if run_in_background:
+                return "block", f"Agent '{agent_type}' must not run in background — set run_in_background to false"
+            if agent_type == "Explore":
+                if skip_explore:
+                    return "block", "Explore agents skipped (--skip-explore)"
+                current = count(agents, "Explore")
+                if current >= EXPLORE_MAX:
+                    return "block", f"Max agents ({EXPLORE_MAX}) for 'Explore' reached"
+            else:  # Research
+                if skip_research:
+                    return "block", "Research agents skipped (--skip-research)"
+                current = count(agents, "Research")
+                if current >= RESEARCH_MAX:
+                    return "block", f"Max agents ({RESEARCH_MAX}) for 'Research' reached"
+            _record_agent(store, agent_type, tool_use_id)
+            return "allow", ""
+        return "block", f"Agent '{agent_type}' not allowed in phase 'explore'. Allowed: Explore, Research"
 
-    # TDD guard
-    if rules.get("tdd_only") and not state.get("TDD", False):
-        return "block", f"Phase '{phase_name}' requires TDD=true"
+    # -----------------------------------------------------------------------
+    # plan phase: Plan agent only
+    # -----------------------------------------------------------------------
+    if phase == "plan":
+        if agent_type != "Plan":
+            return "block", f"Agent '{agent_type}' not allowed in phase 'plan'. Allowed: Plan"
+        current = count(agents, "Plan")
+        if current >= PLAN_MAX:
+            return "block", f"Max agents ({PLAN_MAX}) for 'Plan' reached"
+        _record_agent(store, agent_type, tool_use_id)
+        return "allow", ""
 
-    # write-code blocks all agents
-    if phase_name == "write-code":
-        return "block", "Phase 'write-code': main agent writes code directly — no subagents allowed"
+    # -----------------------------------------------------------------------
+    # review phase: PlanReview only, requires plan_written
+    # -----------------------------------------------------------------------
+    if phase == "review":
+        if agent_type != "PlanReview":
+            return "block", f"Agent '{agent_type}' not allowed in phase 'review'. Allowed: PlanReview"
+        if not state.get("plan_written"):
+            return "block", "PlanReview requires a written plan first (plan_written must be true)"
+        current = count(agents, "PlanReview")
+        if current >= PLAN_REVIEW_MAX:
+            return "block", f"Max agents ({PLAN_REVIEW_MAX}) for 'PlanReview' reached"
+        _record_agent(store, agent_type, tool_use_id)
+        return "allow", ""
 
-    # Agent type allowed?
-    if subagent_type not in allowed:
-        allowed_list = ", ".join(allowed.keys()) if allowed else "none"
-        return "block", f"Agent '{subagent_type}' not allowed in phase '{phase_name}'. Allowed: {allowed_list}"
+    # -----------------------------------------------------------------------
+    # task-create phase: TaskManager only
+    # -----------------------------------------------------------------------
+    if phase == "task-create":
+        if agent_type != "TaskManager":
+            return "block", f"Agent '{agent_type}' not allowed in phase 'task-create'. Allowed: TaskManager"
+        current = count(agents, "TaskManager")
+        if current >= TASK_MANAGER_MAX:
+            return "block", f"Max agents ({TASK_MANAGER_MAX}) for 'TaskManager' reached"
+        _record_agent(store, agent_type, tool_use_id)
+        return "allow", ""
 
-    # Ordering constraint
-    for dependent, required in rules.get("ordered", []):
-        if subagent_type == dependent:
-            completed_required = count_completed(agents, required)
-            completed_dependent = count_completed(agents, dependent)
-            if completed_required <= completed_dependent:
-                return "block", f"'{subagent_type}' requires '{required}' to complete first"
+    # -----------------------------------------------------------------------
+    # write-tests phase: TestReviewer only, requires test files
+    # -----------------------------------------------------------------------
+    if phase == "write-tests":
+        if agent_type != "TestReviewer":
+            return "block", f"Agent '{agent_type}' not allowed in phase 'write-tests'. Allowed: TestReviewer"
+        test_files = state.get("test_files_created", [])
+        if not test_files:
+            return "block", "TestReviewer requires test files to be written first (test_files_created must be non-empty)"
+        _record_agent(store, agent_type, tool_use_id)
+        return "allow", ""
 
-    # Max count check (running + completed)
-    current_count = count(agents, subagent_type)
-    max_count = allowed[subagent_type]
-    if current_count >= max_count:
-        return "block", f"Max agents ({max_count}) for '{subagent_type}' in phase '{phase_name}' reached. Iteration limit exceeded."
+    # -----------------------------------------------------------------------
+    # write-code phase: Validator only — triggers validate phase transition
+    # -----------------------------------------------------------------------
+    if phase == "write-code":
+        if agent_type != "Validator":
+            return "block", f"Agent '{agent_type}' not allowed in phase 'write-code'. Allowed: Validator"
+        # Advance to validate phase
+        def _advance(s: dict) -> None:
+            s["phase"] = "validate"
+        store.update(_advance)
+        _record_agent(store, agent_type, tool_use_id)
+        return "allow", ""
 
-    # Record invocation as running
-    def _record(s: dict) -> None:
-        for p in s.get("phases", []):
-            if p["name"] == phase_name:
-                p["agents"].append({
-                    "agent_type": subagent_type,
-                    "status": "running",
-                    "tool_use_id": tool_use_id,
-                })
-                break
+    # -----------------------------------------------------------------------
+    # validate phase: Validator only
+    # -----------------------------------------------------------------------
+    if phase == "validate":
+        if agent_type != "Validator":
+            return "block", f"Agent '{agent_type}' not allowed in phase 'validate'. Allowed: Validator"
+        _record_agent(store, agent_type, tool_use_id)
+        return "allow", ""
 
-    store.update(_record)
-    return "allow", ""
+    # -----------------------------------------------------------------------
+    # All other phases: block agents
+    # -----------------------------------------------------------------------
+    return "block", f"Agent '{agent_type}' not allowed in phase '{phase}'"

@@ -209,6 +209,7 @@ class SessionState(StateStore):
                 "reason": None,
                 "status": "inactive",
             },
+            "files_written": [],
             "files": {
                 "codebase_status_report": {
                     "path": None,

@@ -1,4 +1,8 @@
-"""Stop guard — blocks Claude from stopping when workflow phases are incomplete."""
+"""stop_guard.py — Blocks Claude from stopping when workflow is incomplete.
+
+- /plan workflow: allow stop after 'approved' phase
+- /implement workflow: block unless phase == 'completed'
+"""
 
 import sys
 from pathlib import Path
@@ -9,8 +13,33 @@ from workflow.state_store import StateStore
 
 DEFAULT_STATE_PATH = Path(__file__).resolve().parent.parent / "state.json"
 
+# Plan workflow: allowed to stop once past approved
+PLAN_ALLOWED_STOP_PHASES = {"approved", "completed", "failed"}
 
-def validate(hook_input: dict, state_path: Path | None = None) -> tuple[str, str]:
+# Implement workflow: collect reasons from state
+def _collect_reasons(state: dict) -> list[str]:
+    reasons = []
+    tdd = state.get("tdd", False)
+
+    if tdd and not state.get("test_run_executed"):
+        reasons.append("tests have not been run")
+
+    if state.get("validation_result") != "Pass":
+        reasons.append("validation has not passed")
+
+    if state.get("pr_status") != "created":
+        reasons.append("PR has not been created")
+
+    if not state.get("ci_check_executed"):
+        reasons.append("CI has not been checked")
+
+    if not state.get("report_written"):
+        reasons.append("report has not been written")
+
+    return reasons
+
+
+def validate(hook_input: dict, store: StateStore) -> tuple[str, str]:
     """Validate a Stop event against the current workflow state.
 
     Returns ("allow", "") or ("block", reason).
@@ -19,18 +48,25 @@ def validate(hook_input: dict, state_path: Path | None = None) -> tuple[str, str
     if hook_input.get("stop_hook_active"):
         return "allow", ""
 
-    path = state_path or DEFAULT_STATE_PATH
-    store = StateStore(path)
     state = store.load()
-
-    if not state.get("workflow_active", False):
+    if not state.get("workflow_active"):
         return "allow", ""
 
-    phases: list[dict] = state.get("phases", [])
-    incomplete = [p["name"] for p in phases if p["status"] != "completed"]
+    workflow_type = state.get("workflow_type", "implement")
+    phase = state.get("phase", "")
 
-    if not incomplete:
+    # /plan workflow: allow once approved
+    if workflow_type == "plan":
+        if phase in PLAN_ALLOWED_STOP_PHASES:
+            return "allow", ""
+        return "block", f"Plan workflow not complete. Current phase: '{phase}'. Must reach 'approved' first."
+
+    # /implement workflow: only allow when completed
+    if phase == "completed":
         return "allow", ""
 
-    reason = f"Workflow incomplete. Phases not completed: {', '.join(incomplete)}"
-    return "block", reason
+    reasons = _collect_reasons(state)
+    if reasons:
+        return "block", "Cannot stop: " + ", ".join(reasons)
+
+    return "block", f"Workflow not complete. Current phase: '{phase}'"

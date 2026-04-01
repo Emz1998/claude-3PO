@@ -1,0 +1,18 @@
+{
+  "workflow_active": true,
+  "workflow_type": "implement",
+  "phase": "write-code",
+  "tdd": true,
+  "plan_file": null,
+  "plan_written": false,
+  "test_files_created": [],
+  "report_written": false,
+  "agents": [],
+  "files_written": [
+    "src/app.py"
+  ],
+  "ci_status": "pending",
+  "ci_check_executed": false,
+  "validation_result": null,
+  "pr_status": "pending"
+}
