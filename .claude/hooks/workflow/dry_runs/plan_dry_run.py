@@ -19,6 +19,7 @@ import time
 from pathlib import Path
 
 GUARDRAIL = Path(__file__).resolve().parent.parent / "guardrail.py"
+RECORDER = Path(__file__).resolve().parent.parent / "recorder.py"
 STATE_PATH = GUARDRAIL.parent / "state.json"
 
 GREEN  = "\033[32m"
@@ -48,38 +49,42 @@ def agent_payload(subagent_type: str, tool_use_id: str = "t1") -> dict:
     return {
         "hook_event_name": "PreToolUse",
         "tool_name": "Agent",
-        "tool_input": {"subagent_type": subagent_type, "description": "x", "prompt": "x"},
+        "tool_input": {"subagent_type": subagent_type, "description": "x", "prompt": "x", "run_in_background": False},
         "tool_use_id": tool_use_id,
         "session_id": "s", "transcript_path": "t", "cwd": ".", "permission_mode": "default",
     }
 
 
-def webfetch_payload(url: str) -> dict:
-    return {
+def webfetch_payload(url: str, agent_id: str | None = None) -> dict:
+    payload = {
         "hook_event_name": "PreToolUse",
         "tool_name": "WebFetch",
         "tool_input": {"url": url},
         "tool_use_id": "t1",
         "session_id": "s", "transcript_path": "t", "cwd": ".", "permission_mode": "default",
     }
+    if agent_id:
+        payload["agent_id"] = agent_id
+        payload["agent_type"] = "Research"
+    return payload
 
 
-def write_payload(file_path: str) -> dict:
+def write_payload(file_path: str, content: str = "x") -> dict:
     return {
         "hook_event_name": "PreToolUse",
         "tool_name": "Write",
-        "tool_input": {"file_path": file_path, "content": "# Plan"},
+        "tool_input": {"file_path": file_path, "content": content},
         "tool_use_id": "t1",
         "session_id": "s", "transcript_path": "t", "cwd": ".", "permission_mode": "default",
     }
 
 
-def post_write_payload(file_path: str) -> dict:
+def post_write_payload(file_path: str, content: str = "x") -> dict:
     return {
         "hook_event_name": "PostToolUse",
         "tool_name": "Write",
-        "tool_input": {"file_path": file_path, "content": "# Plan"},
-        "tool_response": {"type": "update", "filePath": file_path, "content": "# Plan"},
+        "tool_input": {"file_path": file_path, "content": content},
+        "tool_response": {"type": "update", "filePath": file_path, "content": content},
         "tool_use_id": "t1",
         "session_id": "s", "transcript_path": "t", "cwd": ".", "permission_mode": "default",
     }
@@ -112,13 +117,22 @@ def subagent_stop_payload(agent_type: str, msg: str = "Done.") -> dict:
 # ---------------------------------------------------------------------------
 
 def run(label: str, payload: dict, expected: str, note: str = "") -> bool:
+    hook_json = json.dumps(payload)
     result = subprocess.run(
-        [sys.executable, str(GUARDRAIL), "--hook-input", json.dumps(payload), "--reason"],
+        [sys.executable, str(GUARDRAIL), "--hook-input", hook_json, "--reason"],
         capture_output=True, text=True,
     )
     actual = result.stdout.strip()
     passed = actual.startswith(expected)
     results.append({"label": label, "expected": expected, "actual": actual, "passed": passed})
+
+    # If guardrail allowed, also run the recorder for state tracking
+    if actual.startswith("allow") or actual.startswith("{"):
+        subprocess.run(
+            [sys.executable, str(RECORDER), "--hook-input", hook_json],
+            capture_output=True, text=True,
+        )
+
     time.sleep(0.05)
 
     if not passed:
@@ -214,10 +228,15 @@ def simulate(skip_args: str, plan_dir: Path) -> None:
         run("Research [t6] → allow", agent_payload("Research", "t6"), "allow")
         run("Research [t7] over max → block", agent_payload("Research", "t7"), "block", "Max 2 reached")
 
-    # WebFetch guard
-    print("\n--- WebFetch guard ---")
-    run("WebFetch github.com → allow", webfetch_payload("https://github.com/foo"), "allow")
-    run("WebFetch evil.com → block", webfetch_payload("https://evil.example.com"), "block", "Domain not allowed")
+    # Phase gate: main agent blocked during explore
+    print("\n--- Phase gate (explore) ---")
+    run("Main agent Write → block (phase gate)", write_payload("src/app.py"), "block", "Only Agent tool allowed")
+    run("Main agent WebFetch → block (phase gate)", webfetch_payload("https://github.com/foo"), "block", "Only Agent tool allowed")
+
+    # WebFetch guard (subagent calls bypass phase gate)
+    print("\n--- WebFetch guard (subagent) ---")
+    run("Subagent WebFetch github.com → allow", webfetch_payload("https://github.com/foo", agent_id="sub1"), "allow")
+    run("Subagent WebFetch evil.com → block", webfetch_payload("https://evil.example.com", agent_id="sub1"), "block", "Domain not allowed")
 
     # Plan agent blocked before explore done
     if not skip_explore or not skip_research:
@@ -227,16 +246,33 @@ def simulate(skip_args: str, plan_dir: Path) -> None:
     # Complete explore via SubagentStop
     if not skip_explore:
         print("\n--- Complete Explore agents ---")
-        run("Explore [t1] done", subagent_stop_payload("Explore"), "allow")
-        run("Explore [t2] done", subagent_stop_payload("Explore"), "allow")
-        run("Explore [t3] done", subagent_stop_payload("Explore"), "allow")
+        run("Explore [t1] done", subagent_stop_payload("Explore", "Found src/ with main modules and utils/"), "allow")
+        run("Explore [t2] done", subagent_stop_payload("Explore", "Config lives in config.yaml, tests in tests/"), "allow")
+        run("Explore [t3] done", subagent_stop_payload("Explore", "Auth module at src/auth.py uses JWT tokens"), "allow")
 
     if not skip_research:
-        run("Research [t5] done", subagent_stop_payload("Research"), "allow")
-        run("Research [t6] done → phase=plan", subagent_stop_payload("Research"), "allow", "Phase → plan")
+        run("Research [t5] done", subagent_stop_payload("Research", "Best practice: use dependency injection for services"), "allow")
+        run(
+            "Research [t6] done → phase=write-codebase",
+            subagent_stop_payload("Research", "Latest docs recommend pydantic v2 for validation"),
+            "allow",
+            "Phase → write-codebase",
+        )
+
+    # Write-codebase phase
+    print("\n--- Write-codebase phase ---")
+    run("Write code in write-codebase → block", write_payload("src/app.py"), "block")
+    run("Write CODEBASE.md (pre) → allow", write_payload("CODEBASE.md", "# Codebase overview"), "allow")
+    run(
+        "Write CODEBASE.md (post) → phase=plan",
+        post_write_payload("CODEBASE.md", "# Codebase overview"),
+        "allow",
+        "Phase → plan",
+    )
 
     # Plan phase
     print("\n--- Plan phase ---")
+    run("Main agent Write → block (phase gate)", write_payload("notes.md"), "block", "Only Agent tool allowed")
     run("Plan agent → allow", agent_payload("Plan", "tp1"), "allow")
     run("Plan agent [tp2] over max → block", agent_payload("Plan", "tp2"), "block", "Max 1")
     run("PlanReview before plan done → block", agent_payload("PlanReview", "tr1"), "block")
@@ -247,13 +283,13 @@ def simulate(skip_args: str, plan_dir: Path) -> None:
     run("Write code → block", write_payload("src/app.py"), "block")
     run("PlanReview before write → block", agent_payload("PlanReview", "tr1"), "block")
 
-    plan_path = str(plan_dir / "dry-run-plan.md")
-    run("Write to .claude/plans/ (pre) → allow", write_payload(plan_path), "allow")
-
+    plan_path = str(plan_dir / ".claude/plans/dry-run-plan.md")
     Path(plan_path).parent.mkdir(parents=True, exist_ok=True)
+    run("Write to .claude/plans/ (pre) → allow", write_payload(plan_path, VALID_PLAN), "allow")
+
     Path(plan_path).write_text(VALID_PLAN)
 
-    run("Write to .claude/plans/ (post) → allow", post_write_payload(plan_path), "allow", "Phase → review, plan_written=True")
+    run("Write to .claude/plans/ (post) → allow", post_write_payload(plan_path, VALID_PLAN), "allow", "Phase → review, plan_written=True")
 
     # Review phase
     print("\n--- Review phase ---")

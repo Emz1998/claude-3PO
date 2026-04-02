@@ -9,6 +9,7 @@ import pytest
 WORKFLOW_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(WORKFLOW_DIR.parent))
 
+from workflow import recorder
 from workflow.guards import bash_guard
 from workflow.state_store import StateStore
 
@@ -118,14 +119,14 @@ class TestTestRunTracking:
     def test_test_run_commands_tracked(self, command, tmp_state_file):
         write_state(tmp_state_file, make_state("write-tests"))
         store = StateStore(tmp_state_file)
-        bash_guard.handle_post(post_bash_hook(command), store)
+        recorder.record_bash(post_bash_hook(command), store)
         state = store.load()
         assert state["test_run_executed"] is True
 
     def test_non_test_command_not_tracked(self, tmp_state_file):
         write_state(tmp_state_file, make_state("write-code"))
         store = StateStore(tmp_state_file)
-        bash_guard.handle_post(post_bash_hook("ls -la"), store)
+        recorder.record_bash(post_bash_hook("ls -la"), store)
         state = store.load()
         assert state.get("test_run_executed") is False
 
@@ -138,7 +139,7 @@ class TestPRTracking:
     def test_pr_creation_advances_to_ci_check(self, tmp_state_file):
         write_state(tmp_state_file, make_state("pr-create", validation_result="Pass"))
         store = StateStore(tmp_state_file)
-        bash_guard.handle_post(post_bash_hook("gh pr create --title 'x'", output="https://github.com/..."), store)
+        recorder.record_bash(post_bash_hook("gh pr create --title 'x'", output="https://github.com/..."), store)
         state = store.load()
         assert state["phase"] == "ci-check"
         assert state["pr_status"] == "created"
@@ -146,7 +147,7 @@ class TestPRTracking:
     def test_git_push_advances_to_ci_check(self, tmp_state_file):
         write_state(tmp_state_file, make_state("pr-create", validation_result="Pass"))
         store = StateStore(tmp_state_file)
-        bash_guard.handle_post(post_bash_hook("git push -u origin feature"), store)
+        recorder.record_bash(post_bash_hook("git push -u origin feature"), store)
         state = store.load()
         assert state["phase"] == "ci-check"
 
@@ -160,7 +161,7 @@ class TestCICheckTracking:
         write_state(tmp_state_file, make_state("ci-check"))
         store = StateStore(tmp_state_file)
         output = "All checks were successful"
-        bash_guard.handle_post(post_bash_hook("gh pr checks 123", output=output), store)
+        recorder.record_bash(post_bash_hook("gh pr checks 123", output=output), store)
         state = store.load()
         assert state["ci_status"] == "passed"
         assert state["ci_check_executed"] is True
@@ -170,7 +171,7 @@ class TestCICheckTracking:
         write_state(tmp_state_file, make_state("ci-check"))
         store = StateStore(tmp_state_file)
         output = "Some checks were not successful"
-        bash_guard.handle_post(post_bash_hook("gh pr checks 123", output=output), store)
+        recorder.record_bash(post_bash_hook("gh pr checks 123", output=output), store)
         state = store.load()
         assert state["ci_status"] == "failed"
         assert state["phase"] == "ci-check"
@@ -178,6 +179,6 @@ class TestCICheckTracking:
     def test_gh_run_view_tracked_as_ci(self, tmp_state_file):
         write_state(tmp_state_file, make_state("ci-check"))
         store = StateStore(tmp_state_file)
-        bash_guard.handle_post(post_bash_hook("gh run view 12345"), store)
+        recorder.record_bash(post_bash_hook("gh run view 12345"), store)
         state = store.load()
         assert state["ci_check_executed"] is True

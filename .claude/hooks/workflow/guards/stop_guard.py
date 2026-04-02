@@ -59,7 +59,7 @@ def validate(hook_input: dict, store: StateStore) -> tuple[str, str]:
     if workflow_type == "plan":
         if phase in PLAN_ALLOWED_STOP_PHASES:
             return "allow", ""
-        return "block", f"Plan workflow not complete. Current phase: '{phase}'. Must reach 'approved' first."
+        return "block", f"Blocked: plan workflow not complete (current phase: '{phase}'). Must reach 'approved' before stopping."
 
     # /implement workflow: only allow when completed
     if phase == "completed":
@@ -67,6 +67,6 @@ def validate(hook_input: dict, store: StateStore) -> tuple[str, str]:
 
     reasons = _collect_reasons(state)
     if reasons:
-        return "block", "Cannot stop: " + ", ".join(reasons)
+        return "block", "Blocked: cannot stop -- " + ", ".join(reasons) + ". Complete these steps before stopping."
 
-    return "block", f"Workflow not complete. Current phase: '{phase}'"
+    return "block", f"Blocked: workflow not complete (current phase: '{phase}'). Continue working through remaining phases."

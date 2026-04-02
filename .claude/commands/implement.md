@@ -6,8 +6,6 @@ argument-hint: <task-to-implement>
 model: opus
 ---
 
-!`python3 .claude/hooks/workflow/utils/workflow_initializer.py --session-id ${CLAUDE_SESSION_ID} --story-id $0`
-
 Analyze the coding task "$1" and deploy the appropriate engineer agents in parallel for maximum efficiency. Determine which engineers are needed, distribute work intelligently, and aggregate results.
 
 ## Story Context
@@ -23,11 +21,6 @@ Analyze the coding task "$1" and deploy the appropriate engineer agents in paral
 - Must follow the plan template structure strictly
 
 ## Workflow
-
-### Task Creation Phase
-
-- Invoke the `Task-Creator` agent to create the task.
-- The task creator must ensure that the tasks are identical to the tasks specified in the `Story Context` section.
 
 ### Plan Phase
 
@@ -46,6 +39,8 @@ Analyze the coding task "$1" and deploy the appropriate engineer agents in paral
 | `Research` agent 1 | Must research the web for solutions to the task                                                            |
 | `Research` agent 2 | Must retrieve latest documentation and best practices                                                      |
 
+> **IMPORTANT**: Explore agents must run in the background (`run_in_background: true`). Research agents must run in the foreground.
+
 2. Once the exploration and research are complete, invoke the `Plan` agent to formulate the implementation plan.
 
 3. Once the `Plan` task is complete, write the plan to the `.claude/plans/<plan-name>.md` file from current directory.
@@ -57,6 +52,8 @@ Analyze the coding task "$1" and deploy the appropriate engineer agents in paral
 6. Then present the plan to the user using `ExitPlanMode` tool.
 
 ### Code Phase
+
+> Phase 0: Create tasks first. Tasks must be identical to the tasks specified in the `Story Context` section. Make sure it's a 1 to 1 mapping or else the hook guardrail will block you.
 
 1. Once the user approves the plan, validate if TDD is specified, if yes, you have to write failing tests first.
 2. Once the failing tests are written, invoke the `Test-Review` agent to review the tests quality.

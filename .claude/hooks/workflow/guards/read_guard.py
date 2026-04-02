@@ -174,5 +174,5 @@ def validate(hook_input: dict, store: StateStore) -> tuple[str, str]:
 
     return (
         "block",
-        f"File '{file_path}' is not in CODEBASE.md, plan, or previously written files. Only these sources may be read during coding phases.",
+        f"Blocked: file '{file_path}' is not in CODEBASE.md, plan, or previously written files during '{phase}' phase. Add it to the plan or read an allowed file.",
     )

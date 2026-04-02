@@ -453,7 +453,7 @@ def cmd_view(tasks: list[dict[str, Any]], args: argparse.Namespace) -> int:
                 print(f"Ready tasks ({key}) — {len(children)}:")
                 for c in children:
                     print(
-                        f"  {c.get('key', ''):<8} {c.get('status', ''):<14} {c.get('title', '')}"
+                        f"  {c.get('id', ''):<8} {c.get('status', ''):<14} {c.get('title', '')}"
                     )
             else:
                 print("No ready tasks found.")
@@ -489,7 +489,7 @@ def cmd_view(tasks: list[dict[str, Any]], args: argparse.Namespace) -> int:
                 print(f"Child tasks ({len(children)}):")
                 for c in children:
                     print(
-                        f"  {c.get('key', ''):<8} {c.get('status', ''):<14} {c.get('title', '')}"
+                        f"  {c.get('id', ''):<8} {c.get('status', ''):<14} {c.get('title', '')}"
                     )
             else:
                 print("No child tasks found.")
@@ -515,7 +515,7 @@ def cmd_view(tasks: list[dict[str, Any]], args: argparse.Namespace) -> int:
             print(f"\nChild tasks ({len(children)}):")
             for c in children:
                 print(
-                    f"  {c.get('key', ''):<8} {c.get('status', ''):<14} {c.get('title', '')}"
+                    f"  {c.get('id', ''):<8} {c.get('status', ''):<14} {c.get('title', '')}"
                 )
 
     return 0

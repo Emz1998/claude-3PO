@@ -9,6 +9,7 @@ import pytest
 WORKFLOW_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(WORKFLOW_DIR.parent))
 
+from workflow import recorder
 from workflow.guards import write_guard
 from workflow.state_store import StateStore
 
@@ -31,21 +32,30 @@ def write_state(tmp_state_file, state: dict) -> None:
     tmp_state_file.write_text(json.dumps(state))
 
 
-def write_hook(file_path: str) -> dict:
+VALID_PLAN = (
+    "# Plan\n\n"
+    "## Context\nSome context\n\n"
+    "## Approach\nSome approach\n\n"
+    "## Files to Modify\n| File | Change |\n\n"
+    "## Verification\nRun tests\n"
+)
+
+
+def write_hook(file_path: str, content: str = "x") -> dict:
     return {
         "hook_event_name": "PreToolUse",
         "tool_name": "Write",
-        "tool_input": {"file_path": file_path, "content": "x"},
+        "tool_input": {"file_path": file_path, "content": content},
         "tool_use_id": "t1",
         "session_id": "s", "transcript_path": "t", "cwd": ".", "permission_mode": "default",
     }
 
 
-def edit_hook(file_path: str) -> dict:
+def edit_hook(file_path: str, old_string: str = "a", new_string: str = "b") -> dict:
     return {
         "hook_event_name": "PreToolUse",
         "tool_name": "Edit",
-        "tool_input": {"file_path": file_path, "old_string": "a", "new_string": "b"},
+        "tool_input": {"file_path": file_path, "old_string": old_string, "new_string": new_string},
         "tool_use_id": "t1",
         "session_id": "s", "transcript_path": "t", "cwd": ".", "permission_mode": "default",
     }
@@ -79,11 +89,53 @@ class TestInactiveWorkflow:
 # ---------------------------------------------------------------------------
 
 class TestWritePlanPhase:
-    def test_plan_write_allowed_to_plans_dir(self, tmp_state_file):
+    def test_plan_write_allowed_with_valid_template(self, tmp_state_file):
         write_state(tmp_state_file, make_state("write-plan"))
         store = StateStore(tmp_state_file)
-        decision, _ = write_guard.validate_pre(write_hook(".claude/plans/my-plan.md"), store)
+        decision, _ = write_guard.validate_pre(write_hook(".claude/plans/my-plan.md", VALID_PLAN), store)
         assert decision == "allow"
+
+    def test_plan_write_blocked_missing_sections(self, tmp_state_file):
+        write_state(tmp_state_file, make_state("write-plan"))
+        store = StateStore(tmp_state_file)
+        decision, reason = write_guard.validate_pre(write_hook(".claude/plans/my-plan.md", "# Just a title"), store)
+        assert decision == "block"
+        assert "Context" in reason
+        assert "Verification" in reason
+
+    def test_plan_write_blocked_partial_sections(self, tmp_state_file):
+        write_state(tmp_state_file, make_state("write-plan"))
+        store = StateStore(tmp_state_file)
+        partial = "## Context\nSome context\n## Approach\nSome approach\n"
+        decision, reason = write_guard.validate_pre(write_hook(".claude/plans/my-plan.md", partial), store)
+        assert decision == "block"
+        assert "Files to Modify" in reason
+        assert "Verification" in reason
+
+    def test_plan_edit_allowed_with_valid_result(self, tmp_state_file, tmp_path):
+        write_state(tmp_state_file, make_state("write-plan"))
+        store = StateStore(tmp_state_file)
+        plan_dir = tmp_path / ".claude" / "plans"
+        plan_dir.mkdir(parents=True)
+        plan_file = plan_dir / "plan.md"
+        plan_file.write_text(VALID_PLAN)
+        decision, _ = write_guard.validate_pre(
+            edit_hook(str(plan_file), "Some context", "Updated context"), store
+        )
+        assert decision == "allow"
+
+    def test_plan_edit_blocked_if_removes_section(self, tmp_state_file, tmp_path):
+        write_state(tmp_state_file, make_state("write-plan"))
+        store = StateStore(tmp_state_file)
+        plan_dir = tmp_path / ".claude" / "plans"
+        plan_dir.mkdir(parents=True)
+        plan_file = plan_dir / "plan.md"
+        plan_file.write_text(VALID_PLAN)
+        decision, reason = write_guard.validate_pre(
+            edit_hook(str(plan_file), "## Verification\nRun tests\n", ""), store
+        )
+        assert decision == "block"
+        assert "Verification" in reason
 
     def test_code_write_blocked_in_write_plan(self, tmp_state_file):
         write_state(tmp_state_file, make_state("write-plan"))
@@ -92,25 +144,32 @@ class TestWritePlanPhase:
         assert decision == "block"
         assert "plan" in reason.lower()
 
-    def test_claude_config_write_always_allowed(self, tmp_state_file):
+    def test_claude_config_write_blocked_in_write_plan(self, tmp_state_file):
         write_state(tmp_state_file, make_state("write-plan"))
         store = StateStore(tmp_state_file)
         decision, _ = write_guard.validate_pre(write_hook(".claude/settings.json"), store)
-        assert decision == "allow"
+        assert decision == "block"
 
-    def test_non_code_file_always_allowed(self, tmp_state_file):
+    def test_non_plan_file_blocked_in_write_plan(self, tmp_state_file):
         write_state(tmp_state_file, make_state("write-plan"))
         store = StateStore(tmp_state_file)
         decision, _ = write_guard.validate_pre(write_hook("README.md"), store)
-        assert decision == "allow"
+        assert decision == "block"
 
 
 class TestReviewPhase:
     def test_plan_write_allowed_in_review(self, tmp_state_file):
         write_state(tmp_state_file, make_state("review", plan_written=True))
         store = StateStore(tmp_state_file)
-        decision, _ = write_guard.validate_pre(write_hook(".claude/plans/my-plan.md"), store)
+        decision, _ = write_guard.validate_pre(write_hook(".claude/plans/my-plan.md", VALID_PLAN), store)
         assert decision == "allow"
+
+    def test_plan_write_blocked_in_review_missing_sections(self, tmp_state_file):
+        write_state(tmp_state_file, make_state("review"))
+        store = StateStore(tmp_state_file)
+        decision, reason = write_guard.validate_pre(write_hook(".claude/plans/my-plan.md", "# Bad plan"), store)
+        assert decision == "block"
+        assert "missing" in reason.lower()
 
     def test_code_write_blocked_in_review(self, tmp_state_file):
         write_state(tmp_state_file, make_state("review"))
@@ -140,7 +199,7 @@ class TestWriteTestsPhase:
     def test_test_file_tracked_in_post(self, tmp_state_file):
         write_state(tmp_state_file, make_state("write-tests"))
         store = StateStore(tmp_state_file)
-        write_guard.handle_post(post_write_hook("tests/test_foo.py"), store)
+        recorder.record_write(post_write_hook("tests/test_foo.py"), store)
         state = store.load()
         assert "tests/test_foo.py" in state["test_files_created"]
 
@@ -202,7 +261,7 @@ class TestCICheckPhase:
     def test_code_write_in_ci_check_triggers_regression(self, tmp_state_file):
         write_state(tmp_state_file, make_state("ci-check"))
         store = StateStore(tmp_state_file)
-        write_guard.handle_post(post_write_hook("src/app.py"), store)
+        recorder.record_write(post_write_hook("src/app.py"), store)
         state = store.load()
         assert state["phase"] == "write-code"
         assert state["ci_status"] == "pending"
@@ -236,7 +295,7 @@ class TestPlanWritePost:
     def test_plan_write_to_plans_dir_sets_plan_written(self, tmp_state_file):
         write_state(tmp_state_file, make_state("write-plan"))
         store = StateStore(tmp_state_file)
-        write_guard.handle_post(post_write_hook(".claude/plans/my-plan.md"), store)
+        recorder.record_write(post_write_hook(".claude/plans/my-plan.md"), store)
         state = store.load()
         assert state["plan_written"] is True
         assert state["plan_file"] == ".claude/plans/my-plan.md"
@@ -245,7 +304,7 @@ class TestPlanWritePost:
     def test_non_plan_write_does_not_set_plan_written(self, tmp_state_file):
         write_state(tmp_state_file, make_state("write-code"))
         store = StateStore(tmp_state_file)
-        write_guard.handle_post(post_write_hook("src/app.py"), store)
+        recorder.record_write(post_write_hook("src/app.py"), store)
         state = store.load()
         assert state["plan_written"] is False
 
@@ -258,7 +317,7 @@ class TestReportPost:
     def test_report_write_sets_report_written_and_completes(self, tmp_state_file):
         write_state(tmp_state_file, make_state("report"))
         store = StateStore(tmp_state_file)
-        write_guard.handle_post(post_write_hook(".claude/reports/latest-report.md"), store)
+        recorder.record_write(post_write_hook(".claude/reports/latest-report.md"), store)
         state = store.load()
         assert state["report_written"] is True
         assert state["phase"] == "completed"

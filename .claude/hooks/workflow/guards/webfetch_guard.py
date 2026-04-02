@@ -62,6 +62,6 @@ def validate(hook_input: dict, store: StateStore) -> tuple[str, str]:
     if not _is_safe_domain(url):
         return (
             "block",
-            f"Domain not allowed. URL must be from approved domains: {', '.join(SAFE_DOMAINS[:5])}...",
+            f"Blocked: domain not in whitelist. URL must be from approved domains ({', '.join(SAFE_DOMAINS[:5])}...). Use an allowed domain or add this one to SAFE_DOMAINS.",
         )
     return "allow", ""

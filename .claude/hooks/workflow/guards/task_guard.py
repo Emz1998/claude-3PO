@@ -38,12 +38,7 @@ def validate(hook_input: dict, store: StateStore) -> tuple[str, str]:
         if not subject.startswith(expected_prefix):
             return (
                 "block",
-                f"Task subject must start with '{expected_prefix}' to match story ID. Got: '{subject}'",
+                f"Blocked: task subject must start with '{expected_prefix}' to match story ID. Got: '{subject}'. Prefix the subject with '{expected_prefix}'.",
             )
-
-    # Track task count
-    def _increment(s: dict) -> None:
-        s["tasks_created"] = s.get("tasks_created", 0) + 1
-    store.update(_increment)
 
     return "allow", ""

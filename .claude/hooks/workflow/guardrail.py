@@ -30,7 +30,6 @@ from workflow.guards import (
     agent_guard,
     bash_guard,
     read_guard,
-    review_guard,
     skill_guard,
     stop_guard,
     task_guard,
@@ -79,53 +78,63 @@ def _handle_exit_plan_mode_pre(hook_input: dict, store: StateStore) -> tuple[str
     if not state.get("plan_written"):
         return (
             "block",
-            "No written plan recorded. Write the plan to .claude/plans/ first.",
+            "Blocked: ExitPlanMode requires a written plan. Write your plan to .claude/plans/ before exiting plan mode.",
         )
 
     if state.get("plan_review_status") != "approved":
         return (
             "block",
-            "Plan review is not approved yet. Run PlanReview after writing the plan.",
+            "Blocked: plan review is not approved yet. Run the PlanReview agent after writing the plan.",
         )
 
     plan_file = state.get("plan_file")
     if not plan_file:
-        return "block", "No plan file recorded. Write the plan to .claude/plans/ first."
+        return "block", "Blocked: no plan file recorded. Write the plan to .claude/plans/ before exiting plan mode."
 
     try:
         content = Path(plan_file).read_text()
     except (FileNotFoundError, OSError) as e:
-        return "block", f"Cannot read plan file '{plan_file}': {e}"
+        return "block", f"Blocked: cannot read plan file '{plan_file}': {e}. Verify the file exists and is readable."
 
     passed, missing = _validate_plan_template(content)
     if not passed:
-        return "block", f"Plan missing required sections: {', '.join(missing)}"
+        return "block", f"Blocked: plan missing required sections: {', '.join(missing)}. Add them before exiting plan mode."
 
     return json.dumps({"additionalContext": f"Plan content:\n\n{content}"}), ""
 
 
-def _handle_exit_plan_mode_post(hook_input: dict, store: StateStore) -> tuple[str, str]:
-    """PostToolUse ExitPlanMode: advance phase based on workflow type."""
+AGENT_ONLY_PHASES = {"explore", "plan", "task-create"}
+AGENT_PLUS_WRITE_PHASES = {"review"}
+
+
+def _phase_gate(hook_input: dict, store: StateStore) -> tuple[str, str] | None:
+    """Block non-Agent tools from the main agent during agent-only phases.
+
+    Returns a (decision, reason) tuple to block, or None to pass through.
+    Subagent calls (agent_id present) always pass through.
+    """
     state = store.load()
     if not state.get("workflow_active"):
-        return "allow", ""
+        return None
 
-    workflow_type = state.get("workflow_type", "implement")
-    story_id = state.get("story_id")
-    tdd = state.get("tdd", False)
+    # Subagent calls bypass the gate
+    if hook_input.get("agent_id"):
+        return None
 
-    if workflow_type == "plan":
-        return "allow", ""
+    phase = state.get("phase", "")
+    tool = hook_input.get("tool_name", "")
 
-    if story_id:
-        next_phase = "task-create"
-    elif tdd:
-        next_phase = "write-tests"
-    else:
-        next_phase = "write-code"
+    if phase in AGENT_ONLY_PHASES:
+        if tool != "Agent":
+            return "block", f"Blocked: only the Agent tool is allowed during '{phase}' phase. Launch the required agent to proceed."
+        return None
 
-    store.set("phase", next_phase)
-    return "allow", ""
+    if phase in AGENT_PLUS_WRITE_PHASES:
+        if tool not in ("Agent", "Write", "Edit"):
+            return "block", f"Blocked: only Agent and Write/Edit tools are allowed during '{phase}' phase."
+        return None
+
+    return None
 
 
 def _dispatch(hook_input: dict, state_path: Path) -> tuple[str, str]:
@@ -134,6 +143,11 @@ def _dispatch(hook_input: dict, state_path: Path) -> tuple[str, str]:
     tool = hook_input.get("tool_name", "")
 
     if event == "PreToolUse":
+        # Phase gate: block main agent from using non-Agent tools in agent-only phases
+        gate_result = _phase_gate(hook_input, store)
+        if gate_result is not None:
+            return gate_result
+
         if tool == "Agent":
             return agent_guard.validate(hook_input, store)
         if tool == "Read":
@@ -150,18 +164,9 @@ def _dispatch(hook_input: dict, state_path: Path) -> tuple[str, str]:
     if event == "PostToolUse":
         if tool == "Skill":
             return skill_guard.handle(hook_input, store)
-        if tool in ("Write", "Edit"):
-            return write_guard.handle_post(hook_input, store)
-        if tool == "Bash":
-            return bash_guard.handle_post(hook_input, store)
-        if tool == "ExitPlanMode":
-            return _handle_exit_plan_mode_post(hook_input, store)
 
     if event == "TaskCreated":
         return task_guard.validate(hook_input, store)
-
-    if event == "SubagentStop":
-        return review_guard.handle(hook_input, store)
 
     if event == "Stop":
         return stop_guard.validate(hook_input, store)
@@ -206,3 +211,11 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+if __name__ == "__main__":
+    content: str = """
+## Summary
+Some text here
+"""
+    passed, missing = _validate_plan_template(content)
+    print(f"passed: {passed}, missing: {missing}")

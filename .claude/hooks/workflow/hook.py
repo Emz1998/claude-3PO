@@ -52,3 +52,29 @@ class Hook:
     def system_message(message: str) -> None:
         print(json.dumps({"systemMessage": message}))
         sys.exit(0)
+
+    @staticmethod
+    def send_context(hook_event_name: str, context: str) -> None:
+        match hook_event_name:
+            case "PreToolUse":
+                output: dict[str, Any] = {
+                    "systemMessage": context,
+                    "hookSpecificOutput": {
+                        "hookEventName": hook_event_name,
+                        "permissionDecision": "allow",
+                        "permissionDecisionReason": "",
+                        "additionalContext": context,
+                    },
+                }
+            case "PostToolUse" | "UserPromptSubmit" | "SubagentStart":
+                output = {
+                    "systemMessage": context,
+                    "hookSpecificOutput": {
+                        "hookEventName": hook_event_name,
+                        "additionalContext": context,
+                    },
+                }
+            case _:
+                raise ValueError(f"Invalid hook event name: {hook_event_name}")
+        Hook.advanced_output(output)
+        sys.exit(0)

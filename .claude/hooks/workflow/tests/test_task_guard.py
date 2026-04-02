@@ -51,12 +51,13 @@ class TestTaskGuard:
         assert decision == "block"
         assert "SK-123" in reason or "prefix" in reason.lower() or "format" in reason.lower()
 
-    def test_task_count_incremented_on_allow(self, tmp_state_file):
+    def test_task_count_not_incremented_by_guard(self, tmp_state_file):
+        """Guard is pure validation — recording is done by recorder.py."""
         write_state(tmp_state_file, make_state(story_id="SK-123", tasks_created=0))
         store = StateStore(tmp_state_file)
         task_guard.validate(task_created_hook("SK-123: Implement feature"), store)
         state = store.load()
-        assert state["tasks_created"] == 1
+        assert state["tasks_created"] == 0
 
     def test_no_story_id_allows_any_subject(self, tmp_state_file):
         write_state(tmp_state_file, make_state(story_id=None))

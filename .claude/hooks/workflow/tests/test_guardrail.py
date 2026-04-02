@@ -79,7 +79,7 @@ class TestDispatchRouting:
         hook_input = {
             "hook_event_name": "PreToolUse",
             "tool_name": "Agent",
-            "tool_input": {"subagent_type": "Explore", "description": "x", "prompt": "x"},
+            "tool_input": {"subagent_type": "Explore", "description": "x", "prompt": "x", "run_in_background": False},
             "tool_use_id": "t1",
             "session_id": "s", "transcript_path": "t", "cwd": ".", "permission_mode": "default",
         }
@@ -112,7 +112,8 @@ class TestDispatchRouting:
         decision, reason = gm._dispatch(hook_input, tmp_state_file)
         assert decision == "block"
 
-    def test_subagent_stop_validator_advances_phase(self, tmp_state_file):
+    def test_subagent_stop_returns_allow_without_recording(self, tmp_state_file):
+        """SubagentStop recording is now handled by recorder.py, not guardrail."""
         gm = _load_guardrail()
         write_state(tmp_state_file, make_state("validate", agents=[
             {"agent_type": "Validator", "status": "running", "tool_use_id": "t1"}
@@ -127,7 +128,8 @@ class TestDispatchRouting:
         decision, _ = gm._dispatch(hook_input, tmp_state_file)
         assert decision == "allow"
         state = json.loads(tmp_state_file.read_text())
-        assert state["phase"] == "pr-create"
+        # Phase should NOT change — recording is done by recorder.py
+        assert state["phase"] == "validate"
 
     def test_stop_event_blocked_in_write_code(self, tmp_state_file):
         gm = _load_guardrail()
@@ -178,7 +180,8 @@ class TestDispatchRouting:
 
     def test_webfetch_blocked_for_unsafe_domain(self, tmp_state_file):
         gm = _load_guardrail()
-        write_state(tmp_state_file, make_state("explore"))
+        # Use a non-agent-gated phase so the phase gate doesn't intercept
+        write_state(tmp_state_file, make_state("write-code"))
         hook_input = {
             "hook_event_name": "PreToolUse",
             "tool_name": "WebFetch",
@@ -188,6 +191,185 @@ class TestDispatchRouting:
         }
         decision, _ = gm._dispatch(hook_input, tmp_state_file)
         assert decision == "block"
+
+
+# ---------------------------------------------------------------------------
+# Phase gate tests — main agent vs subagent
+# ---------------------------------------------------------------------------
+
+class TestPhaseGate:
+    """Verify that agent-only phases block non-Agent tools from main agent,
+    but allow subagent tool calls through."""
+
+    @pytest.mark.parametrize("phase", ["explore", "plan", "task-create"])
+    def test_main_agent_write_blocked_in_agent_only_phase(self, tmp_state_file, phase):
+        gm = _load_guardrail()
+        write_state(tmp_state_file, make_state(phase))
+        hook_input = {
+            "hook_event_name": "PreToolUse",
+            "tool_name": "Write",
+            "tool_input": {"file_path": "src/app.py", "content": "x"},
+            "tool_use_id": "t1",
+            "session_id": "s", "transcript_path": "t", "cwd": ".", "permission_mode": "default",
+        }
+        decision, reason = gm._dispatch(hook_input, tmp_state_file)
+        assert decision == "block"
+        assert "Agent tool" in reason
+
+    @pytest.mark.parametrize("phase", ["explore", "plan", "task-create"])
+    def test_main_agent_read_blocked_in_agent_only_phase(self, tmp_state_file, phase):
+        gm = _load_guardrail()
+        write_state(tmp_state_file, make_state(phase))
+        hook_input = {
+            "hook_event_name": "PreToolUse",
+            "tool_name": "Read",
+            "tool_input": {"file_path": "src/app.py"},
+            "tool_use_id": "t1",
+            "session_id": "s", "transcript_path": "t", "cwd": ".", "permission_mode": "default",
+        }
+        decision, _ = gm._dispatch(hook_input, tmp_state_file)
+        assert decision == "block"
+
+    @pytest.mark.parametrize("phase", ["explore", "plan", "task-create"])
+    def test_main_agent_bash_blocked_in_agent_only_phase(self, tmp_state_file, phase):
+        gm = _load_guardrail()
+        write_state(tmp_state_file, make_state(phase))
+        hook_input = {
+            "hook_event_name": "PreToolUse",
+            "tool_name": "Bash",
+            "tool_input": {"command": "ls"},
+            "tool_use_id": "t1",
+            "session_id": "s", "transcript_path": "t", "cwd": ".", "permission_mode": "default",
+        }
+        decision, _ = gm._dispatch(hook_input, tmp_state_file)
+        assert decision == "block"
+
+    @pytest.mark.parametrize("phase", ["explore", "plan", "task-create"])
+    def test_main_agent_agent_tool_allowed_in_agent_only_phase(self, tmp_state_file, phase):
+        """Agent tool passes phase gate (agent_guard handles type validation)."""
+        gm = _load_guardrail()
+        agents_for_phase = {"explore": "Explore", "plan": "Plan", "task-create": "TaskManager"}
+        write_state(tmp_state_file, make_state(phase))
+        hook_input = {
+            "hook_event_name": "PreToolUse",
+            "tool_name": "Agent",
+            "tool_input": {"subagent_type": agents_for_phase[phase], "description": "x", "prompt": "x", "run_in_background": False},
+            "tool_use_id": "t1",
+            "session_id": "s", "transcript_path": "t", "cwd": ".", "permission_mode": "default",
+        }
+        decision, _ = gm._dispatch(hook_input, tmp_state_file)
+        assert decision == "allow"
+
+    @pytest.mark.parametrize("phase", ["explore", "plan", "task-create"])
+    def test_subagent_write_allowed_in_agent_only_phase(self, tmp_state_file, phase):
+        """Subagent calls (with agent_id) bypass the phase gate."""
+        gm = _load_guardrail()
+        write_state(tmp_state_file, make_state(phase))
+        hook_input = {
+            "hook_event_name": "PreToolUse",
+            "tool_name": "Write",
+            "tool_input": {"file_path": "notes.md", "content": "x"},
+            "tool_use_id": "t1",
+            "agent_id": "sub123",
+            "agent_type": "Explore",
+            "session_id": "s", "transcript_path": "t", "cwd": ".", "permission_mode": "default",
+        }
+        decision, _ = gm._dispatch(hook_input, tmp_state_file)
+        assert decision == "allow"
+
+    @pytest.mark.parametrize("phase", ["explore", "plan", "task-create"])
+    def test_subagent_read_allowed_in_agent_only_phase(self, tmp_state_file, phase):
+        gm = _load_guardrail()
+        write_state(tmp_state_file, make_state(phase))
+        hook_input = {
+            "hook_event_name": "PreToolUse",
+            "tool_name": "Read",
+            "tool_input": {"file_path": "src/app.py"},
+            "tool_use_id": "t1",
+            "agent_id": "sub123",
+            "agent_type": "Plan",
+            "session_id": "s", "transcript_path": "t", "cwd": ".", "permission_mode": "default",
+        }
+        decision, _ = gm._dispatch(hook_input, tmp_state_file)
+        assert decision == "allow"
+
+    def test_review_phase_blocks_bash_from_main_agent(self, tmp_state_file):
+        gm = _load_guardrail()
+        write_state(tmp_state_file, make_state("review"))
+        hook_input = {
+            "hook_event_name": "PreToolUse",
+            "tool_name": "Bash",
+            "tool_input": {"command": "ls"},
+            "tool_use_id": "t1",
+            "session_id": "s", "transcript_path": "t", "cwd": ".", "permission_mode": "default",
+        }
+        decision, _ = gm._dispatch(hook_input, tmp_state_file)
+        assert decision == "block"
+
+    def test_review_phase_allows_write_from_main_agent(self, tmp_state_file):
+        """Write passes phase gate in review — write_guard handles plan-file enforcement."""
+        gm = _load_guardrail()
+        VALID_PLAN = (
+            "# Plan\n\n"
+            "## Context\nSome context\n\n"
+            "## Approach\nSome approach\n\n"
+            "## Files to Modify\n| File | Change |\n\n"
+            "## Verification\nRun tests\n"
+        )
+        write_state(tmp_state_file, make_state("review", plan_written=True))
+        hook_input = {
+            "hook_event_name": "PreToolUse",
+            "tool_name": "Write",
+            "tool_input": {"file_path": ".claude/plans/plan.md", "content": VALID_PLAN},
+            "tool_use_id": "t1",
+            "session_id": "s", "transcript_path": "t", "cwd": ".", "permission_mode": "default",
+        }
+        decision, _ = gm._dispatch(hook_input, tmp_state_file)
+        assert decision == "allow"
+
+    def test_review_phase_blocks_non_plan_write_from_main_agent(self, tmp_state_file):
+        gm = _load_guardrail()
+        write_state(tmp_state_file, make_state("review"))
+        hook_input = {
+            "hook_event_name": "PreToolUse",
+            "tool_name": "Write",
+            "tool_input": {"file_path": "README.md", "content": "x"},
+            "tool_use_id": "t1",
+            "session_id": "s", "transcript_path": "t", "cwd": ".", "permission_mode": "default",
+        }
+        decision, _ = gm._dispatch(hook_input, tmp_state_file)
+        assert decision == "block"
+
+    def test_phase_gate_inactive_workflow_allows_everything(self, tmp_state_file):
+        gm = _load_guardrail()
+        tmp_state_file.write_text("{}")
+        hook_input = {
+            "hook_event_name": "PreToolUse",
+            "tool_name": "Write",
+            "tool_input": {"file_path": "src/app.py", "content": "x"},
+            "tool_use_id": "t1",
+            "session_id": "s", "transcript_path": "t", "cwd": ".", "permission_mode": "default",
+        }
+        decision, _ = gm._dispatch(hook_input, tmp_state_file)
+        assert decision == "allow"
+
+    @pytest.mark.parametrize("phase", ["write-code", "write-tests", "write-plan", "ci-check"])
+    def test_non_gated_phases_allow_tools_from_main_agent(self, tmp_state_file, phase):
+        """Phases that are not agent-gated should let tools through to per-guard logic."""
+        gm = _load_guardrail()
+        write_state(tmp_state_file, make_state(phase))
+        hook_input = {
+            "hook_event_name": "PreToolUse",
+            "tool_name": "Read",
+            "tool_input": {"file_path": "src/app.py"},
+            "tool_use_id": "t1",
+            "session_id": "s", "transcript_path": "t", "cwd": ".", "permission_mode": "default",
+        }
+        decision, _ = gm._dispatch(hook_input, tmp_state_file)
+        # These may be allowed or blocked by per-guard logic, but NOT by the phase gate
+        # Just verify it didn't get the phase gate message
+        if decision == "block":
+            assert "only the Agent tool" not in _
 
 
 # ---------------------------------------------------------------------------
@@ -208,21 +390,8 @@ class TestExitPlanMode:
         decision, reason = gm._dispatch(hook_input, tmp_state_file)
         assert decision == "block"
 
-    def test_exit_plan_mode_post_advances_plan_workflow_to_approved(self, tmp_state_file):
-        gm = _load_guardrail()
-        write_state(tmp_state_file, make_state("approved", workflow_type="plan"))
-        hook_input = {
-            "hook_event_name": "PostToolUse",
-            "tool_name": "ExitPlanMode",
-            "tool_input": {},
-            "tool_response": {},
-            "tool_use_id": "t1",
-            "session_id": "s", "transcript_path": "t", "cwd": ".", "permission_mode": "default",
-        }
-        decision, _ = gm._dispatch(hook_input, tmp_state_file)
-        assert decision == "allow"
-
-    def test_exit_plan_mode_post_advances_implement_to_task_create_with_story(self, tmp_state_file):
+    def test_exit_plan_mode_post_returns_allow_without_recording(self, tmp_state_file):
+        """PostToolUse ExitPlanMode recording is now handled by recorder.py."""
         gm = _load_guardrail()
         write_state(tmp_state_file, make_state("approved", workflow_type="implement", story_id="SK-123"))
         hook_input = {
@@ -233,36 +402,8 @@ class TestExitPlanMode:
             "tool_use_id": "t1",
             "session_id": "s", "transcript_path": "t", "cwd": ".", "permission_mode": "default",
         }
-        gm._dispatch(hook_input, tmp_state_file)
+        decision, _ = gm._dispatch(hook_input, tmp_state_file)
+        assert decision == "allow"
         state = json.loads(tmp_state_file.read_text())
-        assert state["phase"] == "task-create"
-
-    def test_exit_plan_mode_post_skips_task_create_without_story_no_tdd(self, tmp_state_file):
-        gm = _load_guardrail()
-        write_state(tmp_state_file, make_state("approved", workflow_type="implement", story_id=None, tdd=False))
-        hook_input = {
-            "hook_event_name": "PostToolUse",
-            "tool_name": "ExitPlanMode",
-            "tool_input": {},
-            "tool_response": {},
-            "tool_use_id": "t1",
-            "session_id": "s", "transcript_path": "t", "cwd": ".", "permission_mode": "default",
-        }
-        gm._dispatch(hook_input, tmp_state_file)
-        state = json.loads(tmp_state_file.read_text())
-        assert state["phase"] == "write-code"
-
-    def test_exit_plan_mode_post_tdd_no_story_goes_to_write_tests(self, tmp_state_file):
-        gm = _load_guardrail()
-        write_state(tmp_state_file, make_state("approved", workflow_type="implement", story_id=None, tdd=True))
-        hook_input = {
-            "hook_event_name": "PostToolUse",
-            "tool_name": "ExitPlanMode",
-            "tool_input": {},
-            "tool_response": {},
-            "tool_use_id": "t1",
-            "session_id": "s", "transcript_path": "t", "cwd": ".", "permission_mode": "default",
-        }
-        gm._dispatch(hook_input, tmp_state_file)
-        state = json.loads(tmp_state_file.read_text())
-        assert state["phase"] == "write-tests"
+        # Phase should NOT change — recording is done by recorder.py
+        assert state["phase"] == "approved"

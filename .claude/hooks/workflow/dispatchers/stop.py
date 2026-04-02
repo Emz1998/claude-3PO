@@ -10,6 +10,7 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from workflow.hook import Hook
+from workflow.logger import log
 
 
 def get_decision(raw_input: dict[str, Any]) -> str:
@@ -33,6 +34,7 @@ def main() -> None:
 
     if decision.startswith("block"):
         reason = decision[len("block, "):] if decision.startswith("block, ") else "Workflow incomplete"
+        log("Stop:block", reason=reason)
         Hook.block(reason)
 
 

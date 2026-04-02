@@ -16,8 +16,6 @@ worktrees/
 .git/objects
 .git/refs
 
-# State Json
-.claude/hooks/workflow/state.json
 
 # CLaude Settings
 .claude/settings.local.json

@@ -16,6 +16,7 @@ import time
 from pathlib import Path
 
 GUARDRAIL = Path(__file__).resolve().parent.parent / "guardrail.py"
+RECORDER = Path(__file__).resolve().parent.parent / "recorder.py"
 STATE_PATH = GUARDRAIL.parent / "state.json"
 
 GREEN = "\033[32m"
@@ -53,6 +54,7 @@ def agent_payload(subagent_type: str, tool_use_id: str = "t1") -> dict:
             "subagent_type": subagent_type,
             "description": "x",
             "prompt": "x",
+            "run_in_background": False,
         },
         "tool_use_id": tool_use_id,
         "session_id": "s",
@@ -62,11 +64,11 @@ def agent_payload(subagent_type: str, tool_use_id: str = "t1") -> dict:
     }
 
 
-def write_payload(file_path: str) -> dict:
+def write_payload(file_path: str, content: str = "x") -> dict:
     return {
         "hook_event_name": "PreToolUse",
         "tool_name": "Write",
-        "tool_input": {"file_path": file_path, "content": "x"},
+        "tool_input": {"file_path": file_path, "content": content},
         "tool_use_id": "t1",
         "session_id": "s",
         "transcript_path": "t",
@@ -75,11 +77,11 @@ def write_payload(file_path: str) -> dict:
     }
 
 
-def post_write_payload(file_path: str) -> dict:
+def post_write_payload(file_path: str, content: str = "x") -> dict:
     return {
         "hook_event_name": "PostToolUse",
         "tool_name": "Write",
-        "tool_input": {"file_path": file_path, "content": "x"},
+        "tool_input": {"file_path": file_path, "content": content},
         "tool_response": {"type": "update", "filePath": file_path},
         "tool_use_id": "t1",
         "session_id": "s",
@@ -175,14 +177,9 @@ def stop_payload() -> dict:
 
 
 def run(label: str, payload: dict, expected: str, note: str = "") -> bool:
+    hook_json = json.dumps(payload)
     result = subprocess.run(
-        [
-            sys.executable,
-            str(GUARDRAIL),
-            "--hook-input",
-            json.dumps(payload),
-            "--reason",
-        ],
+        [sys.executable, str(GUARDRAIL), "--hook-input", hook_json, "--reason"],
         capture_output=True,
         text=True,
     )
@@ -191,6 +188,15 @@ def run(label: str, payload: dict, expected: str, note: str = "") -> bool:
     results.append(
         {"label": label, "expected": expected, "actual": actual, "passed": passed}
     )
+
+    # If guardrail allowed, also run the recorder for state tracking
+    if actual.startswith("allow") or actual.startswith("{"):
+        subprocess.run(
+            [sys.executable, str(RECORDER), "--hook-input", hook_json],
+            capture_output=True,
+            text=True,
+        )
+
     time.sleep(0.05)
 
     if not passed:
@@ -295,6 +301,7 @@ def simulate(tdd: bool, story_id: str | None, skip_args: str, tmp_dir: Path) -> 
     # Explore phase
     if not skip_explore:
         print("\n--- Explore phase ---")
+        run("Main agent Write → block (phase gate)", write_payload("notes.md"), "block", "Only Agent tool allowed")
         run("Explore [t1] → allow", agent_payload("Explore", "t1"), "allow")
         run("Explore [t2] → allow", agent_payload("Explore", "t2"), "allow")
         run("Explore [t3] → allow", agent_payload("Explore", "t3"), "allow")
@@ -305,21 +312,33 @@ def simulate(tdd: bool, story_id: str | None, skip_args: str, tmp_dir: Path) -> 
 
     if not skip_explore:
         print("\n--- Complete Explore agents ---")
-        run("Explore [t1] done", subagent_stop_payload("Explore"), "allow")
-        run("Explore [t2] done", subagent_stop_payload("Explore"), "allow")
-        run("Explore [t3] done", subagent_stop_payload("Explore"), "allow")
+        run("Explore [t1] done", subagent_stop_payload("Explore", "Found src/ with main modules and utils/"), "allow")
+        run("Explore [t2] done", subagent_stop_payload("Explore", "Config lives in config.yaml, tests in tests/"), "allow")
+        run("Explore [t3] done", subagent_stop_payload("Explore", "Auth module at src/auth.py uses JWT tokens"), "allow")
 
     if not skip_research:
-        run("Research [t5] done", subagent_stop_payload("Research"), "allow")
+        run("Research [t5] done", subagent_stop_payload("Research", "Best practice: use dependency injection for services"), "allow")
         run(
-            "Research [t6] done → phase=plan",
-            subagent_stop_payload("Research"),
+            "Research [t6] done → phase=write-codebase",
+            subagent_stop_payload("Research", "Latest docs recommend pydantic v2 for validation"),
             "allow",
-            "Phase → plan",
+            "Phase → write-codebase",
         )
+
+    # Write-codebase phase
+    print("\n--- Write-codebase phase ---")
+    run("Write code in write-codebase → block", write_payload("src/feature.py"), "block")
+    run("Write CODEBASE.md (pre) → allow", write_payload("CODEBASE.md", "# Codebase overview"), "allow")
+    run(
+        "Write CODEBASE.md (post) → phase=plan",
+        post_write_payload("CODEBASE.md", "# Codebase overview"),
+        "allow",
+        "Phase → plan",
+    )
 
     # Plan phase
     print("\n--- Plan phase ---")
+    run("Main agent Write → block (phase gate)", write_payload("notes.md"), "block", "Only Agent tool allowed")
     run("Plan agent → allow", agent_payload("Plan", "tp1"), "allow")
     run(
         "Plan SubagentStop → phase=write-plan",
@@ -332,11 +351,11 @@ def simulate(tdd: bool, story_id: str | None, skip_args: str, tmp_dir: Path) -> 
     print("\n--- Write-plan phase ---")
     plan_path = str(tmp_dir / ".claude/plans/my-plan.md")
     Path(plan_path).parent.mkdir(parents=True, exist_ok=True)
-    run("Write to .claude/plans/ (pre) → allow", write_payload(plan_path), "allow")
+    run("Write to .claude/plans/ (pre) → allow", write_payload(plan_path, VALID_PLAN), "allow")
     Path(plan_path).write_text(VALID_PLAN)
     run(
         "Write to .claude/plans/ (post) → phase=review",
-        post_write_payload(plan_path),
+        post_write_payload(plan_path, VALID_PLAN),
         "allow",
         "Phase → review, plan_written=True",
     )
@@ -405,6 +424,7 @@ def simulate(tdd: bool, story_id: str | None, skip_args: str, tmp_dir: Path) -> 
     # Task-create phase (if story_id provided)
     if story_id:
         print("\n--- Task-create phase ---")
+        run("Main agent Write → block (phase gate)", write_payload("notes.md"), "block", "Only Agent tool allowed")
         run("Stop before tasks done → block", stop_payload(), "block")
         run("TaskManager agent → allow", agent_payload("TaskManager"), "allow")
         run(

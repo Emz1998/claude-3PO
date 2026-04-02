@@ -1,6 +1,6 @@
 {
   "plan_workflow": {
-    "plan_workflow_active": true,
+    "plan_workflow_active": false,
     "phase": "explore",
     "skip": {
       "skip_explore": false,

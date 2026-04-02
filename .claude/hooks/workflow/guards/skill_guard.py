@@ -90,6 +90,8 @@ def _initial_state(workflow_type: str, args: str) -> dict:
         "ci_check_executed": False,
         "report_written": False,
         "plan_files_cache": None,
+        "agent_findings": [],
+        "codebase_written": False,
     }
 
 
