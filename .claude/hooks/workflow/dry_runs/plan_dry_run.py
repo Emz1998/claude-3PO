@@ -18,9 +18,12 @@ import tempfile
 import time
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
+from workflow.session_store import SessionStore
+
 GUARDRAIL = Path(__file__).resolve().parent.parent / "guardrail.py"
 RECORDER = Path(__file__).resolve().parent.parent / "recorder.py"
-STATE_PATH = GUARDRAIL.parent / "state.json"
+STATE_JSONL_PATH = GUARDRAIL.parent / "state.jsonl"
 
 GREEN  = "\033[32m"
 RED    = "\033[31m"
@@ -320,18 +323,17 @@ def simulate(skip_args: str, plan_dir: Path) -> None:
     # ExitPlanMode — invalid plan
     print("\n--- ExitPlanMode (invalid plan) ---")
     bad_path = str(plan_dir / "bad-plan.md")
-    state_data = json.loads(STATE_PATH.read_text())
+    store = SessionStore("s", STATE_JSONL_PATH)
+    state_data = store.load()
     orig_plan = state_data.get("plan_file")
-    state_data["plan_file"] = bad_path
-    STATE_PATH.write_text(json.dumps(state_data))
+    store.set("plan_file", bad_path)
     Path(bad_path).write_text(INVALID_PLAN)
     run("ExitPlanMode invalid plan → block", exit_plan_mode_pre_payload(), "block", "Missing sections")
-    state_data["plan_file"] = orig_plan
-    STATE_PATH.write_text(json.dumps(state_data))
+    store.set("plan_file", orig_plan)
 
     # Final state
     print("\n--- Final state ---")
-    final = json.loads(STATE_PATH.read_text())
+    final = SessionStore("s", STATE_JSONL_PATH).load()
     print(f"  Phase: {YELLOW}{final.get('phase')}{RESET}")
     print(f"  Plan file: {YELLOW}{final.get('plan_file')}{RESET}")
     print(f"  Plan review status: {YELLOW}{final.get('plan_review_status')}{RESET}")
@@ -360,17 +362,17 @@ def main() -> None:
     print(f"{'='*60}")
 
     # Back up current state
-    original_state = STATE_PATH.read_text() if STATE_PATH.exists() else "{}"
-    STATE_PATH.write_text("{}")
-    print(f"  {YELLOW}Using state.json: {STATE_PATH}{RESET}")
+    original_state = STATE_JSONL_PATH.read_text() if STATE_JSONL_PATH.exists() else ""
+    STATE_JSONL_PATH.write_text("")
+    print(f"  {YELLOW}Using state.jsonl: {STATE_JSONL_PATH}{RESET}")
     print(f"  {YELLOW}(original state backed up, will be restored after){RESET}")
 
     try:
         with tempfile.TemporaryDirectory() as tmp:
             simulate(skip_args, Path(tmp))
     finally:
-        STATE_PATH.write_text(original_state)
-        print(f"  {YELLOW}state.json restored.{RESET}")
+        STATE_JSONL_PATH.write_text(original_state)
+        print(f"  {YELLOW}state.jsonl restored.{RESET}")
 
     print_summary()
     failed = sum(1 for r in results if not r["passed"])
