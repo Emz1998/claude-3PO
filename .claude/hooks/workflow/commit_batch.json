@@ -31,6 +31,17 @@
       "created_at": "2026-04-04T00:23:48.383552"
     },
     {
+      "batch_id": "batch-1775335349-eea7",
+      "task_id": "5",
+      "task_subject": "Update auto_commit.py and build_entry.py",
+      "files": [
+        "claude/hooks/workflow/auto_commit.py",
+        ".claude/hooks/workflow/lib/build_entry.py"
+      ],
+      "status": "failed",
+      "created_at": "2026-04-04T16:42:29.207788"
+    },
+    {
       "batch_id": "batch-1775279068-176c",
       "task_id": "1",
       "task_subject": "T-010: Create pipeline/data/nba_client.py",
@@ -49,6 +60,145 @@
       "status": "committed",
       "created_at": "2026-04-04T01:04:28.836264",
       "commit_message": "The workflow validation requires:\n1. Write a report to `.claude/reports/latest-report.md`\n2. Create a PR\n3. Check CI\n4. Pass validation\n\nWould you like me to help with any of these steps, or do you want to proceed with them separately?"
+    },
+    {
+      "batch_id": "batch-1775335087-0292",
+      "task_id": "1",
+      "task_subject": "Create SessionStore class (session_store.py)",
+      "files": [
+        ".claude/hooks/workflow/session_store.py"
+      ],
+      "status": "committed",
+      "created_at": "2026-04-04T16:38:07.344868",
+      "commit_message": "refactor(TS-001): add JSONL-backed SessionStore class\n\nRewrite session_state.py \u2192 session_store.py with SessionStore class\nthat uses JSONL storage, scoped by session_id. Maintains same API\nas StateStore."
+    },
+    {
+      "batch_id": "batch-1775335114-53b9",
+      "task_id": "2",
+      "task_subject": "Update config/paths.py",
+      "files": [
+        ".claude/hooks/workflow/config/__init__.py",
+        ".claude/hooks/workflow/config/paths.py"
+      ],
+      "status": "committed",
+      "created_at": "2026-04-04T16:38:34.604379",
+      "commit_message": "refactor(TS-001): add DEFAULT_STATE_JSONL_PATH constant to config paths"
+    },
+    {
+      "batch_id": "batch-1775335188-7b71",
+      "task_id": "3",
+      "task_subject": "Update guardrail.py and recorder.py",
+      "files": [
+        ".claude/hooks/workflow/guardrail.py",
+        ".claude/hooks/workflow/recorder.py"
+      ],
+      "status": "committed",
+      "created_at": "2026-04-04T16:39:48.824072",
+      "commit_message": "refactor(TS-001): replace StateStore with SessionStore in hooks\n\nUpdate guardrail.py and recorder.py to use JSONL-backed\nSessionStore, extracting session_id from hook_input in _dispatch()."
+    },
+    {
+      "batch_id": "batch-1775335272-c21e",
+      "task_id": "4",
+      "task_subject": "Update all 6 dispatchers",
+      "files": [
+        ".claude/hooks/workflow/dispatchers/post_tool_use.py",
+        ".claude/hooks/workflow/dispatchers/pre_tool_use.py",
+        ".claude/hooks/workflow/dispatchers/session_start.py",
+        ".claude/hooks/workflow/dispatchers/subagent_start.py",
+        ".claude/hooks/workflow/dispatchers/subagent_stop.py",
+        ".claude/hooks/workflow/dispatchers/user_prompt_submit.py"
+      ],
+      "status": "committed",
+      "created_at": "2026-04-04T16:41:12.752921",
+      "commit_message": "refactor(TS-001): replace StateStore with SessionStore in all dispatchers\n\nUpdate all 6 dispatcher files to use SessionStore(session_id)\ninstead of StateStore(DEFAULT_STATE_PATH), completing the migration\nto JSONL-backed session storage."
+    },
+    {
+      "batch_id": "batch-1775335433-674d",
+      "task_id": "6",
+      "task_subject": "Update skill_guard.py import",
+      "files": [
+        ".claude/hooks/workflow/auto_commit.py",
+        ".claude/hooks/workflow/guards/agent_guard.py",
+        ".claude/hooks/workflow/guards/bash_guard.py",
+        ".claude/hooks/workflow/guards/read_guard.py",
+        ".claude/hooks/workflow/guards/skill_guard.py",
+        ".claude/hooks/workflow/guards/stop_guard.py",
+        ".claude/hooks/workflow/guards/subagent_stop_guard.py",
+        ".claude/hooks/workflow/guards/task_guard.py",
+        ".claude/hooks/workflow/guards/webfetch_guard.py",
+        ".claude/hooks/workflow/guards/write_guard.py",
+        ".claude/hooks/workflow/lib/build_entry.py",
+        ".claude/hooks/workflow/reminder.py"
+      ],
+      "status": "committed",
+      "created_at": "2026-04-04T16:43:53.925243",
+      "commit_message": "refactor(TS-001): replace StateStore with SessionStore in all modules"
+    },
+    {
+      "batch_id": "batch-1775335529-1bfd",
+      "task_id": "7",
+      "task_subject": "Update dry runs",
+      "files": [
+        ".claude/hooks/workflow/dry_runs/implement_dry_run.py",
+        ".claude/hooks/workflow/dry_runs/plan_dry_run.py"
+      ],
+      "status": "committed",
+      "created_at": "2026-04-04T16:45:29.655107",
+      "commit_message": "refactor(TS-001): replace StateStore with SessionStore in dry runs"
+    },
+    {
+      "batch_id": "batch-1775335873-97da",
+      "task_id": "8",
+      "task_subject": "Update tests",
+      "files": [
+        ".claude/hooks/workflow/tests/conftest.py",
+        ".claude/hooks/workflow/tests/test_agent_guard.py",
+        ".claude/hooks/workflow/tests/test_bash_guard.py",
+        ".claude/hooks/workflow/tests/test_commit_format.py",
+        ".claude/hooks/workflow/tests/test_guardrail.py",
+        ".claude/hooks/workflow/tests/test_read_guard.py",
+        ".claude/hooks/workflow/tests/test_recorder.py",
+        ".claude/hooks/workflow/tests/test_reminder.py",
+        ".claude/hooks/workflow/tests/test_session_start.py",
+        ".claude/hooks/workflow/tests/test_skill_guard.py",
+        ".claude/hooks/workflow/tests/test_state_store.py",
+        ".claude/hooks/workflow/tests/test_stop_guard.py",
+        ".claude/hooks/workflow/tests/test_task_guard.py",
+        ".claude/hooks/workflow/tests/test_webfetch_guard.py",
+        ".claude/hooks/workflow/tests/test_write_guard.py"
+      ],
+      "status": "committed",
+      "created_at": "2026-04-04T16:51:13.421066",
+      "commit_message": "test(TS-001): update tests for SessionStore migration\n\n- Rewrite test_state_store.py for new SessionStore API\n- Update conftest.py fixtures to use SessionStore\n- Update guard and recorder tests for new state management"
+    },
+    {
+      "batch_id": "batch-1775336392-366e",
+      "task_id": "9",
+      "task_subject": "Clean up and verify",
+      "files": [
+        ".claude/hooks/workflow/config/__init__.py",
+        ".claude/hooks/workflow/config/paths.py",
+        ".claude/hooks/workflow/guards/stop_guard.py",
+        ".claude/hooks/workflow/lib/set_story_id.py",
+        ".claude/hooks/workflow/lib/workflow_initializer.py",
+        ".claude/hooks/workflow/session_state.py",
+        ".claude/hooks/workflow/tests/test_agent_guard.py",
+        ".claude/hooks/workflow/tests/test_auto_commit.py",
+        ".claude/hooks/workflow/tests/test_bash_guard.py",
+        ".claude/hooks/workflow/tests/test_commit_format.py",
+        ".claude/hooks/workflow/tests/test_guardrail.py",
+        ".claude/hooks/workflow/tests/test_read_guard.py",
+        ".claude/hooks/workflow/tests/test_recorder.py",
+        ".claude/hooks/workflow/tests/test_reminder.py",
+        ".claude/hooks/workflow/tests/test_session_start.py",
+        ".claude/hooks/workflow/tests/test_stop_guard.py",
+        ".claude/hooks/workflow/tests/test_task_guard.py",
+        ".claude/hooks/workflow/tests/test_webfetch_guard.py",
+        ".claude/hooks/workflow/tests/test_write_guard.py"
+      ],
+      "status": "committed",
+      "created_at": "2026-04-04T16:59:53.043303",
+      "commit_message": "chore(TS-001): remove deprecated session_state.py and state files\n\nDelete session_state.py, state.json, and state.lock after migrating\nto SessionStore. Update remaining references and verify all tests pass."
     }
   ]
 }
