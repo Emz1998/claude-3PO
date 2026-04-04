@@ -1,0 +1,12 @@
+{
+    "session_id": "9e127b6f-d67f-49a2-bafe-96c127765603",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/9e127b6f-d67f-49a2-bafe-96c127765603.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "default",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Read",
+    "tool_input": {
+        "file_path": "/home/emhar/avaris-ai/prompt.md"
+    },
+    "tool_use_id": "toolu_01Q1Ncwe1KXcPSr33jUdrWPJ"
+}

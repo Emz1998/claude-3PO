@@ -1,0 +1,14 @@
+
+{
+    "session_id": "7feeb7e2-e04f-4238-a31c-b196b5f5f216",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/7feeb7e2-e04f-4238-a31c-b196b5f5f216.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "default",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "TaskUpdate",
+    "tool_input": {
+        "taskId": "1",
+        "status": "completed"
+    },
+    "tool_use_id": "toolu_01S6iLg9Yt6Xir4foqnfHcGo"
+}

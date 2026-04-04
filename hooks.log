@@ -1,0 +1,13 @@
+{
+    "session_id": "b51da5e7-5fb6-4b19-914f-bee456b0f053",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/b51da5e7-5fb6-4b19-914f-bee456b0f053.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Write",
+    "tool_input": {
+        "file_path": "/home/emhar/avaris-ai/.claude/hooks/workflow/dispatchers/user_prompt_submit.py",
+        "content": "#!/usr/bin/env python3\n\"\"\"Unified UserPromptSubmit dispatcher \u2014 routes to guardrail.py.\"\"\"\n\nimport json\nimport subprocess\nimport sys\nfrom pathlib import Path\nfrom typing import Any\n\nsys.path.insert(0, str(Path(__file__).parent.parent.parent))\n\nfrom workflow.hook import Hook\n\n\ndef get_decision(raw_input: dict[str, Any]) -> str:\n    result = subprocess.run(\n        [\n            \"python3\",\n            str(Path(__file__).parent.parent / \"guardrail.py\"),\n            \"--hook-input\",\n            json.dumps(raw_input),\n            \"--reason\",\n        ],\n        capture_output=True,\n        text=True,\n    )\n    return result.stdout.strip()\n\n\ndef main() -> None:\n    raw_input = Hook.read_stdin()\n    hook_event_name = raw_input.get(\"hook_event_name\", \"UserPromptSubmit\")\n    decision = get_decision(raw_input)\n\n    if decision.startswith(\"block\"):\n        reason = decision[len(\"block, \"):] if decision.startswith(\"block, \") else \"Blocked by guardrail\"\n        Hook.advanced_block(hook_event_name, reason)\n\n\nif __name__ == \"__main__\":\n    main()\n"
+    },
+    "tool_use_id": "toolu_01CyY1etjUwenYYdziTZCwMm"
+}

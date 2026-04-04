@@ -1,11 +1,5 @@
-Create a pr-manager script that will manage the pull requests for the project.
+Claude Opus 4.6 (1M context)
 
-The script will be used to:
+Name: Claude
 
-- Create a pull request
-- Review the pull request
-- Merge the pull request
-- Close the pull request
-- See the information of the pull request
-
-Write the script in @github_project directory.
+Date: 2026-04-02

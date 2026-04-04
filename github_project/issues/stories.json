@@ -52,7 +52,7 @@
       "title": "Pre-market vs post-line-release prediction timing",
       "description": "Investigate and decide optimal timing for predictions - pre-market or post-line-release - based on data freshness and availability",
       "points": 1,
-      "status": "Ready",
+      "status": "In progress",
       "tdd": false,
       "startDate": "2026-02-17",
       "targetDate": "2026-02-21",

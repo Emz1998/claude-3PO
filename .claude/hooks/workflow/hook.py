@@ -1,35 +1,6 @@
-from typing import (
-    ClassVar,
-    Generic,
-    TypeVar,
-    Any,
-    get_args,
-    get_origin,
-    Self,
-)
-
+from typing import Any
 import sys
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
 import json
-from dataclasses import dataclass
-from workflow.models.hook_input import (
-    PreToolUseInput,
-    PostToolUseInput,
-    UserPromptSubmitInput,
-    StopInput,
-    ToolInputType,
-)
-from workflow.models.hook_output import (
-    PreToolUseOutput,
-    PreToolUseHSO,
-    GeneralHSO,
-    PostToolUseOutput,
-    UserPromptSubmitOutput,
-    StopOutput,
-)
 
 
 class Hook:
@@ -47,9 +18,25 @@ class Hook:
             sys.exit(1)
 
     @staticmethod
+    def advanced_output(output: dict[str, Any]) -> None:
+        print(json.dumps(output))
+        sys.exit(0)
+
+    @staticmethod
     def block(message: str) -> None:
         print(message, file=sys.stderr)
         sys.exit(2)
+
+    @staticmethod
+    def advanced_block(hook_event_name: str, message: str) -> None:
+        output = {
+            "hookSpecificOutput": {
+                "hookEventName": hook_event_name,
+                "permissionDecision": "deny",
+                "permissionDecisionReason": message,
+            },
+        }
+        Hook.advanced_output(output)
 
     @staticmethod
     def success_response(message: str) -> None:
@@ -62,6 +49,32 @@ class Hook:
         sys.exit(1)
 
     @staticmethod
-    def advanced_output(output: dict[str, Any]) -> None:
-        print(json.dumps(output), flush=True)
+    def system_message(message: str) -> None:
+        print(json.dumps({"systemMessage": message}))
+        sys.exit(0)
+
+    @staticmethod
+    def send_context(hook_event_name: str, context: str) -> None:
+        match hook_event_name:
+            case "PreToolUse":
+                output: dict[str, Any] = {
+                    "systemMessage": context,
+                    "hookSpecificOutput": {
+                        "hookEventName": hook_event_name,
+                        "permissionDecision": "allow",
+                        "permissionDecisionReason": "",
+                        "additionalContext": context,
+                    },
+                }
+            case "PostToolUse" | "UserPromptSubmit" | "SubagentStart":
+                output = {
+                    "systemMessage": context,
+                    "hookSpecificOutput": {
+                        "hookEventName": hook_event_name,
+                        "additionalContext": context,
+                    },
+                }
+            case _:
+                raise ValueError(f"Invalid hook event name: {hook_event_name}")
+        Hook.advanced_output(output)
         sys.exit(0)

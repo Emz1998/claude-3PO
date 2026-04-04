@@ -6,91 +6,242 @@ Sessions are stored under state["sessions"][story_id].
 
 import os
 from pathlib import Path
-from typing import Any, Callable
+import sys
+from typing import Any, Literal, cast
 
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from workflow.state_store import StateStore
-from workflow.config import get as cfg
 
 
-class SessionState:
-    def __init__(self, state_path: Path | str | None = None):
-        path = state_path or cfg("paths.workflow_state")
-        self._store = StateStore(Path(path))
-        self._story_id = os.environ.get("STORY_ID")
+DEFAULT_STATE_PATH = Path(__file__).resolve().parent / "state.json"
+
+
+def resolve_path(session_id: str) -> Path:
+    return Path(".claude") / "sessions" / f"session_{session_id}" / "state.json"
+
+
+class SessionState(StateStore):
+    def __init__(self, session_id: str | None = None):
+        if session_id is None:
+            path = DEFAULT_STATE_PATH
+        else:
+            path = resolve_path(session_id)
+        super().__init__(path)
 
     @property
-    def story_id(self) -> str | None:
-        return self._story_id
+    def workflow_type(self) -> str:
+        return self.get("workflow_type")
 
     @property
-    def store(self) -> StateStore:
-        return self._store
+    def workflow_active(self) -> bool:
+        return self.get("workflow_active", False)
 
-    def get_session(self, story_id: str) -> dict | None:
-        """Return the session dict for story_id, or None if missing."""
-        state = self._store.load()
-        sessions = state.get("sessions", {})
-        return sessions.get(story_id)
+    @property
+    def session_id(self) -> str:
+        return self.get("session_id")
 
-    def create_session(self, story_id: str, data: dict) -> None:
-        """Create or overwrite a session entry under sessions.<story_id>."""
-        def _create(state: dict) -> None:
-            if "sessions" not in state:
-                state["sessions"] = {}
-            state["sessions"][story_id] = data
+    @property
+    def story_id(self) -> str:
+        return self.get("story_id")
 
-        self._store.update(_create)
+    @property
+    def TDD(self) -> bool:
+        return self.get("TDD", False)
 
-    def update_session(self, story_id: str, fn: Callable[[dict], None]) -> None:
-        """Apply fn to the session dict for story_id. Raises KeyError if missing."""
-        def _update(state: dict) -> None:
-            sessions = state.get("sessions", {})
-            if story_id not in sessions:
-                raise KeyError(f"Session '{story_id}' not found")
-            fn(sessions[story_id])
+    @property
+    def tool_enforcement(self) -> dict:
+        return self.get("tool_enforcement", {})
 
-        self._store.update(_update)
+    @property
+    def force_stop(self) -> dict:
+        return self.get("force_stop", {})
 
-    def delete_session(self, story_id: str) -> None:
-        """Remove the session for story_id. No-op if missing."""
-        def _delete(state: dict) -> None:
-            sessions = state.get("sessions", {})
-            sessions.pop(story_id, None)
+    @property
+    def phases(self) -> dict:
+        return self.get("phases", {})
 
-        self._store.update(_delete)
+    @property
+    def current_phase(self) -> str:
+        return self.phases.get("current", "")
+
+    @property
+    def phases_completed(self) -> list[str]:
+        return self.phases.get("completed", [])
+
+    @property
+    def plan_mode(self) -> bool:
+        return self.get("plan_mode", {}).get("status", "inactive") == "active"
+
+    @property
+    def pr(self) -> dict:
+        return self.get("pr", {})
+
+    @property
+    def pr_status(self) -> str:
+        return self.pr.get("status", "not_created")
+
+    @property
+    def pr_number(self) -> int:
+        return self.pr.get("number", 0)
+
+    @property
+    def ci(self) -> dict:
+        return self.get("ci", {})
+
+    @property
+    def ci_status(self) -> str:
+        return self.ci.get("status", "inactive")
+
+    def files(
+        self,
+        _type: Literal["plan", "test", "code"] | None = None,
+    ) -> dict | list[dict] | None:
+        files = self.get("files", {})
+        if _type is None:
+            return files
+
+        files = files.get(_type, {})
+        if not files:
+            return None
+        return files
+
+    # --------------------------------- Setters ---------------------------------
+
+    def set_workflow_active(self, value: bool) -> None:
+        self.set("workflow_active", value)
+
+    def set_workflow_type(self, workflow_type: str) -> None:
+        self.set("workflow_type", workflow_type)
+
+    def set_story_id(self, story_id: str) -> None:
+        self.set("story_id", story_id)
+
+    def set_session_id(self, session_id: str) -> None:
+        self.set("session_id", session_id)
+
+    def set_TDD(self, value: bool) -> None:
+        self.set("TDD", value)
+
+    def set_tool_enforcement(self, value: dict) -> None:
+        self.set("tool_enforcement", value)
+
+    def set_force_stop(self, value: dict) -> None:
+        self.set("force_stop", value)
+
+    def set_phases(self, value: dict) -> None:
+        self.set("phases", value)
+
+    def set_pr(self, value: dict) -> None:
+        self.set("pr", value)
+
+    def set_ci_status(self, status: str) -> None:
+        self.set("ci", {"status": status})
+
+    def set_files(
+        self,
+        _type: Literal["plan", "test", "code"] | None,
+        value: dict | list[dict],
+    ) -> None:
+        self.set("files", {_type: value})
+
+    # Helpers
+
+    def find_file(
+        self,
+        _type: Literal["plan", "test", "code"],
+        key: str,
+        value: Any,
+    ) -> dict | None:
+        files = cast(list[dict], self.files(_type))
+        if files is None:
+            return None
+        return next((file for file in files if file.get(key) == value), None)
+
+    def get_files(
+        self,
+        _type: Literal["plan", "test", "code"],
+        status: Literal["needs_revision", "needs_refactoring"] | None = None,
+        iteration_left: int | None = None,
+    ) -> list[dict]:
+        files = cast(list[dict], self.files(_type))
+        if files is None:
+            return []
+        if status is not None:
+            files = [file for file in files if file.get("status") == status]
+        if iteration_left is not None:
+            files = [
+                file for file in files if file.get("iteration_left") == iteration_left
+            ]
+        return files
+
+    def initialize(self) -> None:
+        default_state = SessionState.get_default_state()
+        self.reinitialize(default_state)
+
+    def add_file(self, _type: Literal["plan", "test", "code"], value: dict) -> None:
+        if _type == "plan":
+            self.set("files", {_type: value})
+            return
+
+        current_files = cast(list[dict], self.files("test"))
+        if current_files is None:
+            current_files = []
+        current_files.append(value)
+        self.set("files", {_type: current_files})
+
+    # Default states
 
     @staticmethod
-    def default_implement_session(story_id: str, session_id: str) -> dict:
+    def get_default_state() -> dict:
         """Return the default session template for an implement workflow."""
         return {
-            "session_id": session_id,
-            "workflow_type": "implement",
-            "story_id": story_id,
-            "phase": {
+            "workflow_active": False,
+            "workflow_type": None,
+            "session_id": None,
+            "story_id": None,
+            "TDD": False,
+            "tool_enforcement": {
+                "status": "inactive",
+                "tools": [],
+            },
+            "force_stop": {
+                "reason": None,
+                "status": "inactive",
+            },
+            "files_written": [],
+            "files": {
+                "codebase_status_report": {
+                    "path": None,
+                    "status": "not_reviewed",
+                },
+                "plan": {
+                    "path": None,
+                    "status": "not_reviewed",
+                },
+                "test": [
+                    {
+                        "path": None,
+                        "status": "not_reviewed",
+                    }
+                ],
+                "code": [
+                    {
+                        "path": None,
+                        "status": "not_reviewed",
+                    }
+                ],
+            },
+            "phases": {
                 "current": "pre-coding",
-                "previous": None,
-                "recent_agent": None,
+                "completed": [],
             },
-            "control": {
-                "status": "running",
-                "hold": False,
-                "blocked_until_phase": None,
+            "plan_mode": {
+                "status": "inactive",
             },
-            "pr": {
-                "created": False,
-                "number": None,
-            },
-            "validation": {
-                "decision_invoked": False,
-                "confidence_score": 0,
-                "quality_score": 0,
-                "iteration_count": 0,
-                "escalate_to_user": False,
-            },
+            "pr": {"status": "not_created", "number": None},
             "ci": {
-                "status": "pending",
-                "iteration_count": 0,
-                "escalate_to_user": False,
+                "status": "inactive",
             },
         }
 
@@ -98,23 +249,26 @@ class SessionState:
     def default_pr_review_session(pr_number: int, session_id: str) -> dict:
         """Return the default session template for a PR review workflow."""
         return {
+            "workflow_active": True,
             "session_id": session_id,
+            "pr_number": pr_number,
             "workflow_type": "pr-review",
-            "phase": {
-                "current": "pr-review",
-                "previous": None,
-                "recent_agent": None,
+            "fully_blocked": {
+                "status": "inactive",
+                "reason": None,
+                "exception": None,
             },
-            "control": {
-                "status": "running",
-                "hold": False,
-                "blocked_until_phase": None,
+            "tool_block": {
+                "status": "inactive",
+                "reason": None,
+                "list": None,
             },
-            "pr": {
-                "created": True,
-                "number": pr_number,
+            "force_stop": {
+                "reason": None,
+                "status": "inactive",
             },
-            "validation": {
+            "review": {
+                "status": "inactive",
                 "decision_invoked": False,
                 "confidence_score": 0,
                 "quality_score": 0,
@@ -122,8 +276,6 @@ class SessionState:
                 "escalate_to_user": False,
             },
             "ci": {
-                "status": "pending",
-                "iteration_count": 0,
-                "escalate_to_user": False,
+                "status": "inactive",
             },
         }

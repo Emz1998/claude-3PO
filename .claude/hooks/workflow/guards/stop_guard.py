@@ -1,46 +1,72 @@
-"""Stop handler — blocks stoppage when the current story is not completed."""
+"""stop_guard.py — Blocks Claude from stopping when workflow is incomplete.
+
+- /plan workflow: allow stop after 'approved' phase
+- /implement workflow: block unless phase == 'completed'
+"""
 
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-from workflow.hook import Hook
-from workflow.session_state import SessionState
-from workflow.workflow_gate import check_workflow_gate
-from workflow.models.hook_input import StopInput
-from workflow.constants.phases import STATUS_COMPLETED
+from workflow.state_store import StateStore
+
+DEFAULT_STATE_PATH = Path(__file__).resolve().parent.parent / "state.json"
+
+# Plan workflow: allowed to stop once past approved
+PLAN_ALLOWED_STOP_PHASES = {"approved", "completed", "failed"}
+
+# Implement workflow: collect reasons from state
+def _collect_reasons(state: dict) -> list[str]:
+    reasons = []
+    tdd = state.get("tdd", False)
+
+    if tdd and not state.get("test_run_executed"):
+        reasons.append("tests have not been run")
+
+    if state.get("validation_result") != "Pass":
+        reasons.append("validation has not passed")
+
+    if state.get("pr_status") != "created":
+        reasons.append("PR has not been created")
+
+    if not state.get("ci_check_executed"):
+        reasons.append("CI has not been checked")
+
+    if not state.get("report_written"):
+        reasons.append("report has not been written")
+
+    return reasons
 
 
-class StopGuard:
-    def __init__(self, hook_input: StopInput):
-        self._hook_input = hook_input
-        self._is_workflow_active = check_workflow_gate()
+def validate(hook_input: dict, store: StateStore) -> tuple[str, str]:
+    """Validate a Stop event against the current workflow state.
 
-    def run(self) -> None:
-        if not self._is_workflow_active:
-            return
+    Returns ("allow", "") or ("block", reason).
+    """
+    # Prevent infinite loop if stop hook itself triggered this
+    if hook_input.get("stop_hook_active"):
+        return "allow", ""
 
-        session_state = SessionState()
-        story_id = session_state.story_id
-        if not story_id:
-            return
+    state = store.load()
+    if not state.get("workflow_active"):
+        return "allow", ""
 
-        session = session_state.get_session(story_id)
-        if not session:
-            return
+    workflow_type = state.get("workflow_type", "implement")
+    phase = state.get("phase", "")
 
-        # Check control status
-        control_status = session.get("control", {}).get("status")
-        if control_status != STATUS_COMPLETED:
-            Hook.block(f"Story '{story_id}' is not completed.")
+    # /plan workflow: allow once approved
+    if workflow_type == "plan":
+        if phase in PLAN_ALLOWED_STOP_PHASES:
+            return "allow", ""
+        return "block", f"Blocked: plan workflow not complete (current phase: '{phase}'). Must reach 'approved' before stopping."
 
-        # Check PR created
-        pr_created = session.get("pr", {}).get("created", False)
-        if not pr_created:
-            Hook.block("PR has not been created yet.")
+    # /implement workflow: only allow when completed
+    if phase == "completed":
+        return "allow", ""
 
+    reasons = _collect_reasons(state)
+    if reasons:
+        return "block", "Blocked: cannot stop -- " + ", ".join(reasons) + ". Complete these steps before stopping."
 
-if __name__ == "__main__":
-    hook_input = StopInput.model_validate(Hook.read_stdin())
-    StopGuard(hook_input).run()
+    return "block", f"Blocked: workflow not complete (current phase: '{phase}'). Continue working through remaining phases."

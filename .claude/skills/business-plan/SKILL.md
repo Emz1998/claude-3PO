@@ -1,5 +1,5 @@
 ---
-name: generating-business-plan
+name: business-plan
 description: Generates comprehensive business plans by researching market data, competitors, and industry trends, then filling out a structured template. Use when creating business plans, market analysis, or when user mentions "business plan", "market research", or "competitive analysis".
 ---
 

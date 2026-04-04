@@ -1,0 +1,19 @@
+{
+    "session_id": "0f83f668-71fc-44cb-a8ec-379a00ead35e",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/0f83f668-71fc-44cb-a8ec-379a00ead35e.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "default",
+    "hook_event_name": "PermissionRequest",
+    "tool_name": "Write",
+    "tool_input": {
+        "file_path": "/home/emhar/avaris-ai/prompt.md",
+        "content": "# Random Stuff\n\nHere is some random content as requested:\n\n- The quick brown fox jumps over the lazy dog\n- Lorem ipsum dolor sit amet\n- 42 is the answer to life, the universe, and everything\n- A random number: 7 (chosen by fair dice roll)\n- Today's weather: sunny with a chance of debugging\n\n## Random Facts\n\n1. A group of flamingos is called a \"flamboyance\"\n2. The shortest war in history lasted 38-45 minutes\n3. A jiffy is an actual unit of time (1/100th of a second)\n4. Cows have best friends and get stressed when separated\n\n## Random Code\n\n```python\nimport random\n\ndef wisdom():\n    thoughts = [\n        \"Code is poetry written for machines\",\n        \"There are only two hard things: cache invalidation and naming things\",\n        \"It works on my machine\",\n    ]\n    return random.choice(thoughts)\n```\n\n## Random ASCII Art\n\n```\n    /\\_/\\\n   ( o.o )\n    > ^ <\n```\n\nThat's all the random stuff for now.\n"
+    },
+    "permission_suggestions": [
+        {
+            "type": "setMode",
+            "mode": "acceptEdits",
+            "destination": "session"
+        }
+    ]
+}

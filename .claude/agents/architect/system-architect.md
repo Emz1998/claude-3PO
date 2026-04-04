@@ -1,8 +1,8 @@
 ---
-name: system-architect
+name: SystemArchitect
 description: Use PROACTIVELY this agent when you need to analyze software architecture, evaluate design patterns and technical strategy, document system boundaries and integration points, or create comprehensive architecture specifications and decision records.
 tools: Read, Grep, Glob, Bash
-model: sonnet
+model: opus
 color: purple
 ---
 

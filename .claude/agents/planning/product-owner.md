@@ -1,5 +1,5 @@
 ---
-name: product-owner
+name: ProductOwner
 description: Use PROACTIVELY this agent when you need to create sprint plans, prioritize backlog items, structure implementable tasks, or manage sprint scope for the NEXLY RN project
 tools: Read, Glob, Grep, Write
 model: sonnet

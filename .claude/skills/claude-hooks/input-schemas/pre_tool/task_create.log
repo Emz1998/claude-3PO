@@ -1,0 +1,14 @@
+{
+    "session_id": "7feeb7e2-e04f-4238-a31c-b196b5f5f216",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/7feeb7e2-e04f-4238-a31c-b196b5f5f216.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "default",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "TaskCreate",
+    "tool_input": {
+        "subject": "Implement authentication module",
+        "description": "Build login, logout, and token refresh logic using JWT.",
+        "activeForm": "Implementing authentication module"
+    },
+    "tool_use_id": "toolu_011aEzi9wMq5gJccFrNoDHfC"
+}

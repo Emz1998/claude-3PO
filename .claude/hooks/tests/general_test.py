@@ -1,25 +1,35 @@
+#!/usr/bin/env python3
+
 import sys
+import argparse
 import json
 from pathlib import Path
 
 
-FILE_PATH = Path("general-test.log")
+DEFAULT_FILE_PATH = Path("general-test.log")
 
 
 def read_stdin_json() -> dict:
     return json.loads(sys.stdin.read())
 
 
+def test_log(content: str, file_path: Path = DEFAULT_FILE_PATH) -> None:
+    if not file_path.parent.exists():
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+
+    if not file_path.exists():
+        file_path.touch()
+    log_content = file_path.read_text()
+    file_path.write_text(f"{log_content}\n{content}")
+
+
+def read_content(file_path: Path) -> str:
+    return file_path.read_text()
+
+
 def main() -> None:
     hook_input = read_stdin_json()
-    if not FILE_PATH.parent.exists():
-        FILE_PATH.parent.mkdir(parents=True, exist_ok=True)
-
-    if not FILE_PATH.exists():
-        FILE_PATH.touch()
-    log_content = FILE_PATH.read_text()
-    FILE_PATH.write_text(f"{log_content}\n{json.dumps(hook_input, indent=4)}")
-    print(f"Successfully wrote to {FILE_PATH}")
+    test_log(json.dumps(hook_input, indent=4))
 
 
 if __name__ == "__main__":

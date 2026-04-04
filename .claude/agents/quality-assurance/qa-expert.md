@@ -1,8 +1,8 @@
 ---
-name: qa-expert
+name: QA
 description: Use PROACTIVELY this agent when you need to verify whether a completed task meets its acceptance criteria, validate test results against requirements, or perform QA acceptance checks after implementation
 tools: Read, Grep, Glob, Bash
-model: sonnet
+model: opus
 color: red
 ---
 

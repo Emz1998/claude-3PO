@@ -1,0 +1,16 @@
+{
+  "workflow_active": true,
+  "workflow_type": "implement",
+  "phase": "write-tests",
+  "tdd": true,
+  "plan_file": null,
+  "plan_written": false,
+  "test_files_created": [
+    "tests/test_foo.py"
+  ],
+  "report_written": false,
+  "agents": [],
+  "files_written": [
+    "tests/test_foo.py"
+  ]
+}

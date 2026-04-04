@@ -1,0 +1,515 @@
+{
+  "project": "Avaris",
+  "sprint": 1,
+  "goal": "Establish foundational infrastructure and ML pipeline for NBA prediction model",
+  "dates": {
+    "start": "2026-02-17",
+    "end": "2026-03-02"
+  },
+  "capacity": {
+    "hours": 80,
+    "weeks": 2
+  },
+  "totalPoints": 23,
+  "completedPoints": 0,
+  "progress": 0,
+  "stories": [
+    {
+      "id": "SK-001",
+      "type": "Spike",
+      "epic": "EP-001",
+      "title": "Which NBA stats features yield best XGBoost accuracy",
+      "points": 2,
+      "status": "Todo",
+      "dependsOn": [],
+      "blockedBy": [],
+      "timebox": "8 hours",
+      "deliverables": [
+        "Feature importance analysis documented in decisions.md with top 10 features ranked",
+        "Recommendation includes feature set with pros/cons and expected accuracy impact",
+        "Prototype training script tests at least 3 different feature combinations"
+      ]
+    },
+    {
+      "id": "SK-002",
+      "type": "Spike",
+      "epic": "EP-001",
+      "title": "Pre-market vs post-line-release prediction timing",
+      "points": 1,
+      "status": "Todo",
+      "dependsOn": [],
+      "blockedBy": [],
+      "timebox": "4 hours",
+      "deliverables": [
+        "Decision documented in decisions.md with timing recommendation",
+        "Trade-off analysis includes data freshness, line availability, and user value",
+        "Cron schedule recommendation for daily pipeline execution"
+      ]
+    },
+    {
+      "id": "TS-012",
+      "type": "Tech",
+      "epic": null,
+      "title": "Next.js 15 project setup",
+      "points": 3,
+      "status": "Todo",
+      "priority": "Must",
+      "dependsOn": [],
+      "blockedBy": [],
+      "acceptanceCriteria": [
+        "Next.js 15 project initializes and runs without errors",
+        "ESLint and Prettier configured with project standards",
+        "Folder structure matches architecture.md"
+      ],
+      "tasks": [
+        {
+          "id": "T-001",
+          "title": "Initialize Next.js 15 project with App Router and TypeScript",
+          "status": "Todo",
+          "complexity": "S",
+          "dependsOn": [],
+          "qaLoops": [0, 3],
+          "codeReviewLoops": [0, 2],
+          "acceptanceCriteria": [
+            "next dev starts without errors",
+            "TypeScript strict mode enabled in tsconfig.json"
+          ],
+          "filesTouched": ["package.json", "tsconfig.json", "next.config.ts"],
+          "notesForBuilder": "Use create-next-app with --ts and --app flags"
+        },
+        {
+          "id": "T-002",
+          "title": "Configure ESLint and Prettier with project standards",
+          "status": "Todo",
+          "complexity": "S",
+          "dependsOn": ["T-001"],
+          "qaLoops": [0, 3],
+          "codeReviewLoops": [0, 2],
+          "acceptanceCriteria": [
+            "npm run lint passes with zero warnings",
+            "Prettier formats all files consistently"
+          ],
+          "filesTouched": [".eslintrc.json", ".prettierrc"],
+          "notesForBuilder": "Extend next/core-web-vitals ESLint config"
+        },
+        {
+          "id": "T-003",
+          "title": "Create project folder structure per architecture.md",
+          "status": "Todo",
+          "complexity": "S",
+          "dependsOn": ["T-001"],
+          "qaLoops": [0, 3],
+          "codeReviewLoops": [0, 2],
+          "acceptanceCriteria": [
+            "All directories from architecture.md exist",
+            "Each directory contains an index.ts barrel export"
+          ],
+          "filesTouched": ["src/"],
+          "notesForBuilder": "Reference architecture.md for exact directory names"
+        }
+      ]
+    },
+    {
+      "id": "TS-013",
+      "type": "Tech",
+      "epic": null,
+      "title": "Firebase Firestore configuration",
+      "points": 2,
+      "status": "Todo",
+      "priority": "Must",
+      "dependsOn": [],
+      "blockedBy": [],
+      "acceptanceCriteria": [
+        "Firebase project created and credentials stored securely",
+        "Firestore SDK initialized with typed collection schemas",
+        "Security rules deployed and validated"
+      ],
+      "tasks": [
+        {
+          "id": "T-004",
+          "title": "Create Firebase project and configure credentials",
+          "status": "Todo",
+          "complexity": "S",
+          "dependsOn": [],
+          "qaLoops": [0, 3],
+          "codeReviewLoops": [0, 2],
+          "acceptanceCriteria": [
+            "Firebase config stored in environment variables",
+            "No credentials committed to repository"
+          ],
+          "filesTouched": [".env.local", "src/lib/firebase.ts"],
+          "notesForBuilder": "Use Firebase console to create project, store config in .env.local"
+        },
+        {
+          "id": "T-005",
+          "title": "Initialize Firestore SDK and create collection schemas",
+          "status": "Todo",
+          "complexity": "M",
+          "dependsOn": ["T-004"],
+          "qaLoops": [0, 3],
+          "codeReviewLoops": [0, 2],
+          "acceptanceCriteria": [
+            "Firestore client connects successfully",
+            "TypeScript interfaces defined for all collections"
+          ],
+          "filesTouched": ["src/lib/firestore.ts", "src/types/collections.ts"],
+          "notesForBuilder": "Use Firebase v9 modular SDK imports"
+        },
+        {
+          "id": "T-006",
+          "title": "Configure Firestore security rules",
+          "status": "Todo",
+          "complexity": "S",
+          "dependsOn": ["T-005"],
+          "qaLoops": [0, 3],
+          "codeReviewLoops": [0, 2],
+          "acceptanceCriteria": [
+            "Security rules deployed to Firebase",
+            "Rules tested with Firebase emulator"
+          ],
+          "filesTouched": ["firestore.rules"],
+          "notesForBuilder": "Default deny all, then allow specific paths"
+        }
+      ]
+    },
+    {
+      "id": "TS-016",
+      "type": "Tech",
+      "epic": null,
+      "title": "Python ML pipeline project setup",
+      "points": 2,
+      "status": "Todo",
+      "priority": "Must",
+      "dependsOn": [],
+      "blockedBy": [],
+      "acceptanceCriteria": [
+        "Python virtual environment created with all dependencies",
+        "Pipeline folder structure matches design",
+        "pytest and mypy configured and passing"
+      ],
+      "tasks": [
+        {
+          "id": "T-007",
+          "title": "Create Python virtual environment and install dependencies",
+          "status": "Todo",
+          "complexity": "S",
+          "dependsOn": [],
+          "qaLoops": [0, 3],
+          "codeReviewLoops": [0, 2],
+          "acceptanceCriteria": [
+            "Virtual environment activates without errors",
+            "All dependencies in requirements.txt install successfully"
+          ],
+          "filesTouched": ["requirements.txt", "pyproject.toml"],
+          "notesForBuilder": "Use uv or venv for environment creation"
+        },
+        {
+          "id": "T-008",
+          "title": "Create pipeline folder structure and placeholder files",
+          "status": "Todo",
+          "complexity": "S",
+          "dependsOn": ["T-007"],
+          "qaLoops": [0, 3],
+          "codeReviewLoops": [0, 2],
+          "acceptanceCriteria": [
+            "All pipeline directories exist with __init__.py files",
+            "Placeholder modules importable without errors"
+          ],
+          "filesTouched": ["pipeline/"],
+          "notesForBuilder": "Include ingestion, features, training, and prediction directories"
+        },
+        {
+          "id": "T-009",
+          "title": "Configure pytest and mypy for Python testing",
+          "status": "Todo",
+          "complexity": "S",
+          "dependsOn": ["T-008"],
+          "qaLoops": [0, 3],
+          "codeReviewLoops": [0, 2],
+          "acceptanceCriteria": [
+            "pytest discovers and runs placeholder tests",
+            "mypy passes with strict mode enabled"
+          ],
+          "filesTouched": ["pyproject.toml", "tests/conftest.py"],
+          "notesForBuilder": "Configure both tools in pyproject.toml"
+        }
+      ]
+    },
+    {
+      "id": "TS-001",
+      "type": "Tech",
+      "epic": "EP-001",
+      "title": "NBA Stats API data ingestion",
+      "points": 5,
+      "status": "Todo",
+      "priority": "Must",
+      "dependsOn": ["TS-016"],
+      "blockedBy": [],
+      "acceptanceCriteria": [
+        "NBA API client fetches data with rate limiting",
+        "Team stats for current season stored as Parquet files",
+        "Ingestion pipeline runs end-to-end without errors"
+      ],
+      "tasks": [
+        {
+          "id": "T-010",
+          "title": "Implement NBA API client wrapper with rate limiting",
+          "status": "Todo",
+          "complexity": "M",
+          "dependsOn": [],
+          "qaLoops": [0, 3],
+          "codeReviewLoops": [0, 2],
+          "acceptanceCriteria": [
+            "Client respects NBA API rate limits",
+            "Retry logic handles transient failures"
+          ],
+          "filesTouched": ["pipeline/ingestion/nba_client.py"],
+          "notesForBuilder": "Use nba_api library, add 0.6s delay between requests"
+        },
+        {
+          "id": "T-011",
+          "title": "Implement team stats fetching for current season",
+          "status": "Todo",
+          "complexity": "M",
+          "dependsOn": ["T-010"],
+          "qaLoops": [0, 3],
+          "codeReviewLoops": [0, 2],
+          "acceptanceCriteria": [
+            "Fetches stats for all 30 NBA teams",
+            "Returns typed DataFrame with expected columns"
+          ],
+          "filesTouched": ["pipeline/ingestion/team_stats.py"],
+          "notesForBuilder": "Use LeagueStandings and TeamGameLog endpoints"
+        },
+        {
+          "id": "T-012",
+          "title": "Implement Parquet file storage for training data",
+          "status": "Todo",
+          "complexity": "S",
+          "dependsOn": ["T-011"],
+          "qaLoops": [0, 3],
+          "codeReviewLoops": [0, 2],
+          "acceptanceCriteria": [
+            "Data saved as Parquet with snappy compression",
+            "File partitioned by season"
+          ],
+          "filesTouched": ["pipeline/ingestion/storage.py"],
+          "notesForBuilder": "Use pyarrow for Parquet I/O"
+        }
+      ]
+    },
+    {
+      "id": "TS-002",
+      "type": "Tech",
+      "epic": "EP-001",
+      "title": "XGBoost model training pipeline",
+      "points": 8,
+      "status": "Todo",
+      "priority": "Must",
+      "dependsOn": ["SK-001", "TS-001"],
+      "blockedBy": [],
+      "acceptanceCriteria": [
+        "Feature engineering pipeline transforms raw stats into model features",
+        "XGBoost model trains with cross-validation and logs metrics",
+        "Predictions generated and written to Firestore"
+      ],
+      "tasks": [
+        {
+          "id": "T-013",
+          "title": "Implement feature engineering pipeline",
+          "status": "Todo",
+          "complexity": "L",
+          "dependsOn": [],
+          "qaLoops": [0, 3],
+          "codeReviewLoops": [0, 2],
+          "acceptanceCriteria": [
+            "Transforms raw stats into feature matrix",
+            "Handles missing values without data leakage"
+          ],
+          "filesTouched": ["pipeline/features/engineer.py"],
+          "notesForBuilder": "Use sklearn Pipeline for reproducibility"
+        },
+        {
+          "id": "T-014",
+          "title": "Implement XGBoost model training with cross-validation",
+          "status": "Todo",
+          "complexity": "L",
+          "dependsOn": ["T-013"],
+          "qaLoops": [0, 3],
+          "codeReviewLoops": [0, 2],
+          "acceptanceCriteria": [
+            "5-fold cross-validation logs accuracy per fold",
+            "Best hyperparameters saved to model config"
+          ],
+          "filesTouched": ["pipeline/training/trainer.py"],
+          "notesForBuilder": "Use xgboost.cv for cross-validation, log with MLflow or print"
+        },
+        {
+          "id": "T-015",
+          "title": "Implement prediction generation for today's games",
+          "status": "Todo",
+          "complexity": "M",
+          "dependsOn": ["T-014"],
+          "qaLoops": [0, 3],
+          "codeReviewLoops": [0, 2],
+          "acceptanceCriteria": [
+            "Predictions generated for all games on the schedule",
+            "Output includes win probability and confidence score"
+          ],
+          "filesTouched": ["pipeline/prediction/predictor.py"],
+          "notesForBuilder": "Fetch today's schedule from ScoreboardV2 endpoint"
+        },
+        {
+          "id": "T-016",
+          "title": "Implement Firestore write for predictions",
+          "status": "Todo",
+          "complexity": "M",
+          "dependsOn": ["T-015"],
+          "qaLoops": [0, 3],
+          "codeReviewLoops": [0, 2],
+          "acceptanceCriteria": [
+            "Predictions written to Firestore predictions collection",
+            "Each document keyed by game date and matchup"
+          ],
+          "filesTouched": ["pipeline/prediction/firestore_writer.py"],
+          "notesForBuilder": "Use firebase-admin SDK, batch writes for atomicity"
+        }
+      ]
+    },
+    {
+      "id": "US-001",
+      "type": "Story",
+      "epic": "EP-002",
+      "title": "View today's game predictions on dashboard",
+      "points": 5,
+      "status": "Todo",
+      "priority": "Must",
+      "dependsOn": ["TS-002"],
+      "blockedBy": [],
+      "acceptanceCriteria": [
+        "Dashboard displays all games scheduled for today",
+        "Each game card shows teams, win probability, and confidence",
+        "Data refreshes automatically when new predictions are available"
+      ],
+      "tasks": [
+        {
+          "id": "T-017",
+          "title": "Create predictions API route to fetch from Firestore",
+          "status": "Todo",
+          "complexity": "M",
+          "dependsOn": [],
+          "qaLoops": [0, 3],
+          "codeReviewLoops": [0, 2],
+          "acceptanceCriteria": [
+            "GET /api/predictions returns today's predictions as JSON",
+            "Response includes proper error handling and status codes"
+          ],
+          "filesTouched": ["src/app/api/predictions/route.ts"],
+          "notesForBuilder": "Use Next.js Route Handlers with Firebase Admin SDK"
+        },
+        {
+          "id": "T-018",
+          "title": "Build game prediction card component",
+          "status": "Todo",
+          "complexity": "M",
+          "dependsOn": [],
+          "qaLoops": [0, 3],
+          "codeReviewLoops": [0, 2],
+          "acceptanceCriteria": [
+            "Card displays team logos, names, and win probability bar",
+            "Confidence badge shows Low/Medium/High based on score"
+          ],
+          "filesTouched": ["src/components/PredictionCard.tsx"],
+          "notesForBuilder": "Use Tailwind v4 for styling, keep component stateless"
+        },
+        {
+          "id": "T-019",
+          "title": "Assemble dashboard page with prediction cards grid",
+          "status": "Todo",
+          "complexity": "S",
+          "dependsOn": ["T-017", "T-018"],
+          "qaLoops": [0, 3],
+          "codeReviewLoops": [0, 2],
+          "acceptanceCriteria": [
+            "Dashboard page renders grid of prediction cards",
+            "Loading and empty states handled gracefully"
+          ],
+          "filesTouched": ["src/app/dashboard/page.tsx"],
+          "notesForBuilder": "Use React Suspense for loading state"
+        }
+      ]
+    },
+    {
+      "id": "BG-001",
+      "type": "Bug",
+      "epic": "EP-001",
+      "title": "NBA API client crashes on timeout during team stats fetch",
+      "points": 2,
+      "status": "Todo",
+      "severity": "High",
+      "foundIn": "TS-001",
+      "dependsOn": [],
+      "blockedBy": [],
+      "whatsBroken": "NBA API client throws unhandled exception when request times out after 30s",
+      "expected": "Client retries the request up to 3 times with exponential backoff, then raises a typed NbaApiTimeoutError",
+      "actual": "Unhandled requests.exceptions.ReadTimeout propagates to pipeline runner and crashes the entire ingestion job",
+      "reproduce": [
+        "Run pipeline/ingestion/nba_client.py with network throttled to 1kbps",
+        "Call fetch_team_stats() for any team",
+        "Observe ReadTimeout exception after 30s"
+      ],
+      "acceptanceCriteria": [
+        "Timeout errors caught and retried with exponential backoff",
+        "NbaApiTimeoutError raised after max retries exhausted",
+        "Pipeline logs warning on each retry attempt"
+      ],
+      "tasks": [
+        {
+          "id": "T-020",
+          "title": "Add retry logic with exponential backoff to NBA API client",
+          "status": "Todo",
+          "complexity": "S",
+          "dependsOn": [],
+          "qaLoops": [0, 3],
+          "codeReviewLoops": [0, 2],
+          "acceptanceCriteria": [
+            "Client retries up to 3 times on timeout",
+            "Backoff delays are 1s, 2s, 4s"
+          ],
+          "filesTouched": ["pipeline/ingestion/nba_client.py"],
+          "notesForBuilder": "Use tenacity library or manual retry loop"
+        },
+        {
+          "id": "T-021",
+          "title": "Create NbaApiTimeoutError custom exception",
+          "status": "Todo",
+          "complexity": "S",
+          "dependsOn": [],
+          "qaLoops": [0, 3],
+          "codeReviewLoops": [0, 2],
+          "acceptanceCriteria": [
+            "Custom exception includes original timeout details",
+            "Exception is importable from pipeline.exceptions"
+          ],
+          "filesTouched": ["pipeline/exceptions.py"],
+          "notesForBuilder": "Inherit from base PipelineError"
+        },
+        {
+          "id": "T-022",
+          "title": "Add retry logging and tests for timeout handling",
+          "status": "Todo",
+          "complexity": "S",
+          "dependsOn": ["T-020", "T-021"],
+          "qaLoops": [0, 3],
+          "codeReviewLoops": [0, 2],
+          "acceptanceCriteria": [
+            "Unit tests mock timeout and verify retry count",
+            "Log output includes retry attempt number and delay"
+          ],
+          "filesTouched": ["tests/test_nba_client.py"],
+          "notesForBuilder": "Use unittest.mock to simulate ReadTimeout"
+        }
+      ]
+    }
+  ]
+}

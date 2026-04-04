@@ -1,11 +1,4 @@
-"""PreToolUse guard — restricts dangerous bash commands by workflow phase.
-
-Rules:
-- gh pr create → BLOCK unless phase == "create-pr"
-- gh pr (close|merge|edit) → BLOCK always
-- git push → BLOCK unless phase == "push"
-- Everything else → ALLOW
-"""
+"""bash_guard.py — Phase-based Bash command enforcement using flat state model."""
 
 import re
 import sys
@@ -13,52 +6,47 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-from workflow.hook import Hook
-from workflow.session_state import SessionState
-from workflow.workflow_gate import check_workflow_gate
-from workflow.models.hook_input import PreToolUseInput
+from workflow.state_store import StateStore
+
+PR_COMMAND_PATTERNS = [r"\bgh\s+pr\s+create\b", r"\bgit\s+push\b"]
+TEST_RUN_PATTERNS = [r"\bpytest\b", r"\bnpm\s+test\b", r"\byarn\s+test\b",
+                     r"\bgo\s+test\b", r"\bjest\b", r"\bvitest\b"]
+CI_CHECK_PATTERNS = [r"\bgh\s+pr\s+checks\b", r"\bgh\s+run\s+view\b"]
 
 
-# Always-blocked PR operations
-_BLOCKED_PR_OPS = re.compile(r"gh\s+pr\s+(close|merge|edit)")
-# Phase-gated operations
-_GH_PR_CREATE = re.compile(r"gh\s+pr\s+create")
-_GIT_PUSH = re.compile(r"git\s+push")
+def is_pr_command(command: str) -> bool:
+    return any(re.search(p, command) for p in PR_COMMAND_PATTERNS)
 
 
-class BashGuard:
-    def __init__(self, hook_input: PreToolUseInput):
-        self._hook_input = hook_input
-
-    def run(self) -> None:
-        if not check_workflow_gate():
-            return
-
-        session_state = SessionState()
-        story_id = session_state.story_id
-        if not story_id:
-            return
-
-        session = session_state.get_session(story_id)
-        if not session:
-            return
-
-        command = self._hook_input.tool_input.command
-        current_phase = session.get("phase", {}).get("current", "")
-
-        # Always-blocked operations
-        if _BLOCKED_PR_OPS.search(command):
-            Hook.block("gh pr close/merge/edit is not allowed.")
-
-        # Phase-gated: gh pr create
-        if _GH_PR_CREATE.search(command) and current_phase != "create-pr":
-            Hook.block(f"gh pr create is only allowed in 'create-pr' phase (current: '{current_phase}').")
-
-        # Phase-gated: git push
-        if _GIT_PUSH.search(command) and current_phase != "push":
-            Hook.block(f"git push is only allowed in 'push' phase (current: '{current_phase}').")
+def is_test_run(command: str) -> bool:
+    return any(re.search(p, command) for p in TEST_RUN_PATTERNS)
 
 
-if __name__ == "__main__":
-    hook_input = PreToolUseInput.model_validate(Hook.read_stdin())
-    BashGuard(hook_input).run()
+def is_ci_check(command: str) -> bool:
+    return any(re.search(p, command) for p in CI_CHECK_PATTERNS)
+
+
+def validate_pre(hook_input: dict, store: StateStore) -> tuple[str, str]:
+    """Validate a Bash PreToolUse invocation.
+
+    Blocks PR commands outside pr-create phase or without passing validation.
+    """
+    state = store.load()
+    if not state.get("workflow_active"):
+        return "allow", ""
+
+    command = hook_input.get("tool_input", {}).get("command", "")
+
+    if not is_pr_command(command):
+        return "allow", ""
+
+    phase = state.get("phase", "")
+    validation_result = state.get("validation_result")
+
+    if phase != "pr-create":
+        return "block", f"Blocked: PR commands are only allowed during 'pr-create' phase (current: '{phase}'). Complete validation first to advance."
+
+    if validation_result != "Pass":
+        return "block", "Blocked: cannot create PR -- validation has not passed yet. Run the Validator agent to get a 'Pass' result before creating the PR."
+
+    return "allow", ""
