@@ -3,6 +3,7 @@
 from workflow.config.paths import (
     WORKFLOW_ROOT,
     DEFAULT_STATE_PATH,
+    COMMIT_BATCH_PATH,
     LOG_FILE,
     DEBUG_LOG_FILE,
 )

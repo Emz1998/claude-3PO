@@ -5,5 +5,6 @@ from pathlib import Path
 WORKFLOW_ROOT = Path(__file__).resolve().parent.parent
 
 DEFAULT_STATE_PATH = WORKFLOW_ROOT / "state.json"
+COMMIT_BATCH_PATH = WORKFLOW_ROOT / "commit_batch.json"
 LOG_FILE = WORKFLOW_ROOT / "workflow.log"
 DEBUG_LOG_FILE = Path("DEBUG.log")
