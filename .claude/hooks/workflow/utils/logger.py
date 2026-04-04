@@ -1,6 +1,9 @@
+import sys
 from pathlib import Path
 
-LOG_FILE = Path("DEBUG.log")
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
+
+from workflow.config import DEBUG_LOG_FILE as LOG_FILE
 
 
 def log(message: str) -> None:

@@ -1,0 +1,28 @@
+{
+  "workflow_active": true,
+  "workflow_type": "implement",
+  "phase": "write-code",
+  "story_id": "SK-001",
+  "tasks": [
+    {
+      "id": "T-017",
+      "subject": "Feature importance analysis",
+      "description": "Perform analysis",
+      "status": "completed",
+      "subtasks": [
+        {
+          "id": 1,
+          "subject": "Analyze correlations",
+          "description": "",
+          "status": "completed"
+        },
+        {
+          "id": 2,
+          "subject": "Rank top features",
+          "description": "",
+          "status": "completed"
+        }
+      ]
+    }
+  ]
+}

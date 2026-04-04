@@ -6,12 +6,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
+from workflow.config import PR_COMMAND_PATTERNS, TEST_RUN_PATTERNS, CI_CHECK_PATTERNS
 from workflow.state_store import StateStore
-
-PR_COMMAND_PATTERNS = [r"\bgh\s+pr\s+create\b", r"\bgit\s+push\b"]
-TEST_RUN_PATTERNS = [r"\bpytest\b", r"\bnpm\s+test\b", r"\byarn\s+test\b",
-                     r"\bgo\s+test\b", r"\bjest\b", r"\bvitest\b"]
-CI_CHECK_PATTERNS = [r"\bgh\s+pr\s+checks\b", r"\bgh\s+run\s+view\b"]
 
 
 def is_pr_command(command: str) -> bool:

@@ -9,27 +9,8 @@ from urllib.parse import urlparse
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
+from workflow.config import SAFE_DOMAINS
 from workflow.state_store import StateStore
-
-SAFE_DOMAINS = [
-    "docs.python.org",
-    "docs.anthropic.com",
-    "developer.mozilla.org",
-    "reactjs.org",
-    "react.dev",
-    "nextjs.org",
-    "tailwindcss.com",
-    "github.com",
-    "stackoverflow.com",
-    "pypi.org",
-    "npmjs.com",
-    "typescriptlang.org",
-    "nodejs.org",
-    "firebase.google.com",
-    "supabase.com",
-    "expo.dev",
-    "reactnative.dev",
-]
 
 
 def _is_safe_domain(url: str) -> bool:

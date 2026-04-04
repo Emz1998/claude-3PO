@@ -4,10 +4,10 @@ Dispatches all hook events to modular guard modules.
 Supports both /plan and /implement workflows.
 
 Phase flow:
-  /implement: explore → plan → write-plan → review → approved →
+  /implement: explore → plan → write-plan → review → present-plan →
               task-create → write-tests → write-code → validate →
               pr-create → ci-check → report → completed
-  /plan:      explore → plan → write-plan → review → approved
+  /plan:      explore → plan → write-plan → review → present-plan
 
 Usage:
     python3 guardrail.py --hook-input '{"hook_event_name":"PreToolUse",...}'
@@ -26,26 +26,24 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from workflow.config import (
+    DEFAULT_STATE_PATH,
+    REQUIRED_SECTIONS,
+    AGENT_ONLY_PHASES,
+    AGENT_PLUS_WRITE_PHASES,
+)
 from workflow.guards import (
     agent_guard,
     bash_guard,
     read_guard,
     skill_guard,
     stop_guard,
+    subagent_stop_guard,
     task_guard,
     webfetch_guard,
     write_guard,
 )
 from workflow.state_store import StateStore
-
-DEFAULT_STATE_PATH = Path(__file__).resolve().parent / "state.json"
-
-REQUIRED_SECTIONS = [
-    r"^##\s+Context",
-    r"^##\s+(Approach|Steps)",
-    r"^##\s+(Files to Modify|Critical Files)",
-    r"^##\s+Verification",
-]
 
 
 def _state_path() -> Path:
@@ -75,6 +73,13 @@ def _handle_exit_plan_mode_pre(hook_input: dict, store: StateStore) -> tuple[str
     if not state.get("workflow_active"):
         return "allow", ""
 
+    phase = state.get("phase", "")
+    if phase != "present-plan":
+        return (
+            "block",
+            f"Blocked: ExitPlanMode only allowed during 'present-plan' phase (current: '{phase}').",
+        )
+
     if not state.get("plan_written"):
         return (
             "block",
@@ -89,22 +94,27 @@ def _handle_exit_plan_mode_pre(hook_input: dict, store: StateStore) -> tuple[str
 
     plan_file = state.get("plan_file")
     if not plan_file:
-        return "block", "Blocked: no plan file recorded. Write the plan to .claude/plans/ before exiting plan mode."
+        return (
+            "block",
+            "Blocked: no plan file recorded. Write the plan to .claude/plans/ before exiting plan mode.",
+        )
 
     try:
         content = Path(plan_file).read_text()
     except (FileNotFoundError, OSError) as e:
-        return "block", f"Blocked: cannot read plan file '{plan_file}': {e}. Verify the file exists and is readable."
+        return (
+            "block",
+            f"Blocked: cannot read plan file '{plan_file}': {e}. Verify the file exists and is readable.",
+        )
 
     passed, missing = _validate_plan_template(content)
     if not passed:
-        return "block", f"Blocked: plan missing required sections: {', '.join(missing)}. Add them before exiting plan mode."
+        return (
+            "block",
+            f"Blocked: plan missing required sections: {', '.join(missing)}. Add them before exiting plan mode.",
+        )
 
     return json.dumps({"additionalContext": f"Plan content:\n\n{content}"}), ""
-
-
-AGENT_ONLY_PHASES = {"explore", "plan", "task-create"}
-AGENT_PLUS_WRITE_PHASES = {"review"}
 
 
 def _phase_gate(hook_input: dict, store: StateStore) -> tuple[str, str] | None:
@@ -126,12 +136,18 @@ def _phase_gate(hook_input: dict, store: StateStore) -> tuple[str, str] | None:
 
     if phase in AGENT_ONLY_PHASES:
         if tool != "Agent":
-            return "block", f"Blocked: only the Agent tool is allowed during '{phase}' phase. Launch the required agent to proceed."
+            return (
+                "block",
+                f"Blocked: only the Agent tool is allowed during '{phase}' phase. Launch the required agent to proceed.",
+            )
         return None
 
     if phase in AGENT_PLUS_WRITE_PHASES:
         if tool not in ("Agent", "Write", "Edit"):
-            return "block", f"Blocked: only Agent and Write/Edit tools are allowed during '{phase}' phase."
+            return (
+                "block",
+                f"Blocked: only Agent and Write/Edit tools are allowed during '{phase}' phase.",
+            )
         return None
 
     return None
@@ -160,13 +176,18 @@ def _dispatch(hook_input: dict, state_path: Path) -> tuple[str, str]:
             return webfetch_guard.validate(hook_input, store)
         if tool == "ExitPlanMode":
             return _handle_exit_plan_mode_pre(hook_input, store)
+        if tool == "TaskCreate":
+            return task_guard.validate(hook_input, store)
 
     if event == "PostToolUse":
         if tool == "Skill":
             return skill_guard.handle(hook_input, store)
 
-    if event == "TaskCreated":
-        return task_guard.validate(hook_input, store)
+    if event == "SubagentStop":
+        return subagent_stop_guard.validate(hook_input, store)
+
+    if event == "TaskCompleted":
+        return task_guard.validate_completed(hook_input, store)
 
     if event == "Stop":
         return stop_guard.validate(hook_input, store)

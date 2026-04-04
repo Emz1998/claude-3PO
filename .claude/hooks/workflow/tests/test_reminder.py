@@ -224,7 +224,7 @@ class TestExitPlanModeReminders:
         store = StateStore(tmp_state_file)
         result = reminder.get_post_tool_reminder(post_tool_hook("ExitPlanMode"), store)
         assert "User approved" in result
-        assert "TaskManager" in result
+        assert "TaskCreate" in result
 
     def test_write_tests_phase(self, tmp_state_file):
         write_state(tmp_state_file, make_state("write-tests"))
@@ -243,7 +243,7 @@ class TestExitPlanModeReminders:
         assert "src/main.py" in result
 
     def test_no_reminder_for_non_mapped_phase(self, tmp_state_file):
-        write_state(tmp_state_file, make_state("approved"))
+        write_state(tmp_state_file, make_state("present-plan"))
         store = StateStore(tmp_state_file)
         result = reminder.get_post_tool_reminder(post_tool_hook("ExitPlanMode"), store)
         assert result is None
@@ -293,9 +293,9 @@ class TestPhaseTransitionReminders:
         result = reminder.get_phase_transition_reminder(subagent_stop_hook("Plan"), store)
         assert "Write it to .claude/plans/" in result
 
-    def test_transition_to_approved(self, tmp_state_file):
+    def test_transition_to_present_plan(self, tmp_state_file):
         write_state(tmp_state_file, make_state(
-            "approved", plan_review_status="approved",
+            "present-plan", plan_review_status="approved",
         ))
         store = StateStore(tmp_state_file)
         result = reminder.get_phase_transition_reminder(subagent_stop_hook("PlanReview"), store)

@@ -107,27 +107,6 @@ class TestExploreResearchCompletion:
         state = store.load()
         assert state["phase"] == "write-codebase"
 
-    def test_agent_findings_stored_on_subagent_stop(self, tmp_state_file):
-        agents = [running_agent("Explore")]
-        write_state(tmp_state_file, make_state("explore", agents=agents))
-        store = StateStore(tmp_state_file)
-        recorder.record_subagent_stop(stop_hook("Explore", "Found auth module at src/auth.py"), store)
-        state = store.load()
-        assert len(state["agent_findings"]) == 1
-        assert state["agent_findings"][0]["agent_type"] == "Explore"
-        assert state["agent_findings"][0]["message"] == "Found auth module at src/auth.py"
-
-    def test_agent_findings_accumulate(self, tmp_state_file):
-        agents = [running_agent("Explore"), running_agent("Research")]
-        write_state(tmp_state_file, make_state("explore", agents=agents))
-        store = StateStore(tmp_state_file)
-        recorder.record_subagent_stop(stop_hook("Explore", "Finding 1"), store)
-        recorder.record_subagent_stop(stop_hook("Research", "Finding 2"), store)
-        state = store.load()
-        assert len(state["agent_findings"]) == 2
-        assert state["agent_findings"][0]["agent_type"] == "Explore"
-        assert state["agent_findings"][1]["agent_type"] == "Research"
-
 
 # ---------------------------------------------------------------------------
 # Write-codebase: advance to plan on CODEBASE.md write
@@ -185,13 +164,13 @@ class TestPlanCompletion:
 # ---------------------------------------------------------------------------
 
 class TestPlanReviewCompletion:
-    def test_plan_review_approved_advances_to_approved(self, tmp_state_file):
+    def test_plan_review_approved_advances_to_present_plan(self, tmp_state_file):
         agents = [running_agent("PlanReview")]
         write_state(tmp_state_file, make_state("review", agents=agents))
         store = StateStore(tmp_state_file)
         recorder.record_subagent_stop(stop_hook("PlanReview", "Confidence score: 90, Quality score: 85"), store)
         state = store.load()
-        assert state["phase"] == "approved"
+        assert state["phase"] == "present-plan"
         assert state["plan_review_status"] == "approved"
 
     def test_plan_review_failing_increments_iteration(self, tmp_state_file):
@@ -221,28 +200,6 @@ class TestPlanReviewCompletion:
         state = store.load()
         assert state["plan_review_scores"]["confidence"] == 90
         assert state["plan_review_scores"]["quality"] == 85
-
-
-# ---------------------------------------------------------------------------
-# TaskManager: advance to write-tests or write-code
-# ---------------------------------------------------------------------------
-
-class TestTaskManagerCompletion:
-    def test_task_manager_tdd_advances_to_write_tests(self, tmp_state_file):
-        agents = [running_agent("TaskManager")]
-        write_state(tmp_state_file, make_state("task-create", agents=agents, tdd=True))
-        store = StateStore(tmp_state_file)
-        recorder.record_subagent_stop(stop_hook("TaskManager", "Tasks created."), store)
-        state = store.load()
-        assert state["phase"] == "write-tests"
-
-    def test_task_manager_no_tdd_advances_to_write_code(self, tmp_state_file):
-        agents = [running_agent("TaskManager")]
-        write_state(tmp_state_file, make_state("task-create", agents=agents, tdd=False))
-        store = StateStore(tmp_state_file)
-        recorder.record_subagent_stop(stop_hook("TaskManager", "Tasks created."), store)
-        state = store.load()
-        assert state["phase"] == "write-code"
 
 
 # ---------------------------------------------------------------------------
@@ -355,3 +312,43 @@ class TestRecordAgentFromHook:
         decision, reason = recorder.record_agent_from_hook(agent_hook("Explore"), store)
         assert decision == "allow"
         assert reason == ""
+
+
+# ---------------------------------------------------------------------------
+# advance_after_plan_approval
+# ---------------------------------------------------------------------------
+
+class TestAdvanceAfterPlanApproval:
+    def test_advance_to_task_create_with_story_id(self, tmp_state_file):
+        write_state(tmp_state_file, make_state("present-plan", story_id="SK-001"))
+        store = StateStore(tmp_state_file)
+        result = recorder.advance_after_plan_approval(store)
+        assert result == "task-create"
+        assert store.load()["phase"] == "task-create"
+
+    def test_advance_to_write_tests_with_tdd(self, tmp_state_file):
+        write_state(tmp_state_file, make_state("present-plan", tdd=True))
+        store = StateStore(tmp_state_file)
+        result = recorder.advance_after_plan_approval(store)
+        assert result == "write-tests"
+        assert store.load()["phase"] == "write-tests"
+
+    def test_advance_to_write_code_default(self, tmp_state_file):
+        write_state(tmp_state_file, make_state("present-plan", tdd=False))
+        store = StateStore(tmp_state_file)
+        result = recorder.advance_after_plan_approval(store)
+        assert result == "write-code"
+        assert store.load()["phase"] == "write-code"
+
+    def test_no_advance_for_plan_workflow(self, tmp_state_file):
+        write_state(tmp_state_file, make_state("present-plan", workflow_type="plan"))
+        store = StateStore(tmp_state_file)
+        result = recorder.advance_after_plan_approval(store)
+        assert result is None
+        assert store.load()["phase"] == "present-plan"
+
+    def test_no_advance_when_inactive(self, tmp_state_file):
+        write_state(tmp_state_file, {"workflow_active": False, "phase": "present-plan"})
+        store = StateStore(tmp_state_file)
+        result = recorder.advance_after_plan_approval(store)
+        assert result is None

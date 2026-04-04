@@ -4,15 +4,13 @@ Handles PostToolUse(Skill) and UserPromptSubmit events.
 Activates workflow state with flat state model.
 """
 
-import re
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
+from workflow.config import STORY_ID_PATTERN
 from workflow.state_store import StateStore
-
-STORY_ID_PATTERN = re.compile(r'\b([A-Z]{2,}-\d+)\b')
 
 
 def _parse_skill_and_args(hook_input: dict) -> tuple[str, str]:
@@ -90,7 +88,6 @@ def _initial_state(workflow_type: str, args: str) -> dict:
         "ci_check_executed": False,
         "report_written": False,
         "plan_files_cache": None,
-        "agent_findings": [],
         "codebase_written": False,
     }
 

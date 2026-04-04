@@ -19,15 +19,14 @@ argument-hint: <task-to-be-performed> <instructions>
 - Read @.claude/skills/claude-headless/references/configuring-permissions.md to understand the configuring permissions for headless claude scripts.
 - Use permission rules in `--allowedTools` to allow the tools that are needed to create the script.
 - Do TDD(Test Driven Development) approach to create the script.
-- Enter plan mode, explore and then create a plan for the script.
-- Run `/simplify` skill to clean up the code
+- Enter plan mode if not already, explore and then create a plan for the script.
 - Review the code, fix any issues if any
 - Provide report to the user
 
 ### If the task is to refactor or review headless claude scripts
 
 - Analyze the user revision request. If revision request is vague, ask the user for more details.
-- Enter plan mode, explore and then create a plan for the script.
+- Enter plan mode if not already, explore and then create a plan for the script.
 - Find existing tests for the script
 - Refactor or revise the script according to the plan
 - Do a regression test to ensure the script works as expected.

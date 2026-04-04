@@ -3,7 +3,7 @@ name: implement
 description: Implement the task
 allowed-tools: Bash, Read, Glob, Grep, Write
 argument-hint: <task-to-implement>
-model: opus
+model: haiku
 ---
 
 Analyze the coding task "$1" and deploy the appropriate engineer agents in parallel for maximum efficiency. Determine which engineers are needed, distribute work intelligently, and aggregate results.
@@ -26,6 +26,8 @@ Analyze the coding task "$1" and deploy the appropriate engineer agents in paral
 
 > **IMPORTANT**: You have to ensure that the amount agents triggered is correct or else the hook guardrail will block the `Plan` agent from executing.
 
+> **IMPORTANT**: All agents must be run in the foreground and not in the background.
+
 1. Trigger the following agents in parallel to explore the codebase and research about the task:
 
 - 3 x `Explore` agents, each focused on critical and relevant areas of the codebase
@@ -39,17 +41,17 @@ Analyze the coding task "$1" and deploy the appropriate engineer agents in paral
 | `Research` agent 1 | Must research the web for solutions to the task                                                            |
 | `Research` agent 2 | Must retrieve latest documentation and best practices                                                      |
 
-> **IMPORTANT**: Explore agents must run in the background (`run_in_background: true`). Research agents must run in the foreground.
+2. Once the exploration and research are completed, consolidate the findings in CODEBASE.md (Should be found in the project root directory) which should contain the latest codebase status and information.
 
-2. Once the exploration and research are complete, invoke the `Plan` agent to formulate the implementation plan.
+3. After the CODEBASE.md is updated, invoke the `Plan` agent to formulate the implementation plan.
 
-3. Once the `Plan` task is complete, write the plan to the `.claude/plans/<plan-name>.md` file from current directory.
+4. Once the `Plan` task is complete, write the plan to the `.claude/plans/<plan-name>.md` file from current directory.
 
-4. Invoke the `Plan-Review` agent to review the plan.
+5. Invoke the `Plan-Review` agent to review the plan.
 
-5. Validate the reviewer's confidence and quality scores. If the scores are not above 80, revise the plan and iterate until the scores are above 80.
+6. Validate the reviewer's confidence and quality scores. If the scores are not above 80, revise the plan and iterate until the scores are above 80.
 
-6. Then present the plan to the user using `ExitPlanMode` tool.
+7. Then present the plan to the user using `ExitPlanMode` tool.
 
 ### Code Phase
 

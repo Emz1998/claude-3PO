@@ -6,31 +6,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
+from workflow.config import CODE_EXTENSIONS, TEST_PATH_PATTERNS
 from workflow.state_store import StateStore
-
-CODE_EXTENSIONS = {
-    ".py",
-    ".ts",
-    ".tsx",
-    ".js",
-    ".jsx",
-    ".go",
-    ".rs",
-    ".java",
-    ".kt",
-    ".swift",
-    ".c",
-    ".cpp",
-    ".h",
-    ".rb",
-    ".sh",
-}
-
-TEST_PATH_PATTERNS = [
-    re.compile(r"(^|/)(tests?|__tests__|spec)(/|$)"),
-    re.compile(r"(^|/)(test_.*|.*_test)\.(py|js|ts|jsx|tsx)$"),
-    re.compile(r"(^|/).*\.(test|spec)\.(js|jsx|ts|tsx)$"),
-]
 
 
 def get_file_path(hook_input: dict) -> str:
@@ -127,6 +104,15 @@ def validate_pre(hook_input: dict, store: StateStore) -> tuple[str, str]:
             return "allow", ""
         return "block", "Blocked: only CODEBASE.md may be written during 'write-codebase' phase. Write CODEBASE.md first to proceed."
 
+    # Report phase: only report files allowed
+    if phase == "report":
+        if is_report_file(file_path):
+            return "allow", ""
+        return (
+            "block",
+            f"Blocked: cannot write '{file_path}' during 'report' phase. Write the completion report to .claude/reports/latest-report.md instead.",
+        )
+
     # Claude config files are always allowed
     if is_claude_config(file_path):
         return "allow", ""
@@ -153,15 +139,7 @@ def validate_pre(hook_input: dict, store: StateStore) -> tuple[str, str]:
         # Allow writes — PostToolUse will trigger regression
         return "allow", ""
 
-    if phase == "report":
-        if is_report_file(file_path):
-            return "allow", ""
-        return (
-            "block",
-            "Blocked: only report files (.claude/reports/) may be written during 'report' phase. Write your report there.",
-        )
-
-    if phase in ("explore", "plan", "approved", "task-create"):
+    if phase in ("explore", "plan", "present-plan", "task-create"):
         return "block", f"Blocked: code files may not be written during '{phase}' phase. Advance to the write-code phase first."
 
     return "allow", ""

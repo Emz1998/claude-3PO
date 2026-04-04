@@ -87,7 +87,7 @@ PHASE_TRANSITION_REMINDERS: dict[str, str] = {
         "Plan formulated. Write it to .claude/plans/ with required sections: "
         "Context, Approach/Steps, Files to Modify, Verification."
     ),
-    "approved": (
+    "present-plan": (
         "Plan review passed. Use ExitPlanMode to present the plan to the "
         "user for approval."
     ),
@@ -107,8 +107,8 @@ PHASE_TRANSITION_REMINDERS: dict[str, str] = {
 
 EXIT_PLAN_MODE_REMINDERS: dict[str, str] = {
     "task-create": (
-        "User approved the plan. Create tasks matching the story context "
-        "using TaskManager agent."
+        "User approved the plan. Create tasks for each project task using TaskCreate. "
+        "Include metadata with parent_task_id and parent_task_title."
     ),
     "write-tests": "User approved the plan. TDD mode: write failing tests first.",
     "write-code": (
@@ -257,6 +257,21 @@ def get_post_tool_reminder(hook_input: dict, store: StateStore) -> str | None:
     return template.format(iteration=iteration, plan_files=plan_files)
 
 
+def get_session_start_clear_reminder(store: StateStore) -> str | None:
+    """SessionStart:clear — return post-approval reminder after phase advance."""
+    state = store.load()
+    if not state.get("workflow_active"):
+        return None
+
+    phase = state.get("phase", "")
+    template = EXIT_PLAN_MODE_REMINDERS.get(phase)
+    if template and state.get("last_reminder_phase") != f"exit:{phase}":
+        plan_files = _load_plan_files_list(state)
+        store.set("last_reminder_phase", f"exit:{phase}")
+        return template.format(plan_files=plan_files)
+    return None
+
+
 def get_agent_start_reminder(hook_input: dict, store: StateStore) -> str | None:
     """SubagentStart: return agent-role instructions for the subagent."""
     state = store.load()
@@ -312,18 +327,10 @@ def get_phase_transition_reminder(hook_input: dict, store: StateStore) -> str | 
     if state.get("last_reminder_phase") == f"transition:{phase}":
         return None
 
-    # Dynamic write-codebase reminder with collected findings
+    # Write-codebase transition reminder
     if phase == "write-codebase":
-        findings = state.get("agent_findings", [])
-        sections = []
-        for i, f in enumerate(findings, 1):
-            sections.append(f"### {f['agent_type']} Agent {i}\n{f['message']}")
-        findings_text = "\n\n".join(sections)
         store.set("last_reminder_phase", f"transition:{phase}")
-        return (
-            "All exploration complete. Write CODEBASE.md using the findings below.\n\n"
-            f"{findings_text}"
-        )
+        return "All exploration complete. Write CODEBASE.md summarizing the codebase."
 
     template = PHASE_TRANSITION_REMINDERS.get(phase)
     if not template:

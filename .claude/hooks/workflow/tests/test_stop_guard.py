@@ -68,8 +68,8 @@ class TestWorkflowInactive:
 # ---------------------------------------------------------------------------
 
 class TestPlanWorkflow:
-    def test_stop_allowed_after_approved_for_plan_workflow(self, tmp_state_file):
-        write_state(tmp_state_file, make_state("approved", workflow_type="plan"))
+    def test_stop_allowed_after_present_plan_for_plan_workflow(self, tmp_state_file):
+        write_state(tmp_state_file, make_state("present-plan", workflow_type="plan"))
         store = StateStore(tmp_state_file)
         decision, _ = stop_guard.validate(stop_event(), store)
         assert decision == "allow"

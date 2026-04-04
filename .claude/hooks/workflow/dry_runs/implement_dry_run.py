@@ -133,9 +133,52 @@ def subagent_stop_payload(agent_type: str, msg: str = "Done.") -> dict:
     }
 
 
-def task_created_payload(subject: str, task_id: str = "1") -> dict:
+def validator_report(verdict: str) -> str:
+    """Build a valid Validator report with the given verdict."""
+    return (
+        f"## QA Report: Test Task\n\n"
+        f"### Criteria Checklist\n"
+        f"| # | Criterion | Verdict | Evidence |\n"
+        f"|---|-----------|---------|----------|\n"
+        f"| 1 | Tests pass | Met | `tests/:1` |\n\n"
+        f"### Test Results\n"
+        f"- **Command**: `pytest`\n"
+        f"- **Result**: 1 passed\n\n"
+        f"### Final Verdict: {verdict.upper()}\n\n"
+        f"{verdict}"
+    )
+
+
+def task_create_pre_payload(
+    subject: str,
+    description: str = "Do the thing.",
+    parent_task_id: str | None = None,
+    parent_task_title: str | None = None,
+    include_metadata: bool = True,
+) -> dict:
+    tool_input: dict = {"subject": subject, "description": description}
+    if include_metadata:
+        metadata: dict = {}
+        if parent_task_id is not None:
+            metadata["parent_task_id"] = parent_task_id
+        if parent_task_title is not None:
+            metadata["parent_task_title"] = parent_task_title
+        tool_input["metadata"] = metadata
     return {
-        "hook_event_name": "TaskCreated",
+        "hook_event_name": "PreToolUse",
+        "tool_name": "TaskCreate",
+        "tool_input": tool_input,
+        "tool_use_id": "t1",
+        "session_id": "s",
+        "transcript_path": "t",
+        "cwd": ".",
+        "permission_mode": "default",
+    }
+
+
+def task_completed_payload(subject: str, task_id: str = "task-001") -> dict:
+    return {
+        "hook_event_name": "TaskCompleted",
         "task_id": task_id,
         "task_subject": subject,
         "task_description": "Do the thing.",
@@ -424,25 +467,63 @@ def simulate(tdd: bool, story_id: str | None, skip_args: str, tmp_dir: Path) -> 
     # Task-create phase (if story_id provided)
     if story_id:
         print("\n--- Task-create phase ---")
-        run("Main agent Write → block (phase gate)", write_payload("notes.md"), "block", "Only Agent tool allowed")
         run("Stop before tasks done → block", stop_payload(), "block")
-        run("TaskManager agent → allow", agent_payload("TaskManager"), "allow")
-        run(
-            f"TaskCreated valid ({story_id}: ...) → allow",
-            task_created_payload(f"{story_id}: Implement feature"),
-            "allow",
-            "tasks_created=1",
+
+        # Fetch real project tasks for this story to use in payloads
+        import subprocess as _sp
+        _pm = str(Path(__file__).resolve().parent.parent.parent.parent.parent / "github_project" / "project_manager.py")
+        _pm_result = _sp.run(
+            [sys.executable, _pm, "view", story_id, "--tasks", "--json"],
+            capture_output=True, text=True,
         )
+        _project_tasks = json.loads(_pm_result.stdout) if _pm_result.returncode == 0 else []
+
+        # Validation tests (before covering all tasks)
+        if _project_tasks:
+            _first = _project_tasks[0]
+            run(
+                f"TaskCreate valid metadata ({_first['id']}) → allow",
+                task_create_pre_payload(
+                    "Implement feature",
+                    parent_task_id=_first["id"],
+                    parent_task_title=_first["title"],
+                ),
+                "allow",
+                "subtask recorded, phase stays task-create",
+            )
         run(
-            "TaskCreated invalid prefix → block",
-            task_created_payload("Wrong prefix task"),
+            "TaskCreate missing metadata → block",
+            task_create_pre_payload("Wrong task", include_metadata=False),
             "block",
         )
         run(
-            "TaskManager SubagentStop → phase=write-tests/write-code",
-            subagent_stop_payload("TaskManager"),
+            "TaskCreate unknown parent_task_id → block",
+            task_create_pre_payload(
+                "Another task",
+                parent_task_id="T-999",
+                parent_task_title="Nonexistent task",
+            ),
+            "block",
+        )
+
+        # Cover remaining tasks to trigger auto-advance
+        for task in _project_tasks[1:]:
+            run(
+                f"TaskCreate cover {task['id']} → allow",
+                task_create_pre_payload(
+                    f"Subtask for {task['id']}",
+                    parent_task_id=task["id"],
+                    parent_task_title=task["title"],
+                ),
+                "allow",
+            )
+
+        # Verify TaskCompleted updates subtask status
+        run(
+            "TaskCompleted → subtask status updated",
+            task_completed_payload("Implement feature"),
             "allow",
-            f"Phase → {'write-tests' if tdd else 'write-code'}",
+            "subtask completed",
         )
 
     # Write-tests phase (TDD)
@@ -514,7 +595,7 @@ def simulate(tdd: bool, story_id: str | None, skip_args: str, tmp_dir: Path) -> 
     run("Code write in validate → block", write_payload("src/feature.py"), "block")
     run(
         "Validator Fail → phase=write-code",
-        subagent_stop_payload("Validator", "Fail"),
+        subagent_stop_payload("Validator", validator_report("Fail")),
         "allow",
         "Phase → write-code",
     )
@@ -529,7 +610,7 @@ def simulate(tdd: bool, story_id: str | None, skip_args: str, tmp_dir: Path) -> 
     )
     run(
         "Validator Pass → phase=pr-create",
-        subagent_stop_payload("Validator", "Pass"),
+        subagent_stop_payload("Validator", validator_report("Pass")),
         "allow",
         "Phase → pr-create",
     )
@@ -552,8 +633,14 @@ def simulate(tdd: bool, story_id: str | None, skip_args: str, tmp_dir: Path) -> 
     print("\n--- CI-check phase ---")
     run("Stop before CI done → block", stop_payload(), "block")
     run(
-        "CI fail → keep phase ci-check",
-        post_bash_payload("gh pr checks 1", output="Some checks were not successful"),
+        "CI pending (table format) → stays ci-check",
+        post_bash_payload("gh pr checks 1", output="check-1\tpass\t1s\turl\ncheck-2\tpending\t0\turl"),
+        "allow",
+        "ci_status stays pending",
+    )
+    run(
+        "CI fail (table format) → ci_status=failed",
+        post_bash_payload("gh pr checks 1", output="check-1\tpass\t1s\turl\ncheck-2\tfail\t5s\turl"),
         "allow",
         "ci_status=failed",
     )
@@ -570,7 +657,7 @@ def simulate(tdd: bool, story_id: str | None, skip_args: str, tmp_dir: Path) -> 
     run("Validator → advance to validate", agent_payload("Validator"), "allow")
     run(
         "Validator Pass → pr-create",
-        subagent_stop_payload("Validator", "Pass"),
+        subagent_stop_payload("Validator", validator_report("Pass")),
         "allow",
     )
     run(
@@ -579,10 +666,10 @@ def simulate(tdd: bool, story_id: str | None, skip_args: str, tmp_dir: Path) -> 
         "allow",
     )
 
-    # CI pass
+    # CI pass (table format)
     run(
-        "CI pass → phase=report",
-        post_bash_payload("gh pr checks 2", output="All checks were successful"),
+        "CI pass (table format) → phase=report",
+        post_bash_payload("gh pr checks 2", output="check-1\tpass\t1s\turl\ncheck-2\tpass\t5s\turl"),
         "allow",
         "Phase → report",
     )

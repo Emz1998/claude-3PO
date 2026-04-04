@@ -66,7 +66,7 @@ class Hook:
                         "additionalContext": context,
                     },
                 }
-            case "PostToolUse" | "UserPromptSubmit" | "SubagentStart":
+            case "PostToolUse" | "UserPromptSubmit" | "SubagentStart" | "SessionStart":
                 output = {
                     "systemMessage": context,
                     "hookSpecificOutput": {

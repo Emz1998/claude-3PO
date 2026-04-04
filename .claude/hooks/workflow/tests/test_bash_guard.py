@@ -176,9 +176,37 @@ class TestCICheckTracking:
         assert state["ci_status"] == "failed"
         assert state["phase"] == "ci-check"
 
-    def test_gh_run_view_tracked_as_ci(self, tmp_state_file):
+    def test_ci_pass_table_format(self, tmp_state_file):
         write_state(tmp_state_file, make_state("ci-check"))
         store = StateStore(tmp_state_file)
-        recorder.record_bash(post_bash_hook("gh run view 12345"), store)
+        output = "check-1\tpass\t1s\turl\ncheck-2\tpass\t5s\turl"
+        recorder.record_bash(post_bash_hook("gh pr checks 1", output=output), store)
+        state = store.load()
+        assert state["ci_status"] == "passed"
+        assert state["phase"] == "report"
+
+    def test_ci_fail_table_format(self, tmp_state_file):
+        write_state(tmp_state_file, make_state("ci-check"))
+        store = StateStore(tmp_state_file)
+        output = "check-1\tpass\t1s\turl\ncheck-2\tfail\t5s\turl"
+        recorder.record_bash(post_bash_hook("gh pr checks 1", output=output), store)
+        state = store.load()
+        assert state["ci_status"] == "failed"
+        assert state["phase"] == "ci-check"
+
+    def test_ci_pending_table_format(self, tmp_state_file):
+        write_state(tmp_state_file, make_state("ci-check", ci_check_executed=False))
+        store = StateStore(tmp_state_file)
+        output = "check-1\tpass\t1s\turl\ncheck-2\tpending\t0\turl"
+        recorder.record_bash(post_bash_hook("gh pr checks 1", output=output), store)
+        state = store.load()
+        assert state["ci_check_executed"] is False  # not set until definitive
+        assert state["phase"] == "ci-check"
+
+    def test_gh_run_view_with_success_tracked_as_ci(self, tmp_state_file):
+        write_state(tmp_state_file, make_state("ci-check"))
+        store = StateStore(tmp_state_file)
+        recorder.record_bash(post_bash_hook("gh run view 12345", output="check-1\tpass\t1s\turl"), store)
         state = store.load()
         assert state["ci_check_executed"] is True
+        assert state["ci_status"] == "passed"

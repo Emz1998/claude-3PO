@@ -661,6 +661,42 @@
       "issue_number": 286,
       "start_date": "",
       "target_date": ""
+    },
+    {
+      "id": "T-023",
+      "type": "task",
+      "parent_story_id": "SK-001",
+      "labels": [],
+      "title": "Install ML dependencies via pipeline/requirements.txt",
+      "description": "Create pipeline/requirements.txt with the following ML dependencies: xgboost>=2.0, scikit-learn>=1.4, pandas>=2.0, numpy>=2.0, shap>=0.45, nba_api>=1.4, pytest>=8.0, pytest-cov>=5.0. Then run: pip install -r pipeline/requirements.txt to install all dependencies.",
+      "status": "Backlog",
+      "priority": "P1",
+      "complexity": "S",
+      "is_blocking": [],
+      "blocked_by": [],
+      "acceptance_criteria": [],
+      "item_type": "task",
+      "milestone": "v.0.1.0",
+      "start_date": "",
+      "target_date": ""
+    },
+    {
+      "id": "T-024",
+      "type": "task",
+      "parent_story_id": "SK-001",
+      "labels": [],
+      "title": "Create package init files for pipeline/tests and pipeline/model",
+      "description": "Create package init files: pipeline/tests/__init__.py with docstring 'Tests for NBA XGBoost feature analysis.' and pipeline/model/__init__.py with docstring 'XGBoost model training and feature analysis for NBA predictions.'",
+      "status": "Backlog",
+      "priority": "P1",
+      "complexity": "S",
+      "is_blocking": [],
+      "blocked_by": [],
+      "acceptance_criteria": [],
+      "item_type": "task",
+      "milestone": "v.0.1.0",
+      "start_date": "",
+      "target_date": ""
     }
   ]
 }

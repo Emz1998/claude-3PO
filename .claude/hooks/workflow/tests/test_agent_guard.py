@@ -13,7 +13,7 @@ from workflow.guards import agent_guard
 from workflow.state_store import StateStore
 
 
-PHASES = ["explore", "write-codebase", "plan", "write-plan", "review", "approved", "task-create",
+PHASES = ["explore", "write-codebase", "plan", "write-plan", "review", "present-plan", "task-create",
           "write-tests", "write-code", "validate", "pr-create", "ci-check", "report", "completed"]
 
 
@@ -119,6 +119,13 @@ class TestExplorePhase:
         decision, _ = agent_guard.validate(agent_hook("Explore", run_in_background=False), store)
         assert decision == "allow"
 
+    def test_background_explore_blocked(self, tmp_state_file):
+        write_state(tmp_state_file, make_state("explore"))
+        store = StateStore(tmp_state_file)
+        decision, reason = agent_guard.validate(agent_hook("Explore", run_in_background=True), store)
+        assert decision == "block"
+        assert "foreground" in reason.lower()
+
     def test_background_research_blocked(self, tmp_state_file):
         write_state(tmp_state_file, make_state("explore"))
         store = StateStore(tmp_state_file)
@@ -200,25 +207,6 @@ class TestReviewPhase:
 
 
 # ---------------------------------------------------------------------------
-# Task-create phase
-# ---------------------------------------------------------------------------
-
-class TestTaskCreatePhase:
-    def test_task_manager_allowed_in_task_create(self, tmp_state_file):
-        write_state(tmp_state_file, make_state("task-create"))
-        store = StateStore(tmp_state_file)
-        decision, _ = agent_guard.validate(agent_hook("TaskManager"), store)
-        assert decision == "allow"
-
-    def test_task_manager_max_1(self, tmp_state_file):
-        agents = [{"agent_type": "TaskManager", "status": "running"}]
-        write_state(tmp_state_file, make_state("task-create", agents=agents))
-        store = StateStore(tmp_state_file)
-        decision, _ = agent_guard.validate(agent_hook("TaskManager"), store)
-        assert decision == "block"
-
-
-# ---------------------------------------------------------------------------
 # Write-tests phase
 # ---------------------------------------------------------------------------
 
@@ -292,7 +280,7 @@ class TestValidatePhase:
 # ---------------------------------------------------------------------------
 
 class TestBlockedPhases:
-    @pytest.mark.parametrize("phase", ["write-plan", "write-codebase", "approved", "pr-create", "ci-check", "report", "completed"])
+    @pytest.mark.parametrize("phase", ["write-plan", "write-codebase", "present-plan", "pr-create", "ci-check", "report", "completed"])
     def test_agents_blocked_in_non_agent_phases(self, phase, tmp_state_file):
         write_state(tmp_state_file, make_state(phase))
         store = StateStore(tmp_state_file)

@@ -1,5 +1,5 @@
 ---
-name: task-manager
+name: TaskManager
 description: Reads project tasks for a story and creates matching Claude tasks in the correct order with dependencies.
 tools: Read, Bash, Glob, Grep
 model: sonnet

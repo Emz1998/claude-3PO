@@ -1,0 +1,30 @@
+{
+  "workflow_active": true,
+  "workflow_type": "implement",
+  "phase": "task-create",
+  "story_id": "SK-001",
+  "tasks_created": 0,
+  "tasks": [
+    {
+      "id": "T-017",
+      "subject": "Feature importance analysis documented in decisions.md",
+      "description": "Perform feature importance analysis and document findings",
+      "status": "pending",
+      "subtasks": [
+        {
+          "id": 1,
+          "subject": "Analyze feature correlations",
+          "description": "Run correlation analysis",
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "id": "T-018",
+      "subject": "Recommendation includes feature set with pros/cons",
+      "description": "Develop feature set recommendations with trade-offs",
+      "status": "pending",
+      "subtasks": []
+    }
+  ]
+}

@@ -14,7 +14,7 @@ from workflow.state_store import StateStore
 
 
 CODING_PHASES = ["write-tests", "write-code", "validate", "ci-check", "report"]
-NON_ENFORCED_PHASES = ["explore", "plan", "write-plan", "review", "approved", "task-create"]
+NON_ENFORCED_PHASES = ["explore", "plan", "write-plan", "review", "present-plan", "task-create"]
 
 
 def make_state(phase: str, plan_file: str = None, **kwargs) -> dict:

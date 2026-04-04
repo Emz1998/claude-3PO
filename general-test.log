@@ -1,0 +1,90 @@
+
+{
+    "session_id": "3fabd655-c996-4914-8d0c-da5e0a7f7439",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/3fabd655-c996-4914-8d0c-da5e0a7f7439.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "hook_event_name": "TaskCreated",
+    "task_id": "1",
+    "task_subject": "Refactor the banana sorting algorithm",
+    "task_description": "The current banana sorting algorithm in the fruit processor module uses O(n\u00b2) complexity. Refactor it to use a radix sort approach based on banana ripeness index, color gradient, and curvature factor. Ensure backward compatibility with the mango comparator interface."
+}
+{
+    "session_id": "3fabd655-c996-4914-8d0c-da5e0a7f7439",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/3fabd655-c996-4914-8d0c-da5e0a7f7439.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "hook_event_name": "TaskCreated",
+    "task_id": "2",
+    "task_subject": "Implement coconut shell hardness detector",
+    "task_description": "Build a real-time coconut shell hardness detection module that uses acoustic resonance analysis. The detector should classify coconuts into three tiers: soft, medium, and diamond-grade. Must integrate with the existing tropical fruit pipeline and emit events to the smoothie orchestrator."
+}
+{
+    "session_id": "5fe5ff75-7ea4-4f9f-b4a5-23bc0e15e72a",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/5fe5ff75-7ea4-4f9f-b4a5-23bc0e15e72a.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "ToolSearch",
+    "tool_input": {
+        "query": "select:TaskCreate",
+        "max_results": 1
+    },
+    "tool_use_id": "toolu_015gMDoF1e7YtdYP2mAU3PFX"
+}
+{
+    "session_id": "5fe5ff75-7ea4-4f9f-b4a5-23bc0e15e72a",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/5fe5ff75-7ea4-4f9f-b4a5-23bc0e15e72a.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "TaskCreate",
+    "tool_input": {
+        "subject": "Refactor the penguin migration tracker module",
+        "description": "The penguin migration tracker in src/wildlife/penguins.ts has a race condition when multiple colonies report GPS coordinates simultaneously. Need to implement a queue-based approach using Redis streams to serialize incoming location updates. Also update the unit tests to cover concurrent colony reporting scenarios.",
+        "activeForm": "Refactoring penguin migration tracker"
+    },
+    "tool_use_id": "toolu_01Xfm5LxcPLXvPEr9UwRWu9Z"
+}
+{
+    "session_id": "5fe5ff75-7ea4-4f9f-b4a5-23bc0e15e72a",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/5fe5ff75-7ea4-4f9f-b4a5-23bc0e15e72a.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "TaskCreate",
+    "tool_input": {
+        "subject": "Optimize the space burrito delivery algorithm",
+        "description": "The current delivery routing for orbital burrito drops is using a naive O(n\u00b2) approach. Need to switch to a Dijkstra-based pathfinding algorithm that accounts for gravitational pull from nearby space stations. The latency budget is 200ms per delivery calculation.",
+        "activeForm": "Optimizing space burrito delivery algorithm",
+        "metadata": {
+            "priority": "high",
+            "assignee": "captain-tortilla",
+            "sprint": "galaxy-sprint-42",
+            "estimated_hours": 8,
+            "tags": [
+                "performance",
+                "routing",
+                "space-food"
+            ]
+        }
+    },
+    "tool_use_id": "toolu_01McsJ3aMzEpKiNXu1cb3Yfo"
+}
+{
+    "session_id": "5fe5ff75-7ea4-4f9f-b4a5-23bc0e15e72a",
+    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/5fe5ff75-7ea4-4f9f-b4a5-23bc0e15e72a.jsonl",
+    "cwd": "/home/emhar/avaris-ai",
+    "permission_mode": "bypassPermissions",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "TaskCreate",
+    "tool_input": {
+        "subject": "Add jalape\u00f1o heat-level calibration to burrito warmer",
+        "description": "The orbital burrito warmer currently applies uniform heat across all burrito types. Need to add a calibration step that detects jalape\u00f1o density via infrared sensors and adjusts the warming profile accordingly. Should integrate with the existing SpiceDetector service.",
+        "activeForm": "Adding jalape\u00f1o heat-level calibration",
+        "metadata": {
+            "parent_task_id": "BURR-7734",
+            "priority": "medium",
+            "component": "burrito-warmer"
+        }
+    },
+    "tool_use_id": "toolu_01JpGmt9eDZ5CboPmzutKor4"
+}

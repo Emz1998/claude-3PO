@@ -5,10 +5,13 @@ Use `tail -f .claude/hooks/workflow/workflow.log` to observe.
 """
 
 import json
+import sys
 from datetime import datetime
 from pathlib import Path
 
-LOG_FILE = Path(__file__).resolve().parent / "workflow.log"
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from workflow.config import LOG_FILE
 
 
 def log(event: str, **kwargs) -> None:

@@ -9,12 +9,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
+from workflow.config import DEFAULT_STATE_PATH, PLAN_ALLOWED_STOP_PHASES
 from workflow.state_store import StateStore
-
-DEFAULT_STATE_PATH = Path(__file__).resolve().parent.parent / "state.json"
-
-# Plan workflow: allowed to stop once past approved
-PLAN_ALLOWED_STOP_PHASES = {"approved", "completed", "failed"}
 
 # Implement workflow: collect reasons from state
 def _collect_reasons(state: dict) -> list[str]:
@@ -34,7 +30,7 @@ def _collect_reasons(state: dict) -> list[str]:
         reasons.append("CI has not been checked")
 
     if not state.get("report_written"):
-        reasons.append("report has not been written")
+        reasons.append("report has not been written — write it to .claude/reports/latest-report.md")
 
     return reasons
 

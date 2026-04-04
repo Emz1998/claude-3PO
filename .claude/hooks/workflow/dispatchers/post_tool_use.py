@@ -42,6 +42,8 @@ def main() -> None:
     tool_name = raw_input.get("tool_name", "")
     hook_event_name = raw_input.get("hook_event_name", "")
 
+    log("PostToolUse:raw_input", raw_input=raw_input)
+
     # Skill activation goes through guardrail (blocking)
     if tool_name == "Skill":
         decision = get_decision(raw_input)

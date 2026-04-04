@@ -1,0 +1,14 @@
+{
+  "workflow_active": true,
+  "workflow_type": "implement",
+  "phase": "write-code",
+  "plan_file": "/home/emhar/avaris-ai/pytest-of-emhar/pytest-91/test_file_in_plan_allowed0/plan.md",
+  "plan_files_cache": [
+    "app.py",
+    "src/utils.py",
+    "test_app.py",
+    "src/app.py",
+    "utils.py",
+    "tests/test_app.py"
+  ]
+}

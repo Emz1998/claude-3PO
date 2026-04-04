@@ -15,7 +15,17 @@ from workflow.reminder import get_phase_transition_reminder
 from workflow.state_store import StateStore
 
 DEFAULT_STATE_PATH = Path(__file__).resolve().parent.parent / "state.json"
+GUARDRAIL = str(Path(__file__).parent.parent / "guardrail.py")
 RECORDER = str(Path(__file__).parent.parent / "recorder.py")
+
+
+def get_decision(raw_input: dict[str, Any]) -> str:
+    result = subprocess.run(
+        ["python3", GUARDRAIL, "--hook-input", json.dumps(raw_input), "--reason"],
+        capture_output=True,
+        text=True,
+    )
+    return result.stdout.strip()
 
 
 def get_recording(raw_input: dict[str, Any]) -> str:
@@ -32,6 +42,15 @@ def main() -> None:
     hook_event_name = raw_input.get("hook_event_name", "")
     agent_type = raw_input.get("agent_type", "unknown")
     log("Agent:completed", agent_type=agent_type)
+
+    # Validate output schema before recording
+    decision = get_decision(raw_input)
+    if decision.startswith("block"):
+        reason = decision[len("block, "):] if decision.startswith("block, ") else "Agent output blocked by guardrail"
+        log("SubagentStop:block", agent_type=agent_type, reason=reason)
+        Hook.advanced_block(hook_event_name, reason)
+        return
+
     store = StateStore(DEFAULT_STATE_PATH)
     phase_before = store.load().get("phase", "")
     get_recording(raw_input)

@@ -15,18 +15,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
+from workflow.config import CODING_PHASES, CODEBASE_MD, TEST_PATH_PATTERNS
 from workflow.state_store import StateStore
-
-CODING_PHASES = {"write-tests", "write-code", "validate", "ci-check", "report"}
-
-CODEBASE_MD = "CODEBASE.md"
-
-# Test file patterns
-TEST_PATH_PATTERNS = [
-    re.compile(r"(^|/)(tests?|__tests__|spec)(/|$)"),
-    re.compile(r"(^|/)(test_.*|.*_test)\.(py|js|ts|jsx|tsx)$"),
-    re.compile(r"(^|/).*\.(test|spec)\.(js|jsx|ts|tsx)$"),
-]
 
 
 def _is_codebase_md(file_path: str) -> bool:
