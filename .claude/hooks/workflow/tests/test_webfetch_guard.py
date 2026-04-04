@@ -10,7 +10,7 @@ WORKFLOW_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(WORKFLOW_DIR.parent))
 
 from workflow.guards import webfetch_guard
-from workflow.state_store import StateStore
+from workflow.session_store import SessionStore
 
 
 def make_state(active: bool = True) -> dict:
@@ -34,38 +34,38 @@ def webfetch_hook(url: str) -> dict:
 class TestWebfetchGuard:
     def test_safe_domain_github_allowed(self, tmp_state_file):
         write_state(tmp_state_file, make_state())
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         decision, _ = webfetch_guard.validate(webfetch_hook("https://github.com/foo/bar"), store)
         assert decision == "allow"
 
     def test_safe_domain_docs_anthropic_allowed(self, tmp_state_file):
         write_state(tmp_state_file, make_state())
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         decision, _ = webfetch_guard.validate(webfetch_hook("https://docs.anthropic.com/api"), store)
         assert decision == "allow"
 
     def test_safe_subdomain_allowed(self, tmp_state_file):
         write_state(tmp_state_file, make_state())
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         decision, _ = webfetch_guard.validate(webfetch_hook("https://api.github.com/repos"), store)
         assert decision == "allow"
 
     def test_unsafe_domain_blocked(self, tmp_state_file):
         write_state(tmp_state_file, make_state())
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         decision, reason = webfetch_guard.validate(webfetch_hook("https://evil.example.com"), store)
         assert decision == "block"
         assert "domain" in reason.lower() or "allowed" in reason.lower()
 
     def test_workflow_inactive_allows_all(self, tmp_state_file):
-        tmp_state_file.write_text("{}")
-        store = StateStore(tmp_state_file)
+        tmp_state_file.write_text("")
+        store = SessionStore("s", tmp_state_file)
         decision, _ = webfetch_guard.validate(webfetch_hook("https://evil.example.com"), store)
         assert decision == "allow"
 
     def test_empty_url_blocked_when_active(self, tmp_state_file):
         write_state(tmp_state_file, make_state())
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         decision, _ = webfetch_guard.validate(webfetch_hook(""), store)
         assert decision == "block"
 
@@ -88,6 +88,6 @@ class TestWebfetchGuard:
     ])
     def test_all_safe_domains_allowed(self, url, tmp_state_file):
         write_state(tmp_state_file, make_state())
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         decision, _ = webfetch_guard.validate(webfetch_hook(url), store)
         assert decision == "allow"

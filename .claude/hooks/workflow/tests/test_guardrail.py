@@ -11,6 +11,8 @@ sys.path.insert(0, str(WORKFLOW_DIR.parent))
 
 import importlib.util
 
+from workflow.session_store import SessionStore
+
 GUARDRAIL_PATH = WORKFLOW_DIR / "guardrail.py"
 
 
@@ -70,7 +72,7 @@ class TestDispatchRouting:
         }
         decision, _ = gm._dispatch(hook_input, tmp_state_file)
         assert decision == "allow"
-        state = json.loads(tmp_state_file.read_text())
+        state = SessionStore("s", tmp_state_file).load()
         assert state["workflow_active"] is True
 
     def test_agent_pre_tool_use_routed(self, tmp_state_file):
@@ -185,7 +187,7 @@ class TestDispatchRouting:
         }
         decision, _ = gm._dispatch(hook_input, tmp_state_file)
         assert decision == "allow"
-        state = json.loads(tmp_state_file.read_text())
+        state = SessionStore("s", tmp_state_file).load()
         assert state["workflow_active"] is True
 
     def test_task_create_pre_routed_to_task_guard(self, tmp_state_file):
@@ -453,6 +455,6 @@ class TestExitPlanMode:
         }
         decision, _ = gm._dispatch(hook_input, tmp_state_file)
         assert decision == "allow"
-        state = json.loads(tmp_state_file.read_text())
+        state = SessionStore("s", tmp_state_file).load()
         # Phase should NOT change — recording is done by recorder.py
         assert state["phase"] == "present-plan"

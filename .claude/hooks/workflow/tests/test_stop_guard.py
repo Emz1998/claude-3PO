@@ -10,7 +10,7 @@ WORKFLOW_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(WORKFLOW_DIR.parent))
 
 from workflow.guards import stop_guard
-from workflow.state_store import StateStore
+from workflow.session_store import SessionStore
 
 
 def make_state(phase: str, **kwargs) -> dict:
@@ -46,7 +46,7 @@ def stop_event(active: bool = False) -> dict:
 class TestStopHookBypass:
     def test_stop_hook_active_bypasses_all_checks(self, tmp_state_file):
         write_state(tmp_state_file, make_state("write-code"))
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         decision, _ = stop_guard.validate(stop_event(active=True), store)
         assert decision == "allow"
 
@@ -57,8 +57,8 @@ class TestStopHookBypass:
 
 class TestWorkflowInactive:
     def test_stop_allowed_when_workflow_inactive(self, tmp_state_file):
-        tmp_state_file.write_text("{}")
-        store = StateStore(tmp_state_file)
+        tmp_state_file.write_text("")
+        store = SessionStore("s", tmp_state_file)
         decision, _ = stop_guard.validate(stop_event(), store)
         assert decision == "allow"
 
@@ -70,19 +70,19 @@ class TestWorkflowInactive:
 class TestPlanWorkflow:
     def test_stop_allowed_after_present_plan_for_plan_workflow(self, tmp_state_file):
         write_state(tmp_state_file, make_state("present-plan", workflow_type="plan"))
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         decision, _ = stop_guard.validate(stop_event(), store)
         assert decision == "allow"
 
     def test_stop_blocked_before_approved_for_plan_workflow(self, tmp_state_file):
         write_state(tmp_state_file, make_state("review", workflow_type="plan"))
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         decision, reason = stop_guard.validate(stop_event(), store)
         assert decision == "block"
 
     def test_stop_blocked_in_explore_for_plan_workflow(self, tmp_state_file):
         write_state(tmp_state_file, make_state("explore", workflow_type="plan"))
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         decision, _ = stop_guard.validate(stop_event(), store)
         assert decision == "block"
 
@@ -94,7 +94,7 @@ class TestPlanWorkflow:
 class TestImplementWorkflow:
     def test_stop_allowed_when_completed(self, tmp_state_file):
         write_state(tmp_state_file, make_state("completed"))
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         decision, _ = stop_guard.validate(stop_event(), store)
         assert decision == "allow"
 
@@ -106,7 +106,7 @@ class TestImplementWorkflow:
             validation_result=None,
             pr_status="pending",
         ))
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         decision, reason = stop_guard.validate(stop_event(), store)
         assert decision == "block"
         assert reason
@@ -118,7 +118,7 @@ class TestImplementWorkflow:
             validation_result=None,
             pr_status="pending",
         ))
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         decision, reason = stop_guard.validate(stop_event(), store)
         assert decision == "block"
         assert "validation" in reason.lower()
@@ -131,7 +131,7 @@ class TestImplementWorkflow:
             pr_status="pending",
             ci_check_executed=False,
         ))
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         decision, reason = stop_guard.validate(stop_event(), store)
         assert decision == "block"
         assert "pr" in reason.lower()
@@ -145,7 +145,7 @@ class TestImplementWorkflow:
             ci_check_executed=False,
             report_written=False,
         ))
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         decision, reason = stop_guard.validate(stop_event(), store)
         assert decision == "block"
         assert "ci" in reason.lower()
@@ -159,13 +159,13 @@ class TestImplementWorkflow:
             ci_check_executed=True,
             report_written=False,
         ))
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         decision, reason = stop_guard.validate(stop_event(), store)
         assert decision == "block"
         assert "report" in reason.lower()
 
     def test_stop_blocked_in_write_code_with_all_pending(self, tmp_state_file):
         write_state(tmp_state_file, make_state("write-code"))
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         decision, _ = stop_guard.validate(stop_event(), store)
         assert decision == "block"

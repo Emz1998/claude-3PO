@@ -10,7 +10,7 @@ WORKFLOW_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(WORKFLOW_DIR.parent))
 
 from workflow.guards import read_guard
-from workflow.state_store import StateStore
+from workflow.session_store import SessionStore
 
 
 CODING_PHASES = ["write-tests", "write-code", "validate", "ci-check", "report"]
@@ -63,8 +63,8 @@ Run pytest.
 
 class TestReadGuardInactive:
     def test_read_allowed_when_workflow_inactive(self, tmp_state_file):
-        tmp_state_file.write_text("{}")
-        store = StateStore(tmp_state_file)
+        tmp_state_file.write_text("")
+        store = SessionStore("s", tmp_state_file)
         decision, _ = read_guard.validate(read_hook("src/app.py"), store)
         assert decision == "allow"
 
@@ -73,7 +73,7 @@ class TestNonEnforcedPhases:
     @pytest.mark.parametrize("phase", NON_ENFORCED_PHASES)
     def test_all_reads_allowed_in_non_enforced_phases(self, phase, tmp_state_file):
         write_state(tmp_state_file, make_state(phase))
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         decision, _ = read_guard.validate(read_hook("any/file.py"), store)
         assert decision == "allow"
 
@@ -83,7 +83,7 @@ class TestCodingPhases:
         plan_file = tmp_path / "plan.md"
         plan_file.write_text(PLAN_CONTENT)
         write_state(tmp_state_file, make_state("write-code", plan_file=str(plan_file)))
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         decision, _ = read_guard.validate(read_hook("CODEBASE.md"), store)
         assert decision == "allow"
 
@@ -91,7 +91,7 @@ class TestCodingPhases:
         plan_file = tmp_path / "plan.md"
         plan_file.write_text(PLAN_CONTENT)
         write_state(tmp_state_file, make_state("write-code", plan_file=str(plan_file)))
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         decision, _ = read_guard.validate(read_hook(".claude/settings.json"), store)
         assert decision == "block"
 
@@ -99,7 +99,7 @@ class TestCodingPhases:
         plan_file = tmp_path / "plan.md"
         plan_file.write_text(PLAN_CONTENT)
         write_state(tmp_state_file, make_state("write-code", plan_file=str(plan_file)))
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         decision, _ = read_guard.validate(read_hook("node_modules/react/index.js"), store)
         assert decision == "block"
 
@@ -107,7 +107,7 @@ class TestCodingPhases:
         plan_file = tmp_path / "plan.md"
         plan_file.write_text(PLAN_CONTENT)
         write_state(tmp_state_file, make_state("write-code", plan_file=str(plan_file)))
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         decision, _ = read_guard.validate(read_hook("src/app.py"), store)
         assert decision == "allow"
 
@@ -115,14 +115,14 @@ class TestCodingPhases:
         plan_file = tmp_path / "plan.md"
         plan_file.write_text(PLAN_CONTENT)
         write_state(tmp_state_file, make_state("write-code", plan_file=str(plan_file)))
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         decision, reason = read_guard.validate(read_hook("src/secret.py"), store)
         assert decision == "block"
         assert "plan" in reason.lower() or "listed" in reason.lower()
 
     def test_no_plan_file_allows_all(self, tmp_state_file):
         write_state(tmp_state_file, make_state("write-code", plan_file=None))
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         decision, _ = read_guard.validate(read_hook("any/file.py"), store)
         assert decision == "allow"
 
@@ -130,7 +130,7 @@ class TestCodingPhases:
         plan_file = tmp_path / "plan.md"
         plan_file.write_text(PLAN_CONTENT)
         write_state(tmp_state_file, make_state("write-tests", plan_file=str(plan_file)))
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         decision, _ = read_guard.validate(read_hook("tests/test_other.py"), store)
         assert decision == "allow"
 
@@ -138,7 +138,7 @@ class TestCodingPhases:
         plan_file = tmp_path / "plan.md"
         plan_file.write_text(PLAN_CONTENT)
         write_state(tmp_state_file, make_state("write-code", plan_file=str(plan_file)))
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         # First call — parses file
         read_guard.validate(read_hook("src/app.py"), store)
         # Second call — should use cache
@@ -150,7 +150,7 @@ class TestCodingPhases:
         plan_file = tmp_path / "plan.md"
         plan_file.write_text(PLAN_CONTENT)
         write_state(tmp_state_file, make_state("write-code", plan_file=str(plan_file)))
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         for f in ["package.json", "tsconfig.json", "pyproject.toml", ".env.example"]:
             decision, _ = read_guard.validate(read_hook(f), store)
             assert decision == "block", f"Expected {f} to be blocked"
@@ -162,6 +162,6 @@ class TestCodingPhases:
             "write-code", plan_file=str(plan_file),
             files_written=["src/helper.py"],
         ))
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         decision, _ = read_guard.validate(read_hook("src/helper.py"), store)
         assert decision == "allow"

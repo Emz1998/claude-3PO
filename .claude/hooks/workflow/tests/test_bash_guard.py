@@ -11,7 +11,7 @@ sys.path.insert(0, str(WORKFLOW_DIR.parent))
 
 from workflow import recorder
 from workflow.guards import bash_guard
-from workflow.state_store import StateStore
+from workflow.session_store import SessionStore
 
 
 def make_state(phase: str, **kwargs) -> dict:
@@ -59,8 +59,8 @@ def post_bash_hook(command: str, output: str = "") -> dict:
 
 class TestWorkflowInactive:
     def test_pr_allowed_when_inactive(self, tmp_state_file):
-        tmp_state_file.write_text("{}")
-        store = StateStore(tmp_state_file)
+        tmp_state_file.write_text("")
+        store = SessionStore("s", tmp_state_file)
         decision, _ = bash_guard.validate_pre(bash_hook("gh pr create --title 'x'"), store)
         assert decision == "allow"
 
@@ -72,33 +72,33 @@ class TestWorkflowInactive:
 class TestPRPreValidation:
     def test_gh_pr_create_allowed_in_pr_create_phase_with_passed_validation(self, tmp_state_file):
         write_state(tmp_state_file, make_state("pr-create", validation_result="Pass"))
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         decision, _ = bash_guard.validate_pre(bash_hook("gh pr create --title 'x'"), store)
         assert decision == "allow"
 
     def test_gh_pr_create_blocked_without_validation(self, tmp_state_file):
         write_state(tmp_state_file, make_state("pr-create", validation_result=None))
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         decision, reason = bash_guard.validate_pre(bash_hook("gh pr create"), store)
         assert decision == "block"
         assert "validation" in reason.lower()
 
     def test_gh_pr_create_blocked_outside_pr_create_phase(self, tmp_state_file):
         write_state(tmp_state_file, make_state("write-code", validation_result="Pass"))
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         decision, reason = bash_guard.validate_pre(bash_hook("gh pr create"), store)
         assert decision == "block"
         assert "pr-create" in reason.lower()
 
     def test_git_push_blocked_outside_pr_create_phase(self, tmp_state_file):
         write_state(tmp_state_file, make_state("write-code"))
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         decision, reason = bash_guard.validate_pre(bash_hook("git push origin main"), store)
         assert decision == "block"
 
     def test_non_pr_command_always_allowed(self, tmp_state_file):
         write_state(tmp_state_file, make_state("write-code"))
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         decision, _ = bash_guard.validate_pre(bash_hook("pytest tests/"), store)
         assert decision == "allow"
 
@@ -118,14 +118,14 @@ class TestTestRunTracking:
     ])
     def test_test_run_commands_tracked(self, command, tmp_state_file):
         write_state(tmp_state_file, make_state("write-tests"))
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         recorder.record_bash(post_bash_hook(command), store)
         state = store.load()
         assert state["test_run_executed"] is True
 
     def test_non_test_command_not_tracked(self, tmp_state_file):
         write_state(tmp_state_file, make_state("write-code"))
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         recorder.record_bash(post_bash_hook("ls -la"), store)
         state = store.load()
         assert state.get("test_run_executed") is False
@@ -138,7 +138,7 @@ class TestTestRunTracking:
 class TestPRTracking:
     def test_pr_creation_advances_to_ci_check(self, tmp_state_file):
         write_state(tmp_state_file, make_state("pr-create", validation_result="Pass"))
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         recorder.record_bash(post_bash_hook("gh pr create --title 'x'", output="https://github.com/..."), store)
         state = store.load()
         assert state["phase"] == "ci-check"
@@ -146,7 +146,7 @@ class TestPRTracking:
 
     def test_git_push_advances_to_ci_check(self, tmp_state_file):
         write_state(tmp_state_file, make_state("pr-create", validation_result="Pass"))
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         recorder.record_bash(post_bash_hook("git push -u origin feature"), store)
         state = store.load()
         assert state["phase"] == "ci-check"
@@ -159,7 +159,7 @@ class TestPRTracking:
 class TestCICheckTracking:
     def test_ci_pass_advances_to_report(self, tmp_state_file):
         write_state(tmp_state_file, make_state("ci-check"))
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         output = "All checks were successful"
         recorder.record_bash(post_bash_hook("gh pr checks 123", output=output), store)
         state = store.load()
@@ -169,7 +169,7 @@ class TestCICheckTracking:
 
     def test_ci_failure_keeps_ci_check_phase(self, tmp_state_file):
         write_state(tmp_state_file, make_state("ci-check"))
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         output = "Some checks were not successful"
         recorder.record_bash(post_bash_hook("gh pr checks 123", output=output), store)
         state = store.load()
@@ -178,7 +178,7 @@ class TestCICheckTracking:
 
     def test_ci_pass_table_format(self, tmp_state_file):
         write_state(tmp_state_file, make_state("ci-check"))
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         output = "check-1\tpass\t1s\turl\ncheck-2\tpass\t5s\turl"
         recorder.record_bash(post_bash_hook("gh pr checks 1", output=output), store)
         state = store.load()
@@ -187,7 +187,7 @@ class TestCICheckTracking:
 
     def test_ci_fail_table_format(self, tmp_state_file):
         write_state(tmp_state_file, make_state("ci-check"))
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         output = "check-1\tpass\t1s\turl\ncheck-2\tfail\t5s\turl"
         recorder.record_bash(post_bash_hook("gh pr checks 1", output=output), store)
         state = store.load()
@@ -196,7 +196,7 @@ class TestCICheckTracking:
 
     def test_ci_pending_table_format(self, tmp_state_file):
         write_state(tmp_state_file, make_state("ci-check", ci_check_executed=False))
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         output = "check-1\tpass\t1s\turl\ncheck-2\tpending\t0\turl"
         recorder.record_bash(post_bash_hook("gh pr checks 1", output=output), store)
         state = store.load()
@@ -205,7 +205,7 @@ class TestCICheckTracking:
 
     def test_gh_run_view_with_success_tracked_as_ci(self, tmp_state_file):
         write_state(tmp_state_file, make_state("ci-check"))
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         recorder.record_bash(post_bash_hook("gh run view 12345", output="check-1\tpass\t1s\turl"), store)
         state = store.load()
         assert state["ci_check_executed"] is True

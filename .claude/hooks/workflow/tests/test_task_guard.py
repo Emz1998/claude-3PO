@@ -11,7 +11,7 @@ WORKFLOW_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(WORKFLOW_DIR.parent))
 
 from workflow.guards import task_guard
-from workflow.state_store import StateStore
+from workflow.session_store import SessionStore
 
 
 # ---------------------------------------------------------------------------
@@ -134,26 +134,26 @@ def _mock_subprocess_run():
 
 class TestTaskGuardValidate:
     def test_workflow_inactive_allows_all(self, tmp_state_file):
-        tmp_state_file.write_text("{}")
-        store = StateStore(tmp_state_file)
+        tmp_state_file.write_text("")
+        store = SessionStore("s", tmp_state_file)
         decision, _ = task_guard.validate(task_create_hook("Any subject"), store)
         assert decision == "allow"
 
     def test_outside_task_create_phase_allows_all(self, tmp_state_file):
         write_state(tmp_state_file, make_state(phase="write-code", story_id="SK-001"))
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         decision, _ = task_guard.validate(task_create_hook("Any subject"), store)
         assert decision == "allow"
 
     def test_no_story_id_allows_all(self, tmp_state_file):
         write_state(tmp_state_file, make_state(story_id=None))
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         decision, _ = task_guard.validate(task_create_hook("Any subject"), store)
         assert decision == "allow"
 
     def test_missing_metadata_blocked(self, tmp_state_file):
         write_state(tmp_state_file, make_state())
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         hook = task_create_hook("Implement login", include_metadata=False)
         decision, reason = task_guard.validate(hook, store)
         assert decision == "block"
@@ -161,7 +161,7 @@ class TestTaskGuardValidate:
 
     def test_missing_parent_task_id_blocked(self, tmp_state_file):
         write_state(tmp_state_file, make_state())
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         hook = task_create_hook(
             "Implement login",
             parent_task_id=None,
@@ -173,7 +173,7 @@ class TestTaskGuardValidate:
 
     def test_missing_parent_task_title_blocked(self, tmp_state_file):
         write_state(tmp_state_file, make_state())
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         hook = task_create_hook(
             "Implement login",
             parent_task_id="T-017",
@@ -185,7 +185,7 @@ class TestTaskGuardValidate:
 
     def test_valid_parent_task_allowed(self, tmp_state_file):
         write_state(tmp_state_file, make_state_with_tasks())
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         hook = task_create_hook(
             "Analyze feature correlations",
             parent_task_id="T-017",
@@ -196,7 +196,7 @@ class TestTaskGuardValidate:
 
     def test_parent_task_id_not_in_project_blocked(self, tmp_state_file):
         write_state(tmp_state_file, make_state_with_tasks())
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         hook = task_create_hook(
             "Analyze something",
             parent_task_id="T-999",
@@ -208,7 +208,7 @@ class TestTaskGuardValidate:
 
     def test_parent_task_title_mismatch_blocked(self, tmp_state_file):
         write_state(tmp_state_file, make_state_with_tasks())
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         hook = task_create_hook(
             "Analyze something",
             parent_task_id="T-017",
@@ -220,7 +220,7 @@ class TestTaskGuardValidate:
 
     def test_subtask_recorded_on_allow(self, tmp_state_file):
         write_state(tmp_state_file, make_state_with_tasks())
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         hook = task_create_hook(
             "Analyze feature correlations",
             description="Run correlation analysis",
@@ -238,7 +238,7 @@ class TestTaskGuardValidate:
 
     def test_cache_populated_on_first_call(self, tmp_state_file):
         write_state(tmp_state_file, make_state())
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         hook = task_create_hook(
             "Analyze features",
             parent_task_id="T-017",
@@ -256,7 +256,7 @@ class TestTaskGuardValidate:
 
     def test_cache_reused_on_second_call(self, tmp_state_file):
         write_state(tmp_state_file, make_state_with_tasks())
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         hook = task_create_hook(
             "First task",
             parent_task_id="T-017",
@@ -276,7 +276,7 @@ class TestTaskGuardValidate:
 
     def test_auto_advance_to_write_code_when_all_tasks_covered(self, tmp_state_file):
         write_state(tmp_state_file, make_state_with_tasks())
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         # Cover first task
         task_guard.validate(task_create_hook(
             "Task for T-017",
@@ -297,7 +297,7 @@ class TestTaskGuardValidate:
 
     def test_auto_advance_to_write_tests_with_tdd(self, tmp_state_file):
         write_state(tmp_state_file, make_state_with_tasks(tdd=True))
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         task_guard.validate(task_create_hook(
             "Task for T-017",
             parent_task_id="T-017",
@@ -313,7 +313,7 @@ class TestTaskGuardValidate:
 
     def test_no_advance_when_uncovered_tasks_remain(self, tmp_state_file):
         write_state(tmp_state_file, make_state_with_tasks())
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         task_guard.validate(task_create_hook(
             "Task for T-017",
             parent_task_id="T-017",
@@ -352,7 +352,7 @@ class TestTaskGuardCompleted:
 
     def test_task_completed_updates_subtask_status(self, tmp_state_file):
         write_state(tmp_state_file, self._state_with_subtasks())
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         hook = task_completed_hook("Analyze correlations")
         decision, _ = task_guard.validate_completed(hook, store)
         assert decision == "allow"
@@ -362,21 +362,21 @@ class TestTaskGuardCompleted:
 
     def test_task_completed_no_match_allows(self, tmp_state_file):
         write_state(tmp_state_file, self._state_with_subtasks())
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         hook = task_completed_hook("Unknown task subject")
         decision, _ = task_guard.validate_completed(hook, store)
         assert decision == "allow"
 
     def test_task_completed_workflow_inactive_allows(self, tmp_state_file):
-        tmp_state_file.write_text("{}")
-        store = StateStore(tmp_state_file)
+        tmp_state_file.write_text("")
+        store = SessionStore("s", tmp_state_file)
         hook = task_completed_hook("Any subject")
         decision, _ = task_guard.validate_completed(hook, store)
         assert decision == "allow"
 
     def test_all_subtasks_completed_resolves_parent(self, tmp_state_file):
         write_state(tmp_state_file, self._state_with_subtasks())
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
 
         # Complete first subtask
         task_guard.validate_completed(task_completed_hook("Analyze correlations"), store)
@@ -390,7 +390,7 @@ class TestTaskGuardCompleted:
 
     def test_partial_subtasks_completed_parent_stays_pending(self, tmp_state_file):
         write_state(tmp_state_file, self._state_with_subtasks())
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
 
         task_guard.validate_completed(task_completed_hook("Analyze correlations"), store)
         state = store.load()

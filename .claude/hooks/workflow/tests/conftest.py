@@ -14,9 +14,9 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 @pytest.fixture
 def tmp_state_file(tmp_path):
-    """Create a temporary JSON state file."""
-    state_file = tmp_path / "state.json"
-    state_file.write_text("{}")
+    """Create a temporary JSONL state file."""
+    state_file = tmp_path / "state.jsonl"
+    state_file.write_text("")
     return state_file
 
 
@@ -59,22 +59,10 @@ def mock_config():
 
 @pytest.fixture
 def mock_state_store(tmp_path):
-    """In-memory state dict backed by a temp file."""
-    state_file = tmp_path / "state.json"
-    state_file.write_text("{}")
+    """SessionStore backed by a temp JSONL file."""
+    state_file = tmp_path / "state.jsonl"
+    state_file.write_text("")
     return state_file
-
-
-@pytest.fixture
-def mock_session_state(tmp_path):
-    """SessionState backed by a temp file with a pre-created session."""
-    from workflow.session_state import SessionState
-
-    state_file = tmp_path / "state.json"
-    session_data = SessionState.default_implement_session("SK-TEST", "test-uuid")
-    initial = {"sessions": {"SK-TEST": session_data}, "workflow_active": True}
-    state_file.write_text(json.dumps(initial))
-    return SessionState(state_path=state_file)
 
 
 @pytest.fixture

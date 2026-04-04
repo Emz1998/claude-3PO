@@ -10,7 +10,7 @@ WORKFLOW_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(WORKFLOW_DIR.parent))
 
 from workflow.guards import bash_guard
-from workflow.state_store import StateStore
+from workflow.session_store import SessionStore
 
 
 def make_state(phase: str, **kwargs) -> dict:
@@ -52,7 +52,7 @@ def bash_hook(command: str) -> dict:
 class TestCommitFormatValidation:
     def test_valid_feat_commit(self, tmp_state_file):
         write_state(tmp_state_file, make_state("write-code"))
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         decision, _ = bash_guard.validate_pre(
             bash_hook("git commit -m 'feat: add user auth'"), store
         )
@@ -60,7 +60,7 @@ class TestCommitFormatValidation:
 
     def test_valid_fix_with_scope(self, tmp_state_file):
         write_state(tmp_state_file, make_state("write-code"))
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         decision, _ = bash_guard.validate_pre(
             bash_hook('git commit -m "fix(api): resolve null pointer"'), store
         )
@@ -68,7 +68,7 @@ class TestCommitFormatValidation:
 
     def test_valid_chore_commit(self, tmp_state_file):
         write_state(tmp_state_file, make_state("write-code"))
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         decision, _ = bash_guard.validate_pre(
             bash_hook("git commit -m 'chore: update dependencies'"), store
         )
@@ -76,7 +76,7 @@ class TestCommitFormatValidation:
 
     def test_valid_breaking_change(self, tmp_state_file):
         write_state(tmp_state_file, make_state("write-code"))
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         decision, _ = bash_guard.validate_pre(
             bash_hook("git commit -m 'feat!: drop legacy API'"), store
         )
@@ -88,7 +88,7 @@ class TestCommitFormatValidation:
     )
     def test_valid_all_types(self, msg_type, tmp_state_file):
         write_state(tmp_state_file, make_state("write-code"))
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         decision, _ = bash_guard.validate_pre(
             bash_hook(f"git commit -m '{msg_type}: some description'"), store
         )
@@ -100,7 +100,7 @@ class TestCommitFormatValidation:
 
     def test_missing_type_prefix(self, tmp_state_file):
         write_state(tmp_state_file, make_state("write-code"))
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         decision, reason = bash_guard.validate_pre(
             bash_hook("git commit -m 'added new feature'"), store
         )
@@ -109,7 +109,7 @@ class TestCommitFormatValidation:
 
     def test_missing_colon_space(self, tmp_state_file):
         write_state(tmp_state_file, make_state("write-code"))
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         decision, reason = bash_guard.validate_pre(
             bash_hook("git commit -m 'feat add new feature'"), store
         )
@@ -117,7 +117,7 @@ class TestCommitFormatValidation:
 
     def test_invalid_type(self, tmp_state_file):
         write_state(tmp_state_file, make_state("write-code"))
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         decision, reason = bash_guard.validate_pre(
             bash_hook("git commit -m 'update: change config'"), store
         )
@@ -125,7 +125,7 @@ class TestCommitFormatValidation:
 
     def test_empty_description(self, tmp_state_file):
         write_state(tmp_state_file, make_state("write-code"))
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         decision, reason = bash_guard.validate_pre(
             bash_hook("git commit -m 'feat: '"), store
         )
@@ -137,7 +137,7 @@ class TestCommitFormatValidation:
 
     def test_non_commit_command_allowed(self, tmp_state_file):
         write_state(tmp_state_file, make_state("write-code"))
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         decision, _ = bash_guard.validate_pre(
             bash_hook("git status"), store
         )
@@ -145,7 +145,7 @@ class TestCommitFormatValidation:
 
     def test_git_commit_without_m_flag_allowed(self, tmp_state_file):
         write_state(tmp_state_file, make_state("write-code"))
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         decision, _ = bash_guard.validate_pre(
             bash_hook("git commit --amend"), store
         )
@@ -157,7 +157,7 @@ class TestCommitFormatValidation:
 
     def test_commit_allowed_when_workflow_inactive(self, tmp_state_file):
         write_state(tmp_state_file, make_state("write-code", workflow_active=False))
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         decision, _ = bash_guard.validate_pre(
             bash_hook("git commit -m 'bad format no type'"), store
         )
@@ -169,7 +169,7 @@ class TestCommitFormatValidation:
 
     def test_multiline_commit_first_line_valid(self, tmp_state_file):
         write_state(tmp_state_file, make_state("write-code"))
-        store = StateStore(tmp_state_file)
+        store = SessionStore("s", tmp_state_file)
         cmd = """git commit -m "$(cat <<'EOF'
 feat: add user authentication
 
