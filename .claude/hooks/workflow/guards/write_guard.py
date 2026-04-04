@@ -88,7 +88,10 @@ def validate_pre(hook_input: dict, store: StateStore) -> tuple[str, str]:
         content = _get_plan_content(hook_input)
         missing = validate_plan_template(content)
         if missing:
-            return "block", f"Blocked: plan missing required sections: {', '.join(missing)}. Add them before saving."
+            return (
+                "block",
+                f"Blocked: plan missing required sections: {', '.join(missing)}. Add them before saving.",
+            )
         return "allow", ""
 
     # write-plan/review: only plan files allowed (block everything else)
@@ -102,7 +105,10 @@ def validate_pre(hook_input: dict, store: StateStore) -> tuple[str, str]:
     if phase == "write-codebase":
         if file_path.endswith("CODEBASE.md"):
             return "allow", ""
-        return "block", "Blocked: only CODEBASE.md may be written during 'write-codebase' phase. Write CODEBASE.md first to proceed."
+        return (
+            "block",
+            "Blocked: only CODEBASE.md may be written during 'write-codebase' phase. Write CODEBASE.md first to proceed.",
+        )
 
     # Report phase: only report files allowed
     if phase == "report":
@@ -133,13 +139,36 @@ def validate_pre(hook_input: dict, store: StateStore) -> tuple[str, str]:
         return "allow", ""
 
     if phase in ("validate", "pr-create"):
-        return "block", f"Blocked: cannot modify implementation files during '{phase}' phase. Complete validation before making changes."
+        return (
+            "block",
+            f"Blocked: cannot modify implementation files during '{phase}' phase. Complete validation before making changes.",
+        )
 
     if phase == "ci-check":
         # Allow writes — PostToolUse will trigger regression
         return "allow", ""
 
     if phase in ("explore", "plan", "present-plan", "task-create"):
-        return "block", f"Blocked: code files may not be written during '{phase}' phase. Advance to the write-code phase first."
+        match phase:
+            case "explore":
+                return (
+                    "block",
+                    "Blocked: cannot write to files during 'explore' phase. Complete exploration before writing to files.",
+                )
+            case "plan":
+                return (
+                    "block",
+                    "Blocked: cannot write to files during 'plan' phase. Complete plan before writing to files.",
+                )
+            case "present-plan":
+                return (
+                    "block",
+                    "Blocked: cannot write to files during 'present-plan' phase. Complete plan presentation before writing to files.",
+                )
+            case "task-create":
+                return (
+                    "block",
+                    "Blocked: cannot write to files during 'task-create' phase. Complete task creation before writing to files.",
+                )
 
     return "allow", ""

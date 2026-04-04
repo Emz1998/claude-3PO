@@ -159,12 +159,10 @@ def _parse_ci_output(output: str) -> str:
     Uses simple tab-delimited keyword search — no column-position dependency.
     """
     if not output or not output.strip():
-        log("record_bash:pending", output=output)
         return "pending"
 
     # Any line with a fail status → failed
     if "\tfail" in output:
-        log("record_bash:failed", output=output)
         return "failed"
 
     # Any line with pending/queued/in_progress → still pending
@@ -174,23 +172,18 @@ def _parse_ci_output(output: str) -> str:
         or "\tin_progress" in output
         or "\twaiting" in output
     ):
-        log("record_bash:pending", output=output)
         return "pending"
 
     # If we see pass statuses and nothing failed/pending → passed
     if "\tpass" in output:
-        log("record_bash:pass", output=output)
         return "passed"
 
     # Summary format fallback (gh pr checks --watch)
     if "All checks were successful" in output:
-        log("record_bash:all_checks_successful", output=output)
         return "passed"
     if "Some checks were not successful" in output:
-        log("record_bash:some_checks_not_successful", output=output)
         return "failed"
 
-    log("record_bash:pending", output=output)
     return "pending"
 
 

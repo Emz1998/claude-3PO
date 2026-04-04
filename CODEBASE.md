@@ -261,5 +261,43 @@ XGBClassifier(
 
 ---
 
-**Last Updated**: 2026-04-02  
-**Context**: SK-001 Spike — Feature importance analysis for NBA XGBoost model; research phase complete
+## TS-001: NBA Stats API Data Ingestion — Current State (2026-04-04)
+
+### What Exists
+| File | Status |
+|---|---|
+| `pipeline/model/prototype_train.py` | Complete — XGBoost prototype with synthetic data |
+| `pipeline/tests/test_feature_combinations.py` | Complete — 14 tests, all passing |
+| `pipeline/requirements.txt` | Complete — all deps pinned |
+| `pipeline/model/__init__.py` | Exists (empty) |
+| `pipeline/tests/__init__.py` | Exists (empty) |
+
+### What Needs to Be Created (T-010, T-011, T-012)
+| File | Task | Status |
+|---|---|---|
+| `pipeline/data/__init__.py` | prerequisite | Missing |
+| `pipeline/data/nba_client.py` | T-010 | Missing |
+| `pipeline/data/fetch_team_stats.py` | T-011 | Missing |
+| `pipeline/data/storage.py` | T-012 | Missing |
+
+### Installed Dependencies (all ready)
+| Package | Installed |
+|---|---|
+| nba_api | 1.11.4 |
+| pandas | 3.0.2 |
+| pyarrow | 22.0.0 |
+| pytest | 9.0.2 |
+
+### Key Implementation Decisions
+- **Use `LeagueGameLog`** (not per-team `TeamGameLog`) — one call returns all 30 teams for a season
+- **Custom HTTP headers required** — NBA Stats API blocks plain `requests` user agents
+- **Rate limit**: 1 req/sec minimum via `time.sleep`; `tenacity` for retry with exponential backoff
+- **Season string format**: `"2024-25"` for current season
+- **Parquet via pandas**: `df.to_parquet(engine="pyarrow", compression="snappy", index=False)`
+- **Partition by season**: `data/raw/season=2024-25/games.parquet`
+- **TDD=False** for TS-001 — implement directly, validate by running the code
+
+---
+
+**Last Updated**: 2026-04-04  
+**Context**: TS-001 — NBA Stats API data ingestion; planning phase
