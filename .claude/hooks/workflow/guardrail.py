@@ -27,7 +27,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from workflow.config import (
-    DEFAULT_STATE_PATH,
+    DEFAULT_STATE_JSONL_PATH,
     REQUIRED_SECTIONS,
     AGENT_ONLY_PHASES,
     AGENT_PLUS_WRITE_PHASES,
@@ -43,12 +43,12 @@ from workflow.guards import (
     webfetch_guard,
     write_guard,
 )
-from workflow.state_store import StateStore
+from workflow.session_store import SessionStore
 
 
 def _state_path() -> Path:
     env = os.environ.get("GUARDRAIL_STATE_PATH")
-    return Path(env) if env else DEFAULT_STATE_PATH
+    return Path(env) if env else DEFAULT_STATE_JSONL_PATH
 
 
 def _validate_plan_template(content: str) -> tuple[bool, list[str]]:
@@ -67,7 +67,7 @@ def _validate_plan_template(content: str) -> tuple[bool, list[str]]:
     return len(missing) == 0, missing
 
 
-def _handle_exit_plan_mode_pre(hook_input: dict, store: StateStore) -> tuple[str, str]:
+def _handle_exit_plan_mode_pre(hook_input: dict, store: SessionStore) -> tuple[str, str]:
     """PreToolUse ExitPlanMode: validate plan is written and review is approved."""
     state = store.load()
     if not state.get("workflow_active"):
@@ -117,7 +117,7 @@ def _handle_exit_plan_mode_pre(hook_input: dict, store: StateStore) -> tuple[str
     return json.dumps({"additionalContext": f"Plan content:\n\n{content}"}), ""
 
 
-def _phase_gate(hook_input: dict, store: StateStore) -> tuple[str, str] | None:
+def _phase_gate(hook_input: dict, store: SessionStore) -> tuple[str, str] | None:
     """Block non-Agent tools from the main agent during agent-only phases.
 
     Returns a (decision, reason) tuple to block, or None to pass through.
@@ -154,7 +154,8 @@ def _phase_gate(hook_input: dict, store: StateStore) -> tuple[str, str] | None:
 
 
 def _dispatch(hook_input: dict, state_path: Path) -> tuple[str, str]:
-    store = StateStore(state_path)
+    session_id = hook_input.get("session_id", "default")
+    store = SessionStore(session_id, state_path)
     event = hook_input.get("hook_event_name", "")
     tool = hook_input.get("tool_name", "")
 

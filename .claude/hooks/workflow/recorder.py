@@ -20,8 +20,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from workflow.config import DEFAULT_STATE_PATH, PLAN_REVIEW_THRESHOLD, PLAN_REVIEW_MAX
-from workflow.state_store import StateStore
+from workflow.config import DEFAULT_STATE_JSONL_PATH, PLAN_REVIEW_THRESHOLD, PLAN_REVIEW_MAX
+from workflow.session_store import SessionStore
 from workflow.logger import log
 
 
@@ -30,7 +30,7 @@ from workflow.logger import log
 # ---------------------------------------------------------------------------
 
 
-def record_agent(store: StateStore, agent_type: str, tool_use_id: str) -> None:
+def record_agent(store: SessionStore, agent_type: str, tool_use_id: str) -> None:
     """Append an agent entry as 'running' to state.agents[]."""
 
     def _update(state: dict) -> None:
@@ -45,7 +45,7 @@ def record_agent(store: StateStore, agent_type: str, tool_use_id: str) -> None:
     store.update(_update)
 
 
-def record_agent_phase_advance(store: StateStore) -> None:
+def record_agent_phase_advance(store: SessionStore) -> None:
     """Advance phase from write-code to validate (when Validator is launched)."""
 
     def _advance(s: dict) -> None:
@@ -59,7 +59,7 @@ def record_agent_phase_advance(store: StateStore) -> None:
 # ---------------------------------------------------------------------------
 
 
-def record_write(hook_input: dict, store: StateStore) -> tuple[str, str]:
+def record_write(hook_input: dict, store: SessionStore) -> tuple[str, str]:
     """Handle PostToolUse Write/Edit — track plan writes, test files, report writes."""
     from workflow.guards.write_guard import (
         get_file_path,
@@ -187,7 +187,7 @@ def _parse_ci_output(output: str) -> str:
     return "pending"
 
 
-def record_bash(hook_input: dict, store: StateStore) -> tuple[str, str]:
+def record_bash(hook_input: dict, store: SessionStore) -> tuple[str, str]:
     """Handle Bash PostToolUse — track test runs, PR creation, CI checks."""
     from workflow.guards.bash_guard import is_ci_check, is_pr_command, is_test_run
 
@@ -240,7 +240,7 @@ def record_bash(hook_input: dict, store: StateStore) -> tuple[str, str]:
 # ---------------------------------------------------------------------------
 
 
-def record_task_created(store: StateStore) -> None:
+def record_task_created(store: SessionStore) -> None:
     """Increment tasks_created counter."""
 
     def _increment(s: dict) -> None:
@@ -312,7 +312,7 @@ def _extract_verdict(message: str) -> str:
     return "Fail"
 
 
-def record_subagent_stop(hook_input: dict, store: StateStore) -> tuple[str, str]:
+def record_subagent_stop(hook_input: dict, store: SessionStore) -> tuple[str, str]:
     """Handle SubagentStop: mark agent completed, auto-advance phases.
 
     Always returns ("allow", "") — never blocks a subagent from stopping.
@@ -396,7 +396,7 @@ def record_subagent_stop(hook_input: dict, store: StateStore) -> tuple[str, str]
 # ---------------------------------------------------------------------------
 
 
-def advance_after_plan_approval(store: StateStore) -> str | None:
+def advance_after_plan_approval(store: SessionStore) -> str | None:
     """Determine and set the next phase after user approves the plan.
 
     Returns the next phase name, or None if no advancement needed.
@@ -421,7 +421,7 @@ def advance_after_plan_approval(store: StateStore) -> str | None:
     return next_phase
 
 
-def record_exit_plan_mode(hook_input: dict, store: StateStore) -> tuple[str, str]:
+def record_exit_plan_mode(hook_input: dict, store: SessionStore) -> tuple[str, str]:
     """PostToolUse ExitPlanMode: advance phase based on workflow type."""
     state = store.load()
     if state.get("phase") != "present-plan":
@@ -435,7 +435,7 @@ def record_exit_plan_mode(hook_input: dict, store: StateStore) -> tuple[str, str
 # ---------------------------------------------------------------------------
 
 
-def record_agent_from_hook(hook_input: dict, store: StateStore) -> tuple[str, str]:
+def record_agent_from_hook(hook_input: dict, store: SessionStore) -> tuple[str, str]:
     """Record an agent launch from raw hook_input. Always returns allow."""
     tool_input = hook_input.get("tool_input", {})
     agent_type = tool_input.get("subagent_type", "")
@@ -459,11 +459,12 @@ def record_agent_from_hook(hook_input: dict, store: StateStore) -> tuple[str, st
 
 def _state_path() -> Path:
     env = os.environ.get("RECORDER_STATE_PATH")
-    return Path(env) if env else DEFAULT_STATE_PATH
+    return Path(env) if env else DEFAULT_STATE_JSONL_PATH
 
 
 def _dispatch(hook_input: dict, state_path: Path) -> tuple[str, str]:
-    store = StateStore(state_path)
+    session_id = hook_input.get("session_id", "default")
+    store = SessionStore(session_id, state_path)
     event = hook_input.get("hook_event_name", "")
     tool = hook_input.get("tool_name", "")
 
