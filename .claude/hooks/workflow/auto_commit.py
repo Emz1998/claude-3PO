@@ -17,13 +17,13 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from workflow.config import COMMIT_BATCH_PATH, DEFAULT_STATE_PATH
+from workflow.config import COMMIT_BATCH_PATH, DEFAULT_STATE_JSONL_PATH
 from workflow.logger import log
 from workflow.hook import Hook
 
 # Patterns to exclude from auto-commits
 EXCLUDE_PATTERNS = [
-    re.compile(r"(^|/)state\.json$"),
+    re.compile(r"(^|/)state\.jsonl?$"),
     re.compile(r"\.pyc$"),
     re.compile(r"(^|/)__pycache__/"),
     re.compile(r"(^|/)commit_batch\.json$"),
@@ -175,15 +175,15 @@ def claim_files(dirty_files: list[str], ledger: dict) -> list[str]:
 # ---------------------------------------------------------------------------
 
 
-def get_story_context(state_path: Path) -> dict:
-    """Load story_id and parent tasks from workflow state.json."""
+def get_story_context(session_id: str, jsonl_path: Path) -> dict:
+    """Load story_id and parent tasks from session state."""
     try:
-        if not state_path.exists():
+        from workflow.session_store import SessionStore
+
+        store = SessionStore(session_id, jsonl_path)
+        state = store.load()
+        if not state:
             return {}
-        content = state_path.read_text(encoding="utf-8").strip()
-        if not content:
-            return {}
-        state = json.loads(content)
         context = {}
         if state.get("story_id"):
             context["story_id"] = state["story_id"]
@@ -193,7 +193,7 @@ def get_story_context(state_path: Path) -> dict:
                 for t in state["tasks"]
             ]
         return context
-    except (json.JSONDecodeError, OSError, KeyError):
+    except Exception:
         return {}
 
 
@@ -340,7 +340,8 @@ def main() -> None:
     # -----------------------------------------------------------------------
     # Phase 2: Generate commit message (no lock held)
     # -----------------------------------------------------------------------
-    story_context = get_story_context(DEFAULT_STATE_PATH)
+    session_id = raw_input.get("session_id", "default")
+    story_context = get_story_context(session_id, DEFAULT_STATE_JSONL_PATH)
 
     message = generate_commit_message(
         files=claimed,

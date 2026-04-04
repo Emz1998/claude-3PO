@@ -8,7 +8,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 from workflow.config import PR_COMMAND_PATTERNS, TEST_RUN_PATTERNS, CI_CHECK_PATTERNS
-from workflow.state_store import StateStore
+from workflow.session_store import SessionStore
 
 CONVENTIONAL_COMMIT_RE = re.compile(
     r"^(feat|fix|chore|refactor|docs|test|style|perf|ci|build|revert)"
@@ -76,7 +76,7 @@ def validate_commit_format(command: str) -> tuple[str, str]:
     return "allow", ""
 
 
-def validate_pre(hook_input: dict, store: StateStore) -> tuple[str, str]:
+def validate_pre(hook_input: dict, store: SessionStore) -> tuple[str, str]:
     """Validate a Bash PreToolUse invocation.
 
     Blocks PR commands outside pr-create phase or without passing validation.

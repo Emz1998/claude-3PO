@@ -10,7 +10,7 @@ from urllib.parse import urlparse
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 from workflow.config import SAFE_DOMAINS
-from workflow.state_store import StateStore
+from workflow.session_store import SessionStore
 
 
 def _is_safe_domain(url: str) -> bool:
@@ -29,7 +29,7 @@ def _is_safe_domain(url: str) -> bool:
         return False
 
 
-def validate(hook_input: dict, store: StateStore) -> tuple[str, str]:
+def validate(hook_input: dict, store: SessionStore) -> tuple[str, str]:
     """Validate a WebFetch invocation against the domain whitelist.
 
     Only enforced when workflow_active == True.

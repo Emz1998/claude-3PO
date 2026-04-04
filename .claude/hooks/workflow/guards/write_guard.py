@@ -7,7 +7,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 from workflow.config import CODE_EXTENSIONS, TEST_PATH_PATTERNS
-from workflow.state_store import StateStore
+from workflow.session_store import SessionStore
 
 
 def get_file_path(hook_input: dict) -> str:
@@ -71,7 +71,7 @@ def _get_plan_content(hook_input: dict) -> str:
     return current.replace(old_string, new_string)
 
 
-def validate_pre(hook_input: dict, store: StateStore) -> tuple[str, str]:
+def validate_pre(hook_input: dict, store: SessionStore) -> tuple[str, str]:
     """Validate a Write/Edit tool invocation (PreToolUse).
 
     Returns ("allow", "") or ("block", reason).

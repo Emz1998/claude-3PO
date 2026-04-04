@@ -9,7 +9,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-from workflow.state_store import StateStore
+from workflow.session_store import SessionStore
 
 VALIDATOR_REQUIRED_SECTIONS = [
     "## QA Report",
@@ -23,7 +23,7 @@ AGENT_SCHEMAS: dict[str, list[str]] = {
 }
 
 
-def validate(hook_input: dict, store: StateStore) -> tuple[str, str]:
+def validate(hook_input: dict, store: SessionStore) -> tuple[str, str]:
     """Validate SubagentStop output against expected schema.
 
     Returns ("allow", "") or ("block", reason).

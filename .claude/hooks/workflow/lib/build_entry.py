@@ -12,11 +12,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 from workflow.hook import Hook
 from workflow.lib.parallel_session import parallel_sessions
-from workflow.state_store import StateStore
-
-
-STATE_PATH = Path(__file__).resolve().parent.parent.parent / "state.json"
-state_store = StateStore(STATE_PATH)
 
 
 class BuildEntry:
@@ -37,9 +32,6 @@ class BuildEntry:
         if result.returncode != 0 or not result.stdout.strip():
             return []
         return re.findall(r"PR #(\d+):", result.stdout)
-
-    def activate_workflow(self) -> None:
-        state_store.update(lambda s: s.update({"workflow_active": True}))
 
     @property
     def prompts(self) -> list[str]:
@@ -74,8 +66,6 @@ class BuildEntry:
     def run(self) -> None:
         if not self.validate_prompt():
             return
-
-        self.activate_workflow()
 
         prompts = self.prompts
         if not prompts:

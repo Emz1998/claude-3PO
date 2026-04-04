@@ -11,7 +11,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-from workflow.state_store import StateStore
+from workflow.session_store import SessionStore
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
 PROJECT_MANAGER = PROJECT_ROOT / "github_project" / "project_manager.py"
@@ -69,7 +69,7 @@ def _find_task_by_id(tasks: list[dict], task_id: str) -> dict | None:
     return None
 
 
-def validate(hook_input: dict, store: StateStore) -> tuple[str, str]:
+def validate(hook_input: dict, store: SessionStore) -> tuple[str, str]:
     """Validate a PreToolUse TaskCreate event.
 
     During task-create phase with a story_id set:
@@ -173,7 +173,7 @@ def validate(hook_input: dict, store: StateStore) -> tuple[str, str]:
     return "allow", ""
 
 
-def validate_completed(hook_input: dict, store: StateStore) -> tuple[str, str]:
+def validate_completed(hook_input: dict, store: SessionStore) -> tuple[str, str]:
     """Handle TaskCompleted event — update subtask status to completed.
 
     If all subtasks under a parent are completed, mark the parent as completed too.

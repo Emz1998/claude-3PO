@@ -10,7 +10,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 from workflow.config import DEFAULT_STATE_PATH, PLAN_ALLOWED_STOP_PHASES
-from workflow.state_store import StateStore
+from workflow.session_store import SessionStore
 
 # Implement workflow: collect reasons from state
 def _collect_reasons(state: dict) -> list[str]:
@@ -35,7 +35,7 @@ def _collect_reasons(state: dict) -> list[str]:
     return reasons
 
 
-def validate(hook_input: dict, store: StateStore) -> tuple[str, str]:
+def validate(hook_input: dict, store: SessionStore) -> tuple[str, str]:
     """Validate a Stop event against the current workflow state.
 
     Returns ("allow", "") or ("block", reason).

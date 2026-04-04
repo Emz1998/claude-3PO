@@ -16,7 +16,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 from workflow.config import CODING_PHASES, CODEBASE_MD, TEST_PATH_PATTERNS
-from workflow.state_store import StateStore
+from workflow.session_store import SessionStore
 
 
 def _is_codebase_md(file_path: str) -> bool:
@@ -121,7 +121,7 @@ def _is_previously_written(file_path: str, state: dict) -> bool:
     return False
 
 
-def validate(hook_input: dict, store: StateStore) -> tuple[str, str]:
+def validate(hook_input: dict, store: SessionStore) -> tuple[str, str]:
     """Validate a Read tool invocation against the three-source constraint.
 
     Returns ("allow", "") or ("block", reason).

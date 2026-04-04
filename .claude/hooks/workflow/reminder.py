@@ -15,7 +15,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from workflow.state_store import StateStore
+from workflow.session_store import SessionStore
 
 
 # ---------------------------------------------------------------------------
@@ -210,7 +210,7 @@ def _explore_remaining_reminder(state: dict) -> str | None:
     return f"Phase: EXPLORE. Still needed: {', '.join(parts)}. Launch them in parallel."
 
 
-def get_post_tool_reminder(hook_input: dict, store: StateStore) -> str | None:
+def get_post_tool_reminder(hook_input: dict, store: SessionStore) -> str | None:
     """PostToolUse: return phase context reminder after tool completes.
 
     For ExitPlanMode PostToolUse, returns the post-approval reminder.
@@ -257,7 +257,7 @@ def get_post_tool_reminder(hook_input: dict, store: StateStore) -> str | None:
     return template.format(iteration=iteration, plan_files=plan_files)
 
 
-def get_session_start_clear_reminder(store: StateStore) -> str | None:
+def get_session_start_clear_reminder(store: SessionStore) -> str | None:
     """SessionStart:clear — return post-approval reminder after phase advance."""
     state = store.load()
     if not state.get("workflow_active"):
@@ -272,7 +272,7 @@ def get_session_start_clear_reminder(store: StateStore) -> str | None:
     return None
 
 
-def get_agent_start_reminder(hook_input: dict, store: StateStore) -> str | None:
+def get_agent_start_reminder(hook_input: dict, store: SessionStore) -> str | None:
     """SubagentStart: return agent-role instructions for the subagent."""
     state = store.load()
     if not state.get("workflow_active"):
@@ -282,7 +282,7 @@ def get_agent_start_reminder(hook_input: dict, store: StateStore) -> str | None:
     return AGENT_REMINDERS.get(agent_type)
 
 
-def get_phase_transition_reminder(hook_input: dict, store: StateStore) -> str | None:
+def get_phase_transition_reminder(hook_input: dict, store: SessionStore) -> str | None:
     """SubagentStop: return transition or failure reminder after phase advances.
 
     Reads state AFTER recorder has already advanced it, so it sees the

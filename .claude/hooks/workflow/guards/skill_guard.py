@@ -10,7 +10,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 from workflow.config import STORY_ID_PATTERN
-from workflow.state_store import StateStore
+from workflow.session_store import SessionStore
 
 
 def _parse_skill_and_args(hook_input: dict) -> tuple[str, str]:
@@ -92,7 +92,7 @@ def _initial_state(workflow_type: str, args: str) -> dict:
     }
 
 
-def handle(hook_input: dict, store: StateStore) -> tuple[str, str]:
+def handle(hook_input: dict, store: SessionStore) -> tuple[str, str]:
     """Handle PostToolUse(Skill) or UserPromptSubmit to activate workflow."""
     skill, args = _parse_skill_and_args(hook_input)
 

@@ -13,7 +13,7 @@ from workflow.config import (
     TEST_REVIEWER_MAX,
     VALIDATOR_MAX,
 )
-from workflow.state_store import StateStore
+from workflow.session_store import SessionStore
 
 
 def count(agents: list[dict], agent_type: str) -> int:
@@ -28,7 +28,7 @@ def count_completed(agents: list[dict], agent_type: str) -> int:
     )
 
 
-def validate(hook_input: dict, store: StateStore) -> tuple[str, str]:
+def validate(hook_input: dict, store: SessionStore) -> tuple[str, str]:
     """Validate an Agent tool invocation against the current phase.
 
     Returns ("allow", "") or ("block", reason).
