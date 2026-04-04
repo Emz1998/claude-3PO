@@ -51,7 +51,7 @@ def make_state(phase: str, **kwargs) -> dict:
 
 
 def write_state(tmp_state_file, state: dict) -> None:
-    tmp_state_file.write_text(json.dumps(state))
+    SessionStore("s", tmp_state_file).save(state)
 
 
 # ---------------------------------------------------------------------------
@@ -61,7 +61,7 @@ def write_state(tmp_state_file, state: dict) -> None:
 class TestDispatchRouting:
     def test_skill_post_activates_workflow(self, tmp_state_file):
         gm = _load_guardrail()
-        tmp_state_file.write_text("{}")
+        tmp_state_file.write_text("")
         hook_input = {
             "hook_event_name": "PostToolUse",
             "tool_name": "Skill",
@@ -179,7 +179,7 @@ class TestDispatchRouting:
 
     def test_user_prompt_submit_activates_workflow(self, tmp_state_file):
         gm = _load_guardrail()
-        tmp_state_file.write_text("{}")
+        tmp_state_file.write_text("")
         hook_input = {
             "hook_event_name": "UserPromptSubmit",
             "prompt": "/plan --skip-all",
@@ -207,7 +207,7 @@ class TestDispatchRouting:
 
     def test_unknown_event_allowed(self, tmp_state_file):
         gm = _load_guardrail()
-        tmp_state_file.write_text("{}")
+        tmp_state_file.write_text("")
         hook_input = {
             "hook_event_name": "UnknownEvent",
             "session_id": "s", "transcript_path": "t", "cwd": ".", "permission_mode": "default",
@@ -379,7 +379,7 @@ class TestPhaseGate:
 
     def test_phase_gate_inactive_workflow_allows_everything(self, tmp_state_file):
         gm = _load_guardrail()
-        tmp_state_file.write_text("{}")
+        tmp_state_file.write_text("")
         hook_input = {
             "hook_event_name": "PreToolUse",
             "tool_name": "Write",

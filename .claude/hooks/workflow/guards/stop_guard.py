@@ -9,7 +9,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-from workflow.config import DEFAULT_STATE_PATH, PLAN_ALLOWED_STOP_PHASES
+from workflow.config import PLAN_ALLOWED_STOP_PHASES
 from workflow.session_store import SessionStore
 
 # Implement workflow: collect reasons from state

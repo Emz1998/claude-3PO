@@ -18,7 +18,7 @@ def make_state(active: bool = True) -> dict:
 
 
 def write_state(tmp_state_file, state: dict) -> None:
-    tmp_state_file.write_text(json.dumps(state))
+    SessionStore("s", tmp_state_file).save(state)
 
 
 def webfetch_hook(url: str) -> dict:

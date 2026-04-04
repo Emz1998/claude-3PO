@@ -49,7 +49,7 @@ def agent_hook(subagent_type: str, tool_use_id: str = "t1", run_in_background: b
 
 
 def write_state(tmp_state_file, state: dict) -> None:
-    tmp_state_file.write_text(json.dumps(state))
+    SessionStore("s", tmp_state_file).save(state)
 
 
 # ---------------------------------------------------------------------------

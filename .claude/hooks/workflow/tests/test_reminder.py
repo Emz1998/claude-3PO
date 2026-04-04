@@ -36,7 +36,7 @@ def make_state(phase: str, **kwargs) -> dict:
 
 
 def write_state(state_file, state: dict) -> None:
-    state_file.write_text(json.dumps(state))
+    SessionStore("s", state_file).save(state)
 
 
 def post_tool_hook(tool_name: str = "Agent") -> dict:

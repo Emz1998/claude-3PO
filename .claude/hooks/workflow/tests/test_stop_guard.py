@@ -28,7 +28,7 @@ def make_state(phase: str, **kwargs) -> dict:
 
 
 def write_state(tmp_state_file, state: dict) -> None:
-    tmp_state_file.write_text(json.dumps(state))
+    SessionStore("s", tmp_state_file).save(state)
 
 
 def stop_event(active: bool = False) -> dict:

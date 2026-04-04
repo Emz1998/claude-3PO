@@ -2,7 +2,6 @@
 
 from workflow.config.paths import (
     WORKFLOW_ROOT,
-    DEFAULT_STATE_PATH,
     DEFAULT_STATE_JSONL_PATH,
     COMMIT_BATCH_PATH,
     LOG_FILE,

@@ -6,7 +6,7 @@ import argparse
 import re
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
-from workflow.session_state import SessionState
+from workflow.session_store import SessionStore
 
 
 PATTERN = r"^(SK|TS|US|BG)-\d{3}$"
@@ -20,13 +20,13 @@ def parse_story_id(story_id: str) -> str:
 
 
 def initialize_session(
-    session: SessionState, story_id: str, session_id: str, workflow_type: str
+    store: SessionStore, story_id: str, session_id: str, workflow_type: str
 ) -> None:
-    session.initialize()
-    session.set_session_id(session_id)
-    session.set_story_id(story_id)
-    session.set_workflow_active(True)
-    session.set_workflow_type(workflow_type)
+    store.reinitialize({
+        "workflow_active": True,
+        "workflow_type": workflow_type,
+        "story_id": story_id,
+    })
 
 
 def main() -> None:
@@ -42,8 +42,8 @@ def main() -> None:
     story_id = parse_story_id(args.story_id)
     dry_run = args.dry_run
 
-    session = SessionState(session_id)
-    initialize_session(session, story_id, session_id, args.workflow_type)
+    store = SessionStore(session_id)
+    initialize_session(store, story_id, session_id, args.workflow_type)
 
     if dry_run:
         print("Dry run mode enabled")

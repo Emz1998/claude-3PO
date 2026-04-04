@@ -94,11 +94,13 @@ class TestGetDirtyFiles:
         assert "src/app.py" in files
         assert "src/utils.py" in files
 
-    def test_excludes_state_json(self, tmp_path):
+    def test_excludes_state_files(self, tmp_path):
         repo = init_git_repo(tmp_path)
         (repo / "state.json").write_text("{}")
+        (repo / "state.jsonl").write_text("")
         files = get_dirty_files(repo)
         assert "state.json" not in files
+        assert "state.jsonl" not in files
 
     def test_excludes_pyc_files(self, tmp_path):
         repo = init_git_repo(tmp_path)
@@ -214,28 +216,34 @@ class TestGenerateCommitMessage:
 
 class TestStoryContext:
     def test_loads_story_id_and_tasks(self, tmp_path):
-        state_path = tmp_path / "state.json"
-        state_path.write_text(json.dumps({
+        from workflow.session_store import SessionStore
+
+        jsonl_path = tmp_path / "state.jsonl"
+        store = SessionStore("s1", jsonl_path)
+        store.save({
             "story_id": "SK-001",
             "tasks": [
                 {"id": "T-017", "subject": "Feature importance analysis", "status": "completed", "subtasks": []},
                 {"id": "T-018", "subject": "Feature recommendations", "status": "completed", "subtasks": []},
             ],
-        }))
-        ctx = get_story_context(state_path)
+        })
+        ctx = get_story_context("s1", jsonl_path)
         assert ctx["story_id"] == "SK-001"
         assert len(ctx["parent_tasks"]) == 2
         assert ctx["parent_tasks"][0]["id"] == "T-017"
 
     def test_returns_empty_when_no_state(self, tmp_path):
-        state_path = tmp_path / "nonexistent.json"
-        ctx = get_story_context(state_path)
+        jsonl_path = tmp_path / "nonexistent.jsonl"
+        ctx = get_story_context("s1", jsonl_path)
         assert ctx == {}
 
     def test_returns_empty_when_no_story_id(self, tmp_path):
-        state_path = tmp_path / "state.json"
-        state_path.write_text(json.dumps({"workflow_active": True}))
-        ctx = get_story_context(state_path)
+        from workflow.session_store import SessionStore
+
+        jsonl_path = tmp_path / "state.jsonl"
+        store = SessionStore("s1", jsonl_path)
+        store.save({"workflow_active": True})
+        ctx = get_story_context("s1", jsonl_path)
         assert "story_id" not in ctx
 
     @patch("workflow.auto_commit.subprocess.run")
