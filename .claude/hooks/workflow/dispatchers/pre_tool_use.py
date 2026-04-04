@@ -12,9 +12,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from workflow.hook import Hook
 from workflow.logger import log
 from workflow.reminder import get_post_tool_reminder
-from workflow.state_store import StateStore
-
-DEFAULT_STATE_PATH = Path(__file__).resolve().parent.parent / "state.json"
+from workflow.session_store import SessionStore
+from workflow.config import DEFAULT_STATE_JSONL_PATH
 GUARDRAIL = str(Path(__file__).parent.parent / "guardrail.py")
 RECORDER = str(Path(__file__).parent.parent / "recorder.py")
 
@@ -72,7 +71,8 @@ def main() -> None:
         get_recording(raw_input)
 
         # Inject remaining agents reminder (reads state after recorder wrote it)
-        store = StateStore(DEFAULT_STATE_PATH)
+        session_id = raw_input.get("session_id", "default")
+        store = SessionStore(session_id, DEFAULT_STATE_JSONL_PATH)
         reminder_text = get_post_tool_reminder(raw_input, store)
         if reminder_text:
             Hook.send_context(hook_event_name, reminder_text)

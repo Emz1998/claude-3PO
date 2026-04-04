@@ -10,19 +10,22 @@ from workflow.hook import Hook
 from workflow.logger import log
 from workflow.recorder import advance_after_plan_approval
 from workflow.reminder import get_session_start_clear_reminder
-from workflow.state_store import StateStore
-
-DEFAULT_STATE_PATH = Path(__file__).resolve().parent.parent / "state.json"
+from workflow.session_store import SessionStore
+from workflow.config import DEFAULT_STATE_JSONL_PATH
 
 
 def main() -> None:
     raw_input = Hook.read_stdin()
     source = raw_input.get("source", "")
 
+    # Clean up inactive sessions on every session start
+    SessionStore.cleanup_inactive(DEFAULT_STATE_JSONL_PATH)
+
     if source != "clear":
         return
 
-    store = StateStore(DEFAULT_STATE_PATH)
+    session_id = raw_input.get("session_id", "default")
+    store = SessionStore(session_id, DEFAULT_STATE_JSONL_PATH)
     state = store.load()
 
     if not state.get("workflow_active"):

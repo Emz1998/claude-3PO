@@ -12,9 +12,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from workflow.hook import Hook
 from workflow.logger import log
 from workflow.reminder import EXPLORE_KICKOFF
-from workflow.state_store import StateStore
-
-DEFAULT_STATE_PATH = Path(__file__).resolve().parent.parent / "state.json"
+from workflow.session_store import SessionStore
+from workflow.config import DEFAULT_STATE_JSONL_PATH
 GUARDRAIL = str(Path(__file__).parent.parent / "guardrail.py")
 
 
@@ -45,7 +44,8 @@ def main() -> None:
 
     # After /implement or /plan activation, inject explore kickoff reminder
     if prompt.startswith("/implement") or prompt.startswith("/plan"):
-        store = StateStore(DEFAULT_STATE_PATH)
+        session_id = raw_input.get("session_id", "default")
+        store = SessionStore(session_id, DEFAULT_STATE_JSONL_PATH)
         state = store.load()
         if state.get("workflow_active") and state.get("phase") == "explore":
             log("UserPromptSubmit:reminder", reminder=EXPLORE_KICKOFF[:100])

@@ -12,9 +12,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from workflow.hook import Hook
 from workflow.logger import log
 from workflow.reminder import get_post_tool_reminder
-from workflow.state_store import StateStore
-
-DEFAULT_STATE_PATH = Path(__file__).resolve().parent.parent / "state.json"
+from workflow.session_store import SessionStore
+from workflow.config import DEFAULT_STATE_JSONL_PATH
 GUARDRAIL = str(Path(__file__).parent.parent / "guardrail.py")
 RECORDER = str(Path(__file__).parent.parent / "recorder.py")
 
@@ -59,8 +58,9 @@ def main() -> None:
             return
 
     # Recording for Write/Edit/Bash/ExitPlanMode
+    session_id = raw_input.get("session_id", "default")
     if tool_name in ("Write", "Edit", "Bash", "ExitPlanMode"):
-        store_pre = StateStore(DEFAULT_STATE_PATH)
+        store_pre = SessionStore(session_id, DEFAULT_STATE_JSONL_PATH)
         phase_before = store_pre.load().get("phase", "")
         get_recording(raw_input)
         phase_after = store_pre.load().get("phase", "")
@@ -69,7 +69,7 @@ def main() -> None:
 
     # Reminder injection (Agent reminders handled in PreToolUse)
     if tool_name != "Agent":
-        store = StateStore(DEFAULT_STATE_PATH)
+        store = SessionStore(session_id, DEFAULT_STATE_JSONL_PATH)
         reminder_text = get_post_tool_reminder(raw_input, store)
 
         if reminder_text:
