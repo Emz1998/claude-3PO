@@ -13,7 +13,7 @@ from workflow.guards import agent_guard
 from workflow.session_store import SessionStore
 
 
-PHASES = ["explore", "write-codebase", "plan", "write-plan", "review", "present-plan", "task-create",
+PHASES = ["explore", "plan", "write-plan", "review", "present-plan", "task-create",
           "write-tests", "write-code", "validate", "pr-create", "ci-check", "report", "completed"]
 
 
@@ -23,13 +23,22 @@ def make_state(phase: str, agents=None, **kwargs) -> dict:
         "workflow_type": "implement",
         "phase": phase,
         "tdd": True,
-        "skip_explore": False,
-        "skip_research": False,
+        "skip": kwargs.get("skip", []),
         "agents": agents or [],
-        "plan_written": kwargs.get("plan_written", False),
-        "plan_file": kwargs.get("plan_file", None),
-        "tasks_created": kwargs.get("tasks_created", 0),
-        "test_files_created": kwargs.get("test_files_created", []),
+        "plan": {
+            "file_path": kwargs.get("plan_file", None),
+            "written": kwargs.get("plan_written", False),
+            "review": {
+                "iteration": 0,
+                "scores": None,
+                "status": None,
+            },
+        },
+        "tests": {
+            "file_paths": kwargs.get("test_files_created", []),
+            "review_result": None,
+            "executed": False,
+        },
     }
 
 
@@ -97,8 +106,7 @@ class TestExplorePhase:
         assert decision == "block"
 
     def test_explore_blocked_when_skip_explore(self, tmp_state_file):
-        state = make_state("explore")
-        state["skip_explore"] = True
+        state = make_state("explore", skip=["explore"])
         write_state(tmp_state_file, state)
         store = SessionStore("s", tmp_state_file)
         decision, reason = agent_guard.validate(agent_hook("Explore", run_in_background=False), store)
@@ -106,8 +114,7 @@ class TestExplorePhase:
         assert "skip" in reason.lower()
 
     def test_research_blocked_when_skip_research(self, tmp_state_file):
-        state = make_state("explore")
-        state["skip_research"] = True
+        state = make_state("explore", skip=["research"])
         write_state(tmp_state_file, state)
         store = SessionStore("s", tmp_state_file)
         decision, reason = agent_guard.validate(agent_hook("Research"), store)
@@ -227,26 +234,26 @@ class TestWriteTestsPhase:
     def test_non_test_reviewer_blocked_in_write_tests(self, tmp_state_file):
         write_state(tmp_state_file, make_state("write-tests"))
         store = SessionStore("s", tmp_state_file)
-        decision, _ = agent_guard.validate(agent_hook("Validator"), store)
+        decision, _ = agent_guard.validate(agent_hook("QualityAssurance"), store)
         assert decision == "block"
 
 
 # ---------------------------------------------------------------------------
-# Write-code phase — Validator triggers validate phase
+# Write-code phase — QualityAssurance triggers validate phase
 # ---------------------------------------------------------------------------
 
 class TestWriteCodePhase:
     def test_validator_allowed_in_write_code(self, tmp_state_file):
         write_state(tmp_state_file, make_state("write-code"))
         store = SessionStore("s", tmp_state_file)
-        decision, _ = agent_guard.validate(agent_hook("Validator"), store)
+        decision, _ = agent_guard.validate(agent_hook("QualityAssurance"), store)
         assert decision == "allow"
 
     def test_validator_does_not_advance_phase(self, tmp_state_file):
         """Guard is pure validation — phase advance is done by recorder.py."""
         write_state(tmp_state_file, make_state("write-code"))
         store = SessionStore("s", tmp_state_file)
-        agent_guard.validate(agent_hook("Validator"), store)
+        agent_guard.validate(agent_hook("QualityAssurance"), store)
         state = store.load()
         assert state["phase"] == "write-code"
 
@@ -265,7 +272,7 @@ class TestValidatePhase:
     def test_validator_allowed_in_validate(self, tmp_state_file):
         write_state(tmp_state_file, make_state("validate"))
         store = SessionStore("s", tmp_state_file)
-        decision, _ = agent_guard.validate(agent_hook("Validator"), store)
+        decision, _ = agent_guard.validate(agent_hook("QualityAssurance"), store)
         assert decision == "allow"
 
     def test_non_validator_blocked_in_validate(self, tmp_state_file):
@@ -280,7 +287,7 @@ class TestValidatePhase:
 # ---------------------------------------------------------------------------
 
 class TestBlockedPhases:
-    @pytest.mark.parametrize("phase", ["write-plan", "write-codebase", "present-plan", "pr-create", "ci-check", "report", "completed"])
+    @pytest.mark.parametrize("phase", ["write-plan", "present-plan", "pr-create", "ci-check", "report", "completed"])
     def test_agents_blocked_in_non_agent_phases(self, phase, tmp_state_file):
         write_state(tmp_state_file, make_state(phase))
         store = SessionStore("s", tmp_state_file)

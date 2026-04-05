@@ -17,6 +17,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 from workflow.session_store import SessionStore
+from workflow.utils.initializer import initialize
 
 GUARDRAIL = Path(__file__).resolve().parent.parent / "guardrail.py"
 RECORDER = Path(__file__).resolve().parent.parent / "recorder.py"
@@ -33,20 +34,6 @@ results: list[dict] = []
 # ---------------------------------------------------------------------------
 # Payload helpers
 # ---------------------------------------------------------------------------
-
-
-def skill_payload(skill: str, args: str = "") -> dict:
-    return {
-        "hook_event_name": "PostToolUse",
-        "tool_name": "Skill",
-        "tool_input": {"skill": skill, "args": args},
-        "tool_response": {"success": True},
-        "tool_use_id": "t0",
-        "session_id": "s",
-        "transcript_path": "t",
-        "cwd": ".",
-        "permission_mode": "default",
-    }
 
 
 def agent_payload(subagent_type: str, tool_use_id: str = "t1") -> dict:
@@ -137,7 +124,7 @@ def subagent_stop_payload(agent_type: str, msg: str = "Done.") -> dict:
 
 
 def validator_report(verdict: str) -> str:
-    """Build a valid Validator report with the given verdict."""
+    """Build a valid QA report with the given verdict."""
     return (
         f"## QA Report: Test Task\n\n"
         f"### Criteria Checklist\n"
@@ -329,7 +316,7 @@ def simulate(tdd: bool, story_id: str | None, skip_args: str, tmp_dir: Path) -> 
     skip_explore = "--skip-explore" in skip_args or "--skip-all" in skip_args
     skip_research = "--skip-research" in skip_args or "--skip-all" in skip_args
 
-    # Activate /implement skill
+    # Activate /implement
     print(f"\n--- /implement {skip_args} ---")
     impl_args = skip_args
     if tdd:
@@ -337,12 +324,9 @@ def simulate(tdd: bool, story_id: str | None, skip_args: str, tmp_dir: Path) -> 
     if story_id:
         impl_args = (story_id + " " + impl_args).strip()
 
-    run(
-        f"/implement {impl_args} → activates workflow",
-        skill_payload("implement", impl_args),
-        "allow",
-        "Workflow activated",
-    )
+    initialize("implement", "s", impl_args, STATE_JSONL_PATH)
+    print(f"  {GREEN}PASS{RESET}  /implement {impl_args} → workflow initialized")
+    results.append({"label": f"/implement {impl_args} → initialized", "expected": "allow", "actual": "allow", "passed": True})
 
     # Explore phase
     if not skip_explore:
@@ -365,22 +349,11 @@ def simulate(tdd: bool, story_id: str | None, skip_args: str, tmp_dir: Path) -> 
     if not skip_research:
         run("Research [t5] done", subagent_stop_payload("Research", "Best practice: use dependency injection for services"), "allow")
         run(
-            "Research [t6] done → phase=write-codebase",
+            "Research [t6] done → phase=plan",
             subagent_stop_payload("Research", "Latest docs recommend pydantic v2 for validation"),
             "allow",
-            "Phase → write-codebase",
+            "Phase → plan",
         )
-
-    # Write-codebase phase
-    print("\n--- Write-codebase phase ---")
-    run("Write code in write-codebase → block", write_payload("src/feature.py"), "block")
-    run("Write CODEBASE.md (pre) → allow", write_payload("CODEBASE.md", "# Codebase overview"), "allow")
-    run(
-        "Write CODEBASE.md (post) → phase=plan",
-        post_write_payload("CODEBASE.md", "# Codebase overview"),
-        "allow",
-        "Phase → plan",
-    )
 
     # Plan phase
     print("\n--- Plan phase ---")
@@ -549,7 +522,7 @@ def simulate(tdd: bool, story_id: str | None, skip_args: str, tmp_dir: Path) -> 
             "allow",
             "test tracked",
         )
-        run("Validator in write-tests → block", agent_payload("Validator"), "block")
+        run("QA in write-tests → block", agent_payload("QualityAssurance"), "block")
         run(
             "TestReviewer without files... → allow",
             agent_payload("TestReviewer"),
@@ -587,8 +560,8 @@ def simulate(tdd: bool, story_id: str | None, skip_args: str, tmp_dir: Path) -> 
         "allow",
     )
     run(
-        "Validator agent → allow + advance to validate",
-        agent_payload("Validator"),
+        "QA agent → allow + advance to validate",
+        agent_payload("QualityAssurance"),
         "allow",
         "Phase → validate",
     )
@@ -597,8 +570,8 @@ def simulate(tdd: bool, story_id: str | None, skip_args: str, tmp_dir: Path) -> 
     print("\n--- Validate phase ---")
     run("Code write in validate → block", write_payload("src/feature.py"), "block")
     run(
-        "Validator Fail → phase=write-code",
-        subagent_stop_payload("Validator", validator_report("Fail")),
+        "QA Fail → phase=write-code",
+        subagent_stop_payload("QualityAssurance", validator_report("Fail")),
         "allow",
         "Phase → write-code",
     )
@@ -606,14 +579,14 @@ def simulate(tdd: bool, story_id: str | None, skip_args: str, tmp_dir: Path) -> 
     # Return to write-code and re-validate
     run("Code write again → allow", write_payload("src/feature.py"), "allow")
     run(
-        "Validator again → allow + advance to validate",
-        agent_payload("Validator"),
+        "QA again → allow + advance to validate",
+        agent_payload("QualityAssurance"),
         "allow",
         "Phase → validate",
     )
     run(
-        "Validator Pass → phase=pr-create",
-        subagent_stop_payload("Validator", validator_report("Pass")),
+        "QA Pass → phase=pr-create",
+        subagent_stop_payload("QualityAssurance", validator_report("Pass")),
         "allow",
         "Phase → pr-create",
     )
@@ -657,10 +630,10 @@ def simulate(tdd: bool, story_id: str | None, skip_args: str, tmp_dir: Path) -> 
     )
 
     # Re-run validate + PR
-    run("Validator → advance to validate", agent_payload("Validator"), "allow")
+    run("QA → advance to validate", agent_payload("QualityAssurance"), "allow")
     run(
-        "Validator Pass → pr-create",
-        subagent_stop_payload("Validator", validator_report("Pass")),
+        "QA Pass → pr-create",
+        subagent_stop_payload("QualityAssurance", validator_report("Pass")),
         "allow",
     )
     run(

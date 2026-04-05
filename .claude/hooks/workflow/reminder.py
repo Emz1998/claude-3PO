@@ -45,7 +45,7 @@ PHASE_REMINDERS: dict[str, str] = {
     ),
     "write-code": (
         "Phase: WRITE-CODE. Files from plan: {plan_files}. "
-        "When done, launch Validator agent."
+        "When done, launch QualityAssurance agent."
     ),
     "validate": "Phase: VALIDATE. If Pass → pr-create. If Fail → back to write-code.",
 }
@@ -70,7 +70,7 @@ AGENT_REMINDERS: dict[str, str] = {
         "Review test coverage and quality. End response with exactly "
         "'Pass' or 'Fail'."
     ),
-    "Validator": (
+    "QualityAssurance": (
         "Verify implementation passes tests and matches plan. End with "
         "'Pass' or 'Fail'."
     ),
@@ -136,7 +136,7 @@ TEST_REVIEW_FAIL = (
     "Test review FAILED. Revise test files and launch TestReviewer again."
 )
 
-VALIDATOR_FAIL = (
+QA_FAIL = (
     "Validation FAILED. Returning to write-code phase. "
     "Fix the implementation and re-validate."
 )
@@ -149,11 +149,11 @@ VALIDATOR_FAIL = (
 
 def _load_plan_files_list(state: dict) -> str:
     """Return comma-separated plan file list or 'N/A'."""
-    cached = state.get("plan_files_cache")
+    cached = state.get("docs_to_read")
     if cached:
         return ", ".join(cached)
 
-    plan_file = state.get("plan_file")
+    plan_file = state.get("plan", {}).get("file_path")
     if not plan_file:
         return "N/A"
 
@@ -190,14 +190,13 @@ def _load_plan_files_list(state: dict) -> str:
 def _explore_remaining_reminder(state: dict) -> str | None:
     """Return a reminder of how many explore/research agents are still needed."""
     agents = state.get("agents", [])
-    skip_explore = state.get("skip_explore", False)
-    skip_research = state.get("skip_research", False)
+    skip = state.get("skip", [])
 
     parts = []
     for agent_type, required in EXPLORE_REQUIRED.items():
-        if agent_type == "Explore" and skip_explore:
+        if agent_type == "Explore" and "explore" in skip:
             continue
-        if agent_type == "Research" and skip_research:
+        if agent_type == "Research" and "research" in skip:
             continue
         launched = sum(1 for a in agents if a.get("agent_type") == agent_type)
         remaining = required - launched
@@ -251,7 +250,7 @@ def get_post_tool_reminder(hook_input: dict, store: SessionStore) -> str | None:
     if not template:
         return None
 
-    iteration = state.get("plan_review_iteration", 0) + 1
+    iteration = state.get("plan", {}).get("review", {}).get("iteration", 0) + 1
     plan_files = _load_plan_files_list(state)
     store.set("last_reminder_phase", phase)
     return template.format(iteration=iteration, plan_files=plan_files)
@@ -297,11 +296,12 @@ def get_phase_transition_reminder(hook_input: dict, store: SessionStore) -> str 
 
     # Check failure scenarios first
     if agent_type == "PlanReview":
-        review_status = state.get("plan_review_status", "")
-        scores = state.get("plan_review_scores") or {}
+        plan_review = state.get("plan", {}).get("review", {})
+        review_status = plan_review.get("status", "")
+        scores = plan_review.get("scores") or {}
         confidence = scores.get("confidence", "N/A")
         quality = scores.get("quality", "N/A")
-        iteration = state.get("plan_review_iteration", 0)
+        iteration = plan_review.get("iteration", 0)
 
         if review_status == "max_iterations_reached":
             return PLAN_REVIEW_MAX_TEMPLATE.format(
@@ -316,21 +316,16 @@ def get_phase_transition_reminder(hook_input: dict, store: SessionStore) -> str 
             )
 
     if agent_type == "TestReviewer":
-        if state.get("test_review_result") == "Fail":
+        if state.get("tests", {}).get("review_result") == "Fail":
             return TEST_REVIEW_FAIL
 
-    if agent_type == "Validator":
+    if agent_type == "QualityAssurance":
         if state.get("validation_result") == "Fail":
-            return VALIDATOR_FAIL
+            return QA_FAIL
 
     # Phase transition reminder (once per phase)
     if state.get("last_reminder_phase") == f"transition:{phase}":
         return None
-
-    # Write-codebase transition reminder
-    if phase == "write-codebase":
-        store.set("last_reminder_phase", f"transition:{phase}")
-        return "All exploration complete. Write CODEBASE.md summarizing the codebase."
 
     template = PHASE_TRANSITION_REMINDERS.get(phase)
     if not template:

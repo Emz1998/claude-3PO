@@ -1,4 +1,4 @@
-"""agent_guard.py — Phase-based agent validation using flat state model."""
+"""agent_guard.py — Phase-based agent validation using nested state model."""
 
 import sys
 from pathlib import Path
@@ -11,7 +11,7 @@ from workflow.config import (
     PLAN_MAX,
     PLAN_REVIEW_MAX,
     TEST_REVIEWER_MAX,
-    VALIDATOR_MAX,
+    QA_MAX,
 )
 from workflow.session_store import SessionStore
 
@@ -51,8 +51,7 @@ def validate(hook_input: dict, store: SessionStore) -> tuple[str, str]:
 
     phase = state.get("phase", "")
     agents = state.get("agents", [])
-    skip_explore = state.get("skip_explore", False)
-    skip_research = state.get("skip_research", False)
+    skip = state.get("skip", [])
 
     # -----------------------------------------------------------------------
     # explore phase: Explore + Research agents
@@ -60,7 +59,7 @@ def validate(hook_input: dict, store: SessionStore) -> tuple[str, str]:
     if phase == "explore":
         if agent_type in ("Explore", "Research"):
             if agent_type == "Explore":
-                if skip_explore:
+                if "explore" in skip:
                     return (
                         "block",
                         "Blocked: Explore agents skipped via --skip-explore. Remove the flag to use Explore agents.",
@@ -72,7 +71,7 @@ def validate(hook_input: dict, store: SessionStore) -> tuple[str, str]:
                         f"Blocked: max Explore agents ({EXPLORE_MAX}) reached. Proceed to the next phase.",
                     )
             else:  # Research
-                if skip_research:
+                if "research" in skip:
                     return (
                         "block",
                         "Blocked: Research agents skipped via --skip-research. Remove the flag to use Research agents.",
@@ -115,7 +114,7 @@ def validate(hook_input: dict, store: SessionStore) -> tuple[str, str]:
                 "block",
                 f"Blocked: '{agent_type}' agent is not allowed during 'review' phase. Only the PlanReview agent may run now.",
             )
-        if not state.get("plan_written"):
+        if not state.get("plan", {}).get("written"):
             return (
                 "block",
                 "Blocked: PlanReview requires a written plan. Write the plan to .claude/plans/ first.",
@@ -137,7 +136,7 @@ def validate(hook_input: dict, store: SessionStore) -> tuple[str, str]:
                 "block",
                 f"Blocked: '{agent_type}' agent is not allowed during 'write-tests' phase. Only the TestReviewer agent may run now.",
             )
-        test_files = state.get("test_files_created", [])
+        test_files = state.get("tests", {}).get("file_paths", [])
         if not test_files:
             return (
                 "block",
@@ -146,24 +145,24 @@ def validate(hook_input: dict, store: SessionStore) -> tuple[str, str]:
         return "allow", ""
 
     # -----------------------------------------------------------------------
-    # write-code phase: Validator only — triggers validate phase transition
+    # write-code phase: QualityAssurance only — triggers validate phase transition
     # -----------------------------------------------------------------------
     if phase == "write-code":
-        if agent_type != "Validator":
+        if agent_type != "QualityAssurance":
             return (
                 "block",
-                f"Blocked: '{agent_type}' agent is not allowed during 'write-code' phase. Only the Validator agent may run now.",
+                f"Blocked: '{agent_type}' agent is not allowed during 'write-code' phase. Only the QualityAssurance agent may run now.",
             )
         return "allow", ""
 
     # -----------------------------------------------------------------------
-    # validate phase: Validator only
+    # validate phase: QualityAssurance only
     # -----------------------------------------------------------------------
     if phase == "validate":
-        if agent_type != "Validator":
+        if agent_type != "QualityAssurance":
             return (
                 "block",
-                f"Blocked: '{agent_type}' agent is not allowed during 'validate' phase. Only the Validator agent may run now.",
+                f"Blocked: '{agent_type}' agent is not allowed during 'validate' phase. Only the QualityAssurance agent may run now.",
             )
         return "allow", ""
 

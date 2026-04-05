@@ -67,11 +67,11 @@ def _parse_plan_files(plan_content: str) -> list[str]:
 
 def _load_plan_files(state: dict) -> list[str] | None:
     """Load plan files from cache or parse from plan file. Returns None if no plan."""
-    cached = state.get("plan_files_cache")
+    cached = state.get("docs_to_read")
     if cached is not None:
         return cached
 
-    plan_file = state.get("plan_file")
+    plan_file = state.get("plan", {}).get("file_path")
     if not plan_file:
         return None
 
@@ -152,8 +152,8 @@ def validate(hook_input: dict, store: SessionStore) -> tuple[str, str]:
         return "allow", ""
 
     # Cache plan files if not cached
-    if state.get("plan_files_cache") is None:
-        store.set("plan_files_cache", plan_files)
+    if state.get("docs_to_read") is None:
+        store.set("docs_to_read", plan_files)
 
     if _is_in_plan(file_path, plan_files):
         return "allow", ""

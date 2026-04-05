@@ -18,7 +18,7 @@ RESEARCH_MAX = 2
 PLAN_MAX = 1
 PLAN_REVIEW_MAX = 3
 TEST_REVIEWER_MAX = 3
-VALIDATOR_MAX = 1
+QA_MAX = 1
 
 # ---------------------------------------------------------------------------
 # Review thresholds

@@ -22,8 +22,12 @@ def make_state(phase: str, plan_file: str = None, **kwargs) -> dict:
         "workflow_active": True,
         "workflow_type": "implement",
         "phase": phase,
-        "plan_file": plan_file,
-        "plan_files_cache": kwargs.get("plan_files_cache", None),
+        "plan": {
+            "file_path": plan_file,
+            "written": False,
+            "review": {"iteration": 0, "scores": None, "status": None},
+        },
+        "docs_to_read": kwargs.get("docs_to_read", None),
     }
     if "files_written" in kwargs:
         state["files_written"] = kwargs["files_written"]
@@ -144,7 +148,7 @@ class TestCodingPhases:
         # Second call — should use cache
         read_guard.validate(read_hook("src/utils.py"), store)
         state = store.load()
-        assert state.get("plan_files_cache") is not None
+        assert state.get("docs_to_read") is not None
 
     def test_config_files_blocked(self, tmp_state_file, tmp_path):
         plan_file = tmp_path / "plan.md"

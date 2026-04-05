@@ -8,6 +8,10 @@ model: haiku
 
 Analyze the coding task "$1" and deploy the appropriate engineer agents in parallel for maximum efficiency. Determine which engineers are needed, distribute work intelligently, and aggregate results.
 
+## Workflow Initialization
+
+!`python3 .claude/hooks/workflow/utils/initializer.py implement ${CLAUDE_SESSION_ID} $ARGUMENTS`
+
 ## Story Context
 
 !`python3 github_project/project_manager.py view $0`

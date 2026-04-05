@@ -14,19 +14,35 @@ from workflow.session_store import SessionStore
 
 
 def make_state(phase: str, **kwargs) -> dict:
+    skip = kwargs.get("skip", [])
+    if kwargs.get("skip_explore"):
+        if "explore" not in skip:
+            skip.append("explore")
+    if kwargs.get("skip_research"):
+        if "research" not in skip:
+            skip.append("research")
     return {
         "workflow_active": True,
         "workflow_type": kwargs.get("workflow_type", "implement"),
         "phase": phase,
         "tdd": kwargs.get("tdd", True),
-        "skip_explore": kwargs.get("skip_explore", False),
-        "skip_research": kwargs.get("skip_research", False),
+        "skip": skip,
         "agents": kwargs.get("agents", []),
-        "plan_review_iteration": kwargs.get("plan_review_iteration", 0),
-        "plan_review_scores": kwargs.get("plan_review_scores", None),
-        "plan_review_status": kwargs.get("plan_review_status", None),
+        "plan": {
+            "file_path": kwargs.get("plan_file", None),
+            "written": kwargs.get("plan_written", False),
+            "review": {
+                "iteration": kwargs.get("plan_review_iteration", 0),
+                "scores": kwargs.get("plan_review_scores", None),
+                "status": kwargs.get("plan_review_status", None),
+            },
+        },
+        "tests": {
+            "file_paths": kwargs.get("test_file_paths", []),
+            "review_result": kwargs.get("test_review_result", None),
+            "executed": kwargs.get("test_executed", False),
+        },
         "story_id": kwargs.get("story_id", None),
-        "test_review_result": kwargs.get("test_review_result", None),
         "validation_result": kwargs.get("validation_result", None),
     }
 
@@ -66,7 +82,7 @@ class TestExploreResearchCompletion:
         completed = [a for a in state["agents"] if a["agent_type"] == "Explore" and a["status"] == "completed"]
         assert len(completed) == 1
 
-    def test_all_explore_done_advances_to_write_codebase(self, tmp_state_file):
+    def test_all_explore_done_advances_to_plan(self, tmp_state_file):
         agents = (
             [{"agent_type": "Explore", "status": "completed"}] * 2 +
             [running_agent("Explore")] +
@@ -76,7 +92,7 @@ class TestExploreResearchCompletion:
         store = SessionStore("s", tmp_state_file)
         recorder.record_subagent_stop(stop_hook("Explore"), store)
         state = store.load()
-        assert state["phase"] == "write-codebase"
+        assert state["phase"] == "plan"
 
     def test_partial_explore_does_not_advance(self, tmp_state_file):
         agents = [running_agent("Explore")]  # only 1 of 3
@@ -93,7 +109,7 @@ class TestExploreResearchCompletion:
         store = SessionStore("s", tmp_state_file)
         recorder.record_subagent_stop(stop_hook("Research"), store)
         state = store.load()
-        assert state["phase"] == "write-codebase"
+        assert state["phase"] == "plan"
 
     def test_skip_research_only_needs_explore(self, tmp_state_file):
         agents = (
@@ -105,44 +121,7 @@ class TestExploreResearchCompletion:
         store = SessionStore("s", tmp_state_file)
         recorder.record_subagent_stop(stop_hook("Explore"), store)
         state = store.load()
-        assert state["phase"] == "write-codebase"
-
-
-# ---------------------------------------------------------------------------
-# Write-codebase: advance to plan on CODEBASE.md write
-# ---------------------------------------------------------------------------
-
-class TestWriteCodebasePhase:
-    def _write_hook(self, file_path: str) -> dict:
-        return {
-            "hook_event_name": "PostToolUse",
-            "tool_name": "Write",
-            "tool_input": {"file_path": file_path, "content": "# Codebase"},
-            "tool_response": {"type": "update", "filePath": file_path},
-            "tool_use_id": "t1",
-            "session_id": "s",
-            "transcript_path": "t",
-            "cwd": ".",
-            "permission_mode": "default",
-        }
-
-    def test_codebase_md_write_advances_to_plan(self, tmp_state_file):
-        state = make_state("write-codebase")
-        write_state(tmp_state_file, state)
-        store = SessionStore("s", tmp_state_file)
-        decision, _ = recorder.record_write(self._write_hook("CODEBASE.md"), store)
-        assert decision == "allow"
-        state = store.load()
         assert state["phase"] == "plan"
-        assert state["codebase_written"] is True
-
-    def test_non_codebase_write_does_not_advance(self, tmp_state_file):
-        state = make_state("write-codebase")
-        write_state(tmp_state_file, state)
-        store = SessionStore("s", tmp_state_file)
-        recorder.record_write(self._write_hook("README.md"), store)
-        state = store.load()
-        assert state["phase"] == "write-codebase"
 
 
 # ---------------------------------------------------------------------------
@@ -171,7 +150,7 @@ class TestPlanReviewCompletion:
         recorder.record_subagent_stop(stop_hook("PlanReview", "Confidence score: 90, Quality score: 85"), store)
         state = store.load()
         assert state["phase"] == "present-plan"
-        assert state["plan_review_status"] == "approved"
+        assert state["plan"]["review"]["status"] == "approved"
 
     def test_plan_review_failing_increments_iteration(self, tmp_state_file):
         agents = [running_agent("PlanReview")]
@@ -180,8 +159,8 @@ class TestPlanReviewCompletion:
         recorder.record_subagent_stop(stop_hook("PlanReview", "Confidence: 50, Quality: 45"), store)
         state = store.load()
         assert state["phase"] == "review"
-        assert state["plan_review_iteration"] == 1
-        assert state["plan_review_status"] == "revision_needed"
+        assert state["plan"]["review"]["iteration"] == 1
+        assert state["plan"]["review"]["status"] == "revision_needed"
 
     def test_plan_review_max_iterations_sets_failed(self, tmp_state_file):
         agents = [running_agent("PlanReview")]
@@ -190,7 +169,7 @@ class TestPlanReviewCompletion:
         recorder.record_subagent_stop(stop_hook("PlanReview", "Confidence: 50, Quality: 45"), store)
         state = store.load()
         assert state["phase"] == "failed"
-        assert state["plan_review_status"] == "max_iterations_reached"
+        assert state["plan"]["review"]["status"] == "max_iterations_reached"
 
     def test_plan_review_scores_stored(self, tmp_state_file):
         agents = [running_agent("PlanReview")]
@@ -198,8 +177,8 @@ class TestPlanReviewCompletion:
         store = SessionStore("s", tmp_state_file)
         recorder.record_subagent_stop(stop_hook("PlanReview", "Confidence score: 90, Quality score: 85"), store)
         state = store.load()
-        assert state["plan_review_scores"]["confidence"] == 90
-        assert state["plan_review_scores"]["quality"] == 85
+        assert state["plan"]["review"]["scores"]["confidence"] == 90
+        assert state["plan"]["review"]["scores"]["quality"] == 85
 
 
 # ---------------------------------------------------------------------------
@@ -214,7 +193,7 @@ class TestTestReviewerCompletion:
         recorder.record_subagent_stop(stop_hook("TestReviewer", "Pass"), store)
         state = store.load()
         assert state["phase"] == "write-code"
-        assert state["test_review_result"] == "Pass"
+        assert state["tests"]["review_result"] == "Pass"
 
     def test_test_reviewer_fail_stays_in_write_tests(self, tmp_state_file):
         agents = [running_agent("TestReviewer")]
@@ -223,28 +202,28 @@ class TestTestReviewerCompletion:
         recorder.record_subagent_stop(stop_hook("TestReviewer", "Fail"), store)
         state = store.load()
         assert state["phase"] == "write-tests"
-        assert state["test_review_result"] == "Fail"
+        assert state["tests"]["review_result"] == "Fail"
 
 
 # ---------------------------------------------------------------------------
-# Validator: Pass/Fail verdict
+# QualityAssurance: Pass/Fail verdict
 # ---------------------------------------------------------------------------
 
-class TestValidatorCompletion:
+class TestQACompletion:
     def test_validator_pass_advances_to_pr_create(self, tmp_state_file):
-        agents = [running_agent("Validator")]
+        agents = [running_agent("QualityAssurance")]
         write_state(tmp_state_file, make_state("validate", agents=agents))
         store = SessionStore("s", tmp_state_file)
-        recorder.record_subagent_stop(stop_hook("Validator", "Pass"), store)
+        recorder.record_subagent_stop(stop_hook("QualityAssurance", "Pass"), store)
         state = store.load()
         assert state["phase"] == "pr-create"
         assert state["validation_result"] == "Pass"
 
     def test_validator_fail_returns_to_write_code(self, tmp_state_file):
-        agents = [running_agent("Validator")]
+        agents = [running_agent("QualityAssurance")]
         write_state(tmp_state_file, make_state("validate", agents=agents))
         store = SessionStore("s", tmp_state_file)
-        recorder.record_subagent_stop(stop_hook("Validator", "Fail"), store)
+        recorder.record_subagent_stop(stop_hook("QualityAssurance", "Fail"), store)
         state = store.load()
         assert state["phase"] == "write-code"
         assert state["validation_result"] == "Fail"
@@ -252,7 +231,7 @@ class TestValidatorCompletion:
     def test_subagent_stop_always_returns_allow(self, tmp_state_file):
         write_state(tmp_state_file, make_state("validate"))
         store = SessionStore("s", tmp_state_file)
-        decision, _ = recorder.record_subagent_stop(stop_hook("Validator", "Pass"), store)
+        decision, _ = recorder.record_subagent_stop(stop_hook("QualityAssurance", "Pass"), store)
         assert decision == "allow"
 
 
@@ -284,17 +263,17 @@ class TestRecordAgentFromHook:
     def test_validator_advances_phase_from_write_code(self, tmp_state_file):
         write_state(tmp_state_file, make_state("write-code"))
         store = SessionStore("s", tmp_state_file)
-        decision, _ = recorder.record_agent_from_hook(agent_hook("Validator"), store)
+        decision, _ = recorder.record_agent_from_hook(agent_hook("QualityAssurance"), store)
         assert decision == "allow"
         state = store.load()
         assert state["phase"] == "validate"
         assert len(state["agents"]) == 1
-        assert state["agents"][0]["agent_type"] == "Validator"
+        assert state["agents"][0]["agent_type"] == "QualityAssurance"
 
     def test_validator_in_validate_phase_does_not_advance(self, tmp_state_file):
         write_state(tmp_state_file, make_state("validate"))
         store = SessionStore("s", tmp_state_file)
-        recorder.record_agent_from_hook(agent_hook("Validator"), store)
+        recorder.record_agent_from_hook(agent_hook("QualityAssurance"), store)
         state = store.load()
         assert state["phase"] == "validate"
 

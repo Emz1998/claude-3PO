@@ -22,16 +22,25 @@ def make_state(phase: str, **kwargs) -> dict:
         "workflow_active": True,
         "workflow_type": kwargs.get("workflow_type", "implement"),
         "phase": phase,
-        "plan_file": kwargs.get("plan_file", None),
-        "plan_written": kwargs.get("plan_written", False),
-        "plan_review_iteration": kwargs.get("plan_review_iteration", 0),
-        "plan_review_scores": kwargs.get("plan_review_scores", None),
-        "plan_review_status": kwargs.get("plan_review_status", None),
-        "plan_files_cache": kwargs.get("plan_files_cache", None),
-        "test_review_result": kwargs.get("test_review_result", None),
+        "plan": {
+            "file_path": kwargs.get("plan_file", None),
+            "written": kwargs.get("plan_written", False),
+            "review": {
+                "iteration": kwargs.get("plan_review_iteration", 0),
+                "scores": kwargs.get("plan_review_scores", None),
+                "status": kwargs.get("plan_review_status", None),
+            },
+        },
+        "tests": {
+            "file_paths": [],
+            "review_result": kwargs.get("test_review_result", None),
+            "executed": False,
+        },
+        "docs_to_read": kwargs.get("docs_to_read", None),
         "validation_result": kwargs.get("validation_result", None),
         "tdd": kwargs.get("tdd", False),
         "story_id": kwargs.get("story_id", None),
+        "skip": kwargs.get("skip", []),
     }
 
 
@@ -161,7 +170,7 @@ class TestPostToolReminders:
 
     def test_write_code_phase_with_plan_files(self, tmp_state_file):
         write_state(tmp_state_file, make_state(
-            "write-code", plan_files_cache=["src/app.py", "src/lib.py"],
+            "write-code", docs_to_read=["src/app.py", "src/lib.py"],
         ))
         store = SessionStore("s", tmp_state_file)
         result = reminder.get_post_tool_reminder(post_tool_hook(), store)
@@ -235,7 +244,7 @@ class TestExitPlanModeReminders:
 
     def test_write_code_phase_with_files(self, tmp_state_file):
         write_state(tmp_state_file, make_state(
-            "write-code", plan_files_cache=["src/main.py"],
+            "write-code", docs_to_read=["src/main.py"],
         ))
         store = SessionStore("s", tmp_state_file)
         result = reminder.get_post_tool_reminder(post_tool_hook("ExitPlanMode"), store)
@@ -260,7 +269,7 @@ class TestAgentStartReminders:
         ("Plan", "Synthesize"),
         ("PlanReview", "confidence"),
         ("TestReviewer", "test coverage"),
-        ("Validator", "passes tests"),
+        ("QualityAssurance", "passes tests"),
     ])
     def test_agent_reminders(self, agent_type, keyword, tmp_state_file):
         write_state(tmp_state_file, make_state("explore"))
@@ -309,7 +318,7 @@ class TestPhaseTransitionReminders:
 
     def test_transition_to_write_code(self, tmp_state_file):
         write_state(tmp_state_file, make_state(
-            "write-code", plan_files_cache=["a.py"],
+            "write-code", docs_to_read=["a.py"],
         ))
         store = SessionStore("s", tmp_state_file)
         result = reminder.get_phase_transition_reminder(
@@ -320,19 +329,19 @@ class TestPhaseTransitionReminders:
     def test_transition_to_pr_create(self, tmp_state_file):
         write_state(tmp_state_file, make_state("pr-create", validation_result="Pass"))
         store = SessionStore("s", tmp_state_file)
-        result = reminder.get_phase_transition_reminder(subagent_stop_hook("Validator"), store)
+        result = reminder.get_phase_transition_reminder(subagent_stop_hook("QualityAssurance"), store)
         assert "gh pr create" in result
 
     def test_transition_to_ci_check(self, tmp_state_file):
         write_state(tmp_state_file, make_state("ci-check"))
         store = SessionStore("s", tmp_state_file)
-        result = reminder.get_phase_transition_reminder(subagent_stop_hook("Validator"), store)
+        result = reminder.get_phase_transition_reminder(subagent_stop_hook("QualityAssurance"), store)
         assert "gh pr checks" in result
 
     def test_transition_to_report(self, tmp_state_file):
         write_state(tmp_state_file, make_state("report"))
         store = SessionStore("s", tmp_state_file)
-        result = reminder.get_phase_transition_reminder(subagent_stop_hook("Validator"), store)
+        result = reminder.get_phase_transition_reminder(subagent_stop_hook("QualityAssurance"), store)
         assert "completion report" in result
 
     def test_transition_reminder_fires_once(self, tmp_state_file):
@@ -397,7 +406,7 @@ class TestFailureReminders:
         ))
         store = SessionStore("s", tmp_state_file)
         result = reminder.get_phase_transition_reminder(
-            subagent_stop_hook("Validator"), store,
+            subagent_stop_hook("QualityAssurance"), store,
         )
         assert "Validation FAILED" in result
         assert "write-code" in result
@@ -408,7 +417,7 @@ class TestFailureReminders:
         ))
         store = SessionStore("s", tmp_state_file)
         result = reminder.get_phase_transition_reminder(
-            subagent_stop_hook("Validator"), store,
+            subagent_stop_hook("QualityAssurance"), store,
         )
         assert "FAILED" not in result
         assert "gh pr create" in result
@@ -417,7 +426,7 @@ class TestFailureReminders:
         write_state(tmp_state_file, make_state(
             "write-code",
             test_review_result="Pass",
-            plan_files_cache=["src/x.py"],
+            docs_to_read=["src/x.py"],
         ))
         store = SessionStore("s", tmp_state_file)
         result = reminder.get_phase_transition_reminder(

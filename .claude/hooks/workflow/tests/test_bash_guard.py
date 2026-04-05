@@ -22,8 +22,11 @@ def make_state(phase: str, **kwargs) -> dict:
         "validation_result": kwargs.get("validation_result", None),
         "pr_status": kwargs.get("pr_status", "pending"),
         "ci_status": kwargs.get("ci_status", "pending"),
-        "ci_check_executed": kwargs.get("ci_check_executed", False),
-        "test_run_executed": kwargs.get("test_run_executed", False),
+        "tests": {
+            "file_paths": [],
+            "review_result": None,
+            "executed": kwargs.get("test_executed", False),
+        },
     }
 
 
@@ -121,14 +124,14 @@ class TestTestRunTracking:
         store = SessionStore("s", tmp_state_file)
         recorder.record_bash(post_bash_hook(command), store)
         state = store.load()
-        assert state["test_run_executed"] is True
+        assert state["tests"]["executed"] is True
 
     def test_non_test_command_not_tracked(self, tmp_state_file):
         write_state(tmp_state_file, make_state("write-code"))
         store = SessionStore("s", tmp_state_file)
         recorder.record_bash(post_bash_hook("ls -la"), store)
         state = store.load()
-        assert state.get("test_run_executed") is False
+        assert state.get("tests", {}).get("executed") is False
 
 
 # ---------------------------------------------------------------------------
@@ -164,7 +167,6 @@ class TestCICheckTracking:
         recorder.record_bash(post_bash_hook("gh pr checks 123", output=output), store)
         state = store.load()
         assert state["ci_status"] == "passed"
-        assert state["ci_check_executed"] is True
         assert state["phase"] == "report"
 
     def test_ci_failure_keeps_ci_check_phase(self, tmp_state_file):
@@ -195,12 +197,12 @@ class TestCICheckTracking:
         assert state["phase"] == "ci-check"
 
     def test_ci_pending_table_format(self, tmp_state_file):
-        write_state(tmp_state_file, make_state("ci-check", ci_check_executed=False))
+        write_state(tmp_state_file, make_state("ci-check"))
         store = SessionStore("s", tmp_state_file)
         output = "check-1\tpass\t1s\turl\ncheck-2\tpending\t0\turl"
         recorder.record_bash(post_bash_hook("gh pr checks 1", output=output), store)
         state = store.load()
-        assert state["ci_check_executed"] is False  # not set until definitive
+        assert state["ci_status"] == "pending"  # not set until definitive
         assert state["phase"] == "ci-check"
 
     def test_gh_run_view_with_success_tracked_as_ci(self, tmp_state_file):
@@ -208,5 +210,4 @@ class TestCICheckTracking:
         store = SessionStore("s", tmp_state_file)
         recorder.record_bash(post_bash_hook("gh run view 12345", output="check-1\tpass\t1s\turl"), store)
         state = store.load()
-        assert state["ci_check_executed"] is True
         assert state["ci_status"] == "passed"

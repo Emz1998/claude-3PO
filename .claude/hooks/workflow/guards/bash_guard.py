@@ -103,6 +103,6 @@ def validate_pre(hook_input: dict, store: SessionStore) -> tuple[str, str]:
         return "block", f"Blocked: PR commands are only allowed during 'pr-create' phase (current: '{phase}'). Complete validation first to advance."
 
     if validation_result != "Pass":
-        return "block", "Blocked: cannot create PR -- validation has not passed yet. Run the Validator agent to get a 'Pass' result before creating the PR."
+        return "block", "Blocked: cannot create PR -- validation has not passed yet. Run the QualityAssurance agent to get a 'Pass' result before creating the PR."
 
     return "allow", ""

@@ -21,8 +21,11 @@ def make_state(phase: str, **kwargs) -> dict:
         "validation_result": kwargs.get("validation_result", None),
         "pr_status": kwargs.get("pr_status", "pending"),
         "ci_status": kwargs.get("ci_status", "pending"),
-        "ci_check_executed": kwargs.get("ci_check_executed", False),
-        "test_run_executed": kwargs.get("test_run_executed", False),
+        "tests": {
+            "file_paths": [],
+            "review_result": None,
+            "executed": kwargs.get("test_executed", False),
+        },
     }
 
 

@@ -19,10 +19,14 @@ def make_state(phase: str, **kwargs) -> dict:
         "workflow_type": kwargs.get("workflow_type", "implement"),
         "phase": phase,
         "tdd": kwargs.get("tdd", False),
-        "test_run_executed": kwargs.get("test_run_executed", False),
+        "tests": {
+            "file_paths": [],
+            "review_result": None,
+            "executed": kwargs.get("test_executed", False),
+        },
         "validation_result": kwargs.get("validation_result", None),
         "pr_status": kwargs.get("pr_status", "pending"),
-        "ci_check_executed": kwargs.get("ci_check_executed", False),
+        "ci_status": kwargs.get("ci_status", "pending"),
         "report_written": kwargs.get("report_written", False),
     }
 
@@ -102,7 +106,7 @@ class TestImplementWorkflow:
         write_state(tmp_state_file, make_state(
             "write-code",
             tdd=True,
-            test_run_executed=False,
+            test_executed=False,
             validation_result=None,
             pr_status="pending",
         ))
@@ -129,7 +133,7 @@ class TestImplementWorkflow:
             tdd=False,
             validation_result="Pass",
             pr_status="pending",
-            ci_check_executed=False,
+            ci_status="pending",
         ))
         store = SessionStore("s", tmp_state_file)
         decision, reason = stop_guard.validate(stop_event(), store)
@@ -142,7 +146,7 @@ class TestImplementWorkflow:
             tdd=False,
             validation_result="Pass",
             pr_status="created",
-            ci_check_executed=False,
+            ci_status="pending",
             report_written=False,
         ))
         store = SessionStore("s", tmp_state_file)
@@ -156,7 +160,7 @@ class TestImplementWorkflow:
             tdd=False,
             validation_result="Pass",
             pr_status="created",
-            ci_check_executed=True,
+            ci_status="passed",
             report_written=False,
         ))
         store = SessionStore("s", tmp_state_file)

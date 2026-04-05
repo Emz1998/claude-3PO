@@ -46,7 +46,7 @@ def record_agent(store: SessionStore, agent_type: str, tool_use_id: str) -> None
 
 
 def record_agent_phase_advance(store: SessionStore) -> None:
-    """Advance phase from write-code to validate (when Validator is launched)."""
+    """Advance phase from write-code to validate (when QualityAssurance is launched)."""
 
     def _advance(s: dict) -> None:
         s["phase"] = "validate"
@@ -76,16 +76,6 @@ def record_write(hook_input: dict, store: SessionStore) -> tuple[str, str]:
     file_path = get_file_path(hook_input)
     phase = state.get("phase", "")
 
-    # write-codebase → plan: advance when CODEBASE.md is written
-    if phase == "write-codebase" and file_path.endswith("CODEBASE.md"):
-
-        def _advance_codebase(s: dict) -> None:
-            s["codebase_written"] = True
-            s["phase"] = "plan"
-
-        store.update(_advance_codebase)
-        return "allow", ""
-
     # Track all written files for read_guard's files_written constraint
     if file_path:
 
@@ -100,8 +90,9 @@ def record_write(hook_input: dict, store: SessionStore) -> tuple[str, str]:
     if is_plan_file(file_path) and phase in ("write-plan", "review"):
 
         def _record_plan(s: dict) -> None:
-            s["plan_file"] = file_path
-            s["plan_written"] = True
+            plan = s.setdefault("plan", {})
+            plan["file_path"] = file_path
+            plan["written"] = True
             s["phase"] = "review"
 
         store.update(_record_plan)
@@ -111,7 +102,8 @@ def record_write(hook_input: dict, store: SessionStore) -> tuple[str, str]:
     if is_test_file(file_path) and phase == "write-tests" and is_code_file(file_path):
 
         def _record_test(s: dict) -> None:
-            files = s.setdefault("test_files_created", [])
+            tests = s.setdefault("tests", {})
+            files = tests.setdefault("file_paths", [])
             if file_path not in files:
                 files.append(file_path)
 
@@ -124,7 +116,6 @@ def record_write(hook_input: dict, store: SessionStore) -> tuple[str, str]:
         def _regress(s: dict) -> None:
             s["phase"] = "write-code"
             s["ci_status"] = "pending"
-            s["ci_check_executed"] = False
             s["validation_result"] = None
             s["pr_status"] = "pending"
 
@@ -202,7 +193,11 @@ def record_bash(hook_input: dict, store: SessionStore) -> tuple[str, str]:
 
     # Track test-run commands
     if is_test_run(command):
-        store.set("test_run_executed", True)
+
+        def _record_test_run(s: dict) -> None:
+            s.setdefault("tests", {})["executed"] = True
+
+        store.update(_record_test_run)
         return "allow", ""
 
     # Track PR creation
@@ -221,32 +216,16 @@ def record_bash(hook_input: dict, store: SessionStore) -> tuple[str, str]:
         def _record_ci(s: dict) -> None:
             ci_result = _parse_ci_output(output)
             if ci_result == "passed":
-                s["ci_check_executed"] = True
                 s["ci_status"] = "passed"
                 s["phase"] = "report"
             elif ci_result == "failed":
-                s["ci_check_executed"] = True
                 s["ci_status"] = "failed"
-            # "pending" → don't set ci_check_executed, allow re-check
+            # "pending" → ci_status stays pending, allow re-check
 
         store.update(_record_ci)
         return "allow", ""
 
     return "allow", ""
-
-
-# ---------------------------------------------------------------------------
-# Task recording
-# ---------------------------------------------------------------------------
-
-
-def record_task_created(store: SessionStore) -> None:
-    """Increment tasks_created counter."""
-
-    def _increment(s: dict) -> None:
-        s["tasks_created"] = s.get("tasks_created", 0) + 1
-
-    store.update(_increment)
 
 
 # ---------------------------------------------------------------------------
@@ -278,10 +257,11 @@ def parse_scores(text: str) -> dict[str, int | None]:
 
 def _required_explore_agents(state: dict) -> dict[str, int]:
     """Return the required agent types/counts for explore phase."""
+    skip = state.get("skip", [])
     required = {}
-    if not state.get("skip_explore"):
+    if "explore" not in skip:
         required["Explore"] = 3
-    if not state.get("skip_research"):
+    if "research" not in skip:
         required["Research"] = 2
     return required
 
@@ -330,7 +310,7 @@ def record_subagent_stop(hook_input: dict, store: SessionStore) -> tuple[str, st
         # Mark first matching running agent as completed
         _mark_first_running_completed(agents, agent_type)
 
-        # Explore / Research: check if all done -> advance to write-codebase
+        # Explore / Research: check if all done -> advance to plan
         if agent_type in ("Explore", "Research") and phase == "explore":
             required = _required_explore_agents(state)
             all_done = all(
@@ -338,7 +318,7 @@ def record_subagent_stop(hook_input: dict, store: SessionStore) -> tuple[str, st
                 for atype, cnt in required.items()
             )
             if all_done:
-                state["phase"] = "write-codebase"
+                state["phase"] = "plan"
 
         # Plan: advance to write-plan
         elif agent_type == "Plan" and phase == "plan":
@@ -347,8 +327,10 @@ def record_subagent_stop(hook_input: dict, store: SessionStore) -> tuple[str, st
         # PlanReview: parse scores, advance or iterate
         elif agent_type == "PlanReview" and phase == "review":
             scores = parse_scores(last_message)
-            state["plan_review_scores"] = scores
-            iteration = state.get("plan_review_iteration", 0)
+            plan = state.setdefault("plan", {})
+            review = plan.setdefault("review", {})
+            review["scores"] = scores
+            iteration = review.get("iteration", 0)
 
             passed = (
                 scores["confidence"] is not None
@@ -358,27 +340,28 @@ def record_subagent_stop(hook_input: dict, store: SessionStore) -> tuple[str, st
             )
 
             if passed:
-                state["plan_review_status"] = "approved"
+                review["status"] = "approved"
                 state["phase"] = "present-plan"
             elif iteration + 1 >= PLAN_REVIEW_MAX:
-                state["plan_review_status"] = "max_iterations_reached"
-                state["plan_review_iteration"] = iteration + 1
+                review["status"] = "max_iterations_reached"
+                review["iteration"] = iteration + 1
                 state["phase"] = "failed"
             else:
-                state["plan_review_status"] = "revision_needed"
-                state["plan_review_iteration"] = iteration + 1
+                review["status"] = "revision_needed"
+                review["iteration"] = iteration + 1
 
         # TestReviewer: Parse Pass/Fail -> advance or stay
         elif agent_type == "TestReviewer" and phase == "write-tests":
             verdict = _extract_verdict(last_message)
+            tests = state.setdefault("tests", {})
             if verdict == "Pass":
-                state["test_review_result"] = "Pass"
+                tests["review_result"] = "Pass"
                 state["phase"] = "write-code"
             else:
-                state["test_review_result"] = "Fail"
+                tests["review_result"] = "Fail"
 
-        # Validator: Parse Pass/Fail -> advance or return to write-code
-        elif agent_type == "Validator" and phase == "validate":
+        # QualityAssurance: Parse Pass/Fail -> advance or return to write-code
+        elif agent_type == "QualityAssurance" and phase == "validate":
             verdict = _extract_verdict(last_message)
             if verdict == "Pass":
                 state["validation_result"] = "Pass"
@@ -445,7 +428,7 @@ def record_agent_from_hook(hook_input: dict, store: SessionStore) -> tuple[str, 
     if not state.get("workflow_active"):
         return "allow", ""
 
-    if agent_type == "Validator" and state.get("phase") == "write-code":
+    if agent_type == "QualityAssurance" and state.get("phase") == "write-code":
         record_agent_phase_advance(store)
 
     record_agent(store, agent_type, tool_use_id)
@@ -479,10 +462,6 @@ def _dispatch(hook_input: dict, state_path: Path) -> tuple[str, str]:
             return record_bash(hook_input, store)
         if tool == "ExitPlanMode":
             return record_exit_plan_mode(hook_input, store)
-
-    if event == "TaskCreated":
-        record_task_created(store)
-        return "allow", ""
 
     if event == "SubagentStop":
         return record_subagent_stop(hook_input, store)

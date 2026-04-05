@@ -11,7 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 from workflow.session_store import SessionStore
 
-VALIDATOR_REQUIRED_SECTIONS = [
+QA_REQUIRED_SECTIONS = [
     "## QA Report",
     "### Criteria Checklist",
     "### Test Results",
@@ -19,7 +19,7 @@ VALIDATOR_REQUIRED_SECTIONS = [
 ]
 
 AGENT_SCHEMAS: dict[str, list[str]] = {
-    "Validator": VALIDATOR_REQUIRED_SECTIONS,
+    "QualityAssurance": QA_REQUIRED_SECTIONS,
 }
 
 

@@ -17,7 +17,7 @@ from workflow.config.constants import (
     PLAN_MAX,
     PLAN_REVIEW_MAX,
     TEST_REVIEWER_MAX,
-    VALIDATOR_MAX,
+    QA_MAX,
     PLAN_REVIEW_THRESHOLD,
     CODE_EXTENSIONS,
     TEST_PATH_PATTERNS,

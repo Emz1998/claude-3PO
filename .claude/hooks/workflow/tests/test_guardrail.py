@@ -29,21 +29,27 @@ def make_state(phase: str, **kwargs) -> dict:
         "workflow_type": kwargs.get("workflow_type", "implement"),
         "phase": phase,
         "tdd": kwargs.get("tdd", False),
-        "skip_explore": False,
-        "skip_research": False,
+        "skip": [],
         "agents": [],
-        "plan_file": kwargs.get("plan_file", None),
-        "plan_written": kwargs.get("plan_written", False),
-        "plan_review_iteration": 0,
-        "plan_review_scores": None,
-        "plan_review_status": None,
-        "tasks_created": 0,
-        "test_files_created": kwargs.get("test_files_created", []),
-        "test_review_result": None,
+        "plan": {
+            "file_path": kwargs.get("plan_file", None),
+            "written": kwargs.get("plan_written", False),
+            "review": {
+                "iteration": 0,
+                "scores": None,
+                "status": kwargs.get("plan_review_status", None),
+            },
+        },
+        "tests": {
+            "file_paths": kwargs.get("test_files_created", []),
+            "review_result": None,
+            "executed": False,
+        },
+        "docs_to_read": None,
+        "files_written": [],
         "validation_result": kwargs.get("validation_result", None),
         "pr_status": kwargs.get("pr_status", "pending"),
         "ci_status": "pending",
-        "ci_check_executed": False,
         "report_written": False,
         "story_id": kwargs.get("story_id", None),
     }
@@ -59,22 +65,6 @@ def write_state(tmp_state_file, state: dict) -> None:
 # ---------------------------------------------------------------------------
 
 class TestDispatchRouting:
-    def test_skill_post_activates_workflow(self, tmp_state_file):
-        gm = _load_guardrail()
-        tmp_state_file.write_text("")
-        hook_input = {
-            "hook_event_name": "PostToolUse",
-            "tool_name": "Skill",
-            "tool_input": {"skill": "plan", "args": ""},
-            "tool_response": {"success": True},
-            "tool_use_id": "t1",
-            "session_id": "s", "transcript_path": "t", "cwd": ".", "permission_mode": "default",
-        }
-        decision, _ = gm._dispatch(hook_input, tmp_state_file)
-        assert decision == "allow"
-        state = SessionStore("s", tmp_state_file).load()
-        assert state["workflow_active"] is True
-
     def test_agent_pre_tool_use_routed(self, tmp_state_file):
         gm = _load_guardrail()
         write_state(tmp_state_file, make_state("explore"))
@@ -115,10 +105,10 @@ class TestDispatchRouting:
         assert decision == "block"
 
     def test_subagent_stop_validator_valid_report_allowed(self, tmp_state_file):
-        """SubagentStop allows Validator with valid report schema."""
+        """SubagentStop allows QualityAssurance with valid report schema."""
         gm = _load_guardrail()
         write_state(tmp_state_file, make_state("validate", agents=[
-            {"agent_type": "Validator", "status": "running", "tool_use_id": "t1"}
+            {"agent_type": "QualityAssurance", "status": "running", "tool_use_id": "t1"}
         ]))
         valid_report = (
             "## QA Report: Test\n\n### Criteria Checklist\n| # | Criterion | Verdict | Evidence |\n"
@@ -127,7 +117,7 @@ class TestDispatchRouting:
         )
         hook_input = {
             "hook_event_name": "SubagentStop",
-            "agent_type": "Validator",
+            "agent_type": "QualityAssurance",
             "last_assistant_message": valid_report,
             "session_id": "s", "transcript_path": "t", "cwd": ".", "permission_mode": "default",
             "stop_hook_active": False,
@@ -136,14 +126,14 @@ class TestDispatchRouting:
         assert decision == "allow"
 
     def test_subagent_stop_validator_missing_sections_blocked(self, tmp_state_file):
-        """SubagentStop blocks Validator with missing report sections."""
+        """SubagentStop blocks QualityAssurance with missing report sections."""
         gm = _load_guardrail()
         write_state(tmp_state_file, make_state("validate", agents=[
-            {"agent_type": "Validator", "status": "running", "tool_use_id": "t1"}
+            {"agent_type": "QualityAssurance", "status": "running", "tool_use_id": "t1"}
         ]))
         hook_input = {
             "hook_event_name": "SubagentStop",
-            "agent_type": "Validator",
+            "agent_type": "QualityAssurance",
             "last_assistant_message": "Pass",
             "session_id": "s", "transcript_path": "t", "cwd": ".", "permission_mode": "default",
             "stop_hook_active": False,
@@ -176,19 +166,6 @@ class TestDispatchRouting:
         }
         decision, _ = gm._dispatch(hook_input, tmp_state_file)
         assert decision == "block"
-
-    def test_user_prompt_submit_activates_workflow(self, tmp_state_file):
-        gm = _load_guardrail()
-        tmp_state_file.write_text("")
-        hook_input = {
-            "hook_event_name": "UserPromptSubmit",
-            "prompt": "/plan --skip-all",
-            "session_id": "s", "transcript_path": "t", "cwd": ".", "permission_mode": "default",
-        }
-        decision, _ = gm._dispatch(hook_input, tmp_state_file)
-        assert decision == "allow"
-        state = SessionStore("s", tmp_state_file).load()
-        assert state["workflow_active"] is True
 
     def test_task_create_pre_routed_to_task_guard(self, tmp_state_file):
         gm = _load_guardrail()

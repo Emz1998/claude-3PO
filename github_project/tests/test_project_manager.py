@@ -260,7 +260,7 @@ class TestFindTask:
         assert pm._find_task(all_items, "sk-001")["title"] == "Research feature X"
 
     def test_find_by_issue_number(self, all_items):
-        assert pm._find_task(all_items, "102")["key"] == "TS-001"
+        assert pm._find_task(all_items, "102")["id"] == "TS-001"
 
     def test_not_found(self, all_items):
         assert pm._find_task(all_items, "TS-999") is None
@@ -373,12 +373,12 @@ class TestLoadAllItems:
 
     def test_stories_come_first(self, sprint_file, stories_file):
         items = pm._load_all_items(sprint_file, stories_file)
-        assert items[0]["key"] == "SK-001"
-        assert items[1]["key"] == "TS-001"
+        assert items[0]["id"] == "SK-001"
+        assert items[1]["id"] == "TS-001"
 
     def test_tasks_have_parent_id(self, sprint_file, stories_file):
         items = pm._load_all_items(sprint_file, stories_file)
-        task_items = [i for i in items if i["key"].startswith("T-")]
+        task_items = [i for i in items if i["id"].startswith("T-")]
         assert all(i["parent_id"] for i in task_items)
 
 

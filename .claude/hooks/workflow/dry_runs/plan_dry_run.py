@@ -20,6 +20,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 from workflow.session_store import SessionStore
+from workflow.utils.initializer import initialize
 
 GUARDRAIL = Path(__file__).resolve().parent.parent / "guardrail.py"
 RECORDER = Path(__file__).resolve().parent.parent / "recorder.py"
@@ -36,17 +37,6 @@ results: list[dict] = []
 # ---------------------------------------------------------------------------
 # Payload helpers
 # ---------------------------------------------------------------------------
-
-def skill_payload(skill: str, args: str = "") -> dict:
-    return {
-        "hook_event_name": "PostToolUse",
-        "tool_name": "Skill",
-        "tool_input": {"skill": skill, "args": args},
-        "tool_response": {"success": True},
-        "tool_use_id": "t0",
-        "session_id": "s", "transcript_path": "t", "cwd": ".", "permission_mode": "default",
-    }
-
 
 def agent_payload(subagent_type: str, tool_use_id: str = "t1") -> dict:
     return {
@@ -213,10 +203,11 @@ def simulate(skip_args: str, plan_dir: Path) -> None:
     run("Agent before workflow → allow", agent_payload("Explore"), "allow")
     run("Write before workflow → allow", write_payload("src/app.py"), "allow")
 
-    # Activate /plan skill
+    # Activate /plan
     print(f"\n--- /plan {skip_args} ---")
-    run(f"/plan {skip_args} → activates workflow", skill_payload("plan", skip_args), "allow", "Workflow activated")
-    run("Other skill → allow, no change", skill_payload("brainstorm"), "allow")
+    initialize("plan", "s", skip_args, STATE_JSONL_PATH)
+    print(f"  {GREEN}PASS{RESET}  /plan {skip_args} → workflow initialized")
+    results.append({"label": f"/plan {skip_args} → initialized", "expected": "allow", "actual": "allow", "passed": True})
 
     # Explore phase
     if not skip_explore:
@@ -256,22 +247,11 @@ def simulate(skip_args: str, plan_dir: Path) -> None:
     if not skip_research:
         run("Research [t5] done", subagent_stop_payload("Research", "Best practice: use dependency injection for services"), "allow")
         run(
-            "Research [t6] done → phase=write-codebase",
+            "Research [t6] done → phase=plan",
             subagent_stop_payload("Research", "Latest docs recommend pydantic v2 for validation"),
             "allow",
-            "Phase → write-codebase",
+            "Phase → plan",
         )
-
-    # Write-codebase phase
-    print("\n--- Write-codebase phase ---")
-    run("Write code in write-codebase → block", write_payload("src/app.py"), "block")
-    run("Write CODEBASE.md (pre) → allow", write_payload("CODEBASE.md", "# Codebase overview"), "allow")
-    run(
-        "Write CODEBASE.md (post) → phase=plan",
-        post_write_payload("CODEBASE.md", "# Codebase overview"),
-        "allow",
-        "Phase → plan",
-    )
 
     # Plan phase
     print("\n--- Plan phase ---")
@@ -325,19 +305,25 @@ def simulate(skip_args: str, plan_dir: Path) -> None:
     bad_path = str(plan_dir / "bad-plan.md")
     store = SessionStore("s", STATE_JSONL_PATH)
     state_data = store.load()
-    orig_plan = state_data.get("plan_file")
-    store.set("plan_file", bad_path)
+    orig_plan = state_data.get("plan", {}).get("file_path")
+    def _set_bad_plan(s: dict) -> None:
+        s.setdefault("plan", {})["file_path"] = bad_path
+    store.update(_set_bad_plan)
     Path(bad_path).write_text(INVALID_PLAN)
     run("ExitPlanMode invalid plan → block", exit_plan_mode_pre_payload(), "block", "Missing sections")
-    store.set("plan_file", orig_plan)
+    def _restore_plan(s: dict) -> None:
+        s.setdefault("plan", {})["file_path"] = orig_plan
+    store.update(_restore_plan)
 
     # Final state
     print("\n--- Final state ---")
     final = SessionStore("s", STATE_JSONL_PATH).load()
+    plan = final.get("plan", {})
+    review = plan.get("review", {})
     print(f"  Phase: {YELLOW}{final.get('phase')}{RESET}")
-    print(f"  Plan file: {YELLOW}{final.get('plan_file')}{RESET}")
-    print(f"  Plan review status: {YELLOW}{final.get('plan_review_status')}{RESET}")
-    print(f"  Plan review scores: {YELLOW}{final.get('plan_review_scores')}{RESET}")
+    print(f"  Plan file: {YELLOW}{plan.get('file_path')}{RESET}")
+    print(f"  Plan review status: {YELLOW}{review.get('status')}{RESET}")
+    print(f"  Plan review scores: {YELLOW}{review.get('scores')}{RESET}")
 
 
 def main() -> None:

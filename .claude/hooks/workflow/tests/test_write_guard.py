@@ -20,9 +20,16 @@ def make_state(phase: str, **kwargs) -> dict:
         "workflow_type": kwargs.get("workflow_type", "implement"),
         "phase": phase,
         "tdd": kwargs.get("tdd", True),
-        "plan_file": kwargs.get("plan_file", None),
-        "plan_written": kwargs.get("plan_written", False),
-        "test_files_created": kwargs.get("test_files_created", []),
+        "plan": {
+            "file_path": kwargs.get("plan_file", None),
+            "written": kwargs.get("plan_written", False),
+            "review": {"iteration": 0, "scores": None, "status": None},
+        },
+        "tests": {
+            "file_paths": kwargs.get("test_files_created", []),
+            "review_result": None,
+            "executed": False,
+        },
         "report_written": kwargs.get("report_written", False),
         "agents": [],
     }
@@ -201,7 +208,7 @@ class TestWriteTestsPhase:
         store = SessionStore("s", tmp_state_file)
         recorder.record_write(post_write_hook("tests/test_foo.py"), store)
         state = store.load()
-        assert "tests/test_foo.py" in state["test_files_created"]
+        assert "tests/test_foo.py" in state["tests"]["file_paths"]
 
     def test_non_code_file_allowed_in_write_tests(self, tmp_state_file):
         write_state(tmp_state_file, make_state("write-tests"))
@@ -297,8 +304,8 @@ class TestPlanWritePost:
         store = SessionStore("s", tmp_state_file)
         recorder.record_write(post_write_hook(".claude/plans/my-plan.md"), store)
         state = store.load()
-        assert state["plan_written"] is True
-        assert state["plan_file"] == ".claude/plans/my-plan.md"
+        assert state["plan"]["written"] is True
+        assert state["plan"]["file_path"] == ".claude/plans/my-plan.md"
         assert state["phase"] == "review"
 
     def test_non_plan_write_does_not_set_plan_written(self, tmp_state_file):
@@ -306,7 +313,7 @@ class TestPlanWritePost:
         store = SessionStore("s", tmp_state_file)
         recorder.record_write(post_write_hook("src/app.py"), store)
         state = store.load()
-        assert state["plan_written"] is False
+        assert state["plan"]["written"] is False
 
 
 # ---------------------------------------------------------------------------

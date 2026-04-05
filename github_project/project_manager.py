@@ -140,11 +140,11 @@ def _save_stories(data: dict, path: Path | None = None) -> None:
 # ---------------------------------------------------------------------------
 
 
-def _sprint_path(args: argparse.Namespace) -> Path:
+def _sprint_path(args: Any) -> Path:
     return getattr(args, "_sprint_path", None) or SPRINT_PATH
 
 
-def _stories_path(args: argparse.Namespace) -> Path:
+def _stories_path(args: Any) -> Path:
     return getattr(args, "_stories_path", None) or STORIES_PATH
 
 
@@ -374,7 +374,7 @@ def _find_task(tasks: list[dict[str, Any]], key: str) -> dict[str, Any] | None:
 # ---------------------------------------------------------------------------
 
 
-def cmd_list(tasks: list[dict[str, Any]], args: argparse.Namespace) -> int:
+def cmd_list(tasks: list[dict[str, Any]], args: Any) -> int:
     filters: dict[str, str] = {}
     if args.status:
         filters["status"] = args.status
@@ -424,7 +424,7 @@ def cmd_list(tasks: list[dict[str, Any]], args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_view(tasks: list[dict[str, Any]], args: argparse.Namespace) -> int:
+def cmd_view(tasks: list[dict[str, Any]], args: Any) -> int:
     task = _find_task(tasks, args.key)
     if not task:
         print(f"Task not found: {args.key}", file=sys.stderr)
@@ -521,7 +521,7 @@ def cmd_view(tasks: list[dict[str, Any]], args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_summary(tasks: list[dict[str, Any]], args: argparse.Namespace) -> int:
+def cmd_summary(tasks: list[dict[str, Any]], args: Any) -> int:
     group_field = args.group_by
 
     groups: dict[str, list[dict[str, Any]]] = {}
@@ -565,7 +565,7 @@ def cmd_summary(tasks: list[dict[str, Any]], args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_create_sprint(args: argparse.Namespace) -> int:
+def cmd_create_sprint(args: Any) -> int:
     sprint_path = _sprint_path(args)
     data = {
         "sprint": args.number,
@@ -579,7 +579,7 @@ def cmd_create_sprint(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_add_story(args: argparse.Namespace) -> int:
+def cmd_add_story(args: Any) -> int:
     stories_path = _stories_path(args)
     data = _load_stories(stories_path)
 
@@ -612,7 +612,7 @@ def cmd_add_story(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_add_task(args: argparse.Namespace) -> int:
+def cmd_add_task(args: Any) -> int:
     sprint_path = _sprint_path(args)
     data = _load_sprint(sprint_path)
 
@@ -644,7 +644,7 @@ def cmd_add_task(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_complete_sprint(args: argparse.Namespace) -> int:
+def cmd_complete_sprint(args: Any) -> int:
     sprint_path = _sprint_path(args)
     stories_path = _stories_path(args)
 
@@ -666,7 +666,7 @@ def cmd_complete_sprint(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_update(args: argparse.Namespace) -> int:
+def cmd_update(args: Any) -> int:
     sprint_path = _sprint_path(args)
     stories_path = _stories_path(args)
 
@@ -741,7 +741,7 @@ def cmd_update(args: argparse.Namespace) -> int:
     return 1
 
 
-def cmd_progress(args: argparse.Namespace) -> int:
+def cmd_progress(args: Any) -> int:
     sprint_path = _sprint_path(args)
     stories_path = _stories_path(args)
 
@@ -808,7 +808,7 @@ def cmd_progress(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_unblocked(args: argparse.Namespace) -> int:
+def cmd_unblocked(args: Any) -> int:
     sprint_path = _sprint_path(args)
     stories_path = _stories_path(args)
 
@@ -908,7 +908,7 @@ def cmd_unblocked(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_sprint_info(args: argparse.Namespace) -> int:
+def cmd_sprint_info(args: Any) -> int:
     sprint_path = _sprint_path(args)
     data = _load_sprint(sprint_path)
     print(data.get("sprint", 1))

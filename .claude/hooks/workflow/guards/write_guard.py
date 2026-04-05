@@ -101,15 +101,6 @@ def validate_pre(hook_input: dict, store: SessionStore) -> tuple[str, str]:
             f"Blocked: only plan files (.claude/plans/) may be written during '{phase}' phase.",
         )
 
-    # write-codebase phase: only CODEBASE.md allowed
-    if phase == "write-codebase":
-        if file_path.endswith("CODEBASE.md"):
-            return "allow", ""
-        return (
-            "block",
-            "Blocked: only CODEBASE.md may be written during 'write-codebase' phase. Write CODEBASE.md first to proceed.",
-        )
-
     # Report phase: only report files allowed
     if phase == "report":
         if is_report_file(file_path):

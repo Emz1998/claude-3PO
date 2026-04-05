@@ -6,8 +6,6 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
-import yaml
-
 
 def run(cmd: list[str], *, check: bool = True) -> str:
     """Run a command and return stdout."""
@@ -28,7 +26,12 @@ def gh_json(cmd: list[str]) -> Any:
 
 
 def load_config() -> dict[str, Any]:
-    """Load config.yaml from the github_project directory."""
-    config_path = Path(__file__).parent / "config.yaml"
-    with open(config_path) as f:
-        return yaml.safe_load(f)
+    """Return project configuration."""
+    from config import DATA_PATHS, OWNER, PROJECT_NUMBER, REPO
+
+    return {
+        "repo": REPO,
+        "owner": OWNER,
+        "project": PROJECT_NUMBER,
+        "data_paths": DATA_PATHS,
+    }

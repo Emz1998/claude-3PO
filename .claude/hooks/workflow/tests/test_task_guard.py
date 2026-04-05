@@ -40,7 +40,6 @@ def make_state(phase: str = "task-create", **kwargs) -> dict:
         "workflow_type": "implement",
         "phase": phase,
         "story_id": kwargs.get("story_id", "SK-001"),
-        "tasks_created": kwargs.get("tasks_created", 0),
     }
     if kwargs.get("tdd"):
         state["tdd"] = True

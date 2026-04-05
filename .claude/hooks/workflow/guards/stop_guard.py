@@ -17,7 +17,7 @@ def _collect_reasons(state: dict) -> list[str]:
     reasons = []
     tdd = state.get("tdd", False)
 
-    if tdd and not state.get("test_run_executed"):
+    if tdd and not state.get("tests", {}).get("executed"):
         reasons.append("tests have not been run")
 
     if state.get("validation_result") != "Pass":
@@ -26,7 +26,7 @@ def _collect_reasons(state: dict) -> list[str]:
     if state.get("pr_status") != "created":
         reasons.append("PR has not been created")
 
-    if not state.get("ci_check_executed"):
+    if state.get("ci_status") == "pending":
         reasons.append("CI has not been checked")
 
     if not state.get("report_written"):

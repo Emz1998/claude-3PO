@@ -51,7 +51,11 @@ class SessionStore:
         self._path.parent.mkdir(parents=True, exist_ok=True)
         lines = []
         for sid in sorted(sessions):
-            lines.append(json.dumps(sessions[sid], separators=(",", ":")))
+            entry = sessions[sid]
+            # Ensure session_id is the first key in output
+            ordered = {"session_id": sid}
+            ordered.update({k: v for k, v in entry.items() if k != "session_id"})
+            lines.append(json.dumps(ordered, separators=(",", ":")))
         self._path.write_text("\n".join(lines) + "\n" if lines else "", encoding="utf-8")
 
     # -------------------------------------------------------------------------

@@ -6,6 +6,10 @@ argument-hint: [--skip-explore] [--skip-research] [--skip-all] <planning-instruc
 model: opus
 ---
 
+## Workflow Initialization
+
+!`python3 .claude/hooks/workflow/utils/initializer.py plan ${CLAUDE_SESSION_ID} $ARGUMENTS`
+
 **Goal**: Create an actionable implementation plan by running exploration, planning, and review agents in sequence — enforced by the plan guardrail.
 
 ## Arguments

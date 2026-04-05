@@ -10,8 +10,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any
 
-import yaml
-
+from config import DATA_PATHS, OWNER, PROJECT_NUMBER, REPO
 from utils.gh_utils import gh_json, run
 
 MAX_WORKERS = 8  # concurrent subprocess calls
@@ -1113,13 +1112,13 @@ def _delete_all_tasks(
 # ---------------------------------------------------------------------------
 
 
-CONFIG_FILE = Path(__file__).parent / "config.yaml"
-
-
 def _load_config() -> dict[str, Any]:
-    if CONFIG_FILE.exists():
-        return yaml.safe_load(CONFIG_FILE.read_text(encoding="utf-8")) or {}
-    return {}
+    return {
+        "repo": REPO,
+        "owner": OWNER,
+        "project": PROJECT_NUMBER,
+        "data_paths": DATA_PATHS,
+    }
 
 
 def main() -> int:
@@ -1131,7 +1130,7 @@ def main() -> int:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""\
 examples:
-  # Sync issues to GitHub Projects (uses config.yaml defaults)
+  # Sync issues to GitHub Projects (uses config.py defaults)
   python github_project/sync_project.py
 
   # With explicit data paths
@@ -1195,14 +1194,14 @@ examples:
 
     if not args.stories_data or not args.sprint_data:
         print(
-            "Provide --stories-data and --sprint-data (or set data_paths in config.yaml).",
+            "Provide --stories-data and --sprint-data (or set data_paths in config.py).",
             file=sys.stderr,
         )
         return 1
 
     if not args.repo or not args.project or not args.owner:
         print(
-            "Provide --repo, --project, and --owner (or set them in config.yaml).",
+            "Provide --repo, --project, and --owner (or set them in config.py).",
             file=sys.stderr,
         )
         return 1

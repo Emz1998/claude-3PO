@@ -8,6 +8,7 @@ Phase flow:
               task-create → write-tests → write-code → validate →
               pr-create → ci-check → report → completed
   /plan:      explore → plan → write-plan → review → present-plan
+  (skip flags skip explore phase entirely, jumping straight to plan)
 
 Usage:
     python3 guardrail.py --hook-input '{"hook_event_name":"PreToolUse",...}'
@@ -36,7 +37,6 @@ from workflow.guards import (
     agent_guard,
     bash_guard,
     read_guard,
-    skill_guard,
     stop_guard,
     subagent_stop_guard,
     task_guard,
@@ -80,19 +80,20 @@ def _handle_exit_plan_mode_pre(hook_input: dict, store: SessionStore) -> tuple[s
             f"Blocked: ExitPlanMode only allowed during 'present-plan' phase (current: '{phase}').",
         )
 
-    if not state.get("plan_written"):
+    plan = state.get("plan", {})
+    if not plan.get("written"):
         return (
             "block",
             "Blocked: ExitPlanMode requires a written plan. Write your plan to .claude/plans/ before exiting plan mode.",
         )
 
-    if state.get("plan_review_status") != "approved":
+    if plan.get("review", {}).get("status") != "approved":
         return (
             "block",
             "Blocked: plan review is not approved yet. Run the PlanReview agent after writing the plan.",
         )
 
-    plan_file = state.get("plan_file")
+    plan_file = plan.get("file_path")
     if not plan_file:
         return (
             "block",
@@ -180,10 +181,6 @@ def _dispatch(hook_input: dict, state_path: Path) -> tuple[str, str]:
         if tool == "TaskCreate":
             return task_guard.validate(hook_input, store)
 
-    if event == "PostToolUse":
-        if tool == "Skill":
-            return skill_guard.handle(hook_input, store)
-
     if event == "SubagentStop":
         return subagent_stop_guard.validate(hook_input, store)
 
@@ -192,9 +189,6 @@ def _dispatch(hook_input: dict, state_path: Path) -> tuple[str, str]:
 
     if event == "Stop":
         return stop_guard.validate(hook_input, store)
-
-    if event == "UserPromptSubmit":
-        return skill_guard.handle(hook_input, store)
 
     return "allow", ""
 
