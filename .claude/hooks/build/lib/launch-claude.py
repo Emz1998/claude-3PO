@@ -1,0 +1,137 @@
+#!/usr/bin/env python3
+"""Launch multiple tmux windows with claude."""
+
+import argparse
+import os
+import re
+import subprocess
+
+SESSION = "claude"
+PROJECT_DIR = os.path.expanduser("~/avaris-ai")
+
+
+def run(cmd: list[str], check: bool = True, **kwargs) -> subprocess.CompletedProcess:
+    return subprocess.run(cmd, check=check, **kwargs)
+
+
+def session_exists() -> bool:
+    result = run(
+        ["tmux", "has-session", "-t", SESSION], check=False, capture_output=True
+    )
+    return result.returncode == 0
+
+
+def load_sprint_id() -> str:
+    """Get sprint number from project_manager.py and format as SPRINT-NNN."""
+    try:
+        result = subprocess.run(
+            [
+                "python3",
+                os.path.join(PROJECT_DIR, "github_project", "project_manager.py"),
+                "sprint-info",
+            ],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        sprint_num = int(result.stdout.strip())
+    except (subprocess.CalledProcessError, ValueError):
+        sprint_num = 1
+    return f"SPRINT-{sprint_num:03d}"
+
+
+def extract_story_id(prompt: str) -> str | None:
+    """Extract story ID (e.g. TS-001) from a prompt like '/implement TS-001'."""
+    match = re.search(r"((?:US|TS|SK|BG)-\d{3})", prompt)
+    return match.group(1) if match else None
+
+
+def extract_pr_number(prompt: str) -> str | None:
+    """Extract PR identifier from a prompt like '/review 42' → 'PR-42'."""
+    match = re.search(r"/review\s+(\d+)", prompt)
+    return f"PR-{match.group(1)}" if match else None
+
+
+def extract_session_id(prompt: str) -> str | None:
+    """Extract session identifier (story ID or PR ID) from a prompt."""
+    return extract_story_id(prompt) or extract_pr_number(prompt)
+
+
+def build_worktree_name(sprint_id: str, story_id: str) -> str:
+    """Build worktree name as sprint_id/story_id (e.g. SPRINT-001/TS-001)."""
+    return f"{sprint_id}/{story_id}"
+
+
+def build_claude_cmd(
+    prompt: str | None, worktree_name: str | None = None, story_id: str | None = None
+) -> str:
+    parts = []
+    if story_id:
+        parts.append(f"export STORY_ID={story_id} &&")
+    parts.append("yolo --verbose")
+    if prompt:
+        parts.append(f'"{prompt}"')
+    if worktree_name:
+        parts.extend(["--worktree", worktree_name])
+    return " ".join(parts)
+
+
+def launch_window(prompt: str | None, sprint_id: str, is_first: bool = False) -> None:
+    """Launch a tmux window with claude in its own worktree."""
+    session_id = extract_session_id(prompt) if prompt else None
+    worktree_name = build_worktree_name(sprint_id, session_id) if session_id else None
+    window_name = session_id or "main"
+
+    if is_first:
+        run(
+            [
+                "tmux",
+                "new-session",
+                "-d",
+                "-s",
+                SESSION,
+                "-n",
+                window_name,
+                "-c",
+                PROJECT_DIR,
+            ]
+        )
+    else:
+        run(["tmux", "new-window", "-t", SESSION, "-n", window_name, "-c", PROJECT_DIR])
+
+    run(
+        [
+            "tmux",
+            "send-keys",
+            "-t",
+            SESSION,
+            build_claude_cmd(prompt, worktree_name, session_id),
+            "Enter",
+        ]
+    )
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Launch tmux windows with claude")
+    parser.add_argument(
+        "prompts",
+        nargs="*",
+        default=[None],
+        help='prompts for each window (e.g. "/implement TS-001" "/implement TS-002")',
+    )
+    args = parser.parse_args()
+
+    sprint_id = load_sprint_id()
+    prompts: list[str | None] = args.prompts if args.prompts else [None]
+
+    if session_exists():
+        run(["tmux", "kill-session", "-t", SESSION])
+
+    for i, prompt in enumerate(prompts):
+        launch_window(prompt, sprint_id, is_first=(i == 0))
+
+    os.execvp("tmux", ["tmux", "attach", "-t", SESSION])
+
+
+if __name__ == "__main__":
+    main()
