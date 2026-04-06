@@ -19,11 +19,9 @@ description: Creates and manages product backlog markdown files with epics, user
 ## Workflow
 
 1. Read project specs for context:
-   - **Product Brief**: `project/docs/product/product-brief.md`
-   - **Architecture**: `project/docs/architecture/architecture.md`
-   - **Coding Standards**: `project/docs/architecture/coding-standards.md`
-   - **Definition of Done**: `project/docs/governance/definition-of-done.md`
-   - **Decisions**: `project/docs/architecture/decisions.md`
+   - **Product Vision**: `.claude/project/docs/product-vision.md`
+   - **Architecture**: `.claude/project/docs/architecture/architecture.md`
+   - **Constitution**: `.claude/project/docs/governance/constitution.md`
 
 2. Read the backlog template: [template/backlog.md](template/backlog.md)
 

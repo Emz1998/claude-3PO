@@ -12,6 +12,7 @@ from build.config import (
     PLAN_REVIEW_MAX,
     TEST_REVIEWER_MAX,
     QA_MAX,
+    CODE_REVIEW_MAX,
 )
 from build.session_store import SessionStore
 
@@ -163,6 +164,23 @@ def validate(hook_input: dict, store: SessionStore) -> tuple[str, str]:
             return (
                 "block",
                 f"Blocked: '{agent_type}' agent is not allowed during 'validate' phase. Only the QualityAssurance agent may run now.",
+            )
+        return "allow", ""
+
+    # -----------------------------------------------------------------------
+    # code-review phase: code-reviewer only
+    # -----------------------------------------------------------------------
+    if phase == "code-review":
+        if agent_type != "code-reviewer":
+            return (
+                "block",
+                f"Blocked: '{agent_type}' agent is not allowed during 'code-review' phase. Only the code-reviewer agent may run now.",
+            )
+        current = count(agents, "code-reviewer")
+        if current >= CODE_REVIEW_MAX:
+            return (
+                "block",
+                f"Blocked: max code-reviewer agents ({CODE_REVIEW_MAX}) reached. Proceed to the next phase.",
             )
         return "allow", ""
 

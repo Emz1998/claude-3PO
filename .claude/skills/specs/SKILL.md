@@ -9,7 +9,7 @@ disable-model-invocation: true
 ## Dependency Chain
 
 ```
-product-vision.md + business-plan.md → product-brief.md → decisions.md → architecture.md → coding-standards.md → definition-of-done.md
+product-vision.md → architecture.md -> constitution.md
 ```
 
 ## Context
@@ -54,8 +54,8 @@ product-vision.md + business-plan.md → product-brief.md → decisions.md → a
 
 ## References
 
-- **Product Vision:** `project/docs/executive/product-vision.md`
-- **Business Plan:** `project/docs/executive/business-plan.md`
+- **Product Vision:** `.claude/project/docs/executive/product-vision.md`
+- **Business Plan:** `.claude/project/docs/executive/business-plan.md`
 - **Templates:** `.claude/skills/specs-creator/templates/`
 
 ## Output Path

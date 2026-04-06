@@ -129,14 +129,14 @@ def validate_pre(hook_input: dict, store: SessionStore) -> tuple[str, str]:
     if phase == "write-code":
         return "allow", ""
 
-    if phase in ("validate", "pr-create"):
+    if phase == "validate":
         return (
             "block",
-            f"Blocked: cannot modify implementation files during '{phase}' phase. Complete validation before making changes.",
+            "Blocked: cannot modify implementation files during 'validate' phase. Complete validation before making changes.",
         )
 
-    if phase == "ci-check":
-        # Allow writes — PostToolUse will trigger regression
+    if phase == "code-review":
+        # Allow writes — main agent refactors code during review iterations
         return "allow", ""
 
     if phase in ("explore", "plan", "present-plan", "task-create"):
@@ -159,7 +159,7 @@ def validate_pre(hook_input: dict, store: SessionStore) -> tuple[str, str]:
             case "task-create":
                 return (
                     "block",
-                    "Blocked: cannot write to files during 'task-create' phase. Complete task creation before writing to files.",
+                    "Blocked: cannot write to files during 'task-create' phase. Create tasks first before writing to files.",
                 )
 
     return "allow", ""

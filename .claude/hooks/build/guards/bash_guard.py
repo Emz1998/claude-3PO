@@ -1,13 +1,12 @@
-"""bash_guard.py — Phase-based Bash command enforcement using flat state model."""
+"""bash_guard.py — Phase-based Bash command enforcement for /build."""
 
 import re
-import shlex
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-from build.config import PR_COMMAND_PATTERNS, TEST_RUN_PATTERNS, CI_CHECK_PATTERNS
+from build.config import TEST_RUN_PATTERNS
 from build.session_store import SessionStore
 
 CONVENTIONAL_COMMIT_RE = re.compile(
@@ -18,16 +17,8 @@ CONVENTIONAL_COMMIT_RE = re.compile(
 )
 
 
-def is_pr_command(command: str) -> bool:
-    return any(re.search(p, command) for p in PR_COMMAND_PATTERNS)
-
-
 def is_test_run(command: str) -> bool:
     return any(re.search(p, command) for p in TEST_RUN_PATTERNS)
-
-
-def is_ci_check(command: str) -> bool:
-    return any(re.search(p, command) for p in CI_CHECK_PATTERNS)
 
 
 def _extract_commit_message(command: str) -> str | None:
@@ -79,7 +70,6 @@ def validate_commit_format(command: str) -> tuple[str, str]:
 def validate_pre(hook_input: dict, store: SessionStore) -> tuple[str, str]:
     """Validate a Bash PreToolUse invocation.
 
-    Blocks PR commands outside pr-create phase or without passing validation.
     Enforces conventional commit format on git commit commands.
     """
     state = store.load()
@@ -92,17 +82,5 @@ def validate_pre(hook_input: dict, store: SessionStore) -> tuple[str, str]:
     result = validate_commit_format(command)
     if result[0] == "block":
         return result
-
-    if not is_pr_command(command):
-        return "allow", ""
-
-    phase = state.get("phase", "")
-    validation_result = state.get("validation_result")
-
-    if phase != "pr-create":
-        return "block", f"Blocked: PR commands are only allowed during 'pr-create' phase (current: '{phase}'). Complete validation first to advance."
-
-    if validation_result != "Pass":
-        return "block", "Blocked: cannot create PR -- validation has not passed yet. Run the QualityAssurance agent to get a 'Pass' result before creating the PR."
 
     return "allow", ""

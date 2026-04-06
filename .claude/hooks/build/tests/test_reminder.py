@@ -9,7 +9,7 @@ import pytest
 WORKFLOW_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(WORKFLOW_DIR.parent))
 
-from workflow import reminder
+from build import reminder
 from build.session_store import SessionStore
 
 
@@ -183,7 +183,7 @@ class TestPostToolReminders:
         store = SessionStore("s", tmp_state_file)
         result = reminder.get_post_tool_reminder(post_tool_hook(), store)
         assert "VALIDATE" in result
-        assert "pr-create" in result
+        assert "code-review" in result
 
     def test_no_reminder_for_unknown_phase(self, tmp_state_file):
         write_state(tmp_state_file, make_state("completed"))
@@ -233,7 +233,7 @@ class TestExitPlanModeReminders:
         store = SessionStore("s", tmp_state_file)
         result = reminder.get_post_tool_reminder(post_tool_hook("ExitPlanMode"), store)
         assert "User approved" in result
-        assert "TaskCreate" in result
+        assert "task" in result.lower()
 
     def test_write_tests_phase(self, tmp_state_file):
         write_state(tmp_state_file, make_state("write-tests"))
@@ -326,17 +326,11 @@ class TestPhaseTransitionReminders:
         )
         assert "a.py" in result
 
-    def test_transition_to_pr_create(self, tmp_state_file):
-        write_state(tmp_state_file, make_state("pr-create", validation_result="Pass"))
+    def test_transition_to_code_review(self, tmp_state_file):
+        write_state(tmp_state_file, make_state("code-review", validation_result="Pass"))
         store = SessionStore("s", tmp_state_file)
         result = reminder.get_phase_transition_reminder(subagent_stop_hook("QualityAssurance"), store)
-        assert "gh pr create" in result
-
-    def test_transition_to_ci_check(self, tmp_state_file):
-        write_state(tmp_state_file, make_state("ci-check"))
-        store = SessionStore("s", tmp_state_file)
-        result = reminder.get_phase_transition_reminder(subagent_stop_hook("QualityAssurance"), store)
-        assert "gh pr checks" in result
+        assert "code-reviewer" in result
 
     def test_transition_to_report(self, tmp_state_file):
         write_state(tmp_state_file, make_state("report"))
@@ -413,14 +407,14 @@ class TestFailureReminders:
 
     def test_validator_pass_gives_transition_not_failure(self, tmp_state_file):
         write_state(tmp_state_file, make_state(
-            "pr-create", validation_result="Pass",
+            "code-review", validation_result="Pass",
         ))
         store = SessionStore("s", tmp_state_file)
         result = reminder.get_phase_transition_reminder(
             subagent_stop_hook("QualityAssurance"), store,
         )
         assert "FAILED" not in result
-        assert "gh pr create" in result
+        assert "code-reviewer" in result
 
     def test_test_review_pass_gives_transition(self, tmp_state_file):
         write_state(tmp_state_file, make_state(

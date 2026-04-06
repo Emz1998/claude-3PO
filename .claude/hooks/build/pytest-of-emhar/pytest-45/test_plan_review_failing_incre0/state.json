@@ -1,0 +1,24 @@
+{
+  "workflow_active": true,
+  "workflow_type": "implement",
+  "phase": "review",
+  "tdd": true,
+  "skip_explore": false,
+  "skip_research": false,
+  "agents": [
+    {
+      "agent_type": "PlanReview",
+      "status": "completed",
+      "tool_use_id": "t1"
+    }
+  ],
+  "plan_review_iteration": 1,
+  "plan_review_scores": {
+    "confidence": 50,
+    "quality": 45
+  },
+  "plan_review_status": "revision_needed",
+  "story_id": null,
+  "test_review_result": null,
+  "validation_result": null
+}

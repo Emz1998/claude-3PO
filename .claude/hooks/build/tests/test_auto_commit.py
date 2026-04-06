@@ -1,4 +1,4 @@
-"""Tests for auto_commit.py — async auto-commit hook."""
+"""Tests for auto_commit.py — async auto-commit hook for /build."""
 
 import json
 import os
@@ -22,7 +22,6 @@ from build.auto_commit import (
     load_ledger,
     save_ledger,
     cleanup_old_batches,
-    get_story_context,
     EXCLUDE_PATTERNS,
 )
 from build.config import COMMIT_BATCH_PATH
@@ -157,7 +156,6 @@ class TestClaimFiles:
         ])
         dirty = ["src/a.py", "src/b.py"]
         claimed = claim_files(dirty, ledger)
-        # Stale batch files should be reclaimed
         assert set(claimed) == {"src/a.py", "src/b.py"}
 
 
@@ -167,7 +165,7 @@ class TestClaimFiles:
 
 
 class TestGenerateCommitMessage:
-    @patch("workflow.auto_commit.subprocess.run")
+    @patch("build.auto_commit.subprocess.run")
     def test_returns_claude_output(self, mock_run):
         mock_run.return_value = MagicMock(
             returncode=0,
@@ -182,7 +180,7 @@ class TestGenerateCommitMessage:
         )
         assert msg == "feat: add user authentication"
 
-    @patch("workflow.auto_commit.subprocess.run")
+    @patch("build.auto_commit.subprocess.run")
     def test_fallback_on_claude_failure(self, mock_run):
         mock_run.return_value = MagicMock(
             returncode=1,
@@ -197,7 +195,7 @@ class TestGenerateCommitMessage:
         )
         assert msg == "chore: auto-commit after task (Implement auth)"
 
-    @patch("workflow.auto_commit.subprocess.run")
+    @patch("build.auto_commit.subprocess.run")
     def test_fallback_on_timeout(self, mock_run):
         mock_run.side_effect = subprocess.TimeoutExpired(cmd="claude", timeout=120)
         msg = generate_commit_message(
@@ -207,68 +205,6 @@ class TestGenerateCommitMessage:
             project_dir=Path("/fake"),
         )
         assert msg == "chore: auto-commit after task (Implement auth)"
-
-
-# ---------------------------------------------------------------------------
-# TestStoryContext
-# ---------------------------------------------------------------------------
-
-
-class TestStoryContext:
-    def test_loads_story_id_and_tasks(self, tmp_path):
-        from build.session_store import SessionStore
-
-        jsonl_path = tmp_path / "state.jsonl"
-        store = SessionStore("s1", jsonl_path)
-        store.save({
-            "story_id": "SK-001",
-            "tasks": [
-                {"id": "T-017", "subject": "Feature importance analysis", "status": "completed", "subtasks": []},
-                {"id": "T-018", "subject": "Feature recommendations", "status": "completed", "subtasks": []},
-            ],
-        })
-        ctx = get_story_context("s1", jsonl_path)
-        assert ctx["story_id"] == "SK-001"
-        assert len(ctx["parent_tasks"]) == 2
-        assert ctx["parent_tasks"][0]["id"] == "T-017"
-
-    def test_returns_empty_when_no_state(self, tmp_path):
-        jsonl_path = tmp_path / "nonexistent.jsonl"
-        ctx = get_story_context("s1", jsonl_path)
-        assert ctx == {}
-
-    def test_returns_empty_when_no_story_id(self, tmp_path):
-        from build.session_store import SessionStore
-
-        jsonl_path = tmp_path / "state.jsonl"
-        store = SessionStore("s1", jsonl_path)
-        store.save({"workflow_active": True})
-        ctx = get_story_context("s1", jsonl_path)
-        assert "story_id" not in ctx
-
-    @patch("workflow.auto_commit.subprocess.run")
-    def test_prompt_includes_story_context(self, mock_run):
-        mock_run.return_value = MagicMock(
-            returncode=0, stdout="feat(SK-001): add auth\n", stderr=""
-        )
-        story_ctx = {
-            "story_id": "SK-001",
-            "parent_tasks": [{"id": "T-017", "subject": "Feature analysis"}],
-        }
-        msg = generate_commit_message(
-            files=["src/auth.py"],
-            task_subject="Implement auth",
-            task_description="Add JWT",
-            project_dir=Path("/fake"),
-            story_context=story_ctx,
-        )
-        assert msg == "feat(SK-001): add auth"
-        # Verify the prompt sent to claude includes story context
-        call_args = mock_run.call_args
-        prompt_arg = call_args[0][0][2]  # claude -p <prompt>
-        assert "SK-001" in prompt_arg
-        assert "T-017" in prompt_arg
-        assert "Feature analysis" in prompt_arg
 
 
 # ---------------------------------------------------------------------------
@@ -287,7 +223,6 @@ class TestCommitFiles:
             project_dir=repo,
         )
         assert result is True
-        # Verify commit exists
         log_out = subprocess.run(
             ["git", "log", "--oneline", "-1"],
             cwd=repo, capture_output=True, text=True,
@@ -296,7 +231,6 @@ class TestCommitFiles:
 
     def test_handles_commit_failure(self, tmp_path):
         repo = init_git_repo(tmp_path)
-        # Try to commit a file that doesn't exist
         result = commit_files(
             files=["nonexistent.py"],
             message="feat: ghost file",
@@ -358,13 +292,11 @@ class TestEndToEnd:
         """Full flow: dirty files -> claim -> commit (mock claude only)."""
         repo = init_git_repo(tmp_path)
 
-        # Create dirty files
         (repo / "feature.py").write_text("def feature(): pass")
 
         ledger_path = tmp_path / "commit_batch.json"
         ledger_path.write_text(json.dumps({"batches": []}))
 
-        # Run the flow — only mock generate_commit_message
         dirty = get_dirty_files(repo)
         assert len(dirty) > 0
 
@@ -372,7 +304,7 @@ class TestEndToEnd:
         claimed = claim_files(dirty, ledger)
         assert len(claimed) > 0
 
-        with patch("workflow.auto_commit.subprocess.run") as mock_run:
+        with patch("build.auto_commit.subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(
                 returncode=0, stdout="feat: add feature\n", stderr=""
             )
@@ -396,16 +328,13 @@ class TestEndToEnd:
         """Two batches with overlapping dirty files claim distinct sets."""
         ledger = make_ledger([])
 
-        # Batch 1 claims A, B, C
         dirty1 = ["a.py", "b.py", "c.py"]
         claimed1 = claim_files(dirty1, ledger)
         assert set(claimed1) == {"a.py", "b.py", "c.py"}
 
-        # Record batch 1 as pending
         batch1 = make_batch(batch_id="b1", files=claimed1, status="pending")
         ledger["batches"].append(batch1)
 
-        # Batch 2 sees A, B, C, D, E — should only claim D, E
         dirty2 = ["a.py", "b.py", "c.py", "d.py", "e.py"]
         claimed2 = claim_files(dirty2, ledger)
         assert set(claimed2) == {"d.py", "e.py"}

@@ -9,8 +9,8 @@ from build.logger import log, LOG_FILE
 class TestLog:
     def test_writes_jsonl_entry(self, tmp_path, monkeypatch):
         """log() appends a valid JSONL line to the log file."""
-        log_file = tmp_path / "workflow.log"
-        monkeypatch.setattr("workflow.logger.LOG_FILE", log_file)
+        log_file = tmp_path / "build.log"
+        monkeypatch.setattr("build.logger.LOG_FILE", log_file)
 
         log("TestEvent", tool="Bash", decision="allow")
 
@@ -24,8 +24,8 @@ class TestLog:
 
     def test_appends_multiple_entries(self, tmp_path, monkeypatch):
         """Multiple log() calls append separate lines."""
-        log_file = tmp_path / "workflow.log"
-        monkeypatch.setattr("workflow.logger.LOG_FILE", log_file)
+        log_file = tmp_path / "build.log"
+        monkeypatch.setattr("build.logger.LOG_FILE", log_file)
 
         log("First", a=1)
         log("Second", b=2)
@@ -39,8 +39,8 @@ class TestLog:
 
     def test_timestamp_format(self, tmp_path, monkeypatch):
         """Timestamp is ISO format with milliseconds."""
-        log_file = tmp_path / "workflow.log"
-        monkeypatch.setattr("workflow.logger.LOG_FILE", log_file)
+        log_file = tmp_path / "build.log"
+        monkeypatch.setattr("build.logger.LOG_FILE", log_file)
 
         log("TimestampTest")
 
@@ -52,8 +52,8 @@ class TestLog:
 
     def test_extra_kwargs_included(self, tmp_path, monkeypatch):
         """Arbitrary kwargs are included in the log entry."""
-        log_file = tmp_path / "workflow.log"
-        monkeypatch.setattr("workflow.logger.LOG_FILE", log_file)
+        log_file = tmp_path / "build.log"
+        monkeypatch.setattr("build.logger.LOG_FILE", log_file)
 
         log("Custom", agent_type="Explore", reminder="Do something", phase="plan")
 
@@ -63,6 +63,6 @@ class TestLog:
         assert entry["phase"] == "plan"
 
     def test_log_file_default_path(self):
-        """LOG_FILE points to workflow.log in the workflow directory."""
-        assert LOG_FILE.name == "workflow.log"
-        assert LOG_FILE.parent.name == "workflow"
+        """LOG_FILE points to build.log in the build directory."""
+        assert LOG_FILE.name == "build.log"
+        assert LOG_FILE.parent.name == "build"

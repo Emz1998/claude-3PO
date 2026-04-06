@@ -7,7 +7,7 @@ import re
 # ---------------------------------------------------------------------------
 AGENT_ONLY_PHASES = {"explore", "plan"}
 AGENT_PLUS_WRITE_PHASES = {"review"}
-CODING_PHASES = {"write-tests", "write-code", "validate", "ci-check", "report"}
+CODING_PHASES = {"write-tests", "write-code", "validate", "code-review", "report"}
 PLAN_ALLOWED_STOP_PHASES = {"present-plan", "completed", "failed"}
 
 # ---------------------------------------------------------------------------
@@ -19,11 +19,13 @@ PLAN_MAX = 1
 PLAN_REVIEW_MAX = 3
 TEST_REVIEWER_MAX = 3
 QA_MAX = 1
+CODE_REVIEW_MAX = 3
 
 # ---------------------------------------------------------------------------
 # Review thresholds
 # ---------------------------------------------------------------------------
 PLAN_REVIEW_THRESHOLD = {"confidence": 80, "quality": 80}
+CODE_REVIEW_THRESHOLD = {"confidence": 80, "quality": 80}
 
 # ---------------------------------------------------------------------------
 # File type patterns

@@ -9,7 +9,7 @@ import pytest
 WORKFLOW_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(WORKFLOW_DIR.parent))
 
-from workflow import recorder
+from build import recorder
 from build.guards import write_guard
 from build.session_store import SessionStore
 
@@ -236,7 +236,7 @@ class TestWriteCodePhase:
 
 
 # ---------------------------------------------------------------------------
-# Validate / pr-create phases
+# Validate phase
 # ---------------------------------------------------------------------------
 
 class TestValidatePhase:
@@ -247,33 +247,17 @@ class TestValidatePhase:
         assert decision == "block"
         assert "validate" in reason.lower()
 
-    def test_code_write_blocked_in_pr_create(self, tmp_state_file):
-        write_state(tmp_state_file, make_state("pr-create"))
-        store = SessionStore("s", tmp_state_file)
-        decision, _ = write_guard.validate_pre(write_hook("src/app.py"), store)
-        assert decision == "block"
-
 
 # ---------------------------------------------------------------------------
-# CI-check phase — code write triggers regression
+# Code-review phase — code write allowed for refactoring
 # ---------------------------------------------------------------------------
 
-class TestCICheckPhase:
-    def test_code_write_allowed_in_ci_check(self, tmp_state_file):
-        write_state(tmp_state_file, make_state("ci-check"))
+class TestCodeReviewPhase:
+    def test_code_write_allowed_in_code_review(self, tmp_state_file):
+        write_state(tmp_state_file, make_state("code-review"))
         store = SessionStore("s", tmp_state_file)
         decision, _ = write_guard.validate_pre(write_hook("src/app.py"), store)
         assert decision == "allow"
-
-    def test_code_write_in_ci_check_triggers_regression(self, tmp_state_file):
-        write_state(tmp_state_file, make_state("ci-check"))
-        store = SessionStore("s", tmp_state_file)
-        recorder.record_write(post_write_hook("src/app.py"), store)
-        state = store.load()
-        assert state["phase"] == "write-code"
-        assert state["ci_status"] == "pending"
-        assert state["validation_result"] is None
-        assert state["pr_status"] == "pending"
 
 
 # ---------------------------------------------------------------------------

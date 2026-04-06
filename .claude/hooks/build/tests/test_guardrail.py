@@ -91,18 +91,18 @@ class TestDispatchRouting:
         decision, _ = gm._dispatch(hook_input, tmp_state_file)
         assert decision == "block"
 
-    def test_bash_pr_blocked_outside_pr_create(self, tmp_state_file):
+    def test_bash_commands_allowed_during_build(self, tmp_state_file):
         gm = _load_guardrail()
         write_state(tmp_state_file, make_state("write-code"))
         hook_input = {
             "hook_event_name": "PreToolUse",
             "tool_name": "Bash",
-            "tool_input": {"command": "gh pr create"},
+            "tool_input": {"command": "pytest tests/"},
             "tool_use_id": "t1",
             "session_id": "s", "transcript_path": "t", "cwd": ".", "permission_mode": "default",
         }
-        decision, reason = gm._dispatch(hook_input, tmp_state_file)
-        assert decision == "block"
+        decision, _ = gm._dispatch(hook_input, tmp_state_file)
+        assert decision == "allow"
 
     def test_subagent_stop_validator_valid_report_allowed(self, tmp_state_file):
         """SubagentStop allows QualityAssurance with valid report schema."""
@@ -166,21 +166,6 @@ class TestDispatchRouting:
         }
         decision, _ = gm._dispatch(hook_input, tmp_state_file)
         assert decision == "block"
-
-    def test_task_create_pre_routed_to_task_guard(self, tmp_state_file):
-        gm = _load_guardrail()
-        write_state(tmp_state_file, make_state("task-create", story_id="SK-123"))
-        # Without metadata, task_guard blocks — proves routing works
-        hook_input = {
-            "hook_event_name": "PreToolUse",
-            "tool_name": "TaskCreate",
-            "tool_input": {"subject": "Implement login", "description": "..."},
-            "tool_use_id": "t1",
-            "session_id": "s", "transcript_path": "t", "cwd": ".", "permission_mode": "default",
-        }
-        decision, reason = gm._dispatch(hook_input, tmp_state_file)
-        assert decision == "block"
-        assert "metadata" in reason.lower()
 
     def test_unknown_event_allowed(self, tmp_state_file):
         gm = _load_guardrail()
@@ -367,7 +352,7 @@ class TestPhaseGate:
         decision, _ = gm._dispatch(hook_input, tmp_state_file)
         assert decision == "allow"
 
-    @pytest.mark.parametrize("phase", ["write-code", "write-tests", "write-plan", "ci-check"])
+    @pytest.mark.parametrize("phase", ["write-code", "write-tests", "write-plan", "code-review"])
     def test_non_gated_phases_allow_tools_from_main_agent(self, tmp_state_file, phase):
         """Phases that are not agent-gated should let tools through to per-guard logic."""
         gm = _load_guardrail()

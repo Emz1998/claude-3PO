@@ -1,13 +1,12 @@
-"""guardrail.py — Unified workflow guardrail CLI hook.
+"""guardrail.py — Unified build guardrail CLI hook.
 
 Dispatches all hook events to modular guard modules.
-Supports both /plan and /implement workflows.
+Supports /build workflow (instruction-driven, no story IDs or task-create).
 
 Phase flow:
-  /implement: explore → plan → write-plan → review → present-plan →
-              task-create → write-tests → write-code → validate →
-              pr-create → ci-check → report → completed
-  /plan:      explore → plan → write-plan → review → present-plan
+  /build: explore → plan → write-plan → review → present-plan →
+          task-create → write-tests → write-code → validate →
+          code-review → report → completed
   (skip flags skip explore phase entirely, jumping straight to plan)
 
 Usage:
@@ -36,7 +35,6 @@ from build.config import (
 from build.guards import (
     agent_guard,
     bash_guard,
-    read_guard,
     stop_guard,
     subagent_stop_guard,
     task_guard,
@@ -168,8 +166,6 @@ def _dispatch(hook_input: dict, state_path: Path) -> tuple[str, str]:
 
         if tool == "Agent":
             return agent_guard.validate(hook_input, store)
-        if tool == "Read":
-            return read_guard.validate(hook_input, store)
         if tool in ("Write", "Edit"):
             return write_guard.validate_pre(hook_input, store)
         if tool == "Bash":
@@ -227,11 +223,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
-if __name__ == "__main__":
-    content: str = """
-## Summary
-Some text here
-"""
-    passed, missing = _validate_plan_template(content)
-    print(f"passed: {passed}, missing: {missing}")

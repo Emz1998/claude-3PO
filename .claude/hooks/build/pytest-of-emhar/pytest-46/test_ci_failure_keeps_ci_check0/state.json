@@ -1,0 +1,10 @@
+{
+  "workflow_active": true,
+  "workflow_type": "implement",
+  "phase": "ci-check",
+  "validation_result": null,
+  "pr_status": "pending",
+  "ci_status": "failed",
+  "ci_check_executed": true,
+  "test_run_executed": false
+}

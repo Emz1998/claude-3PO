@@ -1,4 +1,4 @@
-"""Tests for guards/stop_guard.py (new unified version)."""
+"""Tests for guards/stop_guard.py — build version."""
 
 import json
 import sys
@@ -16,7 +16,7 @@ from build.session_store import SessionStore
 def make_state(phase: str, **kwargs) -> dict:
     return {
         "workflow_active": True,
-        "workflow_type": kwargs.get("workflow_type", "implement"),
+        "workflow_type": kwargs.get("workflow_type", "build"),
         "phase": phase,
         "tdd": kwargs.get("tdd", False),
         "tests": {
@@ -25,8 +25,7 @@ def make_state(phase: str, **kwargs) -> dict:
             "executed": kwargs.get("test_executed", False),
         },
         "validation_result": kwargs.get("validation_result", None),
-        "pr_status": kwargs.get("pr_status", "pending"),
-        "ci_status": kwargs.get("ci_status", "pending"),
+        "code_review": kwargs.get("code_review", {"iteration": 0, "scores": None, "status": None}),
         "report_written": kwargs.get("report_written", False),
     }
 
@@ -92,10 +91,10 @@ class TestPlanWorkflow:
 
 
 # ---------------------------------------------------------------------------
-# /implement workflow: block unless completed
+# /build workflow: block unless completed
 # ---------------------------------------------------------------------------
 
-class TestImplementWorkflow:
+class TestBuildWorkflow:
     def test_stop_allowed_when_completed(self, tmp_state_file):
         write_state(tmp_state_file, make_state("completed"))
         store = SessionStore("s", tmp_state_file)
@@ -108,7 +107,6 @@ class TestImplementWorkflow:
             tdd=True,
             test_executed=False,
             validation_result=None,
-            pr_status="pending",
         ))
         store = SessionStore("s", tmp_state_file)
         decision, reason = stop_guard.validate(stop_event(), store)
@@ -117,50 +115,34 @@ class TestImplementWorkflow:
 
     def test_stop_blocked_when_validation_not_passed(self, tmp_state_file):
         write_state(tmp_state_file, make_state(
-            "pr-create",
+            "code-review",
             tdd=False,
             validation_result=None,
-            pr_status="pending",
         ))
         store = SessionStore("s", tmp_state_file)
         decision, reason = stop_guard.validate(stop_event(), store)
         assert decision == "block"
         assert "validation" in reason.lower()
 
-    def test_stop_blocked_when_pr_not_created(self, tmp_state_file):
+    def test_stop_blocked_when_code_review_not_done(self, tmp_state_file):
         write_state(tmp_state_file, make_state(
-            "ci-check",
+            "report",
             tdd=False,
             validation_result="Pass",
-            pr_status="pending",
-            ci_status="pending",
-        ))
-        store = SessionStore("s", tmp_state_file)
-        decision, reason = stop_guard.validate(stop_event(), store)
-        assert decision == "block"
-        assert "pr" in reason.lower()
-
-    def test_stop_blocked_when_ci_not_checked(self, tmp_state_file):
-        write_state(tmp_state_file, make_state(
-            "ci-check",
-            tdd=False,
-            validation_result="Pass",
-            pr_status="created",
-            ci_status="pending",
+            code_review={"iteration": 0, "scores": None, "status": None},
             report_written=False,
         ))
         store = SessionStore("s", tmp_state_file)
         decision, reason = stop_guard.validate(stop_event(), store)
         assert decision == "block"
-        assert "ci" in reason.lower()
+        assert "code review" in reason.lower()
 
     def test_stop_blocked_when_report_not_written(self, tmp_state_file):
         write_state(tmp_state_file, make_state(
             "report",
             tdd=False,
             validation_result="Pass",
-            pr_status="created",
-            ci_status="passed",
+            code_review={"iteration": 1, "scores": {"confidence": 85, "quality": 90}, "status": "approved"},
             report_written=False,
         ))
         store = SessionStore("s", tmp_state_file)

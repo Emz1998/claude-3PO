@@ -9,7 +9,7 @@ import pytest
 WORKFLOW_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(WORKFLOW_DIR.parent))
 
-from workflow import recorder
+from build import recorder
 from build.session_store import SessionStore
 
 
@@ -210,13 +210,13 @@ class TestTestReviewerCompletion:
 # ---------------------------------------------------------------------------
 
 class TestQACompletion:
-    def test_validator_pass_advances_to_pr_create(self, tmp_state_file):
+    def test_validator_pass_advances_to_code_review(self, tmp_state_file):
         agents = [running_agent("QualityAssurance")]
         write_state(tmp_state_file, make_state("validate", agents=agents))
         store = SessionStore("s", tmp_state_file)
         recorder.record_subagent_stop(stop_hook("QualityAssurance", "Pass"), store)
         state = store.load()
-        assert state["phase"] == "pr-create"
+        assert state["phase"] == "code-review"
         assert state["validation_result"] == "Pass"
 
     def test_validator_fail_returns_to_write_code(self, tmp_state_file):
@@ -298,26 +298,19 @@ class TestRecordAgentFromHook:
 # ---------------------------------------------------------------------------
 
 class TestAdvanceAfterPlanApproval:
-    def test_advance_to_task_create_with_story_id(self, tmp_state_file):
-        write_state(tmp_state_file, make_state("present-plan", story_id="SK-001"))
+    def test_always_advances_to_task_create(self, tmp_state_file):
+        write_state(tmp_state_file, make_state("present-plan", tdd=True))
         store = SessionStore("s", tmp_state_file)
         result = recorder.advance_after_plan_approval(store)
         assert result == "task-create"
         assert store.load()["phase"] == "task-create"
 
-    def test_advance_to_write_tests_with_tdd(self, tmp_state_file):
-        write_state(tmp_state_file, make_state("present-plan", tdd=True))
-        store = SessionStore("s", tmp_state_file)
-        result = recorder.advance_after_plan_approval(store)
-        assert result == "write-tests"
-        assert store.load()["phase"] == "write-tests"
-
-    def test_advance_to_write_code_default(self, tmp_state_file):
+    def test_advances_to_task_create_without_tdd(self, tmp_state_file):
         write_state(tmp_state_file, make_state("present-plan", tdd=False))
         store = SessionStore("s", tmp_state_file)
         result = recorder.advance_after_plan_approval(store)
-        assert result == "write-code"
-        assert store.load()["phase"] == "write-code"
+        assert result == "task-create"
+        assert store.load()["phase"] == "task-create"
 
     def test_no_advance_for_plan_workflow(self, tmp_state_file):
         write_state(tmp_state_file, make_state("present-plan", workflow_type="plan"))

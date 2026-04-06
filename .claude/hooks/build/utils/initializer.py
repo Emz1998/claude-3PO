@@ -1,18 +1,13 @@
-"""initializer.py — Pre-workflow initialization for /plan and /implement commands.
+"""initializer.py — Pre-workflow initialization for /build command.
 
-Called via bash injection in command .md files before Claude sees the prompt.
-Handles arg parsing, story conflict detection, and state initialization.
+Called via bash injection in build.md before Claude sees the prompt.
+Handles arg parsing and state initialization. No story IDs or conflict checks.
 
 Usage:
     python3 initializer.py <workflow_type> <session_id> [args...]
-    python3 initializer.py implement abc-123 SK-123 --tdd --skip-all
-
-Exit codes:
-    2 — story conflict found, session must stop (reason printed to stderr)
-    (no exit) — success, returns normally
+    python3 initializer.py build abc-123 --tdd --skip-all build a login form
 """
 
-import json
 import re
 import sys
 from pathlib import Path
@@ -24,7 +19,7 @@ from build.session_store import SessionStore
 
 
 # ---------------------------------------------------------------------------
-# Arg parsing (same logic as former skill_guard.py)
+# Arg parsing
 # ---------------------------------------------------------------------------
 
 
@@ -37,55 +32,12 @@ def parse_skip(args: str) -> list[str]:
     return skip
 
 
-def parse_story_id(args: str) -> str | None:
-    m = STORY_ID_PATTERN.search(args)
-    return m.group(1) if m else None
-
-
 def parse_instructions(args: str) -> str:
     flags = ["--skip-explore", "--skip-research", "--skip-all", "--tdd"]
     text = STORY_ID_PATTERN.sub("", args)
     for flag in flags:
         text = text.replace(flag, "")
     return text.strip()
-
-
-# ---------------------------------------------------------------------------
-# Conflict check
-# ---------------------------------------------------------------------------
-
-
-def check_story_conflict(
-    story_id: str, current_session_id: str, jsonl_path: Path = DEFAULT_STATE_JSONL_PATH
-) -> None:
-    """Exit 2 if another active session is implementing the same story."""
-    if not story_id:
-        return
-
-    if not jsonl_path.exists():
-        return
-
-    for line in jsonl_path.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if not line:
-            continue
-        try:
-            entry = json.loads(line)
-        except json.JSONDecodeError:
-            continue
-
-        if entry.get("session_id") == current_session_id:
-            continue
-        if not entry.get("workflow_active"):
-            continue
-        if entry.get("story_id") == story_id:
-            other_sid = entry.get("session_id", "unknown")
-            print(
-                f"Story {story_id} is already being implemented in session {other_sid}. "
-                f"Finish or stop that session before starting a new one.",
-                file=sys.stderr,
-            )
-            sys.exit(2)
 
 
 # ---------------------------------------------------------------------------
@@ -96,7 +48,6 @@ def check_story_conflict(
 def build_initial_state(workflow_type: str, args: str) -> dict:
     skip = parse_skip(args)
     instructions = parse_instructions(args)
-    story_id = parse_story_id(args) if workflow_type == "implement" else None
     tdd = "--tdd" in args
 
     if "explore" in skip and "research" in skip:
@@ -109,7 +60,7 @@ def build_initial_state(workflow_type: str, args: str) -> dict:
         "workflow_type": workflow_type,
         "phase": phase,
         "tdd": tdd,
-        "story_id": story_id,
+        "story_id": None,
         "skip": skip,
         "instructions": instructions,
         "agents": [],
@@ -131,8 +82,11 @@ def build_initial_state(workflow_type: str, args: str) -> dict:
         "docs_to_read": None,
         "files_written": [],
         "validation_result": None,
-        "pr_status": "pending",
-        "ci_status": "pending",
+        "code_review": {
+            "iteration": 0,
+            "scores": None,
+            "status": None,
+        },
         "report_written": False,
     }
 
@@ -148,13 +102,6 @@ def initialize(
     args: str,
     jsonl_path: Path = DEFAULT_STATE_JSONL_PATH,
 ) -> None:
-    story_id = parse_story_id(args) if workflow_type == "implement" else None
-
-    # Conflict check before writing state
-    if story_id:
-        check_story_conflict(story_id, session_id, jsonl_path)
-
-    # Build and write initial state
     state = build_initial_state(workflow_type, args)
     store = SessionStore(session_id, jsonl_path)
     store.reinitialize(state)

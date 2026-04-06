@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Unified TaskCompleted dispatcher — routes to guardrail.py."""
+"""TaskCompleted dispatcher for /build — routes to guardrail.py."""
 
 import json
 import subprocess

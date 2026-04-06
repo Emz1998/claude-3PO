@@ -1,8 +1,4 @@
-"""stop_guard.py — Blocks Claude from stopping when workflow is incomplete.
-
-- /plan workflow: allow stop after 'approved' phase
-- /implement workflow: block unless phase == 'completed'
-"""
+"""stop_guard.py — Blocks Claude from stopping when build workflow is incomplete."""
 
 import sys
 from pathlib import Path
@@ -12,7 +8,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 from build.config import PLAN_ALLOWED_STOP_PHASES
 from build.session_store import SessionStore
 
-# Implement workflow: collect reasons from state
+
 def _collect_reasons(state: dict) -> list[str]:
     reasons = []
     tdd = state.get("tdd", False)
@@ -23,11 +19,9 @@ def _collect_reasons(state: dict) -> list[str]:
     if state.get("validation_result") != "Pass":
         reasons.append("validation has not passed")
 
-    if state.get("pr_status") != "created":
-        reasons.append("PR has not been created")
-
-    if state.get("ci_status") == "pending":
-        reasons.append("CI has not been checked")
+    code_review = state.get("code_review", {})
+    if code_review.get("status") not in ("approved", "max_iterations_reached"):
+        reasons.append("code review has not been completed")
 
     if not state.get("report_written"):
         reasons.append("report has not been written — write it to .claude/reports/latest-report.md")
@@ -40,7 +34,6 @@ def validate(hook_input: dict, store: SessionStore) -> tuple[str, str]:
 
     Returns ("allow", "") or ("block", reason).
     """
-    # Prevent infinite loop if stop hook itself triggered this
     if hook_input.get("stop_hook_active"):
         return "allow", ""
 
@@ -48,16 +41,14 @@ def validate(hook_input: dict, store: SessionStore) -> tuple[str, str]:
     if not state.get("workflow_active"):
         return "allow", ""
 
-    workflow_type = state.get("workflow_type", "implement")
+    workflow_type = state.get("workflow_type", "build")
     phase = state.get("phase", "")
 
-    # /plan workflow: allow once approved
     if workflow_type == "plan":
         if phase in PLAN_ALLOWED_STOP_PHASES:
             return "allow", ""
         return "block", f"Blocked: plan workflow not complete (current phase: '{phase}'). Must reach 'approved' before stopping."
 
-    # /implement workflow: only allow when completed
     if phase == "completed":
         return "allow", ""
 

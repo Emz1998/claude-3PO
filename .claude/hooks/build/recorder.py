@@ -20,7 +20,13 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from build.config import DEFAULT_STATE_JSONL_PATH, PLAN_REVIEW_THRESHOLD, PLAN_REVIEW_MAX
+from build.config import (
+    DEFAULT_STATE_JSONL_PATH,
+    PLAN_REVIEW_THRESHOLD,
+    PLAN_REVIEW_MAX,
+    CODE_REVIEW_THRESHOLD,
+    CODE_REVIEW_MAX,
+)
 from build.session_store import SessionStore
 from build.logger import log
 
@@ -110,18 +116,6 @@ def record_write(hook_input: dict, store: SessionStore) -> tuple[str, str]:
         store.update(_record_test)
         return "allow", ""
 
-    # Handle code writes in ci-check — trigger regression to write-code
-    if is_code_file(file_path) and not is_test_file(file_path) and phase == "ci-check":
-
-        def _regress(s: dict) -> None:
-            s["phase"] = "write-code"
-            s["ci_status"] = "pending"
-            s["validation_result"] = None
-            s["pr_status"] = "pending"
-
-        store.update(_regress)
-        return "allow", ""
-
     # Track report writes
     if is_report_file(file_path) and phase == "report":
 
@@ -179,17 +173,14 @@ def _parse_ci_output(output: str) -> str:
 
 
 def record_bash(hook_input: dict, store: SessionStore) -> tuple[str, str]:
-    """Handle Bash PostToolUse — track test runs, PR creation, CI checks."""
-    from build.guards.bash_guard import is_ci_check, is_pr_command, is_test_run
+    """Handle Bash PostToolUse — track test runs."""
+    from build.guards.bash_guard import is_test_run
 
     state = store.load()
     if not state.get("workflow_active"):
         return "allow", ""
 
     command = hook_input.get("tool_input", {}).get("command", "")
-    tool_response = hook_input.get("tool_response", {})
-    output = tool_response.get("stdout", "") or tool_response.get("output", "")
-    phase = state.get("phase", "")
 
     # Track test-run commands
     if is_test_run(command):
@@ -198,31 +189,6 @@ def record_bash(hook_input: dict, store: SessionStore) -> tuple[str, str]:
             s.setdefault("tests", {})["executed"] = True
 
         store.update(_record_test_run)
-        return "allow", ""
-
-    # Track PR creation
-    if is_pr_command(command) and phase == "pr-create":
-
-        def _record_pr(s: dict) -> None:
-            s["pr_status"] = "created"
-            s["phase"] = "ci-check"
-
-        store.update(_record_pr)
-        return "allow", ""
-
-    # Track CI checks
-    if is_ci_check(command):
-
-        def _record_ci(s: dict) -> None:
-            ci_result = _parse_ci_output(output)
-            if ci_result == "passed":
-                s["ci_status"] = "passed"
-                s["phase"] = "report"
-            elif ci_result == "failed":
-                s["ci_status"] = "failed"
-            # "pending" → ci_status stays pending, allow re-check
-
-        store.update(_record_ci)
         return "allow", ""
 
     return "allow", ""
@@ -365,10 +331,35 @@ def record_subagent_stop(hook_input: dict, store: SessionStore) -> tuple[str, st
             verdict = _extract_verdict(last_message)
             if verdict == "Pass":
                 state["validation_result"] = "Pass"
-                state["phase"] = "pr-create"
+                state["phase"] = "code-review"
             else:
                 state["validation_result"] = "Fail"
                 state["phase"] = "write-code"
+
+        # CodeReviewer: parse scores, advance to report or iterate
+        elif agent_type == "code-reviewer" and phase == "code-review":
+            scores = parse_scores(last_message)
+            code_review = state.setdefault("code_review", {})
+            code_review["scores"] = scores
+            iteration = code_review.get("iteration", 0)
+
+            passed = (
+                scores["confidence"] is not None
+                and scores["quality"] is not None
+                and scores["confidence"] >= CODE_REVIEW_THRESHOLD["confidence"]
+                and scores["quality"] >= CODE_REVIEW_THRESHOLD["quality"]
+            )
+
+            if passed:
+                code_review["status"] = "approved"
+                state["phase"] = "report"
+            elif iteration + 1 >= CODE_REVIEW_MAX:
+                code_review["status"] = "max_iterations_reached"
+                code_review["iteration"] = iteration + 1
+                state["phase"] = "report"
+            else:
+                code_review["status"] = "revision_needed"
+                code_review["iteration"] = iteration + 1
 
     store.update(_process)
     return "allow", ""
@@ -390,15 +381,7 @@ def advance_after_plan_approval(store: SessionStore) -> str | None:
     if state.get("workflow_type") == "plan":
         return None
 
-    story_id = state.get("story_id")
-    tdd = state.get("tdd", False)
-
-    if story_id:
-        next_phase = "task-create"
-    elif tdd:
-        next_phase = "write-tests"
-    else:
-        next_phase = "write-code"
+    next_phase = "task-create"
 
     store.set("phase", next_phase)
     return next_phase

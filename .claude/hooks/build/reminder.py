@@ -47,7 +47,12 @@ PHASE_REMINDERS: dict[str, str] = {
         "Phase: WRITE-CODE. Files from plan: {plan_files}. "
         "When done, launch QualityAssurance agent."
     ),
-    "validate": "Phase: VALIDATE. If Pass → pr-create. If Fail → back to write-code.",
+    "validate": "Phase: VALIDATE. If Pass → code-review. If Fail → back to write-code.",
+    "code-review": (
+        "Phase: CODE-REVIEW. Code review iteration {iteration}/3. "
+        "Launch code-reviewer agent. Scores must be >= 80/80 to approve. "
+        "If review fails, refactor the code and re-launch code-reviewer."
+    ),
 }
 
 
@@ -74,6 +79,11 @@ AGENT_REMINDERS: dict[str, str] = {
         "Verify implementation passes tests and matches plan. End with "
         "'Pass' or 'Fail'."
     ),
+    "code-reviewer": (
+        "Review all code files for correctness, quality, and best practices. "
+        "Score confidence (0-100) and quality (0-100). End response with: "
+        "confidence: NN, quality: NN"
+    ),
 }
 
 
@@ -95,9 +105,11 @@ PHASE_TRANSITION_REMINDERS: dict[str, str] = {
     "write-code": (
         "Tests reviewed. Write minimal code to pass them. " "Plan files: {plan_files}."
     ),
-    "pr-create": "Validation passed. Create PR with gh pr create.",
-    "ci-check": "PR created. Run gh pr checks to verify CI.",
-    "report": "CI passed. Write completion report to .claude/reports/latest-report.md.",
+    "code-review": (
+        "Validation passed. Launch code-reviewer agent to review all code files. "
+        "Scores must be >= 80/80."
+    ),
+    "report": "Code review complete. Write completion report to .claude/reports/latest-report.md.",
 }
 
 
@@ -107,8 +119,7 @@ PHASE_TRANSITION_REMINDERS: dict[str, str] = {
 
 EXIT_PLAN_MODE_REMINDERS: dict[str, str] = {
     "task-create": (
-        "User approved the plan. Create tasks for each project task using TaskCreate. "
-        "Include metadata with parent_task_id and parent_task_title."
+        "User approved the plan. Create tasks using TaskCreate to track your work."
     ),
     "write-tests": "User approved the plan. TDD mode: write failing tests first.",
     "write-code": (
@@ -139,6 +150,17 @@ TEST_REVIEW_FAIL = (
 QA_FAIL = (
     "Validation FAILED. Returning to write-code phase. "
     "Fix the implementation and re-validate."
+)
+
+CODE_REVIEW_FAIL_TEMPLATE = (
+    "Code review FAILED. Scores: confidence={confidence}, quality={quality} "
+    "(threshold: 80/80). Iteration {iteration}/3. "
+    "Refactor the code and launch code-reviewer again."
+)
+
+CODE_REVIEW_MAX_TEMPLATE = (
+    "Code review reached max iterations (3). Scores: confidence={confidence}, "
+    "quality={quality}. Proceeding to report phase."
 )
 
 
@@ -250,7 +272,10 @@ def get_post_tool_reminder(hook_input: dict, store: SessionStore) -> str | None:
     if not template:
         return None
 
-    iteration = state.get("plan", {}).get("review", {}).get("iteration", 0) + 1
+    if phase == "code-review":
+        iteration = state.get("code_review", {}).get("iteration", 0) + 1
+    else:
+        iteration = state.get("plan", {}).get("review", {}).get("iteration", 0) + 1
     plan_files = _load_plan_files_list(state)
     store.set("last_reminder_phase", phase)
     return template.format(iteration=iteration, plan_files=plan_files)
@@ -322,6 +347,26 @@ def get_phase_transition_reminder(hook_input: dict, store: SessionStore) -> str 
     if agent_type == "QualityAssurance":
         if state.get("validation_result") == "Fail":
             return QA_FAIL
+
+    if agent_type == "code-reviewer":
+        code_review = state.get("code_review", {})
+        review_status = code_review.get("status", "")
+        scores = code_review.get("scores") or {}
+        confidence = scores.get("confidence", "N/A")
+        quality = scores.get("quality", "N/A")
+        iteration = code_review.get("iteration", 0)
+
+        if review_status == "max_iterations_reached":
+            return CODE_REVIEW_MAX_TEMPLATE.format(
+                confidence=confidence,
+                quality=quality,
+            )
+        if review_status == "revision_needed":
+            return CODE_REVIEW_FAIL_TEMPLATE.format(
+                confidence=confidence,
+                quality=quality,
+                iteration=iteration,
+            )
 
     # Phase transition reminder (once per phase)
     if state.get("last_reminder_phase") == f"transition:{phase}":

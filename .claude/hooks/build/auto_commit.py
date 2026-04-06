@@ -171,33 +171,6 @@ def claim_files(dirty_files: list[str], ledger: dict) -> list[str]:
 
 
 # ---------------------------------------------------------------------------
-# Story context from state
-# ---------------------------------------------------------------------------
-
-
-def get_story_context(session_id: str, jsonl_path: Path) -> dict:
-    """Load story_id and parent tasks from session state."""
-    try:
-        from build.session_store import SessionStore
-
-        store = SessionStore(session_id, jsonl_path)
-        state = store.load()
-        if not state:
-            return {}
-        context = {}
-        if state.get("story_id"):
-            context["story_id"] = state["story_id"]
-        if state.get("tasks"):
-            context["parent_tasks"] = [
-                {"id": t["id"], "subject": t["subject"]}
-                for t in state["tasks"]
-            ]
-        return context
-    except Exception:
-        return {}
-
-
-# ---------------------------------------------------------------------------
 # Commit message generation
 # ---------------------------------------------------------------------------
 
@@ -207,29 +180,16 @@ def generate_commit_message(
     task_subject: str,
     task_description: str,
     project_dir: Path,
-    story_context: dict | None = None,
 ) -> str:
     """Use headless Claude to generate a conventional commit message."""
     file_list = "\n".join(f"- {f}" for f in files)
 
-    # Build story context section
-    context_lines = ""
-    if story_context:
-        if story_context.get("story_id"):
-            context_lines += f"Story: {story_context['story_id']}\n"
-        if story_context.get("parent_tasks"):
-            context_lines += "Parent tasks:\n"
-            for t in story_context["parent_tasks"]:
-                context_lines += f"  - {t['id']}: {t['subject']}\n"
-
     prompt = (
         "Generate a concise git commit message for the following changes.\n"
-        f"{context_lines}"
         f"Task: {task_subject}\n"
         f"Task Description: {task_description}\n"
         f"Files changed:\n{file_list}\n"
         "Use conventional commit format (feat/fix/chore/refactor/docs/test).\n"
-        "If a story ID is provided, use it as the scope, e.g. feat(SK-001): description.\n"
         "Keep the first line under 72 characters. Add a body if the changes warrant it.\n"
         "Respond with ONLY the commit message text, nothing else."
     )
@@ -340,15 +300,11 @@ def main() -> None:
     # -----------------------------------------------------------------------
     # Phase 2: Generate commit message (no lock held)
     # -----------------------------------------------------------------------
-    session_id = raw_input.get("session_id", "default")
-    story_context = get_story_context(session_id, DEFAULT_STATE_JSONL_PATH)
-
     message = generate_commit_message(
         files=claimed,
         task_subject=task_subject,
         task_description=task_description,
         project_dir=project_dir,
-        story_context=story_context,
     )
 
     log("AutoCommit:message_generated", batch_id=batch_id, message=message)
