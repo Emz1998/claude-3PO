@@ -30,6 +30,7 @@ class Hook:
     @staticmethod
     def advanced_block(hook_event_name: str, message: str) -> None:
         output = {
+            "systemMessage": message,
             "hookSpecificOutput": {
                 "hookEventName": hook_event_name,
                 "permissionDecision": "deny",

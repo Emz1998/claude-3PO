@@ -1,0 +1,108 @@
+# ---------------------------------------------------------------------------
+# Phase classifications
+# ---------------------------------------------------------------------------
+MAIN_PHASES = ["explore", "research", "plan", "plan-review", "write-tests", "test-review","write-code", "quality-check", "code-review", "pr-create", "ci-check", "write-report"]
+SUBPHASES = ["plan-revision", "refactor"]
+
+READ_ONLY_PHASES = ["explore","plan", "research", "plan-review", "test-review", "code-review", "quality-check", "report"]
+CODE_WRITE_PHASES = ["write-tests", "write-code", "refactor"]
+CODE_EDIT_PHASES = ["refactor", "plan-revision"]
+DOCS_WRITE_PHASES = ["plan", "report"]
+DOCS_EDIT_PHASES = ["plan-review"]
+CHECKPOINT_PHASE = ["present-plan"]
+
+# ---------------------------------------------------------------------------
+# Agent invocation limits
+# ---------------------------------------------------------------------------
+EXPLORE_MAX = 3
+RESEARCH_MAX = 2
+PLAN_MAX = 1
+PLAN_REVIEW_MAX = 3
+TEST_REVIEWER_MAX = 3
+QA_SPECIALIST_MAX = 1
+CODE_REVIEWER_MAX = 3
+
+
+# ---------------------------------------------------------------------------
+# Safe domains for web access
+# ---------------------------------------------------------------------------
+SAFE_DOMAINS = [
+    "docs.python.org",
+    "docs.anthropic.com",
+    "developer.mozilla.org",
+    "reactjs.org",
+    "react.dev",
+    "nextjs.org",
+    "tailwindcss.com",
+    "github.com",
+    "stackoverflow.com",
+    "pypi.org",
+    "npmjs.com",
+    "typescriptlang.org",
+    "nodejs.org",
+    "firebase.google.com",
+    "supabase.com",
+    "expo.dev",
+    "reactnative.dev",
+    "code.claude.com",
+    "vercel.com",
+    "medium.com",
+    "web.dev",
+    "developers.google.com",
+    "css-tricks.com",
+]
+
+
+# ---------------------------------------------------------------------------
+# Required agents per phase (empty string = no agent required)
+# ---------------------------------------------------------------------------
+[REQUIRED_AGENTS]
+explore = "Explore"
+research = "Research"
+plan = ""
+plan-review = "PlanReview"
+write-tests = ""
+test-review = "TestReviewer"
+write-code = ""
+quality-check = "QASpecialist"
+code-review = "CodeReviewer"
+pr-create = ""
+ci-check = ""
+write-report = ""
+
+
+# ---------------------------------------------------------------------------
+# Mapped Subphases: a review phase to its follow-up sub-phase
+# ---------------------------------------------------------------------------
+[REQUIRED_SUBPHASES]
+plan-review = "plan-revision"
+test-review = "refactor"
+code-review = "refactor"
+
+
+# ---------------------------------------------------------------------------
+# Score thresholds
+# ---------------------------------------------------------------------------
+[SCORE_THRESHOLDS.plan]
+confidence_score = 90
+quality = 90
+
+[SCORE_THRESHOLDS.tests]
+confidence_score = 90
+quality = 90
+
+[SCORE_THRESHOLDS.code]
+confidence_score = 90
+quality = 90
+
+# ---------------------------------------------------------------------------
+# File Paths
+# ---------------------------------------------------------------------------
+[FILE_PATHS]
+DEFAULT_STATE_JSONL = ".claude/state.jsonl"
+LOG_FILE = "build.log"
+DEBUG_LOG_FILE = "debug.log"
+PLAN_FILE_PATH = ".claude/plans/plan.md"
+TEST_FILE_PATH = ".claude/tests/test.md"
+CODE_FILE_PATH = ".claude/code/code.md"
+REPORT_FILE_PATH = ".claude/reports/report.md"

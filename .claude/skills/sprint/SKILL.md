@@ -1,15 +1,18 @@
 ---
 name: sprint
 description: Creates and manages sprint backlog markdown files with user stories, technical stories, bugs, spikes, and tasks. Use when creating sprints, planning sprint work, adding stories/tasks to a sprint, updating sprint status, or when user mentions sprint, sprint planning, or sprint backlog.
-context: fork
-agent: product-owner
+hooks:
+  PreToolUse:
+    - hooks:
+        - type: command
+          command: "./.claude/skills/sprint/hooks/pre_tool_use.py"
 ---
 
-**Goal**: Create and maintain a structured sprint backlog at `project/workflow/sprint.md` using the template at [template/sprint.md](template/sprint.md).
+**Goal**: Create and maintain a structured sprint backlog at `.claude/projects/sprint.md` using the template at [template/sprint.md](template/sprint.md).
 
 ## Instructions
 
-- Read the backlog at `project/workflow/backlog.md` and project specs before creating a sprint
+- Read the backlog at `.claude/projects/backlog.md` and project specs before creating a sprint
 - Pull stories from the backlog into the sprint based on priority and capacity
 - **Story types**: User Story (US-NNN), Technical Story (TS-NNN), Bug (BG-NNN), Spike (SK-NNN)
 - **Task complexity**: S=1, M=2, L=3 points. Story points = sum of task complexities
@@ -22,15 +25,11 @@ agent: product-owner
 ## Workflow
 
 1. Read project context:
-   - **Backlog**: `project/workflow/backlog.md`
-   - **Product Brief**: `project/docs/product/product-brief.md`
-   - **Architecture**: `project/docs/architecture/architecture.md`
-   - **Definition of Done**: `project/docs/governance/definition-of-done.md`
-   - **Decisions**: `project/docs/architecture/decisions.md`
+   - **Backlog**: `.claude/projects/backlog.md`
 
 2. Read the sprint template: [template/sprint.md](template/sprint.md)
 
-3. Check if `sprint.md` exists at `project/workflow/sprint.md`. If not, create it from the template.
+3. Check if `sprint.md` exists at `.claude/projects/sprint.md`. If not, create it from the template.
 
 4. Create or update the sprint:
    - Fill sprint metadata (project, number, goal, dates, capacity)
@@ -67,4 +66,4 @@ agent: product-owner
 - Sprint Overview table reflects all stories with correct points and statuses
 - Total points calculated and within sprint capacity
 - Task dependencies are explicitly declared
-- File written to correct path: `project/workflow/sprint.md`
+- File written to correct path: `.claude/projects/sprint.md`

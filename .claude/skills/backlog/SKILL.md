@@ -1,9 +1,14 @@
 ---
 name: backlog
 description: Creates and manages product backlog markdown files with epics, user stories, technical stories, bugs, and spikes. Use when creating backlogs, adding epics/stories/tasks, updating story status, or when user mentions backlog, sprint planning, project management, or task tracking.
+hooks:
+  PreToolUse:
+    - hooks:
+        - type: command
+          command: "./.claude/skills/backlog/hooks/pre_tool_use.py"
 ---
 
-**Goal**: Create and maintain a structured `backlog.md` file at `project/workflow/backlog.md` using the template at `template/backlog.md`.
+**Goal**: Create and maintain a structured `backlog.md` file at `.claude/projects/backlog/backlog.md` using the template at `template/backlog.md`.
 
 ## Instructions
 
@@ -19,13 +24,13 @@ description: Creates and manages product backlog markdown files with epics, user
 ## Workflow
 
 1. Read project specs for context:
-   - **Product Vision**: `.claude/project/docs/product-vision.md`
-   - **Architecture**: `.claude/project/docs/architecture/architecture.md`
-   - **Constitution**: `.claude/project/docs/governance/constitution.md`
+   - **Product Vision**: `.claude/projects/docs/product-vision.md`
+   - **Architecture**: `.claude/projects/docs/architecture.md`
+   - **Constitution**: `.claude/projects/docs/constitution.md`
 
 2. Read the backlog template: [template/backlog.md](template/backlog.md)
 
-3. Check if `backlog.md` exists at `project/workflow/backlog.md`. If not, create it from the template.
+3. Check if `backlog.md` exists at `.claude/projects/backlog/backlog.md`. If not, create it from the template.
 
 4. Create or update the backlog following the template structure:
    - Fill the **Epics Overview** table with all epics and their priorities
@@ -52,4 +57,4 @@ description: Creates and manages product backlog markdown files with epics, user
 - Stories use the correct format: "As a [user], I want [what] so that [why]"
 - Priority legend, status values, and ID conventions match the template
 - Epics Overview table accurately reflects current counts and statuses
-- File written to correct path: `project/workflow/backlog.md`
+- File written to correct path: `.claude/projects/backlog/backlog.md`

@@ -1,10 +1,9 @@
 # Sprint
 
-**Project:** `[Project Name]`
 **Sprint #:** `[X]`
+**Milestone:** `[e.g. v.0.1.0]`
 **Goal:** `[One sentence — what user-facing outcome does this sprint deliver?]`
-**Dates:** `[YYYY-MM-DD]` → `[YYYY-MM-DD]`
-**Capacity:** `[Hours/days available this sprint]`
+**Due Date:** `[YYYY-MM-DD]`
 
 ---
 
@@ -23,14 +22,12 @@
 
 > Quick-glance table of everything in this sprint. Update statuses here daily.
 
-| ID     | Type  | Epic       | Title     | Points | Status | Depends On | Blocked By |
-| ------ | ----- | ---------- | --------- | ------ | ------ | ---------- | ---------- |
-| US-NNN | Story | `[EP-NNN]` | `[title]` | `[X]`  | Todo   | `-`        |            |
-| TS-NNN | Tech  | `-`        | `[title]` | `[X]`  | Todo   | `-`        |            |
-| BG-NNN | Bug   | `-`        | `[title]` | `[X]`  | Todo   | `-`        |            |
-| SK-NNN | Spike | `[EP-NNN]` | `[title]` | `[X]`  | Todo   | US-NNN     | US-NNN     |
-
-**Total Points:** `[X]`
+| ID     | Type  | Title     | Points | Status | Blocked By |
+| ------ | ----- | --------- | ------ | ------ | ---------- |
+| US-NNN | Story | `[title]` | `[X]`  | Ready  | `-`        |
+| TS-NNN | Tech  | `[title]` | `[X]`  | Ready  | `-`        |
+| BG-NNN | Bug   | `[title]` | `[X]`  | Ready  | `-`        |
+| SK-NNN | Spike | `[title]` | `[X]`  | Ready  | US-NNN     |
 
 ---
 
@@ -42,13 +39,17 @@
 
 > **As a** `[user role]`, **I want** `[capability]` **so that** `[benefit]`.
 
-**Epic:** `[EP-NNN]`  
-**Priority:** `[Must / Should / Nice]`  
-**Story Points:** `[Total: sum of task complexities]`  
-**Depends on:** `[Which US/TS/SK/BG this user story depends on, if known]`
-**Status:** `[Todo / In Progress / Done / Partial]`
+**Labels:** `[e.g. setup, firebase, backend]`
+**Points:** `[sum of task complexities]`
+**Status:** `[Ready / In Progress / Done / Blocked]`
+**TDD:** `[true / false]`
+**Priority:** `[P0 / P1 / P2]`
+**Is Blocking:** `[None / TS-NNN, US-NNN]`
+**Blocked By:** `[None / SK-NNN]`
+**Start Date:** `[YYYY-MM-DD or empty]`
+**Target Date:** `[YYYY-MM-DD or empty]`
 
-**Acceptance Criteria (Story Level):**
+**Acceptance Criteria:**
 
 - [ ] `[User-facing behavior that must be true when the story is done]`
 - [ ] `[User-facing behavior]`
@@ -57,29 +58,31 @@
 **Tasks:**
 
 - **T-001:** `[Task title]`
-  - **Status:** `[Todo / In Progress / In Review / Done / Blocked]`
-  - **Complexity:** `[S / M / L]` `(S=1, M=2, L=3 points)`
-  - **Depends on:** `[None / TASK-XXX]`
-  - **Acceptance Criteria (Task Level):**
+  - **Description:** `[What this task accomplishes]`
+  - **Status:** `[Backlog / In Progress / In Review / Done / Blocked]`
+  - **Priority:** `[P0 / P1 / P2]`
+  - **Complexity:** `[S / M / L]`
+  - **Labels:** `[e.g. backend, firebase, setup]`
+  - **Blocked by:** `[None / T-XXX]`
+  - **Acceptance Criteria:**
     - [ ] `[Specific, testable, implementation-level criterion]`
     - [ ] `[Specific criterion]`
     - [ ] `[Specific criterion]`
-  - **Files touched:** `[e.g. src/components/..., src/services/...]`
-  - **QA loops:** `[0/3]`
-  - **Code Review loops:** `[0/2]`
-  - **Notes for Builder:** `[Context, gotchas, constraints, relevant decisions.md entries]`
+  - **Start date:** `[YYYY-MM-DD or empty]`
+  - **Target date:** `[YYYY-MM-DD or empty]`
 
 - **T-002:** `[Task title]`
-  - **Status:** `[Todo]`
+  - **Description:** `[What this task accomplishes]`
+  - **Status:** `[Backlog]`
+  - **Priority:** `[P0 / P1 / P2]`
   - **Complexity:** `[S / M / L]`
-  - **Depends on:** `[TASK-001]`
-  - **Acceptance Criteria (Task Level):**
+  - **Labels:** `[e.g. database, firestore, backend]`
+  - **Blocked by:** `[T-001]`
+  - **Acceptance Criteria:**
     - [ ] `[Criterion]`
     - [ ] `[Criterion]`
-  - **Files touched:**
-  - **QA loops:** `[0/3]`
-  - **Code Review loops:** `[0/2]`
-  - **Notes for Builder:**
+  - **Start date:**
+  - **Target date:**
 
 ---
 
@@ -89,10 +92,15 @@
 
 > **As a** `[developer / system / codebase]`, **I need** `[what]` **so that** `[why]`.
 
-**Priority:** `[Must / Should / Nice]`
-**Story Points:** `[Total]`  
-**Depends on:** `[Which US/TS/SK/BG this technical story depends on, if known]`
-**Status:** `[Todo / In Progress / Done / Partial]`
+**Labels:** `[e.g. infra, backend, refactor]`
+**Points:** `[sum of task complexities]`
+**Status:** `[Ready / In Progress / Done / Blocked]`
+**TDD:** `[true / false]`
+**Priority:** `[P0 / P1 / P2]`
+**Is Blocking:** `[None / US-NNN]`
+**Blocked By:** `[None / SK-NNN]`
+**Start Date:** `[YYYY-MM-DD or empty]`
+**Target Date:** `[YYYY-MM-DD or empty]`
 
 **Acceptance Criteria:**
 
@@ -102,16 +110,17 @@
 **Tasks:**
 
 - **T-NNN:** `[Task title]`
-  - **Status:** `[Todo]`
+  - **Description:** `[What this task accomplishes]`
+  - **Status:** `[Backlog]`
+  - **Priority:** `[P0 / P1 / P2]`
   - **Complexity:** `[S / M / L]`
-  - **Depends on:** `[None]`
-  - **Acceptance Criteria (Task Level):**
+  - **Labels:** `[e.g. setup, backend]`
+  - **Blocked by:** `[None]`
+  - **Acceptance Criteria:**
     - [ ] `[Criterion]`
     - [ ] `[Criterion]`
-  - **Files touched:**
-  - **QA loops:** `[0/3]`
-  - **Code Review loops:** `[0/2]`
-  - **Notes for Builder:**
+  - **Start date:**
+  - **Target date:**
 
 ---
 
@@ -119,36 +128,40 @@
 
 #### BG-NNN: `[Short bug description]`
 
-> **What's broken:** `[Observed behavior]`  
-> **Expected:** `[What should happen]`  
-> **Actual:** `[What happens instead]`  
+> **What's broken:** `[Observed behavior]`
+> **Expected:** `[What should happen]`
+> **Actual:** `[What happens instead]`
 > **Reproduce:** `[Steps to trigger the bug]`
 
-**Severity:** `[Critical / Major / Minor]`  
-**Found in:** `[Which story/task introduced it, if known]`  
-**Story Points:** `[Total]`  
-**Depends on:** `[Which US/TS/SK/BG this bug depends on, if known]`
-**Status:** `[Todo / In Progress / Done]`
+**Labels:** `[e.g. bugfix, testing, frontend]`
+**Points:** `[sum of task complexities]`
+**Status:** `[Ready / In Progress / Done / Blocked]`
+**TDD:** `[true / false]`
+**Priority:** `[P0 / P1 / P2]`
+**Is Blocking:** `[None]`
+**Blocked By:** `[None]`
+**Start Date:** `[YYYY-MM-DD or empty]`
+**Target Date:** `[YYYY-MM-DD or empty]`
 
 **Acceptance Criteria:**
 
 - [ ] `[Bug no longer reproduces following the steps above]`
 - [ ] `[Regression test added]`
-- [ ] `[No side effects on related functionality]`
 
 **Tasks:**
 
 - **T-NNN:** `[Task title]`
-  - **Status:** `[Todo]`
+  - **Description:** `[What this task accomplishes]`
+  - **Status:** `[Backlog]`
+  - **Priority:** `[P0 / P1 / P2]`
   - **Complexity:** `[S / M / L]`
-  - **Depends on:** `[None]`
-  - **Acceptance Criteria (Task Level):**
+  - **Labels:** `[e.g. bugfix, testing]`
+  - **Blocked by:** `[None]`
+  - **Acceptance Criteria:**
     - [ ] `[Criterion]`
     - [ ] `[Criterion]`
-  - **Files touched:**
-  - **QA loops:** `[0/3]`
-  - **Code Review loops:** `[0/2]`
-  - **Notes for Builder:**
+  - **Start date:**
+  - **Target date:**
 
 ---
 
@@ -160,31 +173,36 @@
 > **To decide:** `[What decision this unblocks]`
 > **Timebox:** `[Max hours — spikes must have a hard limit]`
 
-**Depends on:** `[Which US/TS this spike depends on, e.g. US-003]`  
-**Status:** `[Todo / In Progress / Done]`  
+**Labels:** `[e.g. spike, research, analysis]`
 **Points:** `[S or M only — spikes should never be L]`
+**Status:** `[Ready / In Progress / Done]`
+**TDD:** `false`
+**Priority:** `[P0 / P1 / P2]`
+**Is Blocking:** `[None / TS-NNN]`
+**Blocked By:** `[None]`
+**Start Date:** `[YYYY-MM-DD or empty]`
+**Target Date:** `[YYYY-MM-DD or empty]`
 
-**Deliverable:**
+**Acceptance Criteria:**
 
 - [ ] `[Decision documented in decisions.md]`
 - [ ] `[Recommendation with pros/cons/tradeoffs]`
 - [ ] `[Prototype or proof of concept (if applicable)]`
 
+**Tasks:**
+
+- **T-NNN:** `[Deliverable title]`
+  - **Description:** `[What this task accomplishes]`
+  - **Status:** `[Backlog]`
+  - **Priority:** `[P1]`
+  - **Complexity:** `[S / M]`
+  - **Labels:** `[e.g. analysis, documentation]`
+  - **Blocked by:** `[None]`
+  - **Acceptance Criteria:**
+    - [ ] `[Criterion]`
+    - [ ] `[Criterion]`
+  - **Start date:**
+  - **Target date:**
+
 > Spikes do NOT go through the QA / Code Reviewer pipeline.
 > They produce a decision, not shippable code.
-
----
-
-<!-- DO NOT INCLUDE THIS SECTION IN THE SPRINT DOCUMENT -->
-
-<!-- ## Agent Routing by Story Type
-
-| Story Type      | Product Owner | Builder | QA Agent | Code Reviewer | Scrum Master |
-| --------------- | ------------- | ------- | -------- | ------------- | ------------ |
-| User Story      | Creates       | Builds  | Reviews  | Reviews       | Tracks       |
-| Technical Story | Creates       | Builds  | Reviews  | Reviews       | Tracks       |
-| Bug             | Creates       | Fixes   | Reviews  | Reviews       | Tracks       |
-| Spike           | Creates       | —       | —        | —             | Tracks       |
-
-> Spikes bypass the build pipeline. They produce decisions, not code.
-> All other types follow the full pipeline: Builder / npm run check / QA / Code Reviewer / commit. -->

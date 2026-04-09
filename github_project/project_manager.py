@@ -21,6 +21,9 @@ Examples:
     python github_project/project_manager.py create-sprint --number 2 --milestone v0.2.0
     python github_project/project_manager.py view SK-001 --ready-tasks
     python github_project/project_manager.py view SK-001 --ready-tasks --json
+    python github_project/project_manager.py sync
+    python github_project/project_manager.py sync --dry-run
+    python github_project/project_manager.py sync --sync-scope stories
 """
 from __future__ import annotations
 
@@ -915,6 +918,22 @@ def cmd_sprint_info(args: Any) -> int:
     return 0
 
 
+def cmd_sync(args: Any) -> int:
+    """Delegate to sync_project.py with the appropriate arguments."""
+    import subprocess
+
+    script = Path(__file__).parent / "sync_project.py"
+    cmd = [sys.executable, str(script)]
+    if args.dry_run:
+        cmd.append("--dry-run")
+    if args.sync_scope != "all":
+        cmd.extend(["--sync", args.sync_scope])
+    if args.delete_all:
+        cmd.append("--delete-all")
+    result = subprocess.run(cmd)
+    return result.returncode
+
+
 # ---------------------------------------------------------------------------
 # CLI parser
 # ---------------------------------------------------------------------------
@@ -1054,6 +1073,23 @@ examples:
     # --- sprint-info ---
     sub.add_parser("sprint-info", help="Print current sprint number")
 
+    # --- sync ---
+    sy = sub.add_parser("sync", help="Sync issues to GitHub Projects via sync_project.py")
+    sy.add_argument(
+        "--dry-run", action="store_true", help="Preview changes without modifying anything"
+    )
+    sy.add_argument(
+        "--sync-scope",
+        choices=["all", "stories", "sprint"],
+        default="all",
+        help="Which items to sync: all (default), stories only, or sprint tasks only",
+    )
+    sy.add_argument(
+        "--delete-all",
+        action="store_true",
+        help="Close all issues and remove them from the project",
+    )
+
     return ap
 
 
@@ -1073,6 +1109,7 @@ def main() -> int:
         "update": cmd_update,
         "progress": cmd_progress,
         "sprint-info": cmd_sprint_info,
+        "sync": cmd_sync,
     }
     if args.command in direct_commands:
         return direct_commands[args.command](args)

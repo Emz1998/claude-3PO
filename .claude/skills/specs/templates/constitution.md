@@ -24,11 +24,13 @@ Update this document during retrospectives when new patterns are established. Lo
 > Define 4-8 principles that guide every decision in the project. When two goals conflict, contributors resolve by consulting this ordered list. Higher-numbered principles yield to lower-numbered ones.
 >
 > Each principle should be:
+>
 > - Actionable (tells someone what to do, not just what to value)
 > - Specific enough to resolve a real disagreement
 > - Ordered by priority relative to the others
 >
 > Examples of the kind of thing to write here:
+>
 > - "Ship working software over comprehensive documentation"
 > - "Simplicity over cleverness — three clear lines beat one clever one"
 > - "Automate anything a tool can check — manual enforcement is a process bug"
@@ -125,13 +127,13 @@ Update this document during retrospectives when new patterns are established. Lo
 
 > Define naming styles for each code element in your stack. Remove rows that don't apply, add rows for elements specific to your framework.
 
-| Element       | Style         | Example           |
-| ------------- | ------------- | ----------------- |
-| `[Element]`   | `[Style]`     | `[Example]`       |
-| `[Element]`   | `[Style]`     | `[Example]`       |
-| `[Element]`   | `[Style]`     | `[Example]`       |
-| `[Element]`   | `[Style]`     | `[Example]`       |
-| `[Element]`   | `[Style]`     | `[Example]`       |
+| Element     | Style     | Example     |
+| ----------- | --------- | ----------- |
+| `[Element]` | `[Style]` | `[Example]` |
+| `[Element]` | `[Style]` | `[Example]` |
+| `[Element]` | `[Style]` | `[Example]` |
+| `[Element]` | `[Style]` | `[Example]` |
+| `[Element]` | `[Style]` | `[Example]` |
 
 > State any general naming rules (e.g. "avoid abbreviations unless universally understood").
 
@@ -221,7 +223,7 @@ Key settings (for reference only):
 
 # Testing Policy
 
-## What Requires Tests
+## Required Tests
 
 > List the categories of code that must have tests.
 
@@ -229,7 +231,7 @@ Key settings (for reference only):
 - `[e.g. Components with conditional rendering or state management]`
 - `[e.g. Bug fixes require a regression test]`
 
-## What Does NOT Require Tests
+## Exempt from Tests
 
 > List what is explicitly exempt from test requirements.
 
@@ -245,138 +247,50 @@ Key settings (for reference only):
 - `[Test rule, e.g. keep tests independent — no shared mutable state]`
 - `[Test rule, e.g. prefer integration tests for critical paths, unit tests for logic]`
 - **Coverage target:** `[e.g. X% or "cover critical paths, not everything"]`
-
-## Check Command
-
-> Define the single command that must pass before any task enters review.
-
-```bash
-[e.g. npm run check — which runs tsc --noEmit && eslint src/ && vitest run]
-```
+- **Check command:** `[e.g. npm run check]`
 
 ---
 
 # Definition of Done
 
-## Task Level
+> Define checklists for each level. A task/sprint/release is Done when ALL items at its level pass.
 
-> **Checked by:** `[e.g. QA Agent -> Code Reviewer -> You]`
-> A task is Done when ALL of the following pass.
+## Task Done
 
-### Automated Gate (`[your check command]`)
+- [ ] `[Automated gate item, e.g. check command passes with zero errors]`
+- [ ] `[QA item, e.g. acceptance criteria verified]`
+- [ ] `[QA item, e.g. critical logic paths covered by tests]`
+- [ ] `[Review item, e.g. code follows this constitution's standards]`
+- [ ] `[Review item, e.g. error handling on external calls]`
+- [ ] `[Final item, e.g. committed with conventional message]`
+- [ ] `[Final item, e.g. task status updated]`
 
-- [ ] `[e.g. Type checker — zero errors]`
-- [ ] `[e.g. Linter — no new warnings or errors]`
-- [ ] `[e.g. Test suite — all tests passing]`
+## Story Done
 
-### QA Pass
+> A story is done when all its tasks pass Task Done and the story-level criteria below are met.
 
-> Define what QA verifies for each completed task.
+- [ ] All tasks under this story meet Task Done
+- [ ] Acceptance criteria from the story are verified end-to-end
+- [ ] No regressions introduced to existing functionality
+- [ ] Code reviewed against this constitution's coding standards
+- [ ] Story status updated in sprint backlog
 
-- [ ] `[e.g. Every acceptance criterion from sprint.md verified]`
-- [ ] `[e.g. New tests cover the task's critical logic paths]`
-- [ ] `[Project-specific QA checks:]`
-  - [ ] `[e.g. AI integration: response validation confirmed]`
-  - [ ] `[e.g. API changes: request/response contracts verified]`
-  - [ ] `[e.g. UI changes: renders correctly in target environment]`
+## Sprint Done
 
-### Code Review Pass
+- [ ] `[e.g. All completed stories meet story-level DoD]`
+- [ ] `[e.g. Features work together without conflicts]`
+- [ ] `[e.g. Codebase matches architecture.md]`
+- [ ] `[e.g. Smoke test: sprint goal works end-to-end]`
+- [ ] `[e.g. Living docs updated (architecture.md, decisions.md, constitution.md)]`
 
-> Define what code review checks against this constitution.
+## Out of Scope
 
-- [ ] `[e.g. Naming conventions followed]`
-- [ ] `[e.g. Error handling present on all external service calls]`
-- [ ] `[e.g. Files placed in correct directories per architecture.md]`
-- [ ] `[Language-specific checks:]`
-  - [ ] `[e.g. No 'any' types without justifying comment]`
-  - [ ] `[e.g. Type hints on all public functions]`
-- [ ] `[Project-specific checks:]`
-  - [ ] `[e.g. AI prompts in designated directory]`
-  - [ ] `[e.g. Environment variables used for secrets]`
+> List items explicitly NOT required for the current milestone to prevent scope creep.
 
-### What Review Does NOT Check
-
-> List what is explicitly out of scope for reviewers to prevent scope creep.
-
-- `[e.g. Formatting — the formatter handles this]`
-- `[e.g. Whether the feature works — QA handles this]`
-- `[e.g. Architectural decisions — handled at sprint close]`
-
-### Final
-
-- [ ] `[e.g. Committed with descriptive message following commit conventions]`
-- [ ] `[e.g. Sprint task status updated to Done]`
-
----
-
-## Sprint Level
-
-> **Checked by:** `[e.g. Scrum Master (Sprint Close) -> You]`
-> A sprint is Done when ALL of the following pass.
-
-### Sprint Close Review
-
-> Define what is verified at sprint close.
-
-- [ ] `[e.g. All completed tasks meet task-level DoD]`
-- [ ] `[e.g. Integration coherence: features work together without conflicts]`
-- [ ] `[e.g. Architectural alignment: codebase matches architecture.md]`
-- [ ] `[e.g. No critical untracked technical debt introduced]`
-
-### Manual Verification
-
-> Define what the project owner manually checks at sprint close.
-
-- [ ] `[e.g. Smoke test: launch app, walk through sprint goal end-to-end]`
-- [ ] `[e.g. No broken flows from previous sprints (regression check)]`
-- [ ] `[e.g. Sprint summary filled in sprint.md]`
-- [ ] `[e.g. retro.md updated with observations]`
-- [ ] `[e.g. Living docs updated as needed: architecture.md, decisions.md, constitution.md, backlog.md]`
-
----
-
-## Release Level
-
-> **Checked by:** `[e.g. You]`
-> The product is ready to ship when ALL of the following pass.
-
-### Quality
-
-- [ ] `[e.g. All sprint-level criteria met for final sprint]`
-- [ ] `[e.g. Full check command passing across entire codebase]`
-- [ ] `[e.g. All MVP features functional end-to-end:]`
-  - [ ] `[Feature 1]`
-  - [ ] `[Feature 2]`
-  - [ ] `[Feature 3]`
-- [ ] `[e.g. Core user flow works (sign up, log in, primary journey)]`
-- [ ] `[e.g. Data persistence verified]`
-
-### Stability
-
-- [ ] `[e.g. App launches reliably in target environment]`
-- [ ] `[e.g. Performance-sensitive features respond within X seconds]`
-- [ ] `[e.g. Graceful degradation when external dependencies unavailable]`
-- [ ] `[e.g. No console errors during normal usage]`
-
-### Ship Readiness
-
-- [ ] `[e.g. architecture.md reflects final system state]`
-- [ ] `[e.g. decisions.md is current]`
-- [ ] `[e.g. README with setup/run instructions]`
-- [ ] `[e.g. Build/deploy output verified]`
-
----
-
-## What Done Does NOT Require
-
-> List items explicitly out of scope for the current milestone to prevent scope creep at the quality gate.
-
-- [ ] `[e.g. Performance benchmarking or load testing]`
-- [ ] `[e.g. Security audit]`
-- [ ] `[e.g. Accessibility audit]`
-- [ ] `[e.g. Cross-platform testing]`
-- [ ] `[e.g. CI/CD pipeline]`
-- [ ] `[e.g. Monitoring or alerting]`
+- `[e.g. Performance benchmarking]`
+- `[e.g. Security audit]`
+- `[e.g. Cross-platform testing]`
+- `[e.g. CI/CD pipeline]`
 
 ---
 
@@ -384,13 +298,13 @@ Key settings (for reference only):
 
 > List the tools that enforce this constitution.
 
-| Tool           | Choice               |
-| -------------- | -------------------- |
-| Formatter      | `[e.g. Prettier]`    |
-| Linter         | `[e.g. ESLint]`      |
-| Type Checker   | `[e.g. tsc --strict]`|
-| Test Framework | `[e.g. Vitest]`      |
-| Check Command  | `[e.g. npm run check]`|
+| Tool           | Choice                 |
+| -------------- | ---------------------- |
+| Formatter      | `[e.g. Prettier]`      |
+| Linter         | `[e.g. ESLint]`        |
+| Type Checker   | `[e.g. tsc --strict]`  |
+| Test Framework | `[e.g. Vitest]`        |
+| Check Command  | `[e.g. npm run check]` |
 
 ---
 
@@ -398,13 +312,13 @@ Key settings (for reference only):
 
 > Define how each agent in your workflow uses this document. Remove or add rows to match your agent setup.
 
-| Agent           | Uses Constitution For                                    |
-| --------------- | -------------------------------------------------------- |
-| `[Agent role]`  | `[What this agent checks against in this document]`      |
-| `[Agent role]`  | `[What this agent checks against in this document]`      |
-| `[Agent role]`  | `[What this agent checks against in this document]`      |
-| `[Agent role]`  | `[What this agent checks against in this document]`      |
-| `[Agent role]`  | `[What this agent checks against in this document]`      |
+| Agent          | Uses Constitution For                               |
+| -------------- | --------------------------------------------------- |
+| `[Agent role]` | `[What this agent checks against in this document]` |
+| `[Agent role]` | `[What this agent checks against in this document]` |
+| `[Agent role]` | `[What this agent checks against in this document]` |
+| `[Agent role]` | `[What this agent checks against in this document]` |
+| `[Agent role]` | `[What this agent checks against in this document]` |
 
 ---
 

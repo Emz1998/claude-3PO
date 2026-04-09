@@ -1,0 +1,36 @@
+{
+  "session_id": "5e53c7e5-51d6-412f-acb6-84c017e4823b",
+  "workflow_active": true,
+  "workflow_type": "implement",
+  "phase": "explore",
+  "completed_phases": [],
+  "tdd": false,
+  "story_id": "SK-001",
+  "skip": [],
+  "instructions": "",
+  "agents": [],
+  "plan": {
+    "file_path": null,
+    "written": false,
+    "review": {
+      "iteration": 0,
+      "scores": null,
+      "status": null
+    }
+  },
+  "tasks": [],
+  "tests": {
+    "file_paths": [],
+    "review_result": null,
+    "executed": false
+  },
+  "docs_to_read": null,
+  "code_files": {
+    "file_paths": [],
+    "review_result": null
+  },
+  "validation_result": null,
+  "pr_status": "pending",
+  "ci_status": "pending",
+  "report_written": false
+}
