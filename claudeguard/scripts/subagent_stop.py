@@ -1,0 +1,51 @@
+#!/usr/bin/env python3
+"""SubagentStop hook — validates agent reports and runs resolvers.
+
+last_assistant_message is only available in SubagentStop.
+Used to extract scores (plan/code review) or verdicts (test review).
+"""
+
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from guardrails import STOP_GUARDS
+from utils.hook import Hook
+from utils.state_store import StateStore
+from utils.recorder import record_agent_completion
+from utils.resolvers import resolve
+from config import Config
+
+
+def main() -> None:
+    hook_input = Hook.read_stdin()
+
+    state = StateStore(Path(__file__).resolve().parent / "state.json")
+    if not state.get("workflow_active"):
+        sys.exit(0)
+    if hook_input.get("session_id") != state.get("session_id"):
+        sys.exit(0)
+
+    config = Config()
+    agent_id = hook_input.get("agent_id", "")
+
+    # Record agent completion by agent_id
+    if agent_id:
+        record_agent_completion(agent_id, state)
+        resolve(config, state)
+
+    # Review phases: validate the agent report (scores/verdict)
+    phase = state.current_phase
+    if phase in ("plan-review", "test-review", "code-review"):
+        guard = STOP_GUARDS.get("agent_report")
+        if guard:
+            decision, message = guard(hook_input, config, state)
+            if decision == "block":
+                Hook.block(message)
+
+    sys.exit(0)
+
+
+if __name__ == "__main__":
+    main()

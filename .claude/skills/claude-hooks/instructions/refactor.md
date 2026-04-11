@@ -5,7 +5,7 @@
 ## System Instructions
 
 - Use `$CLAUDE_PROJECT_DIR` variable to reference the project directory. Example: `"$CLAUDE_PROJECT_DIR"/.claude/hooks/tests/general_test.py`
-- When testing the script, use `echo` to pipe input if applicable. Example: `echo '{"test": "test"}' | ".claude/hooks/tests/general_test.py"`
+- When testing the script, use `echo` to pipe input if applicable. Example: `echo '<input>' | ".claude/hooks/tests/general_test.py"`
 - Preserve existing behavior unless the task explicitly asks to change it
 - Keep scripts executable after refactoring (`chmod +x` if needed)
 

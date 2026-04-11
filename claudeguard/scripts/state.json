@@ -1,0 +1,87 @@
+{
+  "session_id": "d0be9cd3-ccb6-40b7-94f4-0f08b16a7786",
+  "workflow_active": true,
+  "workflow_type": "implement",
+  "phases": [
+    {
+      "name": "explore",
+      "status": "completed"
+    },
+    {
+      "name": "research",
+      "status": "in_progress"
+    }
+  ],
+  "sub_phases": [],
+  "tdd": false,
+  "story_id": "SK-001",
+  "skip": [],
+  "instructions": "",
+  "agents": [
+    {
+      "name": "Explore",
+      "status": "completed",
+      "tool_use_id": "a4cc14a2b23c3ea82"
+    },
+    {
+      "name": "Explore",
+      "status": "completed",
+      "tool_use_id": "ab85fa8b80e147143"
+    },
+    {
+      "name": "Explore",
+      "status": "completed",
+      "tool_use_id": "a7a978878446c8b1e"
+    },
+    {
+      "name": "Research",
+      "status": "in_progress",
+      "tool_use_id": "a1bf812da1cee6089"
+    },
+    {
+      "name": "Research",
+      "status": "in_progress",
+      "tool_use_id": "a70f613863c23cd2a"
+    }
+  ],
+  "plan": {
+    "file_path": null,
+    "written": false,
+    "review": {
+      "iteration": 0,
+      "scores": {
+        "confidence_score": 0,
+        "quality_score": 0
+      },
+      "status": null
+    }
+  },
+  "tasks": [],
+  "tests": {
+    "file_paths": [],
+    "review_result": null,
+    "executed": false
+  },
+  "code_files_to_write": [],
+  "code_files": {
+    "file_paths": [],
+    "review": {
+      "iteration": 0,
+      "scores": {
+        "confidence_score": 0,
+        "quality_score": 0
+      },
+      "status": null
+    }
+  },
+  "quality_check_result": null,
+  "pr": {
+    "status": "pending",
+    "number": null
+  },
+  "ci-check": {
+    "status": "pending",
+    "results": []
+  },
+  "report_written": false
+}

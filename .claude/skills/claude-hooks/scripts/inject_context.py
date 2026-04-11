@@ -9,7 +9,7 @@ import re
 import sys
 
 
-VALID_ACTIONS = ["create", "test"]
+VALID_ACTIONS = ["create", "test", "refactor"]
 VALID_HOOK_EVENTS = [
     "pre-tool",
     "post-tool",
@@ -106,7 +106,11 @@ def get_user_instructions(prompt: str) -> str:
     return prompt
 
 
-def get_hook_event(flags: dict[str, str]) -> str:
+def get_hook_event(prompt: str) -> str | None:
+    flags = get_flags(prompt)
+    action = get_action(prompt)
+    if action != "test":
+        return None
     if not flags:
         raise ValueError("Error: No hook event found in prompt")
     hook_event = flags.get("hook-event", "")
@@ -119,7 +123,11 @@ def get_hook_event(flags: dict[str, str]) -> str:
     return hook_event
 
 
-def get_hook_file_path(flags: dict[str, str]) -> str:
+def get_hook_file_path(prompt: str) -> str | None:
+    flags = get_flags(prompt)
+    action = get_action(prompt)
+    if action != "test":
+        return None
     if not flags:
         raise ValueError("Error: No hook file path found in prompt")
     hook_file_path = flags.get("file-path", "")
@@ -130,7 +138,11 @@ def get_hook_file_path(flags: dict[str, str]) -> str:
     return hook_file_path
 
 
-def get_tool_name(flags: dict[str, str]) -> str:
+def get_tool_name(prompt: str) -> str | None:
+    flags = get_flags(prompt)
+    action = get_action(prompt)
+    if action != "test":
+        return None
     if not flags:
         raise ValueError("Error: No tool name found in prompt")
     tool_name = flags.get("tool-name", "")
@@ -144,7 +156,7 @@ def get_tool_name(flags: dict[str, str]) -> str:
 
 
 def get_action(prompt: str) -> str:
-    split_prompt = prompt.split(" ")
+    split_prompt = prompt.split(" ", 1)
     if len(split_prompt) < 1:
         raise ValueError("Error: No action found in prompt")
 
@@ -202,12 +214,11 @@ def main() -> None:
     prompt = args.prompt
 
     try:
-        flags = get_flags(prompt)
-        user_instructions = get_user_instructions(prompt)
         action = get_action(prompt)
-        hook_event = get_hook_event(flags)
-        tool_name = get_tool_name(flags)
-        hook_file_path = get_hook_file_path(flags)
+        user_instructions = get_user_instructions(prompt)
+        hook_event = get_hook_event(prompt)
+        tool_name = get_tool_name(prompt)
+        hook_file_path = get_hook_file_path(prompt)
     except ValueError as e:
         print(e, file=sys.stderr)
         sys.exit(2)

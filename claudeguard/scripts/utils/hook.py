@@ -1,0 +1,80 @@
+from typing import Any
+import sys
+import json
+
+
+class Hook:
+
+    @staticmethod
+    def read_stdin() -> dict[str, Any]:
+        try:
+            raw = sys.stdin.read()
+            if not raw.strip():
+                print("Error: empty stdin", file=sys.stderr)
+                sys.exit(1)
+            return json.loads(raw)
+        except json.JSONDecodeError as e:
+            print(f"Error: invalid JSON on stdin: {e}", file=sys.stderr)
+            sys.exit(1)
+
+    @staticmethod
+    def advanced_output(output: dict[str, Any]) -> None:
+        print(json.dumps(output))
+        sys.exit(0)
+
+    @staticmethod
+    def block(message: str) -> None:
+        print(message, file=sys.stderr)
+        sys.exit(2)
+
+    @staticmethod
+    def advanced_block(hook_event_name: str, message: str) -> None:
+        output = {
+            "hookSpecificOutput": {
+                "hookEventName": hook_event_name,
+                "permissionDecision": "deny",
+                "permissionDecisionReason": message,
+            },
+        }
+        Hook.advanced_output(output)
+
+    @staticmethod
+    def success_response(message: str) -> None:
+        print(message)
+        sys.exit(0)
+
+    @staticmethod
+    def debug(message: str) -> None:
+        print(message, file=sys.stderr)
+        sys.exit(1)
+
+    @staticmethod
+    def system_message(message: str) -> None:
+        print(json.dumps({"systemMessage": message}))
+        sys.exit(0)
+
+    @staticmethod
+    def send_context(hook_event_name: str, context: str) -> None:
+        match hook_event_name:
+            case "PreToolUse":
+                output: dict[str, Any] = {
+                    "systemMessage": context,
+                    "hookSpecificOutput": {
+                        "hookEventName": hook_event_name,
+                        "permissionDecision": "allow",
+                        "permissionDecisionReason": "",
+                        "additionalContext": context,
+                    },
+                }
+            case "PostToolUse" | "UserPromptSubmit" | "SubagentStart" | "SessionStart":
+                output = {
+                    "systemMessage": context,
+                    "hookSpecificOutput": {
+                        "hookEventName": hook_event_name,
+                        "additionalContext": context,
+                    },
+                }
+            case _:
+                raise ValueError(f"Invalid hook event name: {hook_event_name}")
+        Hook.advanced_output(output)
+        sys.exit(0)

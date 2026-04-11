@@ -1,6 +1,6 @@
 {
   "session_id": "5e53c7e5-51d6-412f-acb6-84c017e4823b",
-  "workflow_active": true,
+  "workflow_active": false,
   "workflow_type": "implement",
   "phase": "explore",
   "completed_phases": [],
