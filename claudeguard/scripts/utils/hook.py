@@ -54,6 +54,12 @@ class Hook:
         sys.exit(0)
 
     @staticmethod
+    def discontinue(reason: str) -> None:
+        output = {"continue": False, "stopReason": reason}
+        print(json.dumps(output))
+        sys.exit(0)
+
+    @staticmethod
     def send_context(hook_event_name: str, context: str) -> None:
         match hook_event_name:
             case "PreToolUse":

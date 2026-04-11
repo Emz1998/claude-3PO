@@ -42,7 +42,6 @@ DEFAULT_STATE = {
     "workflow_active": True,
     "workflow_type": "implement",
     "phases": [],
-    "sub_phases": [],
     "tdd": False,
     "story_id": "DRY-001",
     "skip": [],
@@ -51,22 +50,19 @@ DEFAULT_STATE = {
     "plan": {
         "file_path": None,
         "written": False,
-        "review": {
-            "iteration": 0,
-            "scores": {"confidence_score": 0, "quality_score": 0},
-            "status": None,
-        },
+        "revised": False,
+        "reviews": [],
     },
     "tasks": [],
-    "tests": {"file_paths": [], "review_result": None, "executed": False},
+    "tests": {"file_paths": [], "executed": False, "reviews": [], "files_to_revise": [], "files_revised": []},
     "code_files_to_write": [],
     "code_files": {
         "file_paths": [],
-        "review": {
-            "iteration": 0,
-            "scores": {"confidence_score": 0, "quality_score": 0},
-            "status": None,
-        },
+        "reviews": [],
+        "tests_to_revise": [],
+        "tests_revised": [],
+        "files_to_revise": [],
+        "files_revised": [],
     },
     "quality_check_result": None,
     "pr": {"status": "pending", "number": None},
@@ -328,7 +324,7 @@ def simulate(tdd: bool) -> None:
 
     # SubagentStop with high scores -> pass
     s = read_state()
-    s["plan"]["review"]["scores"] = {"confidence_score": 0, "quality_score": 0}
+    s["plan"]["reviews"] = []
     STATE_PATH.write_text(json.dumps(s, indent=2))
 
     allow("High scores -> pass", SUBAGENT_STOP,
@@ -414,7 +410,7 @@ def simulate(tdd: bool) -> None:
           note="Should trigger refactor sub-phase")
 
     s = read_state()
-    s["code_files"]["review"]["scores"] = {"confidence_score": 0, "quality_score": 0}
+    s["code_files"]["reviews"] = []
     STATE_PATH.write_text(json.dumps(s, indent=2))
 
     allow("Code review high scores -> pass", SUBAGENT_STOP,

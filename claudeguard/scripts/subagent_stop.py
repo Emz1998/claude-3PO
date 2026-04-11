@@ -33,7 +33,10 @@ def main() -> None:
     # Record agent completion by agent_id
     if agent_id:
         record_agent_completion(agent_id, state)
-        resolve(config, state)
+        try:
+            resolve(config, state)
+        except ValueError as e:
+            Hook.discontinue(str(e))
 
     # Review phases: validate the agent report (scores/verdict)
     phase = state.current_phase

@@ -9,6 +9,7 @@ Returns:
         - raises ValueError = blocked
 """
 
+from fnmatch import fnmatch
 from urllib.parse import urlparse
 from typing import Literal, Callable, cast
 
@@ -20,6 +21,7 @@ from constants import (
     TEST_RUN_PATTERNS,
 )
 from .state_store import StateStore
+from .extractors import extract_skill_name, extract_agent_name
 from config import Config
 
 
@@ -96,7 +98,7 @@ def is_phase_allowed(hook_input: dict, config: Config, state: StateStore) -> Res
 
     current = state.current_phase
     status = state.get_phase_status(current)
-    next_phase = hook_input.get("tool_input", {}).get("skill", "")
+    next_phase = extract_skill_name(hook_input)
 
     # No phases yet — allow the first one
     if not current:
@@ -109,7 +111,13 @@ def is_phase_allowed(hook_input: dict, config: Config, state: StateStore) -> Res
 
     # Block if current phase isn't done
     if next_phase and status != "completed":
-        raise ValueError(f"Phase '{current}' is not completed")
+        if next_phase == current:
+            raise ValueError(
+                f"Already in '{current}' phase. Complete the phase tasks instead of re-invoking the skill."
+            )
+        raise ValueError(
+            f"Phase '{current}' is not completed. Finish it before transitioning to '{next_phase}'."
+        )
 
     # Validate ordering
     _, message = validate_order(current, next_phase, config.main_phases)
@@ -126,8 +134,7 @@ def _check_phase_commands(command: str, phase: str) -> None:
     allowed = COMMANDS_MAP.get(phase, [])
     if allowed and not any(command.startswith(cmd) for cmd in allowed):
         raise ValueError(
-            f"Command '{command}' not allowed in phase: {phase}"
-            f"\nAllowed: {allowed}"
+            f"Command '{command}' not allowed in phase: {phase}" f"\nAllowed: {allowed}"
         )
 
 
@@ -135,8 +142,7 @@ def _check_pr_create_command(command: str) -> None:
     """Validate gh pr create includes --json for parseable output."""
     if command.startswith("gh pr create") and "--json" not in command:
         raise ValueError(
-            f"PR create command must include --json flag"
-            f"\nGot: {command}"
+            f"PR create command must include --json flag" f"\nGot: {command}"
         )
 
 
@@ -144,8 +150,7 @@ def _check_ci_check_command(command: str) -> None:
     """Validate gh pr checks includes --json for parseable output."""
     if command.startswith("gh pr checks") and "--json" not in command:
         raise ValueError(
-            f"CI check command must include --json flag"
-            f"\nGot: {command}"
+            f"CI check command must include --json flag" f"\nGot: {command}"
         )
 
 
@@ -182,6 +187,17 @@ def is_command_allowed(hook_input: dict, config: Config, state: StateStore) -> R
 # ═══════════════════════════════════════════════════════════════════
 
 
+def _require_agent_completed(
+    agent_name: str, config: Config, state: StateStore
+) -> None:
+    """Block if the required agent hasn't completed yet."""
+    agents = [a for a in state.agents if a.get("name") == agent_name]
+    if not agents:
+        raise ValueError(f"{agent_name} agent must be invoked first")
+    if not all(a.get("status") == "completed" for a in agents):
+        raise ValueError(f"{agent_name} agent must complete before writing")
+
+
 def _is_writable_phase(phase: str, config: Config) -> None:
     writable = config.code_write_phases + config.docs_write_phases
     if phase not in writable:
@@ -189,14 +205,14 @@ def _is_writable_phase(phase: str, config: Config) -> None:
 
 
 def _is_plan_path_allowed(file_path: str, config: Config) -> None:
-    if file_path != config.plan_file_path:
-        raise ValueError(
-            f"Writing '{file_path}' not allowed" f"\nAllowed: {config.plan_file_path}"
-        )
+    expected = config.plan_file_path
+    if file_path != expected and not file_path.endswith(expected):
+        raise ValueError(f"Writing '{file_path}' not allowed" f"\nAllowed: {expected}")
 
 
 def _is_test_path_allowed(file_path: str) -> None:
-    if not any(file_path.endswith(p.lstrip("*")) for p in TEST_FILE_PATTERNS):
+    basename = file_path.rsplit("/", 1)[-1]
+    if not any(fnmatch(basename, p) for p in TEST_FILE_PATTERNS):
         raise ValueError(
             f"Writing '{file_path}' not allowed"
             f"\nAllowed patterns: {TEST_FILE_PATTERNS}"
@@ -212,10 +228,9 @@ def _is_code_path_allowed(file_path: str) -> None:
 
 
 def _is_report_path_allowed(file_path: str, config: Config) -> None:
-    if file_path != config.report_file_path:
-        raise ValueError(
-            f"Writing '{file_path}' not allowed" f"\nAllowed: {config.report_file_path}"
-        )
+    expected = config.report_file_path
+    if file_path != expected and not file_path.endswith(expected):
+        raise ValueError(f"Writing '{file_path}' not allowed" f"\nAllowed: {expected}")
 
 
 def is_file_write_allowed(
@@ -229,6 +244,7 @@ def is_file_write_allowed(
     _is_writable_phase(phase, config)
 
     if phase == "plan":
+        _require_agent_completed("Plan", config, state)
         _is_plan_path_allowed(file_path, config)
     elif phase == "write-tests":
         _is_test_path_allowed(file_path)
@@ -252,10 +268,9 @@ def _is_editable_phase(phase: str, config: Config) -> None:
 
 
 def _is_plan_edit_allowed(file_path: str, config: Config) -> None:
-    if file_path != config.plan_file_path:
-        raise ValueError(
-            f"Editing '{file_path}' not allowed" f"\nAllowed: {config.plan_file_path}"
-        )
+    expected = config.plan_file_path
+    if file_path != expected and not file_path.endswith(expected):
+        raise ValueError(f"Editing '{file_path}' not allowed" f"\nAllowed: {expected}")
 
 
 def _is_test_edit_allowed(file_path: str, state: StateStore) -> None:
@@ -267,11 +282,27 @@ def _is_test_edit_allowed(file_path: str, state: StateStore) -> None:
 
 
 def _is_code_edit_allowed(file_path: str, state: StateStore) -> None:
-    allowed = state.code_files.get("file_paths", [])
-    if file_path not in allowed:
-        raise ValueError(
-            f"Editing '{file_path}' not allowed" f"\nCode files in session: {allowed}"
-        )
+    test_files = state.tests.get("file_paths", [])
+    code_files = state.code_files.get("file_paths", [])
+
+    # Allow test file edits (TDD: tests first)
+    if file_path in test_files:
+        return
+
+    # Code file edit: check TDD ordering
+    if file_path in code_files:
+        if state.code_tests_to_revise and not state.all_code_tests_revised:
+            raise ValueError(
+                "Revise test files first before editing code files"
+                f"\nTests to revise: {state.code_tests_to_revise}"
+                f"\nTests revised: {state.code_tests_revised}"
+            )
+        return
+
+    raise ValueError(
+        f"Editing '{file_path}' not allowed"
+        f"\nCode files in session: {code_files}"
+    )
 
 
 def is_file_edit_allowed(hook_input: dict, config: Config, state: StateStore) -> Result:
@@ -329,17 +360,50 @@ def _is_agent_count_under_max(
         )
 
 
+def _is_revision_done(next_agent: str, phase: str, state: StateStore) -> None:
+    """Block review agents if revision hasn't happened since last Fail."""
+    if phase == "plan-review" and next_agent == "PlanReview":
+        last = state.last_plan_review
+        if last and last.get("status") == "Fail" and not state.plan_revised:
+            raise ValueError("Plan must be revised before re-invoking PlanReview")
+
+    if phase == "test-review" and next_agent == "TestReviewer":
+        last = state.last_test_review
+        if last and last.get("verdict") == "Fail":
+            if not state.all_test_files_revised:
+                raise ValueError(
+                    "All test files must be revised before re-invoking TestReviewer"
+                    f"\nFiles to revise: {state.test_files_to_revise}"
+                    f"\nFiles revised: {state.test_files_revised}"
+                )
+
+    if phase == "code-review" and next_agent == "CodeReviewer":
+        last = state.last_code_review
+        if last and last.get("status") == "Fail":
+            if not state.all_files_revised:
+                raise ValueError(
+                    "All files must be revised before re-invoking CodeReviewer"
+                    f"\nFiles to revise: {state.files_to_revise}"
+                    f"\nFiles revised: {state.files_revised}"
+                )
+
+
 def is_agent_allowed(hook_input: dict, config: Config, state: StateStore) -> Result:
     """Validate agent invocation against phase and count restrictions."""
 
     phase = state.current_phase
-    next_agent = hook_input.get("tool_input", {}).get("subagent_type", "")
+    next_agent = extract_agent_name(hook_input)
 
     if phase == "explore" and _is_parallel_research_allowed(state, next_agent):
         return True, "Running Research in parallel with Explore"
 
+    # Parallel case: explore is still in_progress but current_phase is research
+    if next_agent == "Explore" and state.get_phase_status("explore") == "in_progress":
+        phase = "explore"
+
     _is_expected_agent(next_agent, phase, config)
     _is_agent_count_under_max(next_agent, phase, config, state)
+    _is_revision_done(next_agent, phase, state)
 
     return True, f"{next_agent} agent allowed in phase: {phase}"
 

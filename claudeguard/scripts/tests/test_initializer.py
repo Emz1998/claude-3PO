@@ -129,7 +129,7 @@ class TestBuildInitialState:
         state = build_initial_state("implement", "sess-1", "")
         expected_keys = {
             "session_id", "workflow_active", "workflow_type", "phases",
-            "sub_phases", "tdd", "story_id", "skip", "instructions",
+            "tdd", "story_id", "skip", "instructions",
             "agents", "plan", "tasks", "tests", "code_files_to_write",
             "code_files", "quality_check_result", "pr", "ci-check",
             "report_written",
@@ -139,7 +139,7 @@ class TestBuildInitialState:
     def test_nested_defaults(self):
         state = build_initial_state("implement", "sess-1", "")
         assert state["plan"]["written"] is False
-        assert state["plan"]["review"]["iteration"] == 0
+        assert state["plan"]["reviews"] == []
         assert state["tests"]["executed"] is False
         assert state["code_files"]["file_paths"] == []
         assert state["pr"]["status"] == "pending"

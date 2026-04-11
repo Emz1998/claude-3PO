@@ -9,6 +9,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from utils.hook import Hook
 from utils.state_store import StateStore
 from utils.recorder import record_agent_start
+from utils.extractors import extract_agent_name
 
 
 def main() -> None:
@@ -20,7 +21,7 @@ def main() -> None:
     if hook_input.get("session_id") != state.get("session_id"):
         sys.exit(0)
 
-    agent_type = hook_input.get("agent_type", "")
+    agent_type = extract_agent_name(hook_input, key="agent_type")
     agent_id = hook_input.get("agent_id", "")
 
     if agent_type and agent_id:

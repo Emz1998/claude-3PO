@@ -45,9 +45,10 @@ def check_tests(state: StateStore) -> None:
         print("Tests not executed", file=sys.stderr)
         sys.exit(1)
 
-    review = tests.get("review_result")
-    if review != "Pass":
-        print(f"Test review result: {review}, expected: Pass", file=sys.stderr)
+    last_review = state.last_test_review
+    verdict = last_review.get("verdict") if last_review else None
+    if verdict != "Pass":
+        print(f"Test review verdict: {verdict}, expected: Pass", file=sys.stderr)
         sys.exit(1)
 
 

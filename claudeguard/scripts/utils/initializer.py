@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """initializer.py — Pre-workflow initialization for /build command.
 
 Called via bash injection in build.md before Claude sees the prompt.
@@ -63,7 +64,6 @@ def build_initial_state(workflow_type: str, session_id: str, args: str) -> dict:
         "workflow_active": True,
         "workflow_type": workflow_type,
         "phases": [],
-        "sub_phases": [],
         "tdd": tdd,
         "story_id": story_id,
         "skip": skip,
@@ -72,26 +72,25 @@ def build_initial_state(workflow_type: str, session_id: str, args: str) -> dict:
         "plan": {
             "file_path": None,
             "written": False,
-            "review": {
-                "iteration": 0,
-                "scores": {"confidence_score": 0, "quality_score": 0},
-                "status": None,
-            },
+            "revised": False,
+            "reviews": [],
         },
         "tasks": [],
         "tests": {
             "file_paths": [],
-            "review_result": None,
             "executed": False,
+            "reviews": [],
+            "files_to_revise": [],
+            "files_revised": [],
         },
         "code_files_to_write": [],
         "code_files": {
             "file_paths": [],
-            "review": {
-                "iteration": 0,
-                "scores": {"confidence_score": 0, "quality_score": 0},
-                "status": None,
-            },
+            "reviews": [],
+            "tests_to_revise": [],
+            "tests_revised": [],
+            "files_to_revise": [],
+            "files_revised": [],
         },
         "quality_check_result": None,
         "pr": {"status": "pending", "number": None},

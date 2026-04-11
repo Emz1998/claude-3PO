@@ -14,6 +14,7 @@ from helpers import make_hook_input
 class TestWriteGuard:
     def test_allows_valid_write(self, config, state):
         state.add_phase("plan")
+        state.add_agent(Agent(name="Plan", status="completed", tool_use_id="p-1"))
         hook = make_hook_input("Write", {"file_path": ".claude/plans/plan.md"})
         decision, _ = write_guard(hook, config, state)
         assert decision == "allow"

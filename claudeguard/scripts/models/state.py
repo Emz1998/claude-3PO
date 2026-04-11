@@ -60,7 +60,6 @@ class State(BaseModel):
     workflow_active: bool = True
     workflow_type: str = "implement"
     phases: list[PhaseEntry] = []
-    sub_phases: list[PhaseEntry] = []
     tdd: bool = False
     story_id: str | None = None
     skip: list[str] = []

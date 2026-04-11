@@ -45,34 +45,54 @@ class TestResolveResearch:
 
 
 class TestResolvePlan:
-    def test_completes_when_written(self, state):
+    def test_completes_when_agent_done_and_written(self, config, state):
         state.add_phase("plan")
+        state.add_agent(Agent(name="Plan", status="completed", tool_use_id="p-1"))
         state.set_plan_file_path(".claude/plans/plan.md")
         state.set_plan_written(True)
-        resolve_plan(state)
+        resolve_plan(config, state)
         assert state.is_phase_completed("plan")
 
-    def test_does_not_complete_when_not_written(self, state):
+    def test_does_not_complete_when_not_written(self, config, state):
         state.add_phase("plan")
-        resolve_plan(state)
+        state.add_agent(Agent(name="Plan", status="completed", tool_use_id="p-1"))
+        resolve_plan(config, state)
+        assert not state.is_phase_completed("plan")
+
+    def test_does_not_complete_when_agent_not_done(self, config, state):
+        state.add_phase("plan")
+        state.add_agent(Agent(name="Plan", status="in_progress", tool_use_id="p-1"))
+        state.set_plan_file_path(".claude/plans/plan.md")
+        state.set_plan_written(True)
+        resolve_plan(config, state)
         assert not state.is_phase_completed("plan")
 
 
 class TestResolvePlanReview:
     def test_pass_completes_phase(self, config, state):
         state.add_phase("plan-review")
-        state.set_plan_review_scores({"confidence_score": 95, "quality_score": 95})
+        state.add_plan_review({"confidence_score": 95, "quality_score": 95})
         resolve_plan_review(config, state)
         assert state.is_phase_completed("plan-review")
-        assert state.plan["review"]["status"] == "Pass"
+        assert state.last_plan_review["status"] == "Pass"
 
-    def test_fail_starts_sub_phase(self, config, state):
+    def test_fail_requires_revision(self, config, state):
         state.add_phase("plan-review")
-        state.set_plan_review_scores({"confidence_score": 50, "quality_score": 50})
+        state.add_plan_review({"confidence_score": 50, "quality_score": 50})
         resolve_plan_review(config, state)
         assert not state.is_phase_completed("plan-review")
-        assert state.sub_phase == "plan-revision"
-        assert state.plan["review"]["iteration"] == 1
+        assert state.last_plan_review["status"] == "Fail"
+        assert state.plan_revised is False
+
+    def test_max_iterations_raises(self, config, state):
+        state.add_phase("plan-review")
+        state.add_plan_review({"confidence_score": 50, "quality_score": 50})
+        state.set_last_plan_review_status("Fail")
+        state.add_plan_review({"confidence_score": 60, "quality_score": 60})
+        state.set_last_plan_review_status("Fail")
+        state.add_plan_review({"confidence_score": 70, "quality_score": 70})
+        with pytest.raises(ValueError, match="max iterations"):
+            resolve_plan_review(config, state)
 
 
 class TestResolveWriteTests:
@@ -93,16 +113,28 @@ class TestResolveWriteTests:
 class TestResolveTestReview:
     def test_pass_completes_phase(self, config, state):
         state.add_phase("test-review")
-        state.set_tests_review_result("Pass")
+        state.add_test_review("Pass")
         resolve_test_review(config, state)
         assert state.is_phase_completed("test-review")
 
-    def test_fail_starts_sub_phase(self, config, state):
+    def test_fail_does_not_complete(self, config, state):
         state.add_phase("test-review")
-        state.set_tests_review_result("Fail")
+        state.add_test_review("Fail")
         resolve_test_review(config, state)
         assert not state.is_phase_completed("test-review")
-        assert state.sub_phase == "refactor"
+
+    def test_no_review_does_nothing(self, config, state):
+        state.add_phase("test-review")
+        resolve_test_review(config, state)
+        assert not state.is_phase_completed("test-review")
+
+    def test_max_iterations_raises(self, config, state):
+        state.add_phase("test-review")
+        state.add_test_review("Fail")
+        state.add_test_review("Fail")
+        state.add_test_review("Fail")
+        with pytest.raises(ValueError, match="max iterations"):
+            resolve_test_review(config, state)
 
 
 class TestResolveWriteCode:
@@ -127,17 +159,29 @@ class TestResolveWriteCode:
 class TestResolveCodeReview:
     def test_pass_completes_phase(self, config, state):
         state.add_phase("code-review")
-        state.set_code_review_scores({"confidence_score": 95, "quality_score": 95})
+        state.add_code_review({"confidence_score": 95, "quality_score": 95})
         resolve_code_review(config, state)
         assert state.is_phase_completed("code-review")
-        assert state.code_files["review"]["status"] == "Pass"
+        assert state.last_code_review["status"] == "Pass"
 
-    def test_fail_starts_sub_phase(self, config, state):
+    def test_fail_requires_revision(self, config, state):
         state.add_phase("code-review")
-        state.set_code_review_scores({"confidence_score": 50, "quality_score": 50})
+        state.add_code_review({"confidence_score": 50, "quality_score": 50})
         resolve_code_review(config, state)
         assert not state.is_phase_completed("code-review")
-        assert state.sub_phase == "refactor"
+        assert state.last_code_review["status"] == "Fail"
+        assert state.files_to_revise == []
+        assert state.files_revised == []
+
+    def test_max_iterations_raises(self, config, state):
+        state.add_phase("code-review")
+        state.add_code_review({"confidence_score": 50, "quality_score": 50})
+        state.set_last_code_review_status("Fail")
+        state.add_code_review({"confidence_score": 60, "quality_score": 60})
+        state.set_last_code_review_status("Fail")
+        state.add_code_review({"confidence_score": 70, "quality_score": 70})
+        with pytest.raises(ValueError, match="max iterations"):
+            resolve_code_review(config, state)
 
 
 class TestResolveQualityCheck:
@@ -181,6 +225,7 @@ class TestResolveReport:
 class TestResolveDispatcher:
     def test_dispatches_to_correct_resolver(self, config, state):
         state.add_phase("plan")
+        state.add_agent(Agent(name="Plan", status="completed", tool_use_id="p-1"))
         state.set_plan_file_path(".claude/plans/plan.md")
         state.set_plan_written(True)
         resolve(config, state)

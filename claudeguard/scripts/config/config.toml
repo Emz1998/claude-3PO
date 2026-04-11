@@ -2,8 +2,6 @@
 # Phase classifications
 # ---------------------------------------------------------------------------
 MAIN_PHASES = ["explore", "research", "plan", "plan-review", "write-tests", "test-review","write-code", "quality-check", "code-review", "pr-create", "ci-check", "write-report"]
-SUBPHASES = ["plan-revision", "refactor"]
-
 READ_ONLY_PHASES = ["explore", "plan", "research", "plan-review", "test-review", "code-review", "quality-check"]
 CODE_WRITE_PHASES = ["write-tests", "write-code", "refactor"]
 CODE_EDIT_PHASES = ["refactor", "plan-revision", "test-review", "code-review"]
@@ -59,7 +57,7 @@ SAFE_DOMAINS = [
 [REQUIRED_AGENTS]
 explore = "Explore"
 research = "Research"
-plan = ""
+plan = "Plan"
 plan-review = "PlanReview"
 write-tests = ""
 test-review = "TestReviewer"
@@ -72,28 +70,19 @@ write-report = ""
 
 
 # ---------------------------------------------------------------------------
-# Mapped Subphases: a review phase to its follow-up sub-phase
-# ---------------------------------------------------------------------------
-[REQUIRED_SUBPHASES]
-plan-review = "plan-revision"
-test-review = "refactor"
-code-review = "refactor"
-
-
-# ---------------------------------------------------------------------------
 # Score thresholds
 # ---------------------------------------------------------------------------
 [SCORE_THRESHOLDS.plan]
-confidence_score = 90
-quality = 90
+confidence_score = 80
+quality = 80
 
 [SCORE_THRESHOLDS.tests]
-confidence_score = 90
-quality = 90
+confidence_score = 80
+quality = 80
 
 [SCORE_THRESHOLDS.code]
 confidence_score = 90
-quality = 90
+quality = 80
 
 # ---------------------------------------------------------------------------
 # File Paths

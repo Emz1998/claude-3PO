@@ -16,6 +16,32 @@ from pathlib import Path
 from typing import Literal
 
 
+def strip_namespace(name: str) -> str:
+    """Strip plugin namespace prefix. 'claudeguard:explore' → 'explore'."""
+    if ":" in name:
+        return name.split(":", 1)[1]
+    return name
+
+
+def extract_skill_name(hook_input: dict) -> str:
+    """Extract skill name from hook input, stripping plugin namespace prefix."""
+    raw = hook_input.get("tool_input", {}).get("skill", "")
+    return strip_namespace(raw)
+
+
+def extract_agent_name(hook_input: dict, key: str = "subagent_type") -> str:
+    """Extract agent name from hook input, stripping plugin namespace prefix.
+
+    PreToolUse sends 'subagent_type' in tool_input.
+    SubagentStart sends 'agent_type' at top level.
+    """
+    if key == "agent_type":
+        raw = hook_input.get("agent_type", "")
+    else:
+        raw = hook_input.get("tool_input", {}).get("subagent_type", "")
+    return strip_namespace(raw)
+
+
 def extract_scores(
     text: str,
 ) -> dict[Literal["confidence_score", "quality_score"], int | None]:

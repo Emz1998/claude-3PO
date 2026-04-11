@@ -107,25 +107,8 @@ class Config:
     def main_phases(self) -> list[str]:
         return self._data.get("MAIN_PHASES", [])
 
-    @property
-    def sub_phases(self) -> list[str]:
-        return self._data.get("SUBPHASES", [])
-
-    @property
-    def required_sub_phases(self) -> dict[str, str]:
-        return self._data.get("REQUIRED_SUBPHASES", {})
-
-    def get_required_sub_phase(self, phase: str) -> str | None:
-        return self.required_sub_phases.get(phase)
-
-    def has_required_sub_phase(self, phase: str) -> bool:
-        return phase in self.required_sub_phases
-
     def is_main_phase(self, phase: str) -> bool:
         return phase in self.main_phases
-
-    def is_sub_phase(self, phase: str) -> bool:
-        return phase in self.sub_phases
 
     # ── Score thresholds ───────────────────────────────────────────
 

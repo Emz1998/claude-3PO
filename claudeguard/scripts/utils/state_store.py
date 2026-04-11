@@ -106,33 +106,83 @@ class StateStore:
 
     # ── Sub-phases ─────────────────────────────────────────────────
 
-    @property
-    def sub_phases(self) -> list[dict]:
-        return self.load().get("sub_phases", [])
+    # ── Plan revision tracking ──────────────────────────────────────
 
     @property
-    def sub_phase(self) -> str:
-        """Current sub-phase is the last item in the sub_phases list."""
-        subs = self.sub_phases
-        return subs[-1]["name"] if subs else ""
+    def plan_revised(self) -> bool:
+        return self.load().get("plan", {}).get("revised", False)
 
-    def add_sub_phase(self, name: str) -> None:
+    def set_plan_revised(self, revised: bool) -> None:
+        def _set(d: dict) -> None:
+            d.setdefault("plan", {})["revised"] = revised
+
+        self.update(_set)
+
+    # ── Code revision tracking ────────────────────────────────────
+
+    @property
+    def files_to_revise(self) -> list[str]:
+        return self.load().get("code_files", {}).get("files_to_revise", [])
+
+    def set_files_to_revise(self, files: list[str]) -> None:
+        def _set(d: dict) -> None:
+            cf = d.setdefault("code_files", {})
+            cf["files_to_revise"] = files
+            cf["files_revised"] = []
+
+        self.update(_set)
+
+    @property
+    def files_revised(self) -> list[str]:
+        return self.load().get("code_files", {}).get("files_revised", [])
+
+    def add_file_revised(self, file_path: str) -> None:
         def _add(d: dict) -> None:
-            subs = d.get("sub_phases", [])
-            subs.append({"name": name, "status": "in_progress"})
-            d["sub_phases"] = subs
+            cf = d.setdefault("code_files", {})
+            revised = cf.setdefault("files_revised", [])
+            if file_path not in revised:
+                revised.append(file_path)
 
         self.update(_add)
 
-    def complete_sub_phase(self, name: str) -> None:
-        def _complete(d: dict) -> None:
-            subs = d.get("sub_phases", [])
-            for sp in subs:
-                if sp["name"] == name:
-                    sp["status"] = "completed"
-                    break
+    @property
+    def all_files_revised(self) -> bool:
+        to_revise = set(self.files_to_revise)
+        revised = set(self.files_revised)
+        return bool(to_revise) and not (to_revise - revised)
 
-        self.update(_complete)
+    # ── Code review: test revision tracking (TDD) ─────────────────
+
+    @property
+    def code_tests_to_revise(self) -> list[str]:
+        return self.load().get("code_files", {}).get("tests_to_revise", [])
+
+    def set_code_tests_to_revise(self, files: list[str]) -> None:
+        def _set(d: dict) -> None:
+            cf = d.setdefault("code_files", {})
+            cf["tests_to_revise"] = files
+            cf["tests_revised"] = []
+
+        self.update(_set)
+
+    @property
+    def code_tests_revised(self) -> list[str]:
+        return self.load().get("code_files", {}).get("tests_revised", [])
+
+    def add_code_test_revised(self, file_path: str) -> None:
+        def _add(d: dict) -> None:
+            cf = d.setdefault("code_files", {})
+            revised = cf.setdefault("tests_revised", [])
+            if file_path not in revised:
+                revised.append(file_path)
+
+        self.update(_add)
+
+    @property
+    def all_code_tests_revised(self) -> bool:
+        to_revise = set(self.code_tests_to_revise)
+        revised = set(self.code_tests_revised)
+        return bool(to_revise) and not (to_revise - revised)
 
     # ── Agents ─────────────────────────────────────────────────────
 
@@ -187,31 +237,37 @@ class StateStore:
 
         self.update(_set)
 
-    def set_plan_review_status(self, status: ReviewResult) -> None:
-        def _set(d: dict) -> None:
-            plan = d.setdefault("plan", {})
-            review = plan.setdefault("review", {})
-            review["status"] = status
-
-        self.update(_set)
-
-    def set_plan_review_scores(
-        self, scores: dict[Literal["confidence_score", "quality_score"], int]
+    def add_plan_review(
+        self,
+        scores: dict[Literal["confidence_score", "quality_score"], int],
     ) -> None:
-        def _set(d: dict) -> None:
+        def _add(d: dict) -> None:
             plan = d.setdefault("plan", {})
-            review = plan.setdefault("review", {})
-            review["scores"] = scores
+            reviews = plan.setdefault("reviews", [])
+            reviews.append({"scores": scores, "status": None})
+
+        self.update(_add)
+
+    def set_last_plan_review_status(self, status: ReviewResult) -> None:
+        def _set(d: dict) -> None:
+            reviews = d.get("plan", {}).get("reviews", [])
+            if reviews:
+                reviews[-1]["status"] = status
 
         self.update(_set)
 
-    def increment_plan_review_iteration(self) -> None:
-        def _inc(d: dict) -> None:
-            plan = d.setdefault("plan", {})
-            review = plan.setdefault("review", {})
-            review["iteration"] = review.get("iteration", 0) + 1
+    @property
+    def plan_reviews(self) -> list[dict]:
+        return self.load().get("plan", {}).get("reviews", [])
 
-        self.update(_inc)
+    @property
+    def plan_review_count(self) -> int:
+        return len(self.plan_reviews)
+
+    @property
+    def last_plan_review(self) -> dict | None:
+        reviews = self.plan_reviews
+        return reviews[-1] if reviews else None
 
     # ── Tests ──────────────────────────────────────────────────────
 
@@ -228,17 +284,65 @@ class StateStore:
 
         self.update(_add)
 
-    def set_tests_review_result(self, result: ReviewResult) -> None:
-        def _set(d: dict) -> None:
-            d.setdefault("tests", {})["review_result"] = result
+    def add_test_review(self, verdict: str) -> None:
+        def _add(d: dict) -> None:
+            tests = d.setdefault("tests", {})
+            reviews = tests.setdefault("reviews", [])
+            reviews.append({"verdict": verdict})
 
-        self.update(_set)
+        self.update(_add)
+
+    @property
+    def test_reviews(self) -> list[dict]:
+        return self.load().get("tests", {}).get("reviews", [])
+
+    @property
+    def test_review_count(self) -> int:
+        return len(self.test_reviews)
+
+    @property
+    def last_test_review(self) -> dict | None:
+        reviews = self.test_reviews
+        return reviews[-1] if reviews else None
 
     def set_tests_executed(self, executed: bool = True) -> None:
         def _set(d: dict) -> None:
             d.setdefault("tests", {})["executed"] = executed
 
         self.update(_set)
+
+    # ── Test revision tracking ────────────────────────────────────
+
+    @property
+    def test_files_to_revise(self) -> list[str]:
+        return self.load().get("tests", {}).get("files_to_revise", [])
+
+    def set_test_files_to_revise(self, files: list[str]) -> None:
+        def _set(d: dict) -> None:
+            tests = d.setdefault("tests", {})
+            tests["files_to_revise"] = files
+            tests["files_revised"] = []
+
+        self.update(_set)
+
+    @property
+    def test_files_revised(self) -> list[str]:
+        return self.load().get("tests", {}).get("files_revised", [])
+
+    def add_test_file_revised(self, file_path: str) -> None:
+        def _add(d: dict) -> None:
+            tests = d.setdefault("tests", {})
+            revised = tests.setdefault("files_revised", [])
+            if file_path not in revised:
+                revised.append(file_path)
+
+        self.update(_add)
+
+    @property
+    def all_test_files_revised(self) -> bool:
+        to_revise = set(self.test_files_to_revise)
+        revised = set(self.test_files_revised)
+        return bool(to_revise) and not (to_revise - revised)
 
     # ── Code files to write ──────────────────────────────────────────
 
@@ -270,31 +374,37 @@ class StateStore:
 
         self.update(_add)
 
-    def set_code_review_status(self, status: ReviewResult) -> None:
-        def _set(d: dict) -> None:
-            cf = d.setdefault("code_files", {})
-            review = cf.setdefault("review", {})
-            review["status"] = status
-
-        self.update(_set)
-
-    def set_code_review_scores(
-        self, scores: dict[Literal["confidence_score", "quality_score"], int]
+    def add_code_review(
+        self,
+        scores: dict[Literal["confidence_score", "quality_score"], int],
     ) -> None:
-        def _set(d: dict) -> None:
+        def _add(d: dict) -> None:
             cf = d.setdefault("code_files", {})
-            review = cf.setdefault("review", {})
-            review["scores"] = scores
+            reviews = cf.setdefault("reviews", [])
+            reviews.append({"scores": scores, "status": None})
+
+        self.update(_add)
+
+    def set_last_code_review_status(self, status: ReviewResult) -> None:
+        def _set(d: dict) -> None:
+            reviews = d.get("code_files", {}).get("reviews", [])
+            if reviews:
+                reviews[-1]["status"] = status
 
         self.update(_set)
 
-    def increment_code_review_iteration(self) -> None:
-        def _inc(d: dict) -> None:
-            cf = d.setdefault("code_files", {})
-            review = cf.setdefault("review", {})
-            review["iteration"] = review.get("iteration", 0) + 1
+    @property
+    def code_reviews(self) -> list[dict]:
+        return self.load().get("code_files", {}).get("reviews", [])
 
-        self.update(_inc)
+    @property
+    def code_review_count(self) -> int:
+        return len(self.code_reviews)
+
+    @property
+    def last_code_review(self) -> dict | None:
+        reviews = self.code_reviews
+        return reviews[-1] if reviews else None
 
     # ── Quality check ──────────────────────────────────────────────
 

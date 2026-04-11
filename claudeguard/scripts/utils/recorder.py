@@ -71,30 +71,15 @@ def record_test_execution(state: StateStore) -> None:
 def record_test_review_result(
     result: Literal["Pass", "Fail"], state: StateStore
 ) -> None:
-    """Record test review result."""
-    state.set_tests_review_result(result)
+    """Record test review result as a new review entry."""
+    state.add_test_review(result)
 
 
 def record_plan_review_scores(
     scores: dict[Literal["confidence_score", "quality_score"], int], state: StateStore
 ) -> None:
-    """Record plan review scores."""
-    state.set_plan_review_scores(scores)
-
-
-def record_iteration(review_type: Literal["plan", "code"], state: StateStore) -> None:
-    """Record an iteration."""
-    if review_type == "plan":
-        state.increment_plan_review_iteration()
-    else:
-        state.increment_code_review_iteration()
-
-
-def record_plan_review_status(
-    status: Literal["Pass", "Fail"], state: StateStore
-) -> None:
-    """Record plan review status."""
-    state.set_plan_review_status(status)
+    """Record plan review scores as a new review entry."""
+    state.add_plan_review(scores)
 
 
 def record_code_file_to_write(file_path: str, state: StateStore) -> None:
@@ -105,8 +90,8 @@ def record_code_file_to_write(file_path: str, state: StateStore) -> None:
 def record_code_review_scores(
     scores: dict[Literal["confidence_score", "quality_score"], int], state: StateStore
 ) -> None:
-    """Record code review scores."""
-    state.set_code_review_scores(scores)
+    """Record code review scores as a new review entry."""
+    state.add_code_review(scores)
 
 
 def record_scores(
@@ -114,11 +99,11 @@ def record_scores(
     scores: dict[Literal["confidence_score", "quality_score"], int],
     state: StateStore,
 ) -> None:
-    """Record scores."""
+    """Record scores as a new review entry."""
     if phase == "plan-review":
-        state.set_plan_review_scores(scores)
+        state.add_plan_review(scores)
     elif phase == "code-review":
-        state.set_code_review_scores(scores)
+        state.add_code_review(scores)
 
 
 def record_code_review_status(
@@ -135,10 +120,15 @@ def record_quality_check_result(
     state.set_quality_check_result(result)
 
 
-def record_phase_transition(next_phase: str, state: StateStore) -> None:
-    """Complete the current phase and start the next one."""
+def record_phase_transition(
+    next_phase: str, state: StateStore, parallel: bool = False
+) -> None:
+    """Complete the current phase and start the next one.
+
+    If parallel=True, the current phase stays in_progress (e.g. explore + research).
+    """
     current = state.current_phase
-    if current:
+    if current and not parallel:
         state.complete_phase(current)
     state.add_phase(next_phase)
 
@@ -151,11 +141,6 @@ def record_phase_completion(phase: str, state: StateStore) -> None:
 def record_agent_completion(agent_id: str, state: StateStore) -> None:
     """Mark an agent as completed by its agent_id."""
     state.update_agent_status(agent_id, "completed")
-
-
-def record_sub_phase(sub_phase: str, state: StateStore) -> None:
-    """Append a sub-phase."""
-    state.add_sub_phase(sub_phase)
 
 
 def record_pr_status(

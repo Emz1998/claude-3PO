@@ -35,52 +35,76 @@ def is_revision_needed(
 
 def resolve_plan_review(config: Config, state: StateStore) -> None:
     """Evaluate plan review scores and update state accordingly."""
-    review = state.plan.get("review", {})
-    scores = review.get("scores") or {}
+    last = state.last_plan_review
+    if not last:
+        return
+
+    # Already resolved this review
+    if last.get("status"):
+        return
+
+    scores = last.get("scores", {})
     confidence = scores.get("confidence_score", 0)
     quality = scores.get("quality_score", 0)
+
+    if confidence == 0 and quality == 0:
+        return
 
     try:
         is_revision_needed("plan", confidence, quality, config)
     except ValueError:
-        sub_phase = config.get_required_sub_phase("plan-review")
-        if sub_phase:
-            state.add_sub_phase(sub_phase)
-        state.increment_plan_review_iteration()
+        state.set_last_plan_review_status("Fail")
+        if state.plan_review_count >= 3:
+            raise ValueError("Plan review reached max iterations (3). Discontinuing.")
+        state.set_plan_revised(False)
         return
 
-    state.set_plan_review_status("Pass")
+    state.set_last_plan_review_status("Pass")
     state.complete_phase("plan-review")
 
 
 def resolve_code_review(config: Config, state: StateStore) -> None:
     """Evaluate code review scores and update state accordingly."""
-    review = state.code_files.get("review", {})
-    scores = review.get("scores") or {}
+    last = state.last_code_review
+    if not last:
+        return
+
+    # Already resolved this review
+    if last.get("status"):
+        return
+
+    scores = last.get("scores", {})
     confidence = scores.get("confidence_score", 0)
     quality = scores.get("quality_score", 0)
+
+    if confidence == 0 and quality == 0:
+        return
 
     try:
         is_revision_needed("code", confidence, quality, config)
     except ValueError:
-        sub_phase = config.get_required_sub_phase("code-review")
-        if sub_phase:
-            state.add_sub_phase(sub_phase)
-        state.increment_code_review_iteration()
+        state.set_last_code_review_status("Fail")
+        if state.code_review_count >= 3:
+            raise ValueError("Code review reached max iterations (3). Discontinuing.")
+        state.set_files_to_revise([])
         return
 
-    state.set_code_review_status("Pass")
+    state.set_last_code_review_status("Pass")
     state.complete_phase("code-review")
 
 
 def resolve_test_review(config: Config, state: StateStore) -> None:
     """Evaluate test review verdict and update state accordingly."""
-    verdict = state.tests.get("review_result")
+    last = state.last_test_review
+    if not last:
+        return
+
+    verdict = last.get("verdict")
 
     if verdict == "Fail":
-        sub_phase = config.get_required_sub_phase("test-review")
-        if sub_phase:
-            state.add_sub_phase(sub_phase)
+        if state.test_review_count >= 3:
+            raise ValueError("Test review reached max iterations (3). Discontinuing.")
+        state.set_test_files_to_revise([])
         return
 
     if verdict == "Pass":
@@ -113,8 +137,14 @@ def resolve_write_tests(state: StateStore) -> None:
         state.complete_phase("write-tests")
 
 
-def resolve_plan(state: StateStore) -> None:
-    """Check if plan is written and complete the phase."""
+def resolve_plan(config: Config, state: StateStore) -> None:
+    """Check if Plan agent completed and plan is written."""
+    agent_name = config.get_required_agent("plan")
+    if agent_name:
+        agents = [a for a in state.agents if a.get("name") == agent_name]
+        if not agents or not all(a.get("status") == "completed" for a in agents):
+            return
+
     plan = state.plan
     if plan.get("written") and plan.get("file_path"):
         state.complete_phase("plan")
@@ -165,7 +195,7 @@ def resolve(config: Config, state: StateStore) -> None:
     resolvers = {
         "explore": lambda: resolve_explore(config, state),
         "research": lambda: resolve_research(config, state),
-        "plan": lambda: resolve_plan(state),
+        "plan": lambda: resolve_plan(config, state),
         "plan-review": lambda: resolve_plan_review(config, state),
         "write-tests": lambda: resolve_write_tests(state),
         "test-review": lambda: resolve_test_review(config, state),

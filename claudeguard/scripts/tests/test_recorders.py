@@ -14,7 +14,6 @@ from utils.recorder import (
     record_ci_check_output,
     record_phase_completion,
     record_agent_completion,
-    record_sub_phase,
 )
 from helpers import make_hook_input
 
@@ -77,23 +76,28 @@ class TestRecordTestExecution:
 class TestRecordTestReviewResult:
     def test_pass(self, state):
         record_test_review_result("Pass", state)
-        assert state.tests["review_result"] == "Pass"
+        assert state.last_test_review["verdict"] == "Pass"
 
     def test_fail(self, state):
         record_test_review_result("Fail", state)
-        assert state.tests["review_result"] == "Fail"
+        assert state.last_test_review["verdict"] == "Fail"
+
+    def test_multiple_reviews(self, state):
+        record_test_review_result("Fail", state)
+        record_test_review_result("Pass", state)
+        assert state.test_review_count == 2
 
 
 class TestRecordScores:
     def test_plan_review(self, state):
         scores = {"confidence_score": 85, "quality_score": 90}
         record_scores("plan-review", scores, state)
-        assert state.plan["review"]["scores"] == scores
+        assert state.last_plan_review["scores"] == scores
 
     def test_code_review(self, state):
         scores = {"confidence_score": 95, "quality_score": 92}
         record_scores("code-review", scores, state)
-        assert state.code_files["review"]["scores"] == scores
+        assert state.last_code_review["scores"] == scores
 
 
 class TestRecordPrCreateOutput:
@@ -162,7 +166,3 @@ class TestRecordAgentCompletion:
         assert agents[1]["status"] == "completed"
 
 
-class TestRecordSubPhase:
-    def test_adds_sub_phase(self, state):
-        record_sub_phase("plan-revision", state)
-        assert state.sub_phase == "plan-revision"

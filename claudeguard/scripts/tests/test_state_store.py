@@ -25,16 +25,69 @@ class TestPhases:
         assert state.get_phase_status("explore") is None
 
 
-class TestSubPhases:
-    def test_add_sub_phase(self, state):
-        state.add_sub_phase("plan-revision")
-        assert state.sub_phase == "plan-revision"
+class TestPlanRevision:
+    def test_plan_revised_default(self, state):
+        assert state.plan_revised is False
 
-    def test_complete_sub_phase(self, state):
-        state.add_sub_phase("refactor")
-        state.complete_sub_phase("refactor")
-        subs = state.sub_phases
-        assert subs[0]["status"] == "completed"
+    def test_set_plan_revised(self, state):
+        state.set_plan_revised(True)
+        assert state.plan_revised is True
+
+    def test_reset_plan_revised(self, state):
+        state.set_plan_revised(True)
+        state.set_plan_revised(False)
+        assert state.plan_revised is False
+
+
+class TestCodeRevision:
+    def test_files_to_revise_default(self, state):
+        assert state.files_to_revise == []
+
+    def test_set_files_to_revise(self, state):
+        state.set_files_to_revise(["src/app.py", "src/utils.py"])
+        assert state.files_to_revise == ["src/app.py", "src/utils.py"]
+
+    def test_files_revised_default(self, state):
+        assert state.files_revised == []
+
+    def test_add_file_revised(self, state):
+        state.add_file_revised("src/app.py")
+        assert "src/app.py" in state.files_revised
+
+    def test_all_files_revised(self, state):
+        state.set_files_to_revise(["src/app.py", "src/utils.py"])
+        state.add_file_revised("src/app.py")
+        assert not state.all_files_revised
+        state.add_file_revised("src/utils.py")
+        assert state.all_files_revised
+
+    def test_reset_revision_tracking(self, state):
+        state.set_files_to_revise(["src/app.py"])
+        state.add_file_revised("src/app.py")
+        state.set_files_to_revise(["src/new.py"])
+        assert state.files_revised == []
+        assert state.files_to_revise == ["src/new.py"]
+
+    def test_code_tests_to_revise_default(self, state):
+        assert state.code_tests_to_revise == []
+
+    def test_set_code_tests_to_revise(self, state):
+        state.set_code_tests_to_revise(["test_app.py"])
+        assert state.code_tests_to_revise == ["test_app.py"]
+
+    def test_code_tests_revised_default(self, state):
+        assert state.code_tests_revised == []
+
+    def test_add_code_test_revised(self, state):
+        state.add_code_test_revised("test_app.py")
+        assert "test_app.py" in state.code_tests_revised
+
+    def test_all_code_tests_revised(self, state):
+        state.set_code_tests_to_revise(["test_app.py", "test_utils.py"])
+        state.add_code_test_revised("test_app.py")
+        assert not state.all_code_tests_revised
+        state.add_code_test_revised("test_utils.py")
+        assert state.all_code_tests_revised
 
 
 class TestAgents:
@@ -69,20 +122,22 @@ class TestPlan:
         state.set_plan_written(True)
         assert state.plan["written"] is True
 
-    def test_plan_review_scores(self, state):
+    def test_add_plan_review(self, state):
         scores = {"confidence_score": 85, "quality_score": 90}
-        state.set_plan_review_scores(scores)
-        assert state.plan["review"]["scores"] == scores
+        state.add_plan_review(scores)
+        assert state.plan_review_count == 1
+        assert state.last_plan_review["scores"] == scores
+        assert state.last_plan_review["status"] is None
 
-    def test_plan_review_status(self, state):
-        state.set_plan_review_status("Pass")
-        assert state.plan["review"]["status"] == "Pass"
+    def test_set_last_plan_review_status(self, state):
+        state.add_plan_review({"confidence_score": 85, "quality_score": 90})
+        state.set_last_plan_review_status("Pass")
+        assert state.last_plan_review["status"] == "Pass"
 
-    def test_increment_plan_review_iteration(self, state):
-        state.increment_plan_review_iteration()
-        assert state.plan["review"]["iteration"] == 1
-        state.increment_plan_review_iteration()
-        assert state.plan["review"]["iteration"] == 2
+    def test_plan_review_count(self, state):
+        state.add_plan_review({"confidence_score": 50, "quality_score": 50})
+        state.add_plan_review({"confidence_score": 85, "quality_score": 90})
+        assert state.plan_review_count == 2
 
 
 class TestTests:
@@ -95,13 +150,53 @@ class TestTests:
         state.add_test_file("test_app.py")
         assert state.tests["file_paths"].count("test_app.py") == 1
 
-    def test_set_tests_review_result(self, state):
-        state.set_tests_review_result("Pass")
-        assert state.tests["review_result"] == "Pass"
-
     def test_set_tests_executed(self, state):
         state.set_tests_executed(True)
         assert state.tests["executed"] is True
+
+    def test_add_test_review(self, state):
+        state.add_test_review("Fail")
+        assert state.test_review_count == 1
+        assert state.last_test_review["verdict"] == "Fail"
+
+    def test_test_review_count(self, state):
+        state.add_test_review("Fail")
+        state.add_test_review("Pass")
+        assert state.test_review_count == 2
+
+    def test_last_test_review(self, state):
+        state.add_test_review("Fail")
+        state.add_test_review("Pass")
+        assert state.last_test_review["verdict"] == "Pass"
+
+
+class TestTestRevision:
+    def test_test_files_to_revise_default(self, state):
+        assert state.test_files_to_revise == []
+
+    def test_set_test_files_to_revise(self, state):
+        state.set_test_files_to_revise(["test_app.py"])
+        assert state.test_files_to_revise == ["test_app.py"]
+
+    def test_test_files_revised_default(self, state):
+        assert state.test_files_revised == []
+
+    def test_add_test_file_revised(self, state):
+        state.add_test_file_revised("test_app.py")
+        assert "test_app.py" in state.test_files_revised
+
+    def test_all_test_files_revised(self, state):
+        state.set_test_files_to_revise(["test_app.py", "test_utils.py"])
+        state.add_test_file_revised("test_app.py")
+        assert not state.all_test_files_revised
+        state.add_test_file_revised("test_utils.py")
+        assert state.all_test_files_revised
+
+    def test_reset_test_revision_tracking(self, state):
+        state.set_test_files_to_revise(["test_app.py"])
+        state.add_test_file_revised("test_app.py")
+        state.set_test_files_to_revise(["test_new.py"])
+        assert state.test_files_revised == []
 
 
 class TestCodeFiles:
@@ -118,18 +213,22 @@ class TestCodeFiles:
         state.add_code_file_to_write("app.py")
         assert "app.py" in state.code_files_to_write
 
-    def test_code_review_scores(self, state):
+    def test_add_code_review(self, state):
         scores = {"confidence_score": 95, "quality_score": 92}
-        state.set_code_review_scores(scores)
-        assert state.code_files["review"]["scores"] == scores
+        state.add_code_review(scores)
+        assert state.code_review_count == 1
+        assert state.last_code_review["scores"] == scores
+        assert state.last_code_review["status"] is None
 
-    def test_code_review_status(self, state):
-        state.set_code_review_status("Pass")
-        assert state.code_files["review"]["status"] == "Pass"
+    def test_set_last_code_review_status(self, state):
+        state.add_code_review({"confidence_score": 95, "quality_score": 92})
+        state.set_last_code_review_status("Pass")
+        assert state.last_code_review["status"] == "Pass"
 
-    def test_increment_code_review_iteration(self, state):
-        state.increment_code_review_iteration()
-        assert state.code_files["review"]["iteration"] == 1
+    def test_code_review_count(self, state):
+        state.add_code_review({"confidence_score": 50, "quality_score": 50})
+        state.add_code_review({"confidence_score": 95, "quality_score": 92})
+        assert state.code_review_count == 2
 
 
 class TestPR:

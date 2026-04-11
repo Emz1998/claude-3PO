@@ -34,7 +34,7 @@ class TestCheckTests:
     def test_all_passing(self, state):
         state.add_test_file("test_app.py")
         state.set_tests_executed(True)
-        state.set_tests_review_result("Pass")
+        state.add_test_review("Pass")
         check_tests(state)  # should not exit
 
     def test_no_test_files(self, state):
@@ -51,7 +51,7 @@ class TestCheckTests:
     def test_review_failed(self, state):
         state.add_test_file("test_app.py")
         state.set_tests_executed(True)
-        state.set_tests_review_result("Fail")
+        state.add_test_review("Fail")
         with pytest.raises(SystemExit) as exc:
             check_tests(state)
         assert exc.value.code == 1
