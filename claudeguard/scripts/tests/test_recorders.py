@@ -1,6 +1,7 @@
 import json
 import pytest
 from models.state import Agent
+from pathlib import Path
 from utils.recorder import (
     record_file_write,
     record_agent_start,
@@ -14,16 +15,18 @@ from utils.recorder import (
     record_ci_check_output,
     record_phase_completion,
     record_agent_completion,
+    inject_plan_metadata,
 )
+from utils.initializer import parse_frontmatter
 from helpers import make_hook_input
 
 
 class TestRecordFileWrite:
     def test_plan_phase(self, state):
         state.add_phase("plan")
-        hook = make_hook_input("Write", {"file_path": ".claude/plans/plan.md"})
+        hook = make_hook_input("Write", {"file_path": ".claude/plans/latest-plan.md"})
         record_file_write(hook, state)
-        assert state.plan["file_path"] == ".claude/plans/plan.md"
+        assert state.plan["file_path"] == ".claude/plans/latest-plan.md"
         assert state.plan["written"] is True
 
     def test_write_tests_phase(self, state):
@@ -164,5 +167,42 @@ class TestRecordAgentCompletion:
         agents = [a for a in state.agents if a["name"] == "Explore"]
         assert agents[0]["status"] == "in_progress"
         assert agents[1]["status"] == "completed"
+
+
+class TestInjectPlanMetadata:
+    def test_injects_frontmatter(self, tmp_path, state):
+        state.set("session_id", "test-sess-123")
+        state.set("workflow_type", "implement")
+        state.set("story_id", "SK-001")
+
+        plan_file = tmp_path / "plan.md"
+        plan_file.write_text("# My Plan\n\nSome content.")
+
+        inject_plan_metadata(str(plan_file), state)
+
+        content = plan_file.read_text()
+        fm = parse_frontmatter(content)
+        assert fm["session_id"] == "test-sess-123"
+        assert fm["workflow_type"] == "implement"
+        assert fm["story_id"] == "SK-001"
+        assert "date" in fm
+        assert "# My Plan" in content
+
+    def test_replaces_existing_frontmatter(self, tmp_path, state):
+        state.set("session_id", "new-sess")
+        state.set("workflow_type", "build")
+
+        plan_file = tmp_path / "plan.md"
+        plan_file.write_text("---\nsession_id: old-sess\n---\n# Plan")
+
+        inject_plan_metadata(str(plan_file), state)
+
+        content = plan_file.read_text()
+        fm = parse_frontmatter(content)
+        assert fm["session_id"] == "new-sess"
+        assert "old-sess" not in content
+
+    def test_nonexistent_file_does_nothing(self, tmp_path, state):
+        inject_plan_metadata(str(tmp_path / "nope.md"), state)  # no error
 
 

@@ -115,8 +115,8 @@ class TestAgents:
 
 class TestPlan:
     def test_set_plan_file_path(self, state):
-        state.set_plan_file_path(".claude/plans/plan.md")
-        assert state.plan["file_path"] == ".claude/plans/plan.md"
+        state.set_plan_file_path(".claude/plans/latest-plan.md")
+        assert state.plan["file_path"] == ".claude/plans/latest-plan.md"
 
     def test_set_plan_written(self, state):
         state.set_plan_written(True)

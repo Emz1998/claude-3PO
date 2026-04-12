@@ -126,6 +126,10 @@ class Config:
         return self.file_paths.get("PLAN_FILE_PATH", "")
 
     @property
+    def plan_archive_dir(self) -> str:
+        return self.file_paths.get("PLAN_ARCHIVE_DIR", "")
+
+    @property
     def test_file_path(self) -> str:
         return self.file_paths.get("TEST_FILE_PATH", "")
 

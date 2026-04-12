@@ -11,6 +11,7 @@ Environment:
     RECORDER_STATE_PATH — override the default state.json path
 """
 
+from datetime import datetime
 from pathlib import Path
 from typing import Literal, get_args, Any, TypeVar, Generic, Callable
 import sys
@@ -51,6 +52,37 @@ def record_file_write(hook_input: dict, state: StateStore) -> None:
 def record_agent_start(agent_type: str, agent_id: str, state: StateStore) -> None:
     """Record an agent start with its unique agent_id."""
     state.add_agent(Agent(name=agent_type, status="in_progress", tool_use_id=agent_id))
+
+
+def inject_plan_metadata(file_path: str, state: StateStore) -> None:
+    """Inject frontmatter metadata into the plan file after it's written."""
+    path = Path(file_path)
+    if not path.exists():
+        return
+
+    content = path.read_text()
+
+    # Strip existing frontmatter if present
+    if content.startswith("---"):
+        parts = content.split("---", 2)
+        if len(parts) >= 3:
+            content = parts[2].lstrip("\n")
+
+    metadata = {
+        "session_id": state.get("session_id"),
+        "workflow_type": state.get("workflow_type"),
+        "story_id": state.get("story_id"),
+        "date": datetime.now().strftime("%Y-%m-%d"),
+        "timestamp": datetime.now().isoformat(),
+    }
+
+    fm_lines = ["---"]
+    for key, val in metadata.items():
+        if val is not None:
+            fm_lines.append(f"{key}: {val}")
+    fm_lines.append("---\n")
+
+    path.write_text("\n".join(fm_lines) + content)
 
 
 def record_plan(file_path: str, state: StateStore) -> None:

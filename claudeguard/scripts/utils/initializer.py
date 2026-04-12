@@ -1,22 +1,26 @@
 #!/usr/bin/env python3
-"""initializer.py — Pre-workflow initialization for /build command.
+"""initializer.py — Pre-workflow initialization for /implement and /build commands.
 
-Called via bash injection in build.md before Claude sees the prompt.
-Handles arg parsing and state initialization. No story IDs or conflict checks.
+Called via bash injection in skill .md before Claude sees the prompt.
+Handles arg parsing and state initialization.
 
 Usage:
     python3 initializer.py <workflow_type> <session_id> [args...]
-    python3 initializer.py build abc-123 --tdd --skip-all build a login form
+    python3 initializer.py implement abc-123 SK-001
+    python3 initializer.py build abc-123 --tdd build a login form
 """
 
 import re
+import shutil
 import sys
+from datetime import datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from constants import STORY_ID_PATTERN
 from utils.state_store import StateStore
+from config import Config
 
 STATE_PATH = Path(__file__).resolve().parent.parent / "state.json"
 
@@ -46,6 +50,45 @@ def parse_instructions(args: str) -> str:
     for flag in flags:
         text = text.replace(flag, "")
     return text.strip()
+
+
+# ---------------------------------------------------------------------------
+# Plan archiving
+# ---------------------------------------------------------------------------
+
+
+def parse_frontmatter(content: str) -> dict[str, str]:
+    """Extract frontmatter key-value pairs from markdown."""
+    if not content.startswith("---"):
+        return {}
+    parts = content.split("---", 2)
+    if len(parts) < 3:
+        return {}
+    fm = {}
+    for line in parts[1].strip().splitlines():
+        if ":" in line:
+            key, val = line.split(":", 1)
+            fm[key.strip()] = val.strip()
+    return fm
+
+
+def archive_plan(config: Config) -> None:
+    """Archive existing latest-plan.md before starting a new workflow."""
+    plan_path = Path(config.plan_file_path)
+    if not plan_path.exists():
+        return
+
+    content = plan_path.read_text()
+    fm = parse_frontmatter(content)
+    session_id = fm.get("session_id", "unknown")
+    date = datetime.now().strftime("%Y-%m-%d")
+
+    archive_dir = Path(config.plan_archive_dir)
+    archive_dir.mkdir(parents=True, exist_ok=True)
+
+    archive_name = f"plan_{date}_{session_id}.md"
+    shutil.copy2(plan_path, archive_dir / archive_name)
+    plan_path.unlink()
 
 
 # ---------------------------------------------------------------------------
@@ -110,6 +153,9 @@ def initialize(
     args: str,
     state_path: Path = STATE_PATH,
 ) -> None:
+    config = Config()
+    archive_plan(config)
+
     state = build_initial_state(workflow_type, session_id, args)
     store = StateStore(state_path)
     store.reinitialize(state)

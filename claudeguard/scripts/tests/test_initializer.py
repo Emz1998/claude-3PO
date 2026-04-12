@@ -8,9 +8,12 @@ from utils.initializer import (
     parse_skip,
     parse_story_id,
     parse_instructions,
+    parse_frontmatter,
+    archive_plan,
     build_initial_state,
     initialize,
 )
+from config import Config
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -164,6 +167,77 @@ class TestInitialize:
         assert state["tdd"] is True
         assert state["story_id"] == "SK-001"
         assert state["instructions"] == "build a form"
+
+
+# ═══════════════════════════════════════════════════════════════════
+# parse_frontmatter
+# ═══════════════════════════════════════════════════════════════════
+
+
+class TestParseFrontmatter:
+    def test_valid_frontmatter(self):
+        content = "---\nsession_id: abc-123\ndate: 2026-04-11\n---\n# Plan"
+        fm = parse_frontmatter(content)
+        assert fm["session_id"] == "abc-123"
+        assert fm["date"] == "2026-04-11"
+
+    def test_no_frontmatter(self):
+        content = "# Plan\nSome content"
+        fm = parse_frontmatter(content)
+        assert fm == {}
+
+    def test_incomplete_frontmatter(self):
+        content = "---\nsession_id: abc-123\n"
+        fm = parse_frontmatter(content)
+        assert fm == {}
+
+
+# ═══════════════════════════════════════════════════════════════════
+# archive_plan
+# ═══════════════════════════════════════════════════════════════════
+
+
+class TestArchivePlan:
+    def test_archives_existing_plan(self, tmp_path: Path, monkeypatch):
+        plan_dir = tmp_path / ".claude" / "plans"
+        plan_dir.mkdir(parents=True)
+        plan_path = plan_dir / "latest-plan.md"
+        plan_path.write_text("---\nsession_id: old-sess\n---\n# Old Plan")
+
+        archive_dir = plan_dir / "archive"
+
+        config = Config()
+        monkeypatch.setattr(type(config), "plan_file_path", property(lambda self: str(plan_path)))
+        monkeypatch.setattr(type(config), "plan_archive_dir", property(lambda self: str(archive_dir)))
+
+        archive_plan(config)
+
+        assert not plan_path.exists()
+        archived = list(archive_dir.glob("plan_*_old-sess.md"))
+        assert len(archived) == 1
+        assert "# Old Plan" in archived[0].read_text()
+
+    def test_no_plan_file_does_nothing(self, tmp_path: Path, monkeypatch):
+        config = Config()
+        monkeypatch.setattr(type(config), "plan_file_path", property(lambda self: str(tmp_path / "nonexistent.md")))
+
+        archive_plan(config)  # should not raise
+
+    def test_plan_without_frontmatter_uses_unknown(self, tmp_path: Path, monkeypatch):
+        plan_path = tmp_path / "latest-plan.md"
+        plan_path.write_text("# Plan with no frontmatter")
+
+        archive_dir = tmp_path / "archive"
+
+        config = Config()
+        monkeypatch.setattr(type(config), "plan_file_path", property(lambda self: str(plan_path)))
+        monkeypatch.setattr(type(config), "plan_archive_dir", property(lambda self: str(archive_dir)))
+
+        archive_plan(config)
+
+        assert not plan_path.exists()
+        archived = list(archive_dir.glob("plan_*_unknown.md"))
+        assert len(archived) == 1
 
     def test_reinitializes_existing_state(self, tmp_path: Path):
         state_path = tmp_path / "state.json"

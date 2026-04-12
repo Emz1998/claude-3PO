@@ -301,7 +301,7 @@ def simulate(tdd: bool) -> None:
     s["phases"][1]["status"] = "completed"
     STATE_PATH.write_text(json.dumps(s, indent=2))
 
-    allow("Write plan file", PRE_TOOL_USE, write_payload(".claude/plans/plan.md"))
+    allow("Write plan file", PRE_TOOL_USE, write_payload(".claude/plans/latest-plan.md"))
     block("Write wrong plan path", PRE_TOOL_USE, write_payload("wrong.md"))
 
     # -- Plan review phase --
@@ -309,11 +309,11 @@ def simulate(tdd: bool) -> None:
     s = read_state()
     s["phases"].append({"name": "plan-review", "status": "in_progress"})
     s["phases"][2]["status"] = "completed"
-    s["plan"]["file_path"] = ".claude/plans/plan.md"
+    s["plan"]["file_path"] = ".claude/plans/latest-plan.md"
     s["plan"]["written"] = True
     STATE_PATH.write_text(json.dumps(s, indent=2))
 
-    allow("Edit plan in review", PRE_TOOL_USE, edit_payload(".claude/plans/plan.md"))
+    allow("Edit plan in review", PRE_TOOL_USE, edit_payload(".claude/plans/latest-plan.md"))
     block("Edit wrong file in review", PRE_TOOL_USE, edit_payload("wrong.md"))
     allow("PlanReview agent", PRE_TOOL_USE, agent_payload("PlanReview"))
 

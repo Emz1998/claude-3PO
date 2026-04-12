@@ -48,7 +48,7 @@ class TestResolvePlan:
     def test_completes_when_agent_done_and_written(self, config, state):
         state.add_phase("plan")
         state.add_agent(Agent(name="Plan", status="completed", tool_use_id="p-1"))
-        state.set_plan_file_path(".claude/plans/plan.md")
+        state.set_plan_file_path(".claude/plans/latest-plan.md")
         state.set_plan_written(True)
         resolve_plan(config, state)
         assert state.is_phase_completed("plan")
@@ -62,7 +62,7 @@ class TestResolvePlan:
     def test_does_not_complete_when_agent_not_done(self, config, state):
         state.add_phase("plan")
         state.add_agent(Agent(name="Plan", status="in_progress", tool_use_id="p-1"))
-        state.set_plan_file_path(".claude/plans/plan.md")
+        state.set_plan_file_path(".claude/plans/latest-plan.md")
         state.set_plan_written(True)
         resolve_plan(config, state)
         assert not state.is_phase_completed("plan")
@@ -226,7 +226,7 @@ class TestResolveDispatcher:
     def test_dispatches_to_correct_resolver(self, config, state):
         state.add_phase("plan")
         state.add_agent(Agent(name="Plan", status="completed", tool_use_id="p-1"))
-        state.set_plan_file_path(".claude/plans/plan.md")
+        state.set_plan_file_path(".claude/plans/latest-plan.md")
         state.set_plan_written(True)
         resolve(config, state)
         assert state.is_phase_completed("plan")

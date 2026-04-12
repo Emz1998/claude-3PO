@@ -86,7 +86,6 @@ def resolve_code_review(config: Config, state: StateStore) -> None:
         state.set_last_code_review_status("Fail")
         if state.code_review_count >= 3:
             raise ValueError("Code review reached max iterations (3). Discontinuing.")
-        state.set_files_to_revise([])
         return
 
     state.set_last_code_review_status("Pass")
@@ -104,7 +103,6 @@ def resolve_test_review(config: Config, state: StateStore) -> None:
     if verdict == "Fail":
         if state.test_review_count >= 3:
             raise ValueError("Test review reached max iterations (3). Discontinuing.")
-        state.set_test_files_to_revise([])
         return
 
     if verdict == "Pass":

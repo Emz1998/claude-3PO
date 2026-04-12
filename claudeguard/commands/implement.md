@@ -58,9 +58,9 @@ Runs in parallel with `/explore`. Allowed: Read, Glob, Grep, WebFetch, WebSearch
 
 1. Invoke the **Plan** agent to design the implementation plan.
 2. Consolidate findings from Explore and Research into `CODEBASE.md`.
-3. Write the implementation plan to `.claude/plans/plan.md`.
+3. Write the implementation plan to `.claude/plans/latest-plan.md`.
 
-Allowed: Write (only `.claude/plans/plan.md`), Read, Bash (read-only).
+Allowed: Write (only `.claude/plans/latest-plan.md`), Read, Bash (read-only).
 
 ### 4. `/plan-review`
 
@@ -70,7 +70,7 @@ Allowed: Write (only `.claude/plans/plan.md`), Read, Bash (read-only).
 4. Max 3 iterations.
 5. Once approved, present the plan to the user.
 
-Allowed: Edit (only `.claude/plans/plan.md`), Read, Glob, Grep.
+Allowed: Edit (only `.claude/plans/latest-plan.md`), Read, Glob, Grep.
 
 ### 5. `/write-tests` (TDD only)
 
@@ -148,6 +148,6 @@ Allowed: Write (only `.claude/reports/`), Read.
 
 ## References
 
-- **Plan**: `.claude/plans/plan.md`
+- **Plan**: `.claude/plans/latest-plan.md`
 - **Report**: `.claude/reports/latest-report.md`
 - **Archive**: `.claude/reports/archive/`

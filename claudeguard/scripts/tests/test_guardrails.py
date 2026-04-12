@@ -8,14 +8,17 @@ from guardrails import (
     webfetch_guard,
     phase_guard,
 )
+from guardrails import STOP_GUARDS
 from helpers import make_hook_input
+
+agent_report_guard = STOP_GUARDS["agent_report"]
 
 
 class TestWriteGuard:
     def test_allows_valid_write(self, config, state):
         state.add_phase("plan")
         state.add_agent(Agent(name="Plan", status="completed", tool_use_id="p-1"))
-        hook = make_hook_input("Write", {"file_path": ".claude/plans/plan.md"})
+        hook = make_hook_input("Write", {"file_path": ".claude/plans/latest-plan.md"})
         decision, _ = write_guard(hook, config, state)
         assert decision == "allow"
 
@@ -29,7 +32,7 @@ class TestWriteGuard:
 class TestEditGuard:
     def test_allows_valid_edit(self, config, state):
         state.add_phase("plan-review")
-        hook = make_hook_input("Edit", {"file_path": ".claude/plans/plan.md"})
+        hook = make_hook_input("Edit", {"file_path": ".claude/plans/latest-plan.md"})
         decision, _ = edit_guard(hook, config, state)
         assert decision == "allow"
 
@@ -93,3 +96,93 @@ class TestPhaseGuard:
         hook = make_hook_input("Skill", {"skill": "plan"})
         decision, _ = phase_guard(hook, config, state)
         assert decision == "block"
+
+
+class TestAgentReportGuard:
+    # --- Block: invalid content, nothing recorded ---
+
+    def test_blocks_empty_report(self, config, state):
+        state.add_phase("plan-review")
+        hook = {"last_assistant_message": ""}
+        decision, _ = agent_report_guard(hook, config, state)
+        assert decision == "block"
+        assert state.plan_review_count == 0
+
+    def test_blocks_missing_scores(self, config, state):
+        state.add_phase("code-review")
+        hook = {"last_assistant_message": "Looks good overall."}
+        decision, _ = agent_report_guard(hook, config, state)
+        assert decision == "block"
+        assert state.code_review_count == 0
+
+    def test_blocks_code_review_missing_sections(self, config, state):
+        state.add_phase("code-review")
+        hook = {"last_assistant_message": "Confidence: 50\nQuality: 50"}
+        decision, _ = agent_report_guard(hook, config, state)
+        assert decision == "block"
+        assert state.code_review_count == 0
+        assert state.files_to_revise == []
+
+    def test_blocks_code_review_empty_files_section(self, config, state):
+        state.add_phase("code-review")
+        hook = {"last_assistant_message": (
+            "Confidence: 50\nQuality: 50\n\n"
+            "## Files to revise\n\n"
+            "## Tests to revise\n- test_app.py\n"
+        )}
+        decision, _ = agent_report_guard(hook, config, state)
+        assert decision == "block"
+        assert state.code_review_count == 0
+
+    def test_blocks_test_review_missing_files_section(self, config, state):
+        state.add_phase("test-review")
+        hook = {"last_assistant_message": "Some feedback.\nFail"}
+        decision, _ = agent_report_guard(hook, config, state)
+        assert decision == "block"
+        assert state.test_review_count == 0
+
+    # --- Allow: valid content, everything recorded ---
+
+    def test_allows_valid_code_review(self, config, state):
+        state.add_phase("code-review")
+        hook = {"last_assistant_message": (
+            "Confidence: 50\nQuality: 50\n\n"
+            "## Files to revise\n- src/app.py\n\n"
+            "## Tests to revise\n- test_app.py\n"
+        )}
+        decision, _ = agent_report_guard(hook, config, state)
+        assert decision == "allow"
+        assert state.code_review_count == 1
+        assert state.files_to_revise == ["src/app.py"]
+        assert state.code_tests_to_revise == ["test_app.py"]
+
+    def test_allows_valid_plan_review(self, config, state):
+        state.add_phase("plan-review")
+        hook = {"last_assistant_message": "Confidence: 95\nQuality: 92"}
+        decision, _ = agent_report_guard(hook, config, state)
+        assert decision == "allow"
+        assert state.plan_review_count == 1
+        assert state.last_plan_review["status"] == "Pass"
+
+    def test_allows_valid_test_review(self, config, state):
+        state.add_phase("test-review")
+        hook = {"last_assistant_message": (
+            "Tests need work.\n\n"
+            "## Files to revise\n- test_app.py\n\n"
+            "Fail"
+        )}
+        decision, _ = agent_report_guard(hook, config, state)
+        assert decision == "allow"
+        assert state.test_review_count == 1
+        assert state.test_files_to_revise == ["test_app.py"]
+
+    def test_passing_code_review_no_sections_needed(self, config, state):
+        state.add_phase("code-review")
+        hook = {"last_assistant_message": (
+            "Confidence: 95\nQuality: 95\n\n"
+            "## Files to revise\n- src/app.py\n\n"
+            "## Tests to revise\n- test_app.py\n"
+        )}
+        decision, _ = agent_report_guard(hook, config, state)
+        assert decision == "allow"
+        assert state.last_code_review["status"] == "Pass"

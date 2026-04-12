@@ -1,11 +1,11 @@
 {
-  "session_id": "8671e1c9-d26e-4aa3-83fb-16b855646595",
+  "session_id": "c530d64a-6e7a-4a6b-a02b-10662bf5215c",
   "workflow_active": true,
-  "workflow_type": "implement",
+  "workflow_type": "build",
   "phases": [
     {
       "name": "explore",
-      "status": "completed"
+      "status": "in_progress"
     },
     {
       "name": "research",
@@ -13,88 +13,55 @@
     },
     {
       "name": "plan",
-      "status": "completed"
-    },
-    {
-      "name": "plan-review",
-      "status": "completed"
-    },
-    {
-      "name": "write-tests",
       "status": "in_progress"
     }
   ],
   "tdd": false,
-  "story_id": "SK-001",
+  "story_id": null,
   "skip": [],
-  "instructions": "",
+  "instructions": "build a snake and ladder game in a single html",
   "agents": [
     {
       "name": "Explore",
       "status": "completed",
-      "tool_use_id": "a22b6af063ca798a2"
+      "tool_use_id": "ab33fdc798903ba00"
     },
     {
       "name": "Explore",
       "status": "completed",
-      "tool_use_id": "a8056aa45c3e44922"
+      "tool_use_id": "a0ce42f7faf8bf9ed"
     },
     {
       "name": "Explore",
       "status": "completed",
-      "tool_use_id": "a809782836d254bc9"
+      "tool_use_id": "a4b54e7b016fe1f01"
     },
     {
       "name": "Research",
       "status": "completed",
-      "tool_use_id": "aa12dc258c1894c0a"
+      "tool_use_id": "a1f50b7b0939a988d"
     },
     {
       "name": "Research",
       "status": "completed",
-      "tool_use_id": "ac98bc54ee11a09fd"
+      "tool_use_id": "a31e0bdf015f62785"
     },
     {
       "name": "Plan",
       "status": "completed",
-      "tool_use_id": "a4fe93866e918dc56"
-    },
-    {
-      "name": "PlanReview",
-      "status": "completed",
-      "tool_use_id": "a054ac04fd8d67437"
-    },
-    {
-      "name": "PlanReview",
-      "status": "completed",
-      "tool_use_id": "a33e1c7bc522444c1"
+      "tool_use_id": "a742ed6cebbe514f2"
     }
   ],
   "plan": {
-    "file_path": "/home/emhar/avaris-ai/.claude/plans/plan.md",
-    "written": true,
-    "revised": true,
-    "reviews": [
-      {
-        "scores": {
-          "confidence_score": 88,
-          "quality_score": 84
-        },
-        "status": "Fail"
-      },
-      {
-        "scores": {
-          "confidence_score": 88,
-          "quality_score": 82
-        },
-        "status": "Pass"
-      }
-    ]
+    "file_path": null,
+    "written": false,
+    "revised": false,
+    "reviews": []
   },
   "tasks": [],
   "tests": {
     "file_paths": [],
-    "executed": true,
+    "executed": false,
     "reviews": [],
     "files_to_revise": [],
     "files_revised": []

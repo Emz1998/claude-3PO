@@ -21,7 +21,7 @@ from constants import (
     TEST_RUN_PATTERNS,
 )
 from .state_store import StateStore
-from .extractors import extract_skill_name, extract_agent_name
+from .extractors import extract_skill_name, extract_agent_name, extract_md_sections
 from config import Config
 
 
@@ -160,8 +160,11 @@ def is_command_allowed(hook_input: dict, config: Config, state: StateStore) -> R
     phase = state.current_phase
     command = hook_input.get("tool_input", {}).get("command", "")
 
-    # Read-only phases
+    # Read-only phases (also allow phase-specific commands like test runners)
     if phase in config.read_only_phases:
+        phase_cmds = COMMANDS_MAP.get(phase, [])
+        if phase_cmds and any(command.startswith(cmd) for cmd in phase_cmds):
+            return True, f"Command allowed in phase: {phase}"
         return _check_read_only(command, phase)
 
     # Docs phases
@@ -523,3 +526,54 @@ def is_agent_report_valid(
         return True, f"Agent report valid for {phase}: verdict present"
 
     raise ValueError(f"Phase '{phase}' does not require an agent report")
+
+
+# ═══════════════════════════════════════════════════════════════════
+# SubagentStop — Review section validation
+# ═══════════════════════════════════════════════════════════════════
+
+
+def _extract_bullet_items(content: str) -> list[str]:
+    """Extract bullet list items (- item) from markdown content."""
+    return [
+        line.lstrip("- ").strip()
+        for line in content.splitlines()
+        if line.strip().startswith("- ")
+    ]
+
+
+def _require_section(
+    sections: dict[str, str], heading: str
+) -> list[str]:
+    """Require a section exists and has bullet items. Returns the items."""
+    if heading not in sections:
+        raise ValueError(f"'{heading}' section is required")
+    items = _extract_bullet_items(sections[heading])
+    if not items:
+        raise ValueError(f"'{heading}' section is empty — provide file paths")
+    return items
+
+
+def validate_review_sections(
+    content: str, phase: str
+) -> tuple[list[str], list[str]]:
+    """Validate required sections in reviewer response.
+
+    Returns (files_to_revise, tests_to_revise).
+    - code-review: requires both "Files to revise" and "Tests to revise"
+    - test-review: requires "Files to revise"
+    - plan-review: no sections required
+    """
+    raw_sections = extract_md_sections(content, 2)
+    sections = {heading: body for heading, body in raw_sections}
+
+    if phase == "code-review":
+        files = _require_section(sections, "Files to revise")
+        tests = _require_section(sections, "Tests to revise")
+        return files, tests
+
+    if phase == "test-review":
+        files = _require_section(sections, "Files to revise")
+        return files, []
+
+    return [], []

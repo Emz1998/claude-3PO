@@ -12,6 +12,7 @@ from utils.recorder import (
     record_pr_create_output,
     record_ci_check_output,
     record_test_execution,
+    inject_plan_metadata,
 )
 from utils.validators import _is_test_command
 from utils.resolvers import resolve
@@ -30,6 +31,12 @@ def main() -> None:
     tool_name = hook_input.get("tool_name", "")
 
     config = Config()
+
+    # Inject metadata into plan file after Write
+    if tool_name == "Write":
+        file_path = hook_input.get("tool_input", {}).get("file_path", "")
+        if file_path and file_path.endswith(config.plan_file_path):
+            inject_plan_metadata(file_path, state)
 
     if tool_name == "Bash":
         phase = state.current_phase

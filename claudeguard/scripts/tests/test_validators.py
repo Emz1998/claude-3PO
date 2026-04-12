@@ -11,6 +11,7 @@ from utils.validators import (
     scores_valid,
     verdict_valid,
     is_agent_report_valid,
+    validate_review_sections,
 )
 from helpers import make_hook_input
 
@@ -82,7 +83,7 @@ class TestIsFileWriteAllowed:
     def test_plan_correct_path(self, config, state):
         state.add_phase("plan")
         state.add_agent(Agent(name="Plan", status="completed", tool_use_id="p-1"))
-        hook = make_hook_input("Write", {"file_path": ".claude/plans/plan.md"})
+        hook = make_hook_input("Write", {"file_path": ".claude/plans/latest-plan.md"})
         ok, _ = is_file_write_allowed(hook, config, state)
         assert ok is True
 
@@ -95,7 +96,7 @@ class TestIsFileWriteAllowed:
 
     def test_plan_blocks_before_agent(self, config, state):
         state.add_phase("plan")
-        hook = make_hook_input("Write", {"file_path": ".claude/plans/plan.md"})
+        hook = make_hook_input("Write", {"file_path": ".claude/plans/latest-plan.md"})
         with pytest.raises(ValueError, match="Plan agent must be invoked first"):
             is_file_write_allowed(hook, config, state)
 
@@ -142,7 +143,7 @@ class TestIsFileWriteAllowed:
 class TestIsFileEditAllowed:
     def test_plan_review_correct_path(self, config, state):
         state.add_phase("plan-review")
-        hook = make_hook_input("Edit", {"file_path": ".claude/plans/plan.md"})
+        hook = make_hook_input("Edit", {"file_path": ".claude/plans/latest-plan.md"})
         ok, _ = is_file_edit_allowed(hook, config, state)
         assert ok is True
 
@@ -416,3 +417,75 @@ class TestIsAgentReportValid:
         verdict_ext = lambda c: "Pass"
         with pytest.raises(ValueError, match="does not require"):
             is_agent_report_valid(hook, state, score_ext, verdict_ext)
+
+
+class TestValidateReviewSections:
+    def test_code_review_fail_requires_files_to_revise(self, state):
+        state.add_phase("code-review")
+        content = "Confidence: 50\nQuality: 50\n\nSome feedback."
+        with pytest.raises(ValueError, match="Files to revise"):
+            validate_review_sections(content, "code-review")
+
+    def test_code_review_fail_requires_tests_to_revise(self, state):
+        state.add_phase("code-review")
+        content = (
+            "Confidence: 50\nQuality: 50\n\n"
+            "## Files to revise\n- src/app.py\n"
+        )
+        with pytest.raises(ValueError, match="Tests to revise"):
+            validate_review_sections(content, "code-review")
+
+    def test_code_review_with_both_sections(self, state):
+        state.add_phase("code-review")
+        content = (
+            "Confidence: 50\nQuality: 50\n\n"
+            "## Files to revise\n- src/app.py\n\n"
+            "## Tests to revise\n- test_app.py\n"
+        )
+        files, tests = validate_review_sections(content, "code-review")
+        assert files == ["src/app.py"]
+        assert tests == ["test_app.py"]
+
+    def test_code_review_empty_files_section_blocked(self, state):
+        state.add_phase("code-review")
+        content = (
+            "Confidence: 50\nQuality: 50\n\n"
+            "## Files to revise\n\n"
+            "## Tests to revise\n- test_app.py\n"
+        )
+        with pytest.raises(ValueError, match="Files to revise.*empty"):
+            validate_review_sections(content, "code-review")
+
+    def test_code_review_empty_tests_section_blocked(self, state):
+        state.add_phase("code-review")
+        content = (
+            "Confidence: 50\nQuality: 50\n\n"
+            "## Files to revise\n- src/app.py\n\n"
+            "## Tests to revise\n\n"
+        )
+        with pytest.raises(ValueError, match="Tests to revise.*empty"):
+            validate_review_sections(content, "code-review")
+
+    def test_test_review_fail_requires_files_to_revise(self, state):
+        state.add_phase("test-review")
+        content = "Some feedback.\nFail"
+        with pytest.raises(ValueError, match="Files to revise"):
+            validate_review_sections(content, "test-review")
+
+    def test_test_review_with_files_section(self, state):
+        state.add_phase("test-review")
+        content = (
+            "Some feedback.\n\n"
+            "## Files to revise\n- test_app.py\n\n"
+            "Fail"
+        )
+        files, tests = validate_review_sections(content, "test-review")
+        assert files == ["test_app.py"]
+        assert tests == []
+
+    def test_plan_review_no_sections_required(self, state):
+        state.add_phase("plan-review")
+        content = "Confidence: 50\nQuality: 50"
+        files, tests = validate_review_sections(content, "plan-review")
+        assert files == []
+        assert tests == []
