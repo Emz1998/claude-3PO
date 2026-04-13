@@ -29,6 +29,14 @@ DEFAULT_STATE: dict = {
         "reviews": [],
     },
     "tasks": [],
+    "dependencies": {"packages": [], "installed": False},
+    "contracts": {
+        "file_path": None,
+        "names": [],
+        "code_files": [],
+        "written": False,
+        "validated": False,
+    },
     "tests": {
         "file_paths": [],
         "executed": False,

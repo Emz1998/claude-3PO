@@ -47,6 +47,10 @@ def main() -> None:
             if decision == "block":
                 Hook.block(message)
 
+    # Checkpoint: plan-review pass → stop for user review
+    if phase == "plan-review" and state.is_phase_completed("plan-review"):
+        Hook.discontinue("Plan approved. Review the plan before proceeding.")
+
     sys.exit(0)
 
 

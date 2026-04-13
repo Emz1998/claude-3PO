@@ -16,6 +16,12 @@ from utils.resolvers import (
     resolve,
 )
 
+try:
+    from utils.resolvers import resolve_install_dependencies, resolve_define_contracts
+except ImportError:
+    resolve_install_dependencies = None
+    resolve_define_contracts = None
+
 
 class TestResolveExplore:
     def test_completes_when_agents_done(self, config, state):
@@ -235,3 +241,73 @@ class TestResolveDispatcher:
         state.add_phase("unknown-phase")
         resolve(config, state)
         assert state.get_phase_status("unknown-phase") == "in_progress"
+
+    def test_dispatches_install_deps(self, config, state):
+        state.add_phase("install-deps")
+        state.set_dependencies_installed()
+        resolve(config, state)
+        assert state.is_phase_completed("install-deps")
+
+    def test_dispatches_define_contracts(self, config, state):
+        state.add_phase("define-contracts")
+        state.set_contracts_written(True)
+        state.set_contracts_validated(True)
+        resolve(config, state)
+        assert state.is_phase_completed("define-contracts")
+
+
+# ═══════════════════════════════════════════════════════════════════
+# resolve_install_dependencies
+# ═══════════════════════════════════════════════════════════════════
+
+
+@pytest.mark.skipif(resolve_install_dependencies is None, reason="Not yet implemented")
+class TestResolveInstallDependencies:
+    def test_completes_when_installed(self, state):
+        state.add_phase("install-deps")
+        state.set_dependencies_installed()
+        resolve_install_dependencies(state)
+        assert state.is_phase_completed("install-deps")
+
+    def test_does_not_complete_when_not_installed(self, state):
+        state.add_phase("install-deps")
+        resolve_install_dependencies(state)
+        assert not state.is_phase_completed("install-deps")
+
+    def test_does_not_complete_with_packages_but_not_installed(self, state):
+        state.add_phase("install-deps")
+        state.set_dependencies_packages(["flask", "pytest"])
+        resolve_install_dependencies(state)
+        assert not state.is_phase_completed("install-deps")
+
+
+# ═══════════════════════════════════════════════════════════════════
+# resolve_define_contracts
+# ═══════════════════════════════════════════════════════════════════
+
+
+@pytest.mark.skipif(resolve_define_contracts is None, reason="Not yet implemented")
+class TestResolveDefineContracts:
+    def test_completes_when_written_and_validated(self, state):
+        state.add_phase("define-contracts")
+        state.set_contracts_written(True)
+        state.set_contracts_validated(True)
+        resolve_define_contracts(state)
+        assert state.is_phase_completed("define-contracts")
+
+    def test_does_not_complete_when_not_written(self, state):
+        state.add_phase("define-contracts")
+        state.set_contracts_validated(True)
+        resolve_define_contracts(state)
+        assert not state.is_phase_completed("define-contracts")
+
+    def test_does_not_complete_when_not_validated(self, state):
+        state.add_phase("define-contracts")
+        state.set_contracts_written(True)
+        resolve_define_contracts(state)
+        assert not state.is_phase_completed("define-contracts")
+
+    def test_does_not_complete_when_neither(self, state):
+        state.add_phase("define-contracts")
+        resolve_define_contracts(state)
+        assert not state.is_phase_completed("define-contracts")

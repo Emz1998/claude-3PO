@@ -13,6 +13,11 @@ from utils.initializer import (
     build_initial_state,
     initialize,
 )
+
+try:
+    from utils.initializer import archive_contracts
+except ImportError:
+    archive_contracts = None
 from config import Config
 
 
@@ -133,7 +138,8 @@ class TestBuildInitialState:
         expected_keys = {
             "session_id", "workflow_active", "workflow_type", "phases",
             "tdd", "story_id", "skip", "instructions",
-            "agents", "plan", "tasks", "tests", "code_files_to_write",
+            "agents", "plan", "tasks", "dependencies", "contracts",
+            "tests", "code_files_to_write",
             "code_files", "quality_check_result", "pr", "ci-check",
             "report_written",
         }
@@ -247,3 +253,77 @@ class TestArchivePlan:
         state = json.loads(state_path.read_text())
         assert state["session_id"] == "new-sess"
         assert state["workflow_active"] is True
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Initial state — dependencies + contracts fields
+# ═══════════════════════════════════════════════════════════════════
+
+
+class TestBuildInitialStateDepsContracts:
+    def test_has_dependencies_field(self):
+        state = build_initial_state("implement", "sess-1", "build a form")
+        assert "dependencies" in state
+        assert state["dependencies"]["packages"] == []
+        assert state["dependencies"]["installed"] is False
+
+    def test_has_contracts_field(self):
+        state = build_initial_state("implement", "sess-1", "build a form")
+        assert "contracts" in state
+        assert state["contracts"]["file_path"] is None
+        assert state["contracts"]["names"] == []
+        assert state["contracts"]["code_files"] == []
+        assert state["contracts"]["written"] is False
+        assert state["contracts"]["validated"] is False
+
+    def test_all_schema_keys_include_new_fields(self):
+        state = build_initial_state("implement", "sess-1", "")
+        expected_keys = {
+            "session_id", "workflow_active", "workflow_type", "phases",
+            "tdd", "story_id", "skip", "instructions",
+            "agents", "plan", "tasks", "tests", "code_files_to_write",
+            "code_files", "quality_check_result", "pr", "ci-check",
+            "report_written", "dependencies", "contracts",
+        }
+        assert set(state.keys()) == expected_keys
+
+
+# ═══════════════════════════════════════════════════════════════════
+# archive_contracts
+# ═══════════════════════════════════════════════════════════════════
+
+
+@pytest.mark.skipif(archive_contracts is None, reason="Not yet implemented")
+class TestArchiveContracts:
+    def test_archives_existing_contracts(self, tmp_path: Path, monkeypatch):
+        contracts_dir = tmp_path / ".claude" / "contracts"
+        contracts_dir.mkdir(parents=True)
+        contracts_path = contracts_dir / "latest-contracts.md"
+        contracts_path.write_text("# Contracts\n\n- UserService\n- AuthProvider\n")
+
+        archive_dir = contracts_dir / "archive"
+
+        config = Config()
+        monkeypatch.setattr(
+            type(config), "contracts_file_path",
+            property(lambda self: str(contracts_path)),
+        )
+        monkeypatch.setattr(
+            type(config), "contracts_archive_dir",
+            property(lambda self: str(archive_dir)),
+        )
+
+        archive_contracts(config)
+
+        assert not contracts_path.exists()
+        archived = list(archive_dir.glob("contracts_*.md"))
+        assert len(archived) == 1
+        assert "UserService" in archived[0].read_text()
+
+    def test_no_contracts_file_does_nothing(self, tmp_path: Path, monkeypatch):
+        config = Config()
+        monkeypatch.setattr(
+            type(config), "contracts_file_path",
+            property(lambda self: str(tmp_path / "nonexistent.md")),
+        )
+        archive_contracts(config)  # should not raise

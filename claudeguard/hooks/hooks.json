@@ -54,6 +54,17 @@
           }
         ]
       }
+    ],
+    "TaskCreated": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/task_created.py",
+            "timeout": 10
+          }
+        ]
+      }
     ]
   }
 }

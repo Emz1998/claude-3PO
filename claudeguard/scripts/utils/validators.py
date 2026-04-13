@@ -19,6 +19,7 @@ from constants import (
     CODE_EXTENSIONS,
     READ_ONLY_COMMANDS,
     TEST_RUN_PATTERNS,
+    PACKAGE_MANAGER_FILES,
 )
 from .state_store import StateStore
 from .extractors import extract_skill_name, extract_agent_name, extract_md_sections
@@ -208,9 +209,9 @@ def _is_writable_phase(phase: str, config: Config) -> None:
 
 
 def _is_plan_path_allowed(file_path: str, config: Config) -> None:
-    expected = config.plan_file_path
-    if file_path != expected and not file_path.endswith(expected):
-        raise ValueError(f"Writing '{file_path}' not allowed" f"\nAllowed: {expected}")
+    allowed = [config.plan_file_path, config.contracts_file_path]
+    if not any(file_path == p or file_path.endswith(p) for p in allowed if p):
+        raise ValueError(f"Writing '{file_path}' not allowed" f"\nAllowed: {allowed}")
 
 
 def _is_test_path_allowed(file_path: str) -> None:
@@ -227,6 +228,46 @@ def _is_code_path_allowed(file_path: str) -> None:
         raise ValueError(
             f"Writing '{file_path}' not allowed"
             f"\nAllowed extensions: {CODE_EXTENSIONS}"
+        )
+
+
+PLAN_REQUIRED_SECTIONS = ["## Dependencies", "## Contracts", "## Tasks"]
+PLAN_BULLET_SECTIONS = ["Dependencies", "Tasks"]
+
+
+def _validate_plan_content(content: str) -> None:
+    """Check that plan content contains all required sections with bullet format."""
+    missing = [s for s in PLAN_REQUIRED_SECTIONS if s not in content]
+    if missing:
+        raise ValueError(f"Plan missing required sections: {missing}")
+
+    # Validate bullet format in key sections
+    sections = extract_md_sections(content, 2)
+    section_map = {name.strip(): body for name, body in sections}
+
+    for section_name in PLAN_BULLET_SECTIONS:
+        body = section_map.get(section_name, "")
+        has_subsections = "### " in body
+        has_bullets = any(line.strip().startswith("- ") for line in body.splitlines())
+
+        if has_subsections:
+            raise ValueError(
+                f"'{section_name}' must use bullet items (- item), not ### subsections. "
+                f"See the plan template for the correct format."
+            )
+        if not has_bullets:
+            raise ValueError(
+                f"'{section_name}' must have at least one bullet item (- item). "
+                f"See the plan template for the correct format."
+            )
+
+
+def _is_package_manager_path_allowed(file_path: str) -> None:
+    basename = file_path.rsplit("/", 1)[-1]
+    if basename not in PACKAGE_MANAGER_FILES:
+        raise ValueError(
+            f"Writing '{file_path}' not allowed in install-deps"
+            f"\nAllowed: {PACKAGE_MANAGER_FILES}"
         )
 
 
@@ -249,6 +290,15 @@ def is_file_write_allowed(
     if phase == "plan":
         _require_agent_completed("Plan", config, state)
         _is_plan_path_allowed(file_path, config)
+        content = hook_input.get("tool_input", {}).get("content", "")
+        if file_path == config.plan_file_path or file_path.endswith(
+            config.plan_file_path
+        ):
+            _validate_plan_content(content)
+    elif phase == "install-deps":
+        _is_package_manager_path_allowed(file_path)
+    elif phase == "define-contracts":
+        _is_code_path_allowed(file_path)
     elif phase == "write-tests":
         _is_test_path_allowed(file_path)
     elif phase == "write-code":
@@ -268,6 +318,32 @@ def _is_editable_phase(phase: str, config: Config) -> None:
     editable = config.code_edit_phases + config.docs_edit_phases
     if phase not in editable:
         raise ValueError(f"File edit not allowed in phase: {phase}")
+
+
+def _validate_plan_edit_preserves_sections(
+    hook_input: dict, file_path: str, config: Config
+) -> None:
+    """Validate that a plan edit doesn't remove required sections."""
+    from pathlib import Path
+
+    plan_path = config.plan_file_path
+    if not (file_path == plan_path or file_path.endswith(plan_path)):
+        return
+
+    path = Path(file_path)
+    if not path.exists():
+        return
+
+    current_content = path.read_text()
+    tool_input = hook_input.get("tool_input", {})
+    old_string = tool_input.get("old_string", "")
+    new_string = tool_input.get("new_string", "")
+
+    patched = current_content.replace(old_string, new_string, 1)
+
+    missing = [s for s in PLAN_REQUIRED_SECTIONS if s not in patched]
+    if missing:
+        raise ValueError(f"Edit would remove required sections: {missing}")
 
 
 def _is_plan_edit_allowed(file_path: str, config: Config) -> None:
@@ -303,8 +379,7 @@ def _is_code_edit_allowed(file_path: str, state: StateStore) -> None:
         return
 
     raise ValueError(
-        f"Editing '{file_path}' not allowed"
-        f"\nCode files in session: {code_files}"
+        f"Editing '{file_path}' not allowed" f"\nCode files in session: {code_files}"
     )
 
 
@@ -318,6 +393,7 @@ def is_file_edit_allowed(hook_input: dict, config: Config, state: StateStore) ->
 
     if phase == "plan-review":
         _is_plan_edit_allowed(file_path, config)
+        _validate_plan_edit_preserves_sections(hook_input, file_path, config)
     elif phase == "test-review":
         _is_test_edit_allowed(file_path, state)
     elif phase == "code-review":
@@ -542,9 +618,7 @@ def _extract_bullet_items(content: str) -> list[str]:
     ]
 
 
-def _require_section(
-    sections: dict[str, str], heading: str
-) -> list[str]:
+def _require_section(sections: dict[str, str], heading: str) -> list[str]:
     """Require a section exists and has bullet items. Returns the items."""
     if heading not in sections:
         raise ValueError(f"'{heading}' section is required")
@@ -554,9 +628,7 @@ def _require_section(
     return items
 
 
-def validate_review_sections(
-    content: str, phase: str
-) -> tuple[list[str], list[str]]:
+def validate_review_sections(content: str, phase: str) -> tuple[list[str], list[str]]:
     """Validate required sections in reviewer response.
 
     Returns (files_to_revise, tests_to_revise).

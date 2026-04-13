@@ -124,13 +124,23 @@ READ_ONLY_COMMANDS = [
 ]
 
 COMMANDS_MAP = {
-    "install": INSTALL_COMMANDS,
+    "install-deps": INSTALL_COMMANDS,
     "write-tests": TEST_COMMANDS,
     "write-code": TEST_COMMANDS,
     "test-review": TEST_COMMANDS,
     "pr-create": PR_COMMANDS,
     "ci-check": CI_COMMANDS,
 }
+
+PACKAGE_MANAGER_FILES = [
+    "package.json",
+    "requirements.txt",
+    "Pipfile",
+    "go.mod",
+    "Cargo.toml",
+    "Gemfile",
+    "pyproject.toml",
+]
 
 TEST_FILE_PATTERNS = [
     # JS / TS style

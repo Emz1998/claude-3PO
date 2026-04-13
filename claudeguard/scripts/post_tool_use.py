@@ -13,8 +13,12 @@ from utils.recorder import (
     record_ci_check_output,
     record_test_execution,
     inject_plan_metadata,
+    record_plan_sections,
+    record_contracts_file,
+    record_dependency_install,
 )
 from utils.validators import _is_test_command
+from constants import INSTALL_COMMANDS
 from utils.resolvers import resolve
 from config import Config
 
@@ -32,11 +36,14 @@ def main() -> None:
 
     config = Config()
 
-    # Inject metadata into plan file after Write
+    # Inject metadata into plan file after Write, then auto-parse sections
     if tool_name == "Write":
         file_path = hook_input.get("tool_input", {}).get("file_path", "")
         if file_path and file_path.endswith(config.plan_file_path):
             inject_plan_metadata(file_path, state)
+            record_plan_sections(file_path, state)
+        if file_path and config.contracts_file_path and file_path.endswith(config.contracts_file_path):
+            record_contracts_file(file_path, state)
 
     if tool_name == "Bash":
         phase = state.current_phase
@@ -52,6 +59,9 @@ def main() -> None:
 
             if phase in ("write-tests", "test-review") and _is_test_command(command):
                 record_test_execution(state)
+
+            if phase == "install-deps" and any(command.startswith(cmd) for cmd in INSTALL_COMMANDS):
+                record_dependency_install(command, state)
         except ValueError as e:
             Hook.block(str(e))
 

@@ -41,6 +41,9 @@ def record_file_write(hook_input: dict, state: StateStore) -> None:
     if phase == "plan":
         state.set_plan_file_path(file_path)
         state.set_plan_written(True)
+    elif phase == "define-contracts":
+        state.add_contract_code_file(file_path)
+        state.set_contracts_written(True)
     elif phase == "write-tests":
         state.add_test_file(file_path)
     elif phase == "write-code":
@@ -214,6 +217,42 @@ def record_pr_create_output(output: str, state: StateStore) -> None:
 
     state.set_pr_number(number)
     state.set_pr_status("created")
+
+
+def record_plan_sections(file_path: str, state: StateStore) -> None:
+    """Auto-parse Dependencies and Tasks from plan and store in state."""
+    from .extractors import extract_plan_dependencies, extract_plan_tasks
+
+    path = Path(file_path)
+    if not path.exists():
+        return
+
+    content = path.read_text()
+    deps = extract_plan_dependencies(content)
+    tasks = extract_plan_tasks(content)
+
+    state.set_dependencies_packages(deps)
+    state.set_tasks(tasks)
+
+
+def record_contracts_file(file_path: str, state: StateStore) -> None:
+    """Auto-parse contract names from contracts.md and store in state."""
+    from .extractors import extract_contract_names
+
+    path = Path(file_path)
+    if not path.exists():
+        return
+
+    content = path.read_text()
+    names = extract_contract_names(content)
+
+    state.set_contracts_file_path(file_path)
+    state.set_contracts_names(names)
+
+
+def record_dependency_install(command: str, state: StateStore) -> None:
+    """Mark dependencies as installed when install command runs."""
+    state.set_dependencies_installed()
 
 
 def record_ci_check_output(output: str, state: StateStore) -> None:

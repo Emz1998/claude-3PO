@@ -54,6 +54,14 @@ DEFAULT_STATE = {
         "reviews": [],
     },
     "tasks": [],
+    "dependencies": {"packages": [], "installed": False},
+    "contracts": {
+        "file_path": None,
+        "names": [],
+        "code_files": [],
+        "written": False,
+        "validated": False,
+    },
     "tests": {"file_paths": [], "executed": False, "reviews": [], "files_to_revise": [], "files_revised": []},
     "code_files_to_write": [],
     "code_files": {
@@ -110,11 +118,11 @@ def agent_payload(agent_type: str) -> dict:
     }
 
 
-def write_payload(file_path: str) -> dict:
+def write_payload(file_path: str, content: str = "x") -> dict:
     return {
         "hook_event_name": "PreToolUse",
         "tool_name": "Write",
-        "tool_input": {"file_path": file_path, "content": "x"},
+        "tool_input": {"file_path": file_path, "content": content},
         "tool_use_id": "t1",
         "session_id": "dry-run",
         "transcript_path": "t",
@@ -278,7 +286,11 @@ def simulate(tdd: bool) -> None:
     allow("WebFetch safe domain", PRE_TOOL_USE, webfetch_payload("https://docs.python.org/3/"))
     block("WebFetch unsafe domain", PRE_TOOL_USE, webfetch_payload("https://evil.com"))
 
-    # Research parallel with explore
+    # Research parallel with explore — requires an in-progress Explore agent
+    s = read_state()
+    s["agents"].append({"name": "Explore", "status": "in_progress", "tool_use_id": "e-1"})
+    STATE_PATH.write_text(json.dumps(s, indent=2))
+
     allow("Research parallel with explore", PRE_TOOL_USE, agent_payload("Research"),
           note="Research runs alongside in-progress Explore")
 
@@ -301,8 +313,15 @@ def simulate(tdd: bool) -> None:
     s["phases"][1]["status"] = "completed"
     STATE_PATH.write_text(json.dumps(s, indent=2))
 
-    allow("Write plan file", PRE_TOOL_USE, write_payload(".claude/plans/latest-plan.md"))
+    # Plan agent must complete before writing
+    s = read_state()
+    s["agents"].append({"name": "Plan", "status": "completed", "tool_use_id": "p-1"})
+    STATE_PATH.write_text(json.dumps(s, indent=2))
+
+    plan_content = "# Plan\n\n## Dependencies\n- flask\n\n## Contracts\n- UserService\n\n## Tasks\n- Build login\n"
+    allow("Write plan file", PRE_TOOL_USE, write_payload(".claude/plans/latest-plan.md", plan_content))
     block("Write wrong plan path", PRE_TOOL_USE, write_payload("wrong.md"))
+    block("Write plan missing sections", PRE_TOOL_USE, write_payload(".claude/plans/latest-plan.md", "# Plan\nNo sections"))
 
     # -- Plan review phase --
     print("\n--- Plan review phase ---")
@@ -327,16 +346,45 @@ def simulate(tdd: bool) -> None:
     s["plan"]["reviews"] = []
     STATE_PATH.write_text(json.dumps(s, indent=2))
 
-    allow("High scores -> pass", SUBAGENT_STOP,
+    allow("High scores -> checkpoint", SUBAGENT_STOP,
           subagent_stop_payload("PlanReview", "Confidence: 95\nQuality: 92"),
-          note="Should complete plan-review phase")
+          note="Plan approved — discontinue for user review")
+
+    # -- Install deps phase --
+    print("\n--- Install deps phase ---")
+    s = read_state()
+    s["phases"].append({"name": "install-deps", "status": "in_progress"})
+    s["phases"][3]["status"] = "completed"
+    STATE_PATH.write_text(json.dumps(s, indent=2))
+
+    allow("Write package.json", PRE_TOOL_USE, write_payload("package.json"))
+    block("Write code file in install-deps", PRE_TOOL_USE, write_payload("app.py"))
+    allow("npm install command", PRE_TOOL_USE, bash_payload("npm install"))
+    block("rm in install-deps", PRE_TOOL_USE, bash_payload("rm -rf /"))
+
+    # -- Define contracts phase --
+    print("\n--- Define contracts phase ---")
+    s = read_state()
+    s["phases"].append({"name": "define-contracts", "status": "in_progress"})
+    for p in s["phases"]:
+        if p["name"] == "install-deps":
+            p["status"] = "completed"
+    s["dependencies"]["installed"] = True
+    STATE_PATH.write_text(json.dumps(s, indent=2))
+
+    allow("Write code file in define-contracts", PRE_TOOL_USE, write_payload("src/interfaces.py"))
+    block("Write markdown in define-contracts", PRE_TOOL_USE, write_payload("notes.md"))
 
     # -- Write tests phase (TDD) --
     if tdd:
         print("\n--- Write tests phase ---")
         s = read_state()
         s["phases"].append({"name": "write-tests", "status": "in_progress"})
-        s["phases"][3]["status"] = "completed"
+        for p in s["phases"]:
+            if p["name"] == "define-contracts":
+                p["status"] = "completed"
+        s["contracts"]["written"] = True
+        s["contracts"]["validated"] = True
         STATE_PATH.write_text(json.dumps(s, indent=2))
 
         allow("Write test file", PRE_TOOL_USE, write_payload("app.test.ts"))
@@ -348,7 +396,6 @@ def simulate(tdd: bool) -> None:
     # -- Write code phase --
     print("\n--- Write code phase ---")
     s = read_state()
-    phase_idx = len(s["phases"])
     s["phases"].append({"name": "write-code", "status": "in_progress"})
     if tdd:
         s["phases"][-2]["status"] = "completed"
@@ -356,7 +403,12 @@ def simulate(tdd: bool) -> None:
         s["tests"]["executed"] = True
         s["tests"]["review_result"] = "Pass"
     else:
-        s["phases"][3]["status"] = "completed"
+        # Complete define-contracts if not TDD
+        for p in s["phases"]:
+            if p["name"] == "define-contracts":
+                p["status"] = "completed"
+        s["contracts"]["written"] = True
+        s["contracts"]["validated"] = True
     STATE_PATH.write_text(json.dumps(s, indent=2))
 
     allow("Write code file", PRE_TOOL_USE, write_payload("feature.py"))
@@ -377,18 +429,20 @@ def simulate(tdd: bool) -> None:
     allow("Edit test file in review", PRE_TOOL_USE, edit_payload("app.test.ts"))
     block("Edit non-test file", PRE_TOOL_USE, edit_payload("other.py"))
 
-    # SubagentStop with Fail verdict
+    # SubagentStop with Fail verdict — must include ## Files to revise
+    test_fail_msg = "Review feedback.\n\n## Files to revise\n- app.test.ts\n\nFail"
     allow("Test review Fail", SUBAGENT_STOP,
-          subagent_stop_payload("TestReviewer", "Fail"),
+          subagent_stop_payload("TestReviewer", test_fail_msg),
           note="Should trigger refactor sub-phase")
 
     # SubagentStop with Pass verdict
     s = read_state()
-    s["tests"]["review_result"] = None
+    s["tests"]["reviews"] = []
     STATE_PATH.write_text(json.dumps(s, indent=2))
 
+    test_pass_msg = "All tests look good.\n\n## Files to revise\n- app.test.ts\n\nPass"
     allow("Test review Pass", SUBAGENT_STOP,
-          subagent_stop_payload("TestReviewer", "Pass"),
+          subagent_stop_payload("TestReviewer", test_pass_msg),
           note="Should complete test-review phase")
 
     # -- Code review phase --
@@ -405,16 +459,26 @@ def simulate(tdd: bool) -> None:
     block("Edit non-code file", PRE_TOOL_USE, edit_payload("unknown.py"))
     allow("CodeReviewer agent", PRE_TOOL_USE, agent_payload("CodeReviewer"))
 
+    code_low_msg = (
+        "Confidence: 40\nQuality: 30\n\n"
+        "## Files to revise\n- feature.py\n\n"
+        "## Tests to revise\n- app.test.ts\n"
+    )
     allow("Code review low scores -> revision", SUBAGENT_STOP,
-          subagent_stop_payload("CodeReviewer", "Confidence: 40\nQuality: 30"),
+          subagent_stop_payload("CodeReviewer", code_low_msg),
           note="Should trigger refactor sub-phase")
 
     s = read_state()
     s["code_files"]["reviews"] = []
     STATE_PATH.write_text(json.dumps(s, indent=2))
 
+    code_high_msg = (
+        "Confidence: 95\nQuality: 93\n\n"
+        "## Files to revise\n- feature.py\n\n"
+        "## Tests to revise\n- app.test.ts\n"
+    )
     allow("Code review high scores -> pass", SUBAGENT_STOP,
-          subagent_stop_payload("CodeReviewer", "Confidence: 95\nQuality: 93"),
+          subagent_stop_payload("CodeReviewer", code_high_msg),
           note="Should complete code-review phase")
 
     # -- Quality check phase --

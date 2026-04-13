@@ -58,9 +58,17 @@ Runs in parallel with `/explore`. Allowed: Read, Glob, Grep, WebFetch, WebSearch
 
 1. Invoke the **Plan** agent to design the implementation plan.
 2. Consolidate findings from Explore and Research into `CODEBASE.md`.
-3. Write the implementation plan to `.claude/plans/latest-plan.md`.
+3. Read the plan template at `${CLAUDE_PLUGIN_ROOT}/templates/plan.md` and follow it exactly.
+4. Write the implementation plan to `.claude/plans/latest-plan.md`.
+5. Write the contracts specification to `.claude/contracts/latest-contracts.md`.
 
-Allowed: Write (only `.claude/plans/latest-plan.md`), Read, Bash (read-only).
+The plan **must** follow the template format (guardrail enforced):
+
+- `## Dependencies` — bullet list of packages (`- package-name`). No ### subsections.
+- `## Contracts` — bullet list of contract names (`- ContractName`). No ### subsections.
+- `## Tasks` — bullet list of task subjects (`- Task subject`). No ### subsections.
+
+Allowed: Write (only `.claude/plans/latest-plan.md` and `.claude/contracts/latest-contracts.md`), Read, Bash (read-only).
 
 ### 4. `/plan-review`
 
@@ -72,7 +80,25 @@ Allowed: Write (only `.claude/plans/latest-plan.md`), Read, Bash (read-only).
 
 Allowed: Edit (only `.claude/plans/latest-plan.md`), Read, Glob, Grep.
 
-### 5. `/write-tests` (TDD only)
+### 5. `/install-deps`
+
+1. Read the plan's `## Dependencies` section.
+2. Write dependencies to the package manager file (`package.json`, `requirements.txt`, `go.mod`, etc.)
+3. Run the install command (`npm install`, `pip install -r requirements.txt`, etc.)
+4. Phase completes when install command runs successfully.
+
+Allowed: Write (package manager files only), Bash (install commands only).
+
+### 6. `/define-contracts`
+
+1. Read `.claude/contracts/latest-contracts.md` (written during plan phase).
+2. Write actual code files (interfaces, types, stubs) that implement the contracts.
+3. Guardrail validates all contract names from contracts.md appear in written code.
+4. Phase completes when all contracts are found in code.
+
+Allowed: Write (code files only), Read, Glob, Grep.
+
+### 7. `/write-tests` (TDD only)
 
 > Skip if TDD is not enabled.
 
@@ -81,7 +107,7 @@ Allowed: Edit (only `.claude/plans/latest-plan.md`), Read, Glob, Grep.
 
 Allowed: Write (test files only), Bash (test commands only).
 
-### 6. `/test-review` (TDD only)
+### 8. `/test-review` (TDD only)
 
 1. Invoke the **TestReviewer** agent.
 2. Agent must return verdict: `Pass` or `Fail`.
@@ -89,14 +115,14 @@ Allowed: Write (test files only), Bash (test commands only).
 
 Allowed: Edit (only test files written this session), Read, Glob, Grep.
 
-### 7. `/write-code`
+### 9. `/write-code`
 
 1. Write implementation code to pass tests (or implement plan directly if no TDD).
 2. Run tests to verify.
 
 Allowed: Write (code files only), Edit, Read, Glob, Grep, Bash (test commands only).
 
-### 8. `/quality-check`
+### 10. `/quality-check`
 
 1. Invoke the **QASpecialist** agent.
 2. If result is `Fail`, go back to `/write-code` and iterate.
@@ -104,7 +130,7 @@ Allowed: Write (code files only), Edit, Read, Glob, Grep, Bash (test commands on
 
 Allowed: Read, Glob, Grep, Bash (test commands).
 
-### 9. `/code-review`
+### 11. `/code-review`
 
 1. Invoke the **CodeReviewer** agent.
 2. Agent must return `confidence_score` and `quality_score` (1-100).
@@ -113,7 +139,7 @@ Allowed: Read, Glob, Grep, Bash (test commands).
 
 Allowed: Edit (only code files written this session), Read, Glob, Grep.
 
-### 10. `/pr-create`
+### 12. `/pr-create`
 
 1. Stage, commit, and push changes.
 2. Create PR: `gh pr create --json number`
@@ -121,7 +147,7 @@ Allowed: Edit (only code files written this session), Read, Glob, Grep.
 
 Allowed: Bash (`git push`, `git commit`, `git add`, `gh pr create`).
 
-### 11. `/ci-check`
+### 13. `/ci-check`
 
 1. Check CI: `gh pr checks --json name,conclusion`
 2. `--json` flag is **required**.
@@ -129,7 +155,7 @@ Allowed: Bash (`git push`, `git commit`, `git add`, `gh pr create`).
 
 Allowed: Bash (`gh pr checks`, `gh pr status`).
 
-### 12. `/write-report`
+### 14. `/write-report`
 
 1. Write report to `.claude/reports/latest-report.md`.
 2. Archive previous report to `.claude/reports/archive/`.

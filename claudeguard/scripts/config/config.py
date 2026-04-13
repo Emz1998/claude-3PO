@@ -142,6 +142,14 @@ class Config:
         return self.file_paths.get("REPORT_FILE_PATH", "")
 
     @property
+    def contracts_file_path(self) -> str:
+        return self.file_paths.get("CONTRACTS_FILE_PATH", "")
+
+    @property
+    def contracts_archive_dir(self) -> str:
+        return self.file_paths.get("CONTRACTS_ARCHIVE_DIR", "")
+
+    @property
     def log_file(self) -> str:
         return self.file_paths.get("LOG_FILE", "")
 

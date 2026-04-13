@@ -83,7 +83,8 @@ class TestIsFileWriteAllowed:
     def test_plan_correct_path(self, config, state):
         state.add_phase("plan")
         state.add_agent(Agent(name="Plan", status="completed", tool_use_id="p-1"))
-        hook = make_hook_input("Write", {"file_path": ".claude/plans/latest-plan.md"})
+        content = "# Plan\n\n## Dependencies\n- flask\n\n## Contracts\n- UserService\n\n## Tasks\n- Build login\n"
+        hook = make_hook_input("Write", {"file_path": ".claude/plans/latest-plan.md", "content": content})
         ok, _ = is_file_write_allowed(hook, config, state)
         assert ok is True
 
@@ -489,3 +490,322 @@ class TestValidateReviewSections:
         files, tests = validate_review_sections(content, "plan-review")
         assert files == []
         assert tests == []
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Plan content validation — required sections
+# ═══════════════════════════════════════════════════════════════════
+
+
+class TestPlanContentValidation:
+    """Plan Write must include ## Dependencies, ## Contracts, ## Tasks sections."""
+
+    def _plan_content(self, deps=True, contracts=True, tasks=True):
+        parts = ["# Implementation Plan\n"]
+        if deps:
+            parts.append("## Dependencies\n- flask\n")
+        if contracts:
+            parts.append("## Contracts\n- UserService\n")
+        if tasks:
+            parts.append("## Tasks\n- Build login\n")
+        return "\n".join(parts)
+
+    def test_plan_write_with_all_sections_allowed(self, config, state):
+        state.add_phase("plan")
+        state.add_agent(Agent(name="Plan", status="completed", tool_use_id="p-1"))
+        hook = make_hook_input("Write", {
+            "file_path": ".claude/plans/latest-plan.md",
+            "content": self._plan_content(),
+        })
+        ok, _ = is_file_write_allowed(hook, config, state)
+        assert ok is True
+
+    def test_plan_write_missing_dependencies_blocked(self, config, state):
+        state.add_phase("plan")
+        state.add_agent(Agent(name="Plan", status="completed", tool_use_id="p-1"))
+        hook = make_hook_input("Write", {
+            "file_path": ".claude/plans/latest-plan.md",
+            "content": self._plan_content(deps=False),
+        })
+        with pytest.raises(ValueError, match="Dependencies"):
+            is_file_write_allowed(hook, config, state)
+
+    def test_plan_write_missing_contracts_blocked(self, config, state):
+        state.add_phase("plan")
+        state.add_agent(Agent(name="Plan", status="completed", tool_use_id="p-1"))
+        hook = make_hook_input("Write", {
+            "file_path": ".claude/plans/latest-plan.md",
+            "content": self._plan_content(contracts=False),
+        })
+        with pytest.raises(ValueError, match="Contracts"):
+            is_file_write_allowed(hook, config, state)
+
+    def test_plan_write_missing_tasks_blocked(self, config, state):
+        state.add_phase("plan")
+        state.add_agent(Agent(name="Plan", status="completed", tool_use_id="p-1"))
+        hook = make_hook_input("Write", {
+            "file_path": ".claude/plans/latest-plan.md",
+            "content": self._plan_content(tasks=False),
+        })
+        with pytest.raises(ValueError, match="Tasks"):
+            is_file_write_allowed(hook, config, state)
+
+    def test_plan_write_missing_all_sections_blocked(self, config, state):
+        state.add_phase("plan")
+        state.add_agent(Agent(name="Plan", status="completed", tool_use_id="p-1"))
+        hook = make_hook_input("Write", {
+            "file_path": ".claude/plans/latest-plan.md",
+            "content": "# Plan\n\nSome content without sections.\n",
+        })
+        with pytest.raises(ValueError, match="missing required sections"):
+            is_file_write_allowed(hook, config, state)
+
+    def test_plan_tasks_as_subsections_blocked(self, config, state):
+        """Tasks must be bullet items, not ### subsections."""
+        state.add_phase("plan")
+        state.add_agent(Agent(name="Plan", status="completed", tool_use_id="p-1"))
+        content = (
+            "# Plan\n\n"
+            "## Dependencies\n- flask\n\n"
+            "## Contracts\n- UserService\n\n"
+            "## Tasks\n\n"
+            "### Task 1: Build login\n"
+            "Some description.\n\n"
+            "### Task 2: Create schema\n"
+            "Some description.\n"
+        )
+        hook = make_hook_input("Write", {
+            "file_path": ".claude/plans/latest-plan.md",
+            "content": content,
+        })
+        with pytest.raises(ValueError, match="Tasks.*must use bullet"):
+            is_file_write_allowed(hook, config, state)
+
+    def test_plan_deps_as_subsections_blocked(self, config, state):
+        """Dependencies must be bullet items, not ### subsections."""
+        state.add_phase("plan")
+        state.add_agent(Agent(name="Plan", status="completed", tool_use_id="p-1"))
+        content = (
+            "# Plan\n\n"
+            "## Dependencies\n\n"
+            "### Python packages\n- flask\n\n"
+            "## Contracts\n- UserService\n\n"
+            "## Tasks\n- Build login\n"
+        )
+        hook = make_hook_input("Write", {
+            "file_path": ".claude/plans/latest-plan.md",
+            "content": content,
+        })
+        with pytest.raises(ValueError, match="Dependencies.*must use bullet"):
+            is_file_write_allowed(hook, config, state)
+
+    def test_plan_tasks_empty_bullets_blocked(self, config, state):
+        """Tasks section must have at least one bullet item."""
+        state.add_phase("plan")
+        state.add_agent(Agent(name="Plan", status="completed", tool_use_id="p-1"))
+        content = (
+            "# Plan\n\n"
+            "## Dependencies\n- flask\n\n"
+            "## Contracts\n- UserService\n\n"
+            "## Tasks\n\nSome prose but no bullet items.\n"
+        )
+        hook = make_hook_input("Write", {
+            "file_path": ".claude/plans/latest-plan.md",
+            "content": content,
+        })
+        with pytest.raises(ValueError, match="Tasks.*must have.*bullet"):
+            is_file_write_allowed(hook, config, state)
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Plan edit — section preservation
+# ═══════════════════════════════════════════════════════════════════
+
+
+class TestPlanEditSectionPreservation:
+    """Plan Edit in plan-review must not remove ## Dependencies, ## Contracts, ## Tasks."""
+
+    def test_edit_preserving_sections_allowed(self, config, state, tmp_path, monkeypatch):
+        plan_file = tmp_path / "latest-plan.md"
+        plan_file.write_text(
+            "# Plan\n\n## Dependencies\n- flask\n\n## Contracts\n- UserService\n\n## Tasks\n- Build login\n"
+        )
+        monkeypatch.setattr(type(config), "plan_file_path", property(lambda self: str(plan_file)))
+        state.add_phase("plan-review")
+        hook = make_hook_input("Edit", {
+            "file_path": str(plan_file),
+            "old_string": "- Build login",
+            "new_string": "- Build login page with OAuth",
+        })
+        ok, _ = is_file_edit_allowed(hook, config, state)
+        assert ok is True
+
+    def test_edit_removing_dependencies_blocked(self, config, state, tmp_path, monkeypatch):
+        plan_file = tmp_path / "latest-plan.md"
+        plan_file.write_text(
+            "# Plan\n\n## Dependencies\n- flask\n\n## Contracts\n- UserService\n\n## Tasks\n- Build login\n"
+        )
+        monkeypatch.setattr(type(config), "plan_file_path", property(lambda self: str(plan_file)))
+        state.add_phase("plan-review")
+        hook = make_hook_input("Edit", {
+            "file_path": str(plan_file),
+            "old_string": "## Dependencies\n- flask\n",
+            "new_string": "",
+        })
+        with pytest.raises(ValueError, match="Dependencies"):
+            is_file_edit_allowed(hook, config, state)
+
+    def test_edit_removing_tasks_blocked(self, config, state, tmp_path, monkeypatch):
+        plan_file = tmp_path / "latest-plan.md"
+        plan_file.write_text(
+            "# Plan\n\n## Dependencies\n- flask\n\n## Contracts\n- UserService\n\n## Tasks\n- Build login\n"
+        )
+        monkeypatch.setattr(type(config), "plan_file_path", property(lambda self: str(plan_file)))
+        state.add_phase("plan-review")
+        hook = make_hook_input("Edit", {
+            "file_path": str(plan_file),
+            "old_string": "## Tasks\n- Build login\n",
+            "new_string": "",
+        })
+        with pytest.raises(ValueError, match="Tasks"):
+            is_file_edit_allowed(hook, config, state)
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Install-deps file write — package manager files only
+# ═══════════════════════════════════════════════════════════════════
+
+
+class TestInstallDepsFileWrite:
+    def test_package_json_allowed(self, config, state):
+        state.add_phase("install-deps")
+        hook = make_hook_input("Write", {"file_path": "package.json"})
+        ok, _ = is_file_write_allowed(hook, config, state)
+        assert ok is True
+
+    def test_requirements_txt_allowed(self, config, state):
+        state.add_phase("install-deps")
+        hook = make_hook_input("Write", {"file_path": "requirements.txt"})
+        ok, _ = is_file_write_allowed(hook, config, state)
+        assert ok is True
+
+    def test_pyproject_toml_allowed(self, config, state):
+        state.add_phase("install-deps")
+        hook = make_hook_input("Write", {"file_path": "pyproject.toml"})
+        ok, _ = is_file_write_allowed(hook, config, state)
+        assert ok is True
+
+    def test_go_mod_allowed(self, config, state):
+        state.add_phase("install-deps")
+        hook = make_hook_input("Write", {"file_path": "go.mod"})
+        ok, _ = is_file_write_allowed(hook, config, state)
+        assert ok is True
+
+    def test_cargo_toml_allowed(self, config, state):
+        state.add_phase("install-deps")
+        hook = make_hook_input("Write", {"file_path": "Cargo.toml"})
+        ok, _ = is_file_write_allowed(hook, config, state)
+        assert ok is True
+
+    def test_gemfile_allowed(self, config, state):
+        state.add_phase("install-deps")
+        hook = make_hook_input("Write", {"file_path": "Gemfile"})
+        ok, _ = is_file_write_allowed(hook, config, state)
+        assert ok is True
+
+    def test_pipfile_allowed(self, config, state):
+        state.add_phase("install-deps")
+        hook = make_hook_input("Write", {"file_path": "Pipfile"})
+        ok, _ = is_file_write_allowed(hook, config, state)
+        assert ok is True
+
+    def test_random_file_blocked(self, config, state):
+        state.add_phase("install-deps")
+        hook = make_hook_input("Write", {"file_path": "app.py"})
+        with pytest.raises(ValueError, match="not allowed"):
+            is_file_write_allowed(hook, config, state)
+
+    def test_markdown_blocked(self, config, state):
+        state.add_phase("install-deps")
+        hook = make_hook_input("Write", {"file_path": "readme.md"})
+        with pytest.raises(ValueError, match="not allowed"):
+            is_file_write_allowed(hook, config, state)
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Define-contracts file write — code extensions only
+# ═══════════════════════════════════════════════════════════════════
+
+
+class TestDefineContractsFileWrite:
+    def test_python_file_allowed(self, config, state):
+        state.add_phase("define-contracts")
+        hook = make_hook_input("Write", {"file_path": "src/interfaces.py"})
+        ok, _ = is_file_write_allowed(hook, config, state)
+        assert ok is True
+
+    def test_typescript_file_allowed(self, config, state):
+        state.add_phase("define-contracts")
+        hook = make_hook_input("Write", {"file_path": "src/types.ts"})
+        ok, _ = is_file_write_allowed(hook, config, state)
+        assert ok is True
+
+    def test_markdown_blocked(self, config, state):
+        state.add_phase("define-contracts")
+        hook = make_hook_input("Write", {"file_path": "readme.md"})
+        with pytest.raises(ValueError, match="not allowed"):
+            is_file_write_allowed(hook, config, state)
+
+    def test_text_file_blocked(self, config, state):
+        state.add_phase("define-contracts")
+        hook = make_hook_input("Write", {"file_path": "notes.txt"})
+        with pytest.raises(ValueError, match="not allowed"):
+            is_file_write_allowed(hook, config, state)
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Plan Write — contracts file allowed during plan phase
+# ═══════════════════════════════════════════════════════════════════
+
+
+class TestPlanWriteContractsFile:
+    def test_contracts_file_allowed_in_plan_phase(self, config, state):
+        state.add_phase("plan")
+        state.add_agent(Agent(name="Plan", status="completed", tool_use_id="p-1"))
+        hook = make_hook_input("Write", {
+            "file_path": ".claude/contracts/latest-contracts.md",
+            "content": "# Contracts\n\n- UserService\n",
+        })
+        ok, _ = is_file_write_allowed(hook, config, state)
+        assert ok is True
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Install-deps command validation
+# ═══════════════════════════════════════════════════════════════════
+
+
+class TestInstallDepsCommandAllowed:
+    def test_npm_install_allowed(self, config, state):
+        state.add_phase("install-deps")
+        hook = make_hook_input("Bash", {"command": "npm install"})
+        ok, _ = is_command_allowed(hook, config, state)
+        assert ok is True
+
+    def test_pip_install_allowed(self, config, state):
+        state.add_phase("install-deps")
+        hook = make_hook_input("Bash", {"command": "pip install -r requirements.txt"})
+        ok, _ = is_command_allowed(hook, config, state)
+        assert ok is True
+
+    def test_go_mod_tidy_allowed(self, config, state):
+        state.add_phase("install-deps")
+        hook = make_hook_input("Bash", {"command": "go mod tidy"})
+        ok, _ = is_command_allowed(hook, config, state)
+        assert ok is True
+
+    def test_random_command_blocked(self, config, state):
+        state.add_phase("install-deps")
+        hook = make_hook_input("Bash", {"command": "rm -rf /"})
+        with pytest.raises(ValueError, match="not allowed"):
+            is_command_allowed(hook, config, state)

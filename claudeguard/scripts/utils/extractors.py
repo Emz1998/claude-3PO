@@ -132,6 +132,49 @@ def extract_table(
     return [header] + body
 
 
+def _extract_bullet_items(content: str) -> list[str]:
+    """Extract bullet list items (- item) from markdown content."""
+    return [
+        line.lstrip("- ").strip()
+        for line in content.splitlines()
+        if line.strip().startswith("- ")
+    ]
+
+
+def _extract_section_bullets(content: str, heading: str) -> list[str]:
+    """Extract bullet items from a specific ## section in markdown."""
+    sections = extract_md_sections(content, 2)
+    for name, body in sections:
+        if name.strip() == heading:
+            return _extract_bullet_items(body)
+    return []
+
+
+def extract_plan_dependencies(content: str) -> list[str]:
+    """Parse ## Dependencies section from plan — extract bullet items as package names."""
+    return _extract_section_bullets(content, "Dependencies")
+
+
+def extract_plan_tasks(content: str) -> list[str]:
+    """Parse ## Tasks section from plan — extract bullet items as task subjects."""
+    return _extract_section_bullets(content, "Tasks")
+
+
+def extract_contract_names(content: str) -> list[str]:
+    """Parse contract names from latest-contracts.md.
+
+    Extracts from both bullet items and ## headings.
+    """
+    # First try bullet items at top level
+    bullets = _extract_bullet_items(content)
+    if bullets:
+        return bullets
+
+    # Fall back to ## heading names
+    sections = extract_md_sections(content, 2)
+    return [name.strip() for name, _ in sections]
+
+
 def extract_ci_status(output: str) -> str:
     """Parse gh pr checks output to determine CI status.
 

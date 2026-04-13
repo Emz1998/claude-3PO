@@ -1,9 +1,9 @@
 # ---------------------------------------------------------------------------
 # Phase classifications
 # ---------------------------------------------------------------------------
-MAIN_PHASES = ["explore", "research", "plan", "plan-review", "write-tests", "test-review","write-code", "quality-check", "code-review", "pr-create", "ci-check", "write-report"]
+MAIN_PHASES = ["explore", "research", "plan", "plan-review", "install-deps", "define-contracts", "write-tests", "test-review","write-code", "quality-check", "code-review", "pr-create", "ci-check", "write-report"]
 READ_ONLY_PHASES = ["explore", "plan", "research", "plan-review", "test-review", "code-review", "quality-check"]
-CODE_WRITE_PHASES = ["write-tests", "write-code", "refactor"]
+CODE_WRITE_PHASES = ["write-tests", "write-code", "install-deps", "define-contracts", "refactor"]
 CODE_EDIT_PHASES = ["refactor", "plan-revision", "test-review", "code-review"]
 DOCS_WRITE_PHASES = ["plan", "write-report"]
 DOCS_EDIT_PHASES = ["plan-review"]
@@ -59,6 +59,8 @@ explore = "Explore"
 research = "Research"
 plan = "Plan"
 plan-review = "PlanReview"
+install-deps = ""
+define-contracts = ""
 write-tests = ""
 test-review = "TestReviewer"
 write-code = ""
@@ -96,3 +98,5 @@ PLAN_ARCHIVE_DIR = ".claude/plans/archive"
 TEST_FILE_PATH = ".claude/tests/test.md"
 CODE_FILE_PATH = ".claude/code/code.md"
 REPORT_FILE_PATH = ".claude/reports/report.md"
+CONTRACTS_FILE_PATH = ".claude/contracts/latest-contracts.md"
+CONTRACTS_ARCHIVE_DIR = ".claude/contracts/archive"

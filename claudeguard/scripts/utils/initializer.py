@@ -91,6 +91,22 @@ def archive_plan(config: Config) -> None:
     plan_path.unlink()
 
 
+def archive_contracts(config: Config) -> None:
+    """Archive existing latest-contracts.md before starting a new workflow."""
+    contracts_path = Path(config.contracts_file_path)
+    if not contracts_path.exists():
+        return
+
+    date = datetime.now().strftime("%Y-%m-%d")
+
+    archive_dir = Path(config.contracts_archive_dir)
+    archive_dir.mkdir(parents=True, exist_ok=True)
+
+    archive_name = f"contracts_{date}.md"
+    shutil.copy2(contracts_path, archive_dir / archive_name)
+    contracts_path.unlink()
+
+
 # ---------------------------------------------------------------------------
 # State initialization
 # ---------------------------------------------------------------------------
@@ -119,6 +135,14 @@ def build_initial_state(workflow_type: str, session_id: str, args: str) -> dict:
             "reviews": [],
         },
         "tasks": [],
+        "dependencies": {"packages": [], "installed": False},
+        "contracts": {
+            "file_path": None,
+            "names": [],
+            "code_files": [],
+            "written": False,
+            "validated": False,
+        },
         "tests": {
             "file_paths": [],
             "executed": False,
@@ -155,6 +179,7 @@ def initialize(
 ) -> None:
     config = Config()
     archive_plan(config)
+    archive_contracts(config)
 
     state = build_initial_state(workflow_type, session_id, args)
     store = StateStore(state_path)

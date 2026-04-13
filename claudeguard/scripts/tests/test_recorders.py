@@ -206,3 +206,108 @@ class TestInjectPlanMetadata:
         inject_plan_metadata(str(tmp_path / "nope.md"), state)  # no error
 
 
+# ═══════════════════════════════════════════════════════════════════
+# record_plan_sections — auto-parse deps + tasks from plan
+# ═══════════════════════════════════════════════════════════════════
+
+
+class TestRecordPlanSections:
+    def test_extracts_deps_and_tasks(self, tmp_path, state):
+        from utils.recorder import record_plan_sections
+
+        plan_file = tmp_path / "plan.md"
+        plan_file.write_text(
+            "# Plan\n\n"
+            "## Dependencies\n- flask\n- pytest\n\n"
+            "## Contracts\n- UserService\n\n"
+            "## Tasks\n- Build login\n- Write tests\n"
+        )
+        record_plan_sections(str(plan_file), state)
+        assert state.dependencies["packages"] == ["flask", "pytest"]
+        assert state.tasks == ["Build login", "Write tests"]
+
+    def test_empty_sections(self, tmp_path, state):
+        from utils.recorder import record_plan_sections
+
+        plan_file = tmp_path / "plan.md"
+        plan_file.write_text(
+            "# Plan\n\n## Dependencies\n\n## Contracts\n\n## Tasks\n\n"
+        )
+        record_plan_sections(str(plan_file), state)
+        assert state.dependencies["packages"] == []
+        assert state.tasks == []
+
+    def test_nonexistent_file_does_nothing(self, tmp_path, state):
+        from utils.recorder import record_plan_sections
+
+        record_plan_sections(str(tmp_path / "nope.md"), state)
+        assert state.dependencies["packages"] == []
+        assert state.tasks == []
+
+
+# ═══════════════════════════════════════════════════════════════════
+# record_contracts_file — extract contract names from contracts.md
+# ═══════════════════════════════════════════════════════════════════
+
+
+class TestRecordContractsFile:
+    def test_extracts_contract_names(self, tmp_path, state):
+        from utils.recorder import record_contracts_file
+
+        contracts_file = tmp_path / "latest-contracts.md"
+        contracts_file.write_text(
+            "# Contracts\n\n- UserService\n- AuthProvider\n- DatabaseClient\n"
+        )
+        record_contracts_file(str(contracts_file), state)
+        assert state.contracts["file_path"] == str(contracts_file)
+        assert state.contract_names == ["UserService", "AuthProvider", "DatabaseClient"]
+
+    def test_empty_contracts_file(self, tmp_path, state):
+        from utils.recorder import record_contracts_file
+
+        contracts_file = tmp_path / "latest-contracts.md"
+        contracts_file.write_text("# Contracts\n\nNo bullet items here.\n")
+        record_contracts_file(str(contracts_file), state)
+        assert state.contract_names == []
+
+    def test_nonexistent_file_does_nothing(self, tmp_path, state):
+        from utils.recorder import record_contracts_file
+
+        record_contracts_file(str(tmp_path / "nope.md"), state)
+        assert state.contract_names == []
+
+
+# ═══════════════════════════════════════════════════════════════════
+# record_dependency_install
+# ═══════════════════════════════════════════════════════════════════
+
+
+class TestRecordDependencyInstall:
+    def test_marks_installed(self, state):
+        from utils.recorder import record_dependency_install
+
+        record_dependency_install("npm install", state)
+        assert state.dependencies["installed"] is True
+
+
+# ═══════════════════════════════════════════════════════════════════
+# record_file_write — define-contracts phase
+# ═══════════════════════════════════════════════════════════════════
+
+
+class TestRecordFileWriteDefineContracts:
+    def test_records_contract_code_file(self, state):
+        state.add_phase("define-contracts")
+        hook = make_hook_input("Write", {"file_path": "src/interfaces.py"})
+        record_file_write(hook, state)
+        assert "src/interfaces.py" in state.contracts["code_files"]
+        assert state.contracts["written"] is True
+
+    def test_records_multiple_code_files(self, state):
+        state.add_phase("define-contracts")
+        hook1 = make_hook_input("Write", {"file_path": "src/interfaces.py"})
+        hook2 = make_hook_input("Write", {"file_path": "src/types.ts"})
+        record_file_write(hook1, state)
+        record_file_write(hook2, state)
+        assert "src/interfaces.py" in state.contracts["code_files"]
+        assert "src/types.ts" in state.contracts["code_files"]

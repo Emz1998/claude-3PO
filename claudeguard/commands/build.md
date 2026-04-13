@@ -6,7 +6,9 @@ argument-hint: <instructions>
 model: haiku
 ---
 
-Analyze the coding task "$1" and deploy the appropriate engineer agents in parallel for maximum efficiency. Determine which engineers are needed, distribute work intelligently, and aggregate results.
+Build the coding task "$1" by following the phased workflow below. Each phase is enforced by hook guardrails — the system will block tool calls that don't match the current phase.
+
+> **Phase = Skill**. To transition between phases, invoke the corresponding `/skill` (e.g. `/explore`, `/research`, `/plan`, etc.). The guardrails track the current phase via skill invocations.
 
 ## Workflow Initialization
 
@@ -14,72 +16,163 @@ Analyze the coding task "$1" and deploy the appropriate engineer agents in paral
 
 ## Instructions
 
-- Always plan first before implementing.
-- Ensure creation of tests if TDD is specified.
-- Only read and write the files that are stated in the plan.
-- Ask questions if not sure about the task. Use `AskUserQuestion` to ask questions.
-- Must follow the plan template structure strictly
+- Follow the phased workflow strictly. The guardrails enforce phase ordering.
+- **Phases are skills.** Invoke `/explore`, `/research`, `/plan`, etc. to enter each phase.
+- All agents must be run in the **foreground** (not background).
+- Agent counts must match the limits or the guardrail will block you.
+- Only read and write files relevant to the current phase.
+- Ask questions if unsure. Use `AskUserQuestion`.
 
-## Workflow
+## Phases
 
-### Plan Phase
+**Important**: Trigger `/explore` and `/research` in parallel.
+**Important**: `Explore` and `Research` agents must run in parallel (Total of 5 agents in parallel).
 
-> **IMPORTANT**: You have to ensure that the amount agents triggered is correct or else the hook guardrail will block the `Plan` agent from executing.
+### 1. `/explore`
 
-> **IMPORTANT**: All agents must be run in the foreground and not in the background.
+Trigger **3 Explore agents** in parallel:
 
-1. Trigger the following agents in parallel to explore the codebase and research about the task:
+| Agent     | Focus                                                 |
+| --------- | ----------------------------------------------------- |
+| Explore 1 | Project structure, configuration, critical files      |
+| Explore 2 | Git activity, dependencies, recent changes            |
+| Explore 3 | Implementation state, technical health, code patterns |
 
-- 3 x `Explore` agents, each focused on critical and relevant areas of the codebase
-- 2 x `Research` agents, one focusing on researching the web for solutions to the task and the other for retrieving latest documentation and best practices.
+Allowed: Read, Glob, Grep, Bash (read-only: `ls`, `git status`, `git log`, etc.)
 
-| Agent              | Description                                                                                                |
-| ------------------ | ---------------------------------------------------------------------------------------------------------- |
-| `Explore` agent 1  | Must analyze the project structure and configuration and identify the critical files and directories       |
-| `Explore` agent 2  | Must analyze the git activity and project dependencies and identify the critical files and directories     |
-| `Explore` agent 3  | Must analyze the implementation state and technical health and identify the critical files and directories |
-| `Research` agent 1 | Must research the web for solutions to the task                                                            |
-| `Research` agent 2 | Must retrieve latest documentation and best practices                                                      |
+### 2. `/research`
 
-2. Once the exploration and research are completed, consolidate the findings in CODEBASE.md (Should be found in the project root directory) which should contain the latest codebase status and information.
+Trigger **2 Research agents** in parallel:
 
-3. After the CODEBASE.md is updated, invoke the `Plan` agent to formulate the implementation plan.
+| Agent      | Focus                                   |
+| ---------- | --------------------------------------- |
+| Research 1 | Web research for solutions              |
+| Research 2 | Latest documentation and best practices |
 
-4. Once the `Plan` task is complete, write the plan to the `.claude/plans/<plan-name>.md` file from current directory.
+Runs in parallel with `/explore`. Allowed: Read, Glob, Grep, WebFetch, WebSearch.
 
-5. Invoke the `Plan-Review` agent to review the plan.
+### 3. `/plan`
 
-6. Validate the reviewer's confidence and quality scores. If the scores are not above 80, revise the plan and iterate until the scores are above 80.
+1. Consolidate findings from Explore and Research into `CODEBASE.md`.
+2. Invoke the **Plan** agent to design the implementation plan.
+3. Read the plan template at `${CLAUDE_PLUGIN_ROOT}/templates/plan.md` and follow it exactly.
+4. Write the implementation plan to `.claude/plans/latest-plan.md`.
+5. Write the contracts specification to `.claude/contracts/latest-contracts.md`.
 
-7. Then present the plan to the user using `ExitPlanMode` tool.
+The plan **must** follow the template format (guardrail enforced):
 
-### Code Phase
+- `## Dependencies` — bullet list of packages (`- package-name`). No ### subsections.
+- `## Contracts` — bullet list of contract names (`- ContractName`). No ### subsections.
+- `## Tasks` — bullet list of task subjects (`- Task subject`). No ### subsections. Each bullet becomes a planned task validated by the TaskCreated hook.
 
-> Phase 0: Create tasks first to track your implementation work using TaskCreate.
+Allowed: Write (only `.claude/plans/latest-plan.md` and `.claude/contracts/latest-contracts.md`), Read, Bash (read-only).
 
-1. Once the user approves the plan, validate if TDD is specified, if yes, you have to write failing tests first.
-2. Once the failing tests are written, invoke the `Test-Review` agent to review the tests quality.
-3. Once the tests are reviewed, write the minimal code to pass the tests.
-4. Rerun tests to verify they pass.
-5. If the tests are not passing, revise the code and iterate until the tests pass.
-6. Invoke the `QA` agent to validate the implementation against the acceptance criteria.
-7. If the validation returns `Fail`, revise the code implementation and iterate until the validation passes.
-8. Once validation passes, invoke the `code-reviewer` agent to review all code files for correctness, quality, and best practices. The reviewer will return confidence and quality scores (0-100 each).
-9. If the code review scores are not above 80, refactor the code based on the reviewer's feedback and re-launch the `code-reviewer` agent. Iterate until scores are above 80 (max 3 iterations).
-10. Write a final report of the implementation in the `.claude/reports/latest-report.md` file. Copy and archive the previous report to the `.claude/reports/archive/` directory. Add metadata to the latest report in the frontmatter with `timestamp`, `date`, `task_description: <description>`, `branch_name`.
-11. Present the report to the user before stopping.
+### 4. `/plan-review`
+
+1. Invoke the **PlanReview** agent to score the plan.
+2. Agent must return `confidence_score` and `quality_score` (1-100).
+3. If scores < 80, enters `plan-revision` sub-phase — edit plan and re-invoke PlanReview.
+4. Max 3 iterations.
+5. Edits must not remove `## Dependencies`, `## Contracts`, or `## Tasks` sections (guardrail enforced).
+6. Once approved, present the plan to the user.
+
+Allowed: Edit (only `.claude/plans/latest-plan.md`), Read, Glob, Grep.
+
+### 5. `/install-deps`
+
+1. Read the plan's `## Dependencies` section.
+2. Write dependencies to the package manager file (`package.json`, `requirements.txt`, `go.mod`, etc.)
+3. Run the install command (`npm install`, `pip install -r requirements.txt`, etc.)
+4. Phase completes when install command runs successfully.
+
+Allowed: Write (package manager files only), Bash (install commands only).
+
+### 6. `/define-contracts`
+
+1. Read `.claude/contracts/latest-contracts.md` (written during plan phase).
+2. Write actual code files (interfaces, types, stubs) that implement the contracts.
+3. Guardrail validates all contract names from contracts.md appear in written code.
+4. Phase completes when all contracts are found in code.
+
+Allowed: Write (code files only), Read, Glob, Grep.
+
+### 7. `/write-tests` (TDD only)
+
+> Skip if TDD is not enabled.
+
+1. Write failing test files (patterns: `*.test.ts`, `test_*.py`, `*_test.py`, etc.)
+2. Run tests to confirm they fail: `pytest`, `npm test`, `jest`, etc.
+
+Allowed: Write (test files only), Bash (test commands only).
+
+### 8. `/test-review` (TDD only)
+
+1. Invoke the **TestReviewer** agent.
+2. Agent must return verdict: `Pass` or `Fail`.
+3. If `Fail`, enters `refactor` sub-phase — edit tests and re-invoke.
+
+Allowed: Edit (only test files written this session), Read, Glob, Grep.
+
+### 9. `/write-code`
+
+1. Write implementation code to pass tests (or implement plan directly if no TDD).
+2. Run tests to verify.
+
+Allowed: Write (code files only), Edit, Read, Glob, Grep, Bash (test commands only).
+
+### 10. `/quality-check`
+
+1. Invoke the **QASpecialist** agent.
+2. If result is `Fail`, go back to `/write-code` and iterate.
+3. If `Pass`, proceed.
+
+Allowed: Read, Glob, Grep, Bash (test commands).
+
+### 11. `/code-review`
+
+1. Invoke the **CodeReviewer** agent.
+2. Agent must return `confidence_score` and `quality_score` (1-100).
+3. If scores < 90, enters `refactor` sub-phase — edit code and re-invoke.
+4. Max 3 iterations.
+
+Allowed: Edit (only code files written this session), Read, Glob, Grep.
+
+### 12. `/pr-create`
+
+1. Stage, commit, and push changes.
+2. Create PR: `gh pr create --json number`
+3. `--json` flag is **required** — guardrail blocks without it.
+
+Allowed: Bash (`git push`, `git commit`, `git add`, `gh pr create`).
+
+### 13. `/ci-check`
+
+1. Check CI: `gh pr checks --json name,conclusion`
+2. `--json` flag is **required**.
+3. If CI fails, go back to `/write-code` and iterate.
+
+Allowed: Bash (`gh pr checks`, `gh pr status`).
+
+### 14. `/write-report`
+
+1. Write report to `.claude/reports/latest-report.md`.
+2. Archive previous report to `.claude/reports/archive/`.
+3. Include frontmatter: `timestamp`, `date`, `task_description`, `pr_number`, `branch_name`.
+4. Present the report to the user before stopping.
+
+Allowed: Write (only `.claude/reports/`), Read.
 
 ## Rules
 
-- Always follow the workflow strictly.
-- Always validate your work either through tests, sample ui, running a bash command, etc. Never skip any review.
-- Always ask questions if not sure about the task. Use `AskUserQuestion` to ask questions.
-- Always follow the plan template strictly.
+- Follow phase order strictly. Guardrails enforce it.
+- Do not skip phases unless in the `skip` list.
+- Do not invoke agents beyond their max count.
+- Do not stop until all phases are completed — the stop hook will block you.
+- Validate work through tests, not assumptions.
 
 ## References
 
-> **Note**: All directories are relative to the current working directory.
-
-- **Plan Directory**: `.claude/plans/`
-- **Latest Report Directory**: `.claude/reports/latest-report.md`
-- **Past Reports Directory**: `.claude/reports/archive/`
+- **Plan**: `.claude/plans/latest-plan.md`
+- **Contracts**: `.claude/contracts/latest-contracts.md`
+- **Report**: `.claude/reports/latest-report.md`
+- **Archive**: `.claude/reports/archive/`

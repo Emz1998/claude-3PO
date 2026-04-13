@@ -486,3 +486,70 @@ class StateStore:
             d["tasks"] = tasks
 
         self.update(_add)
+
+    def set_tasks(self, tasks: list[str]) -> None:
+        self.set("tasks", tasks)
+
+    # ── Dependencies ──────────────────────────────────────────────
+
+    @property
+    def dependencies(self) -> dict[str, Any]:
+        return self.load().get("dependencies", {"packages": [], "installed": False})
+
+    def set_dependencies_packages(self, packages: list[str]) -> None:
+        def _set(d: dict) -> None:
+            d.setdefault("dependencies", {})["packages"] = packages
+
+        self.update(_set)
+
+    def set_dependencies_installed(self) -> None:
+        def _set(d: dict) -> None:
+            d.setdefault("dependencies", {})["installed"] = True
+
+        self.update(_set)
+
+    # ── Contracts ─────────────────────────────────────────────────
+
+    @property
+    def contracts(self) -> dict[str, Any]:
+        return self.load().get("contracts", {
+            "file_path": None, "names": [], "code_files": [],
+            "written": False, "validated": False,
+        })
+
+    @property
+    def contract_names(self) -> list[str]:
+        return self.contracts.get("names", [])
+
+    def set_contracts_file_path(self, path: str) -> None:
+        def _set(d: dict) -> None:
+            d.setdefault("contracts", {})["file_path"] = path
+
+        self.update(_set)
+
+    def set_contracts_names(self, names: list[str]) -> None:
+        def _set(d: dict) -> None:
+            d.setdefault("contracts", {})["names"] = names
+
+        self.update(_set)
+
+    def set_contracts_written(self, written: bool = True) -> None:
+        def _set(d: dict) -> None:
+            d.setdefault("contracts", {})["written"] = written
+
+        self.update(_set)
+
+    def set_contracts_validated(self, validated: bool = True) -> None:
+        def _set(d: dict) -> None:
+            d.setdefault("contracts", {})["validated"] = validated
+
+        self.update(_set)
+
+    def add_contract_code_file(self, file_path: str) -> None:
+        def _add(d: dict) -> None:
+            contracts = d.setdefault("contracts", {})
+            code_files = contracts.setdefault("code_files", [])
+            if file_path not in code_files:
+                code_files.append(file_path)
+
+        self.update(_add)

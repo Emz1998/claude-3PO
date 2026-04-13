@@ -18,7 +18,8 @@ class TestWriteGuard:
     def test_allows_valid_write(self, config, state):
         state.add_phase("plan")
         state.add_agent(Agent(name="Plan", status="completed", tool_use_id="p-1"))
-        hook = make_hook_input("Write", {"file_path": ".claude/plans/latest-plan.md"})
+        content = "# Plan\n\n## Dependencies\n- flask\n\n## Contracts\n- UserService\n\n## Tasks\n- Build login\n"
+        hook = make_hook_input("Write", {"file_path": ".claude/plans/latest-plan.md", "content": content})
         decision, _ = write_guard(hook, config, state)
         assert decision == "allow"
 

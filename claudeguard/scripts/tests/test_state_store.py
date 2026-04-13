@@ -267,3 +267,95 @@ class TestQualityCheck:
         assert state.quality_check_result is None
         state.set_quality_check_result("Pass")
         assert state.quality_check_result == "Pass"
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Dependencies
+# ═══════════════════════════════════════════════════════════════════
+
+
+class TestDependencies:
+    def test_dependencies_default(self, state):
+        deps = state.dependencies
+        assert deps["packages"] == []
+        assert deps["installed"] is False
+
+    def test_set_dependencies_packages(self, state):
+        state.set_dependencies_packages(["flask", "sqlalchemy"])
+        assert state.dependencies["packages"] == ["flask", "sqlalchemy"]
+
+    def test_set_dependencies_installed(self, state):
+        state.set_dependencies_installed()
+        assert state.dependencies["installed"] is True
+
+    def test_set_packages_then_installed(self, state):
+        state.set_dependencies_packages(["flask"])
+        state.set_dependencies_installed()
+        deps = state.dependencies
+        assert deps["packages"] == ["flask"]
+        assert deps["installed"] is True
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Contracts
+# ═══════════════════════════════════════════════════════════════════
+
+
+class TestContracts:
+    def test_contracts_default(self, state):
+        contracts = state.contracts
+        assert contracts["file_path"] is None
+        assert contracts["names"] == []
+        assert contracts["code_files"] == []
+        assert contracts["written"] is False
+        assert contracts["validated"] is False
+
+    def test_set_contracts_file_path(self, state):
+        state.set_contracts_file_path(".claude/contracts/latest-contracts.md")
+        assert state.contracts["file_path"] == ".claude/contracts/latest-contracts.md"
+
+    def test_set_contracts_names(self, state):
+        state.set_contracts_names(["UserService", "AuthProvider"])
+        assert state.contracts["names"] == ["UserService", "AuthProvider"]
+
+    def test_set_contracts_written(self, state):
+        state.set_contracts_written(True)
+        assert state.contracts["written"] is True
+
+    def test_set_contracts_validated(self, state):
+        state.set_contracts_validated(True)
+        assert state.contracts["validated"] is True
+
+    def test_add_contract_code_file(self, state):
+        state.add_contract_code_file("src/interfaces.py")
+        assert "src/interfaces.py" in state.contracts["code_files"]
+
+    def test_add_contract_code_file_dedup(self, state):
+        state.add_contract_code_file("src/interfaces.py")
+        state.add_contract_code_file("src/interfaces.py")
+        assert state.contracts["code_files"].count("src/interfaces.py") == 1
+
+    def test_contract_names_property(self, state):
+        state.set_contracts_names(["UserService", "AuthProvider"])
+        assert state.contract_names == ["UserService", "AuthProvider"]
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Tasks (bulk setter)
+# ═══════════════════════════════════════════════════════════════════
+
+
+class TestTasksBulkSetter:
+    def test_set_tasks(self, state):
+        state.set_tasks(["Build auth", "Create schema", "Write API"])
+        assert state.tasks == ["Build auth", "Create schema", "Write API"]
+
+    def test_set_tasks_overwrites_existing(self, state):
+        state.add_task("Old task")
+        state.set_tasks(["New task 1", "New task 2"])
+        assert state.tasks == ["New task 1", "New task 2"]
+
+    def test_set_tasks_empty_list(self, state):
+        state.add_task("Something")
+        state.set_tasks([])
+        assert state.tasks == []

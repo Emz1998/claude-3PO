@@ -186,6 +186,20 @@ def resolve_research(config: Config, state: StateStore) -> None:
         state.complete_phase("research")
 
 
+def resolve_install_dependencies(state: StateStore) -> None:
+    """Complete when dependencies.installed is True."""
+    deps = state.dependencies
+    if deps.get("installed"):
+        state.complete_phase("install-deps")
+
+
+def resolve_define_contracts(state: StateStore) -> None:
+    """Complete when contracts are validated and written as code."""
+    contracts = state.contracts
+    if contracts.get("written") and contracts.get("validated"):
+        state.complete_phase("define-contracts")
+
+
 def resolve(config: Config, state: StateStore) -> None:
     """Main resolver — dispatch based on current phase."""
     phase = state.current_phase
@@ -195,6 +209,8 @@ def resolve(config: Config, state: StateStore) -> None:
         "research": lambda: resolve_research(config, state),
         "plan": lambda: resolve_plan(config, state),
         "plan-review": lambda: resolve_plan_review(config, state),
+        "install-deps": lambda: resolve_install_dependencies(state),
+        "define-contracts": lambda: resolve_define_contracts(state),
         "write-tests": lambda: resolve_write_tests(state),
         "test-review": lambda: resolve_test_review(config, state),
         "write-code": lambda: resolve_write_code(state),

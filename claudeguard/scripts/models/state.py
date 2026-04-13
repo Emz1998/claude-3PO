@@ -55,6 +55,19 @@ class CI(BaseModel):
     results: list[dict] | None = None
 
 
+class Dependencies(BaseModel):
+    packages: list[str] = []
+    installed: bool = False
+
+
+class Contracts(BaseModel):
+    file_path: str | None = None
+    names: list[str] = []
+    code_files: list[str] = []
+    written: bool = False
+    validated: bool = False
+
+
 class State(BaseModel):
     session_id: str
     workflow_active: bool = True
@@ -67,6 +80,8 @@ class State(BaseModel):
     agents: list[Agent] = []
     plan: Plan = Plan()
     tasks: list[str] = []
+    dependencies: Dependencies = Dependencies()
+    contracts: Contracts = Contracts()
     tests: Tests = Tests()
     code_files_to_write: list[str] = []
     code_files: CodeFiles = CodeFiles()

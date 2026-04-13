@@ -1,334 +1,391 @@
-# Plan: Add install-deps, define-contracts phases + TaskCreated guardrail
+# Plan: Dual Workflow + TaskCreated + Auto-Commit + Project Manager
 
 ## Context
 
-The claudeguard workflow currently goes: explore -> research -> plan -> plan-review -> write-tests -> ... We need to:
-1. Add two new phases after plan-review: `/install-deps` and `/define-contracts`
-2. Auto-parse `## Dependencies`, `## Contracts`, and `## Tasks` sections from the plan on write
-3. Add a `TaskCreated` hook that validates tasks match those extracted from the plan
+claudeguard currently has a single workflow used by both `/build` and `/implement`. We need to split them into two distinct workflows with different phase lifecycles, task sourcing, and guardrail behavior. Additionally, we need to copy auto-commit (with headless Claude) and project_manager into claudeguard so it's self-contained.
 
-## Phase ordering (new)
+### User Decisions (from Q&A)
 
-```
-explore -> research -> plan -> plan-review -> install-deps -> define-contracts -> write-tests -> ...
-```
-
----
-
-## Step 1: State schema changes
-
-### `scripts/models/state.py`
-Add two new Pydantic models:
-
-```python
-class Dependencies(BaseModel):
-    packages: list[str] = []      # package names from ## Dependencies
-    installed: bool = False
-
-class Contracts(BaseModel):
-    file_path: str | None = None  # .claude/contracts/latest-contracts.md
-    names: list[str] = []         # contract names extracted from contracts.md
-    code_files: list[str] = []    # code files written during define-contracts
-    written: bool = False         # contracts code files written
-    validated: bool = False       # all contract names found in code files
-```
-
-Update `State` model:
-- Add `dependencies: Dependencies = Dependencies()`
-- Add `contracts: Contracts = Contracts()`
-- Change `tasks: list[str] = []` — keep as `list[str]` (task subjects from ## Tasks)
-
-### `scripts/utils/state_store.py`
-Add properties and setters:
-- `dependencies`, `set_dependencies_packages(packages)`, `set_dependencies_installed()`
-- `contracts`, `set_contracts_file_path(path)`, `set_contracts_written()`
-- `contract_names` — list of contract names extracted from plan (for resolver grep validation)
-- `tasks` property already exists, `set_tasks(tasks: list[str])` — bulk setter for auto-parse
-
-### `scripts/utils/initializer.py`
-Update `build_initial_state()` to include:
-```python
-"dependencies": {"packages": [], "installed": False},
-"contracts": {"file_path": None, "names": [], "written": False},
-```
-
-Add `archive_contracts(config)` — same pattern as `archive_plan()`:
-- Live: `.claude/contracts/latest-contracts.md`
-- Archive: `.claude/contracts/archive/contracts_{date}_{session_id}.md`
-- Called during `initialize()` before state reset, alongside `archive_plan()`
+- **Build**: keeps current 14-phase workflow as-is (with install-deps, define-contracts, plan template extraction)
+- **Implement**: new 13-phase workflow with project_manager task sourcing, story_id required
+- **Implement auto-phases**: create-tasks, write-tests, write-code are auto-transition (skill calls blocked)
+- **Implement plan template**: requires `## Context`, `## Approach`, `## Files to Create/Modify`, `## Verification` — enforced but not extracted
+- **Implement file guard**: write-code blocks files NOT listed in `## Files to Create/Modify`
+- **Task source**: implement uses project_manager.py (requires story_id), build uses plan `## Tasks` bullets
+- **Auto-commit**: headless Claude, fires on TaskCompleted for both workflows
+- **Project manager**: copy into claudeguard/ (self-contained)
+- **Config**: shared config.toml with `BUILD_PHASES` and `IMPLEMENT_PHASES`
+- **Explore/Research**: both workflows use 3 Explore + 2 Research in parallel
+- **Plan-review checkpoint**: both workflows discontinue on pass
+- **TDD**: both workflows support TDD (create-tasks → write-tests if TDD, else write-code)
+- **Write-report**: skill (manual) in both workflows
+- **create-tasks advance**: waits for subtasks (like workflow/ system)
 
 ---
 
-## Step 2: Plan section parsing (auto-extract on write)
-
-Both `latest-plan.md` and `latest-contracts.md` are written during the `/plan` phase.
-
-### `scripts/utils/extractors.py`
-Add extractors:
-
-```python
-def extract_plan_dependencies(content: str) -> list[str]:
-    """Parse ## Dependencies section from plan — extract bullet items as package names."""
-
-def extract_plan_tasks(content: str) -> list[str]:
-    """Parse ## Tasks section from plan — extract bullet items as task subjects."""
-
-def extract_contract_names(content: str) -> list[str]:
-    """Parse contract names from latest-contracts.md — extract bullet/heading items."""
-```
-
-### `scripts/utils/recorder.py`
-Add:
-```python
-def record_plan_sections(file_path: str, state: StateStore) -> None:
-    """Auto-parse Dependencies and Tasks from plan and store in state."""
-
-def record_contracts_file(file_path: str, state: StateStore) -> None:
-    """Auto-parse contract names from contracts.md and store in state."""
-```
-
-### `scripts/post_tool_use.py`
-- On plan Write: after `inject_plan_metadata()`, call `record_plan_sections()` to extract deps + tasks
-- On contracts.md Write: call `record_contracts_file()` to extract contract names into `state.contracts.names`
-
-### `scripts/utils/validators.py`
-Update `is_file_write_allowed` — during `plan` phase, allow writes to BOTH:
-- `config.plan_file_path` (`.claude/plans/latest-plan.md`)
-- `config.contracts_file_path` (`.claude/contracts/latest-contracts.md`)
-
----
-
-## Step 3: Config changes
+## Step 1: Config split — BUILD_PHASES vs IMPLEMENT_PHASES
 
 ### `scripts/config/config.toml`
 
 ```toml
-MAIN_PHASES = ["explore", "research", "plan", "plan-review", "install-deps", "define-contracts", "write-tests", ...]
-CODE_WRITE_PHASES = ["write-tests", "write-code", "install-deps", "define-contracts", "refactor"]
-```
+BUILD_PHASES = ["explore", "research", "plan", "plan-review", "install-deps", "define-contracts", "write-tests", "test-review", "write-code", "quality-check", "code-review", "pr-create", "ci-check", "write-report"]
 
-`install-deps` needs both Write (to package manager files like `package.json`, `requirements.txt`, `go.mod`) and Bash (install commands). Add to `CODE_WRITE_PHASES` for file writes, and COMMANDS_MAP for install commands.
+IMPLEMENT_PHASES = ["explore", "research", "plan", "plan-review", "create-tasks", "write-tests", "tests-review", "write-code", "validate", "code-review", "pr-create", "ci-check", "write-report"]
 
-Add to `[FILE_PATHS]`:
-```toml
-CONTRACTS_FILE_PATH = ".claude/contracts/latest-contracts.md"
-CONTRACTS_ARCHIVE_DIR = ".claude/contracts/archive"
+# Phases that auto-transition (no skill commands — both workflows)
+AUTO_PHASES = ["create-tasks", "write-tests", "write-code"]
+
+# Delete commands/write-tests.md and commands/write-code.md.
+# Both build and implement auto-transition into these phases via resolvers.
+# Build: plan-review pass → install-deps → define-contracts → (auto) write-tests → ...
+# Implement: create-tasks done → (auto) write-tests → ...
+# No /create-tasks skill either — implement only, auto-transition.
 ```
 
 Add to `[REQUIRED_AGENTS]`:
 ```toml
-install-deps = ""
-define-contracts = ""
+create-tasks = ""
+validate = "QASpecialist"
+tests-review = "TestReviewer"
 ```
 
-### `scripts/constants/constants.py`
-
-Update `COMMANDS_MAP` — rename key `"install"` to `"install-deps"`:
-```python
-COMMANDS_MAP = {
-    "install-deps": INSTALL_COMMANDS,
-    ...
-}
+Add to `[FILE_PATHS]`:
+```toml
+IMPLEMENT_PLAN_TEMPLATE = "implement"
+BUILD_PLAN_TEMPLATE = "build"
 ```
 
----
+### `scripts/config/config.py`
 
-## Step 4: Validators for new phases
+Add properties:
+- `build_phases` → `BUILD_PHASES` list
+- `implement_phases` → `IMPLEMENT_PHASES` list
+- `auto_phases` → `AUTO_PHASES` list
+- `get_phases(workflow_type: str)` → returns the right list based on `"build"` or `"implement"`
 
 ### `scripts/utils/validators.py`
 
-**For plan content validation (enforce required sections)**:
-
-_PreToolUse Write guard_ — in `is_file_write_allowed()`, when phase is `plan` and file is the plan path:
-  - `tool_input` schema: `{ file_path: str, content: str }`
-  - Read `tool_input["content"]` — this is the full file content being written
-  - Check for required `## Dependencies`, `## Contracts`, `## Tasks` headers
-  - Block Write if any are missing: `raise ValueError("Plan missing required sections: ...")`
-
-_PreToolUse Edit guard_ — in `is_file_edit_allowed()`, when phase is `plan-review` and file is the plan path:
-  - `tool_input` schema: `{ file_path: str, old_string: str, new_string: str, replace_all: bool }`
-  - Read current file content from disk via `Path(file_path).read_text()`
-  - Apply the patch: `patched = current_content.replace(old_string, new_string)` (or replace first occurrence only if `replace_all` is false)
-  - Validate the patched content still has required `## Dependencies`, `## Contracts`, `## Tasks` headers
-  - Block Edit if any section would be removed: `raise ValueError("Edit would remove required sections: ...")`
-
-**For `install-deps`**:
-- `is_command_allowed` already routes through `COMMANDS_MAP` — key `"install-deps"` restricts Bash to `INSTALL_COMMANDS`.
-- Add path validation in `is_file_write_allowed()` — only allow package manager files:
-  - `package.json`, `requirements.txt`, `Pipfile`, `go.mod`, `Cargo.toml`, `Gemfile`, `pyproject.toml`
-  - Add `PACKAGE_MANAGER_FILES` list to `constants.py`
-
-**For `define-contracts`**:
-- Add path validation in `is_file_write_allowed()` — written code files must have valid code extensions
-- Add `validate_contracts_in_code(state: StateStore) -> Result`:
-  - Reads contract names from `state.contracts["names"]` (extracted from contracts.md)
-  - Reads written code file paths from `state.contracts["code_files"]`
-  - Greps each code file for each contract name
-  - Raises `ValueError` with missing names if any are absent
-  - Called from **phase guard** (PreToolUse for Skill) when transitioning OUT of define-contracts — blocks transition until all contracts are in code
-  - On success, recorder sets `state.contracts["validated"] = True`
+Update `is_phase_allowed()`:
+- Use `config.get_phases(state.get("workflow_type"))` instead of `config.main_phases`
+- Block skill calls for phases in `config.auto_phases`
 
 ---
 
-## Step 5: Recorders for new phases
+## Step 2: Implement plan template
+
+### `claudeguard/templates/implement-plan.md` (NEW)
+
+```markdown
+# {Plan Title}
+
+## Context
+{Background and motivation}
+
+## Approach
+{High-level implementation strategy}
+
+## Files to Create/Modify
+| Action | Path |
+|--------|------|
+| {Create/Modify} | {file path} |
+
+## Verification
+{How to test the implementation}
+```
+
+### `scripts/utils/validators.py`
+
+Add `IMPLEMENT_PLAN_REQUIRED_SECTIONS = ["## Context", "## Approach", "## Files to Create/Modify", "## Verification"]`
+
+Update `_validate_plan_content()`:
+- Accept `workflow_type` parameter
+- If `"build"`: validate current sections (Dependencies, Contracts, Tasks) + bullet format
+- If `"implement"`: validate Context, Approach, Files to Create/Modify, Verification (presence only, no extraction)
+
+### `scripts/utils/extractors.py`
+
+Add `extract_plan_files_to_modify(content: str) -> list[str]`:
+- Reuses existing `extract_md_sections()` (line 80) to find the `## Files to Create/Modify` section
+- Reuses existing `extract_table()` (line 99) to parse the markdown table and extract file paths from the Path column
+- No new parsing logic — composition of two existing functions
 
 ### `scripts/utils/recorder.py`
 
-**For `install-deps`**: 
-- `record_dependency_install(command: str, state: StateStore)` — marks deps as installed when install command runs
-- Called from `post_tool_use.py` when phase is `install-deps` and command matches INSTALL_COMMANDS
-
-**For `define-contracts`**:
-- Add to `record_file_write()`:
-```python
-elif phase == "define-contracts":
-    state.set_contracts_written(True)
-```
-
----
-
-## Step 6: Resolvers for new phases
-
-### `scripts/utils/resolvers.py`
-
-```python
-def resolve_install_dependencies(state: StateStore) -> None:
-    """Complete when dependencies.installed is True."""
-    deps = state.dependencies
-    if deps.get("installed"):
-        state.complete_phase("install-deps")
-
-def resolve_define_contracts(state: StateStore) -> None:
-    """Complete when contracts are validated and written as code."""
-    contracts = state.contracts
-    if contracts.get("written") and contracts.get("validated"):
-        state.complete_phase("define-contracts")
-```
-
-Register both in the `resolvers` dict inside `resolve()`.
-
----
-
-## Step 7: TaskCreated hook
-
-### `scripts/task_created.py` (NEW)
-
-New hook entrypoint following the same pattern as other hooks:
-
-```python
-#!/usr/bin/env python3
-"""TaskCreated hook — validates task matches planned tasks."""
-
-hook_input = Hook.read_stdin()
-state = StateStore(...)
-# Check workflow_active + session_id
-
-task_subject = hook_input.get("task_subject", "")
-planned_tasks = state.tasks  # list[str] from auto-parsed ## Tasks
-
-# Normalize and match
-normalized_subject = task_subject.strip().lower()
-matched = any(
-    normalized_subject == t.strip().lower() or
-    t.strip().lower() in normalized_subject or
-    normalized_subject in t.strip().lower()
-    for t in planned_tasks
-)
-
-if not matched:
-    Hook.block(f"Task '{task_subject}' does not match any planned task.\nPlanned tasks: {planned_tasks}")
-
-# Also validate task_description is present and non-empty
-task_description = hook_input.get("task_description", "")
-if not task_description or not task_description.strip():
-    Hook.block("Task must have a non-empty description.")
-
-# else: exit 0 (allow)
-```
-
-### `hooks/hooks.json`
-
-Add new entry:
-```json
-"TaskCreated": [
-  {
-    "hooks": [
-      {
-        "type": "command",
-        "command": "${CLAUDE_PLUGIN_ROOT}/scripts/task_created.py",
-        "timeout": 10
-      }
-    ]
-  }
-]
-```
-
----
-
-## Step 8: Slash commands
-
-### `commands/install-deps.md` (NEW)
-
-Phase instructions telling Claude to:
-1. Read the plan's `## Dependencies` section
-2. Write dependencies to the package manager file first (`package.json`, `requirements.txt`, `go.mod`, etc.)
-3. Run the install command (`npm install`, `pip install -r requirements.txt`, etc.)
-4. Verify installation
-
-### `commands/define-contracts.md` (NEW)
-
-Phase instructions telling Claude to:
-1. Read `.claude/contracts/latest-contracts.md` (written during plan phase) for contract definitions
-2. Write actual code files (interfaces, types, stubs) that implement those contracts
-3. Validator greps written code files for all contract names from contracts.md
-4. Phase completes when all contract names are found in code
-
-### `commands/implement.md` (MODIFY)
-
-Insert new phases between plan-review and write-tests:
-- `### 5. /install-deps`
-- `### 6. /define-contracts`
-- Renumber subsequent phases (write-tests becomes 7, etc.)
-
----
-
-## Step 9: PostToolUse updates
+Add `record_plan_files(file_path: str, state: StateStore) -> None`:
+- On plan write for implement workflow: extract files from `## Files to Create/Modify` and store in `state.code_files_to_write`
 
 ### `scripts/post_tool_use.py`
 
-Add handling for:
-1. **Plan write auto-parse**: After `inject_plan_metadata()`, call `record_plan_sections()` to extract deps/contracts/tasks from the plan
-2. **Install command recording**: When phase is `install-deps` and Bash command matches install patterns, call `record_dependency_install()`
+On plan Write for implement workflow: call `record_plan_files()` after `inject_plan_metadata()`
 
 ---
 
-## Files summary
+## Step 3: Write-code file guard (implement only)
+
+### `scripts/utils/validators.py`
+
+Update `is_file_write_allowed()` for `write-code` phase:
+- If workflow_type is `"implement"`: check `state.code_files_to_write`
+- Block if file not in that list
+- Build workflow keeps current behavior (any code extension allowed)
+
+---
+
+## Step 4: create-tasks phase (implement only)
+
+### `scripts/models/state.py`
+
+Add `Task` model:
+```python
+class Task(BaseModel):
+    id: str
+    subject: str
+    status: Literal["pending", "completed"] = "pending"
+    subtasks: list[dict] = []
+```
+
+Update `State`:
+- Change `tasks: list[str] = []` to `tasks: list[str] | list[dict] = []` — build uses `list[str]`, implement uses `list[dict]`
+
+### `scripts/utils/state_store.py`
+
+Add:
+- `set_project_tasks(tasks: list[dict])` — bulk setter for implement tasks
+- `add_subtask(parent_task_id: str, subtask: dict)` — append subtask to parent
+- `all_tasks_have_subtasks` property — check if every task has ≥1 subtask
+- `mark_subtask_completed(subject: str)` — mark subtask done, auto-complete parent if all done
+
+### `scripts/utils/validators.py`
+
+Add `is_task_create_allowed()`:
+- Only during `create-tasks` phase
+- Requires `metadata.parent_task_id` and `metadata.parent_task_title`
+- Validates parent_task_id exists in state tasks
+- Validates parent_task_title matches
+
+Register in `TOOL_GUARDS` for `TaskCreate` tool.
+
+### `scripts/utils/recorder.py`
+
+Add `record_task_create(hook_input: dict, state: StateStore)`:
+- Extract subject, description from tool_input
+- Extract parent_task_id from metadata
+- Append subtask to parent task
+
+### `scripts/utils/resolvers.py`
+
+Add `resolve_create_tasks(state: StateStore)`:
+- Complete when `state.all_tasks_have_subtasks`
+- Auto-advance to `write-tests` if TDD, else `write-code`
+
+### `scripts/guardrails/task_create_guard.py` (NEW)
+
+Wire `is_task_create_allowed()` → `record_task_create()`.
+
+### Phase initialization
+
+When `plan-review` completes for implement workflow:
+- Fetch project tasks via `project_manager.py view <story_id> --tasks --json`
+- Store in `state.tasks` as `list[dict]`
+- Auto-start `create-tasks` phase
+
+---
+
+## Step 5: Auto-transition phases
+
+### `scripts/utils/resolvers.py`
+
+Update `resolve()`:
+- After completing plan-review (implement): auto-start create-tasks + fetch project tasks
+- After completing create-tasks: auto-start write-tests (if TDD) or write-code
+- After completing tests-review: auto-start write-code
+
+### No skill blocking needed
+
+Auto-phases (create-tasks, write-tests, write-code) simply have no `/skill` command files. Claude can't invoke them because the commands don't exist. The resolver auto-starts these phases when the previous phase completes.
+
+### `scripts/pre_tool_use.py`
+
+Add `TaskCreate` to `TOOL_GUARDS` dispatch.
+
+---
+
+## Step 6: validate phase (implement)
+
+This is the same as quality-check but renamed for implement. The resolver and recorder logic is identical — `QASpecialist` agent, Pass/Fail verdict.
+
+### `scripts/utils/resolvers.py`
+
+Add `resolve_validate` (alias for `resolve_quality_check`):
+```python
+"validate": lambda: resolve_quality_check(state),
+```
+
+---
+
+## Step 7: Copy project_manager into claudeguard
+
+### `claudeguard/github_project/` (NEW directory)
+
+Copy from `/home/emhar/avaris-ai/github_project/`:
+- `config.py`
+- `project_manager.py`
+- `sync_project.py`
+- `utils/gh_utils.py`
+- `utils/__init__.py`
+- `issues/` directory (sprint.json, stories.json)
+- `templates/` directory
+
+### Config adaptation
+
+Update `config.py` paths to be relative to the new location inside claudeguard.
+
+---
+
+## Step 8: Copy auto-commit + headless Claude into claudeguard
+
+### `claudeguard/scripts/auto_commit.py` (NEW)
+
+Copy from `/home/emhar/avaris-ai/.claude/hooks/workflow/auto_commit.py`.
+
+Adapt:
+- Import paths: use claudeguard's `config`, `utils.hook`, `utils.state_store`
+- Batch ledger path: add `COMMIT_BATCH_PATH` to config.toml `[FILE_PATHS]`
+- Log calls: use claudeguard's logging approach
+
+### `claudeguard/scripts/headless_claude/` (NEW directory)
+
+Copy from `/home/emhar/avaris-ai/.claude/hooks/workflow/headless_claude/`:
+- `__init__.py`
+- `claude.py`
+
+Adapt:
+- `TEMPLATE_DIR` path to point to claudeguard prompts
+
+### `claudeguard/scripts/prompts/` (NEW directory)
+
+Copy commit message prompt template from workflow/.
+
+### `claudeguard/hooks/hooks.json`
+
+Add `TaskCompleted` hook entry pointing to `auto_commit.py`.
+
+---
+
+## Step 9: Update task_created.py
+
+### `scripts/task_created.py`
+
+Update to handle both workflows:
+- **Build**: current behavior (fuzzy match against plan `## Tasks` bullets)
+- **Implement**: validate `metadata.parent_task_id` + `metadata.parent_task_title` against project tasks (same as workflow/ task_guard)
+
+---
+
+## Step 10: Update commands
+
+### `commands/implement.md`
+
+Rewrite to reflect new 13-phase workflow:
+- explore + research (parallel, skills)
+- plan (skill)
+- plan-review (skill, checkpoint)
+- create-tasks (auto — fetch from project_manager, create subtasks)
+- write-tests (auto, TDD only)
+- tests-review (skill)
+- write-code (auto)
+- validate (skill — QASpecialist)
+- code-review (skill)
+- pr-create (skill)
+- ci-check (skill)
+- write-report (skill)
+
+Reference implement plan template.
+
+### `commands/build.md`
+
+Update to reflect auto-transition for write-tests and write-code:
+- Remove `/write-tests` and `/write-code` as skill steps
+- Document them as auto-transition phases (resolver starts them after define-contracts completes)
+- Skill phases for build: `/explore`, `/research`, `/plan`, `/plan-review`, `/install-deps`, `/define-contracts`, `/test-review`, `/quality-check`, `/code-review`, `/pr-create`, `/ci-check`, `/write-report`
+
+### `commands/write-tests.md` and `commands/write-code.md`
+
+Delete both files. These are now auto-transition phases for both workflows.
+
+### `commands/validate.md` (NEW)
+
+Same as quality-check.md but for implement workflow.
+
+### Commands NOT created (auto-phases)
+
+No command files for `create-tasks`, `write-tests` (implement), or `write-code` (implement). These phases auto-transition via resolvers — no skill invocation exists.
+
+---
+
+## Step 11: Update initializer
+
+### `scripts/utils/initializer.py`
+
+Update `build_initial_state()`:
+- If workflow_type is `"implement"`: require story_id, raise error if missing
+- Tasks field: `[]` for both (populated later — build from plan extraction, implement from project_manager)
+
+---
+
+## Step 12: Update dry_run and tests
+
+### `scripts/tests/dry_run.py`
+
+Add implement workflow simulation alongside existing build simulation.
+
+### Unit tests
+
+- Test implement phase ordering
+- Test auto-phase skill blocking
+- Test create-tasks validation (parent_task_id matching)
+- Test create-tasks auto-advance (all tasks have subtasks)
+- Test implement plan template validation
+- Test write-code file guard (implement: blocks unlisted files)
+- Test validate resolver
+- Test task_created for both workflows
+
+---
+
+## Files Summary
 
 | File | Action | Purpose |
 |------|--------|---------|
-| `scripts/models/state.py` | Modify | Add Dependencies, Contracts models |
-| `scripts/utils/state_store.py` | Modify | Add deps/contracts/tasks properties + setters |
-| `scripts/utils/initializer.py` | Modify | Add deps/contracts to initial state |
-| `scripts/utils/extractors.py` | Modify | Add plan section parsers |
-| `scripts/utils/recorder.py` | Modify | Add plan section recording, dep install recording |
-| `scripts/utils/resolvers.py` | Modify | Add resolve for both new phases |
-| `scripts/utils/validators.py` | Modify | Add contracts path validation |
-| `scripts/config/config.toml` | Modify | Add phases, agent config |
-| `scripts/constants/constants.py` | Modify | Update COMMANDS_MAP key |
-| `scripts/post_tool_use.py` | Modify | Add plan parse + dep install recording |
-| `scripts/task_created.py` | Create | TaskCreated hook entrypoint |
-| `hooks/hooks.json` | Modify | Add TaskCreated event |
-| `commands/install-deps.md` | Create | Phase slash command |
-| `commands/define-contracts.md` | Create | Phase slash command |
-| `commands/implement.md` | Modify | Add new phases, renumber |
+| `scripts/config/config.toml` | Modify | Add IMPLEMENT_PHASES, AUTO_PHASES, new agents |
+| `scripts/config/config.py` | Modify | Add workflow-type-aware phase accessors |
+| `scripts/models/state.py` | Modify | Add Task model |
+| `scripts/utils/state_store.py` | Modify | Add project task setters, subtask tracking |
+| `scripts/utils/validators.py` | Modify | Workflow-aware phase validation, auto-phase blocking, file guard, task_create validation |
+| `scripts/utils/extractors.py` | Modify | Add extract_plan_files_to_modify |
+| `scripts/utils/recorder.py` | Modify | Add task_create recording, plan files recording |
+| `scripts/utils/resolvers.py` | Modify | Add create-tasks, validate resolvers, auto-transitions |
+| `scripts/utils/initializer.py` | Modify | story_id required for implement |
+| `scripts/post_tool_use.py` | Modify | Plan files extraction for implement |
+| `scripts/pre_tool_use.py` | Modify | Add TaskCreate guard |
+| `scripts/task_created.py` | Modify | Dual workflow handling |
+| `scripts/auto_commit.py` | Create | Auto-commit on TaskCompleted |
+| `scripts/headless_claude/` | Create | Headless Claude for commit messages |
+| `scripts/prompts/` | Create | Commit message prompt template |
+| `scripts/guardrails/__init__.py` | Modify | Register TaskCreate guard |
+| `scripts/guardrails/task_create_guard.py` | Create | TaskCreate guardrail handler |
+| `templates/implement-plan.md` | Create | Implement plan template |
+| `claudeguard/github_project/` | Create | Copy of project_manager |
+| `hooks/hooks.json` | Modify | Add TaskCompleted hook |
+| `commands/implement.md` | Modify | New 13-phase workflow |
+| `commands/validate.md` | Create | Validate phase command |
+| `scripts/tests/dry_run.py` | Modify | Add implement simulation |
+| `scripts/tests/` | Modify | New tests for all changes |
 
 ## Verification
 
-1. **Unit tests**: Add tests in `scripts/tests/` for:
-   - New extractors (plan section parsing)
-   - New validators (contracts path validation)
-   - New recorders (plan sections, dep install, contracts write)
-   - New resolvers (install-deps, define-contracts)
-   - TaskCreated hook (matching logic)
-2. **Dry run**: Update `scripts/tests/dry_run.py` to exercise the full flow with new phases
-3. **Integration**: Run `/implement` with a plan containing `## Dependencies`, `## Contracts`, `## Tasks` sections and verify phase flow
+1. **Unit tests**: Run `python -m pytest tests/ -v` — all existing + new tests pass
+2. **Dry run (build)**: `python tests/dry_run.py` — 50+ checks pass
+3. **Dry run (implement)**: `python tests/dry_run.py --implement` — new implement flow passes
+4. **Dry run (TDD)**: `python tests/dry_run.py --tdd` — TDD variant passes
+5. **Auto-commit**: Verify TaskCompleted hook triggers auto_commit.py
+6. **Project manager**: Verify `python github_project/project_manager.py view SK-001 --tasks --json` works from claudeguard/
