@@ -81,6 +81,7 @@ class TestIsCommandAllowed:
 
 class TestIsFileWriteAllowed:
     def test_plan_correct_path(self, config, state):
+        state.set("workflow_type", "build")
         state.add_phase("plan")
         state.add_agent(Agent(name="Plan", status="completed", tool_use_id="p-1"))
         content = "# Plan\n\n## Dependencies\n- flask\n\n## Contracts\n- UserService\n\n## Tasks\n- Build login\n"
@@ -120,12 +121,14 @@ class TestIsFileWriteAllowed:
             is_file_write_allowed(hook, config, state)
 
     def test_write_code_valid_ext(self, config, state):
+        state.set("workflow_type", "build")
         state.add_phase("write-code")
         hook = make_hook_input("Write", {"file_path": "app.py"})
         ok, _ = is_file_write_allowed(hook, config, state)
         assert ok is True
 
     def test_write_code_invalid_ext(self, config, state):
+        state.set("workflow_type", "build")
         state.add_phase("write-code")
         hook = make_hook_input("Write", {"file_path": "readme.md"})
         with pytest.raises(ValueError, match="not allowed"):
@@ -498,7 +501,11 @@ class TestValidateReviewSections:
 
 
 class TestPlanContentValidation:
-    """Plan Write must include ## Dependencies, ## Contracts, ## Tasks sections."""
+    """Plan Write must include ## Dependencies, ## Contracts, ## Tasks sections (build workflow)."""
+
+    @pytest.fixture(autouse=True)
+    def _set_build_workflow(self, state):
+        state.set("workflow_type", "build")
 
     def _plan_content(self, deps=True, contracts=True, tasks=True):
         parts = ["# Implementation Plan\n"]
@@ -623,7 +630,11 @@ class TestPlanContentValidation:
 
 
 class TestPlanEditSectionPreservation:
-    """Plan Edit in plan-review must not remove ## Dependencies, ## Contracts, ## Tasks."""
+    """Plan Edit in plan-review must not remove ## Dependencies, ## Contracts, ## Tasks (build workflow)."""
+
+    @pytest.fixture(autouse=True)
+    def _set_build_workflow(self, state):
+        state.set("workflow_type", "build")
 
     def test_edit_preserving_sections_allowed(self, config, state, tmp_path, monkeypatch):
         plan_file = tmp_path / "latest-plan.md"

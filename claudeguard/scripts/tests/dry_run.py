@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""dry_run.py — E2E simulation of the hook system using real state.json.
+"""dry_run.py — E2E simulation of the hook system using JSONL state.
 
 Pipes JSON payloads to pre_tool_use.py, post_tool_use.py, subagent_stop.py,
 and stop.py, verifying allow/block decisions at each step.
@@ -7,6 +7,8 @@ and stop.py, verifying allow/block decisions at each step.
 Usage:
     python3 scripts/tests/dry_run.py
     python3 scripts/tests/dry_run.py --tdd
+    python3 scripts/tests/dry_run.py --implement
+    python3 scripts/tests/dry_run.py --implement --tdd
 """
 
 import argparse
@@ -17,7 +19,7 @@ import time
 from pathlib import Path
 
 SCRIPTS_DIR = Path(__file__).resolve().parent.parent
-STATE_PATH = SCRIPTS_DIR / "state.json"
+STATE_PATH = SCRIPTS_DIR / "state.jsonl"
 
 PRE_TOOL_USE = SCRIPTS_DIR / "pre_tool_use.py"
 POST_TOOL_USE = SCRIPTS_DIR / "post_tool_use.py"
@@ -29,6 +31,8 @@ RED = "\033[31m"
 YELLOW = "\033[33m"
 RESET = "\033[0m"
 
+SESSION_ID = "dry-run"
+
 results: list[dict] = []
 
 
@@ -37,54 +41,70 @@ results: list[dict] = []
 # ═══════════════════════════════════════════════════════════════════
 
 
-DEFAULT_STATE = {
-    "session_id": "dry-run",
-    "workflow_active": True,
-    "workflow_type": "implement",
-    "phases": [],
-    "tdd": False,
-    "story_id": "DRY-001",
-    "skip": [],
-    "instructions": "",
-    "agents": [],
-    "plan": {
-        "file_path": None,
-        "written": False,
-        "revised": False,
-        "reviews": [],
-    },
-    "tasks": [],
-    "dependencies": {"packages": [], "installed": False},
-    "contracts": {
-        "file_path": None,
-        "names": [],
-        "code_files": [],
-        "written": False,
-        "validated": False,
-    },
-    "tests": {"file_paths": [], "executed": False, "reviews": [], "files_to_revise": [], "files_revised": []},
-    "code_files_to_write": [],
-    "code_files": {
-        "file_paths": [],
-        "reviews": [],
-        "tests_to_revise": [],
-        "tests_revised": [],
-        "files_to_revise": [],
-        "files_revised": [],
-    },
-    "quality_check_result": None,
-    "pr": {"status": "pending", "number": None},
-    "ci-check": {"status": "pending", "results": []},
-    "report_written": False,
-}
+def make_default_state(workflow_type: str = "build") -> dict:
+    return {
+        "session_id": SESSION_ID,
+        "workflow_active": True,
+        "workflow_type": workflow_type,
+        "phases": [],
+        "tdd": False,
+        "story_id": "DRY-001",
+        "skip": [],
+        "instructions": "",
+        "agents": [],
+        "plan": {
+            "file_path": None,
+            "written": False,
+            "revised": False,
+            "reviews": [],
+        },
+        "tasks": [],
+        "project_tasks": [],
+        "dependencies": {"packages": [], "installed": False},
+        "contracts": {
+            "file_path": None,
+            "names": [],
+            "code_files": [],
+            "written": False,
+            "validated": False,
+        },
+        "tests": {"file_paths": [], "executed": False, "reviews": [], "files_to_revise": [], "files_revised": []},
+        "code_files_to_write": [],
+        "code_files": {
+            "file_paths": [],
+            "reviews": [],
+            "tests_to_revise": [],
+            "tests_revised": [],
+            "files_to_revise": [],
+            "files_revised": [],
+        },
+        "quality_check_result": None,
+        "pr": {"status": "pending", "number": None},
+        "ci": {"status": "pending", "results": None},
+        "report_written": False,
+        "plan_files_to_modify": [],
+    }
 
 
-def reset_state() -> None:
-    STATE_PATH.write_text(json.dumps(DEFAULT_STATE, indent=2))
+def reset_state(workflow_type: str = "build") -> None:
+    state = make_default_state(workflow_type)
+    line = json.dumps(state, separators=(",", ":"))
+    STATE_PATH.write_text(line + "\n")
 
 
 def read_state() -> dict:
-    return json.loads(STATE_PATH.read_text())
+    content = STATE_PATH.read_text().strip()
+    for line in content.splitlines():
+        entry = json.loads(line)
+        if entry.get("session_id") == SESSION_ID:
+            return entry
+    return {}
+
+
+def write_state(s: dict) -> None:
+    s["session_id"] = SESSION_ID
+    line = json.dumps(s, separators=(",", ":"))
+    STATE_PATH.write_text(line + "\n")
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -98,7 +118,7 @@ def skill_payload(skill: str) -> dict:
         "tool_name": "Skill",
         "tool_input": {"skill": skill},
         "tool_use_id": "t1",
-        "session_id": "dry-run",
+        "session_id": SESSION_ID,
         "transcript_path": "t",
         "cwd": str(SCRIPTS_DIR),
         "permission_mode": "default",
@@ -111,7 +131,7 @@ def agent_payload(agent_type: str) -> dict:
         "tool_name": "Agent",
         "tool_input": {"subagent_type": agent_type, "description": "x", "prompt": "x"},
         "tool_use_id": "t1",
-        "session_id": "dry-run",
+        "session_id": SESSION_ID,
         "transcript_path": "t",
         "cwd": str(SCRIPTS_DIR),
         "permission_mode": "default",
@@ -124,7 +144,7 @@ def write_payload(file_path: str, content: str = "x") -> dict:
         "tool_name": "Write",
         "tool_input": {"file_path": file_path, "content": content},
         "tool_use_id": "t1",
-        "session_id": "dry-run",
+        "session_id": SESSION_ID,
         "transcript_path": "t",
         "cwd": str(SCRIPTS_DIR),
         "permission_mode": "default",
@@ -137,7 +157,7 @@ def edit_payload(file_path: str) -> dict:
         "tool_name": "Edit",
         "tool_input": {"file_path": file_path, "old_string": "x", "new_string": "y"},
         "tool_use_id": "t1",
-        "session_id": "dry-run",
+        "session_id": SESSION_ID,
         "transcript_path": "t",
         "cwd": str(SCRIPTS_DIR),
         "permission_mode": "default",
@@ -150,7 +170,7 @@ def bash_payload(command: str) -> dict:
         "tool_name": "Bash",
         "tool_input": {"command": command},
         "tool_use_id": "t1",
-        "session_id": "dry-run",
+        "session_id": SESSION_ID,
         "transcript_path": "t",
         "cwd": str(SCRIPTS_DIR),
         "permission_mode": "default",
@@ -164,20 +184,7 @@ def post_bash_payload(command: str, output: str = "") -> dict:
         "tool_input": {"command": command},
         "tool_result": output,
         "tool_use_id": "t1",
-        "session_id": "dry-run",
-        "transcript_path": "t",
-        "cwd": str(SCRIPTS_DIR),
-        "permission_mode": "default",
-    }
-
-
-def webfetch_payload(url: str) -> dict:
-    return {
-        "hook_event_name": "PreToolUse",
-        "tool_name": "WebFetch",
-        "tool_input": {"url": url, "prompt": "fetch"},
-        "tool_use_id": "t1",
-        "session_id": "dry-run",
+        "session_id": SESSION_ID,
         "transcript_path": "t",
         "cwd": str(SCRIPTS_DIR),
         "permission_mode": "default",
@@ -190,7 +197,7 @@ def subagent_stop_payload(agent_type: str, message: str = "Done.") -> dict:
         "subagent_type": agent_type,
         "agent_id": "a1",
         "last_assistant_message": message,
-        "session_id": "dry-run",
+        "session_id": SESSION_ID,
         "transcript_path": "t",
         "cwd": str(SCRIPTS_DIR),
         "permission_mode": "default",
@@ -204,7 +211,7 @@ def stop_payload(active: bool = False) -> dict:
         "hook_event_name": "Stop",
         "stop_hook_active": active,
         "last_assistant_message": "I'm done.",
-        "session_id": "dry-run",
+        "session_id": SESSION_ID,
         "transcript_path": "t",
         "cwd": str(SCRIPTS_DIR),
         "permission_mode": "default",
@@ -229,7 +236,6 @@ def run(label: str, script: Path, payload: dict, expect_block: bool, note: str =
     stderr = result.stderr.strip()
     exit_code = result.returncode
 
-    # Block = exit code 2 or stdout contains "deny" or "block"
     is_blocked = exit_code == 2 or "deny" in stdout or '"block"' in stdout
     passed = is_blocked == expect_block
 
@@ -265,319 +271,171 @@ def block(label: str, script: Path, payload: dict, note: str = "") -> bool:
 
 
 # ═══════════════════════════════════════════════════════════════════
-# Simulation
+# Build simulation (original)
 # ═══════════════════════════════════════════════════════════════════
 
 
-def simulate(tdd: bool) -> None:
-    # -- Explore phase --
+def simulate_build(tdd: bool) -> None:
     print("\n--- Explore phase ---")
-
-    # Seed state with explore phase
     s = read_state()
     s["phases"] = [{"name": "explore", "status": "in_progress"}]
-    STATE_PATH.write_text(json.dumps(s, indent=2))
+    write_state(s)
 
     allow("Read command in explore", PRE_TOOL_USE, bash_payload("ls -la"))
     block("Write blocked in explore", PRE_TOOL_USE, write_payload("notes.md"))
-    block("rm blocked in explore", PRE_TOOL_USE, bash_payload("rm -rf /"))
     allow("Explore agent allowed", PRE_TOOL_USE, agent_payload("Explore"))
     block("Wrong agent blocked", PRE_TOOL_USE, agent_payload("Plan"))
-    allow("WebFetch safe domain", PRE_TOOL_USE, webfetch_payload("https://docs.python.org/3/"))
-    block("WebFetch unsafe domain", PRE_TOOL_USE, webfetch_payload("https://evil.com"))
 
-    # Research parallel with explore — requires an in-progress Explore agent
+    # Research parallel
     s = read_state()
     s["agents"].append({"name": "Explore", "status": "in_progress", "tool_use_id": "e-1"})
-    STATE_PATH.write_text(json.dumps(s, indent=2))
+    write_state(s)
+    allow("Research parallel with explore", PRE_TOOL_USE, agent_payload("Research"))
 
-    allow("Research parallel with explore", PRE_TOOL_USE, agent_payload("Research"),
-          note="Research runs alongside in-progress Explore")
-
-    # -- Research phase --
-    print("\n--- Research phase ---")
+    print("\n--- Plan phase ---")
     s = read_state()
     s["phases"] = [
         {"name": "explore", "status": "completed"},
-        {"name": "research", "status": "in_progress"},
+        {"name": "research", "status": "completed"},
+        {"name": "plan", "status": "in_progress"},
     ]
-    STATE_PATH.write_text(json.dumps(s, indent=2))
-
-    allow("Read in research", PRE_TOOL_USE, bash_payload("git status"))
-    block("Write blocked in research", PRE_TOOL_USE, write_payload("notes.md"))
-
-    # -- Plan phase --
-    print("\n--- Plan phase ---")
-    s = read_state()
-    s["phases"].append({"name": "plan", "status": "in_progress"})
-    s["phases"][1]["status"] = "completed"
-    STATE_PATH.write_text(json.dumps(s, indent=2))
-
-    # Plan agent must complete before writing
-    s = read_state()
     s["agents"].append({"name": "Plan", "status": "completed", "tool_use_id": "p-1"})
-    STATE_PATH.write_text(json.dumps(s, indent=2))
+    write_state(s)
 
     plan_content = "# Plan\n\n## Dependencies\n- flask\n\n## Contracts\n- UserService\n\n## Tasks\n- Build login\n"
     allow("Write plan file", PRE_TOOL_USE, write_payload(".claude/plans/latest-plan.md", plan_content))
     block("Write wrong plan path", PRE_TOOL_USE, write_payload("wrong.md"))
-    block("Write plan missing sections", PRE_TOOL_USE, write_payload(".claude/plans/latest-plan.md", "# Plan\nNo sections"))
 
-    # -- Plan review phase --
     print("\n--- Plan review phase ---")
     s = read_state()
     s["phases"].append({"name": "plan-review", "status": "in_progress"})
     s["phases"][2]["status"] = "completed"
     s["plan"]["file_path"] = ".claude/plans/latest-plan.md"
     s["plan"]["written"] = True
-    STATE_PATH.write_text(json.dumps(s, indent=2))
+    write_state(s)
 
-    allow("Edit plan in review", PRE_TOOL_USE, edit_payload(".claude/plans/latest-plan.md"))
-    block("Edit wrong file in review", PRE_TOOL_USE, edit_payload("wrong.md"))
     allow("PlanReview agent", PRE_TOOL_USE, agent_payload("PlanReview"))
 
-    # SubagentStop with low scores -> revision
-    allow("Low scores -> revision needed", SUBAGENT_STOP,
-          subagent_stop_payload("PlanReview", "Confidence: 60\nQuality: 55"),
-          note="Should trigger plan-revision sub-phase")
+    # Auto-phase skill invocation blocked
+    print("\n--- Auto-phase blocking ---")
+    block("write-tests skill blocked", PRE_TOOL_USE, skill_payload("write-tests"),
+          note="Auto-phases cannot be invoked as skills")
+    block("write-code skill blocked", PRE_TOOL_USE, skill_payload("write-code"),
+          note="Auto-phases cannot be invoked as skills")
 
-    # SubagentStop with high scores -> pass
-    s = read_state()
-    s["plan"]["reviews"] = []
-    STATE_PATH.write_text(json.dumps(s, indent=2))
-
-    allow("High scores -> checkpoint", SUBAGENT_STOP,
-          subagent_stop_payload("PlanReview", "Confidence: 95\nQuality: 92"),
-          note="Plan approved — discontinue for user review")
-
-    # -- Install deps phase --
-    print("\n--- Install deps phase ---")
-    s = read_state()
-    s["phases"].append({"name": "install-deps", "status": "in_progress"})
-    s["phases"][3]["status"] = "completed"
-    STATE_PATH.write_text(json.dumps(s, indent=2))
-
-    allow("Write package.json", PRE_TOOL_USE, write_payload("package.json"))
-    block("Write code file in install-deps", PRE_TOOL_USE, write_payload("app.py"))
-    allow("npm install command", PRE_TOOL_USE, bash_payload("npm install"))
-    block("rm in install-deps", PRE_TOOL_USE, bash_payload("rm -rf /"))
-
-    # -- Define contracts phase --
-    print("\n--- Define contracts phase ---")
-    s = read_state()
-    s["phases"].append({"name": "define-contracts", "status": "in_progress"})
-    for p in s["phases"]:
-        if p["name"] == "install-deps":
-            p["status"] = "completed"
-    s["dependencies"]["installed"] = True
-    STATE_PATH.write_text(json.dumps(s, indent=2))
-
-    allow("Write code file in define-contracts", PRE_TOOL_USE, write_payload("src/interfaces.py"))
-    block("Write markdown in define-contracts", PRE_TOOL_USE, write_payload("notes.md"))
-
-    # -- Write tests phase (TDD) --
-    if tdd:
-        print("\n--- Write tests phase ---")
-        s = read_state()
-        s["phases"].append({"name": "write-tests", "status": "in_progress"})
-        for p in s["phases"]:
-            if p["name"] == "define-contracts":
-                p["status"] = "completed"
-        s["contracts"]["written"] = True
-        s["contracts"]["validated"] = True
-        STATE_PATH.write_text(json.dumps(s, indent=2))
-
-        allow("Write test file", PRE_TOOL_USE, write_payload("app.test.ts"))
-        block("Write non-test file", PRE_TOOL_USE, write_payload("app.txt"))
-
-        # PostToolUse: test execution
-        allow("pytest records execution", POST_TOOL_USE, post_bash_payload("pytest tests/", "1 passed"))
-
-    # -- Write code phase --
-    print("\n--- Write code phase ---")
-    s = read_state()
-    s["phases"].append({"name": "write-code", "status": "in_progress"})
-    if tdd:
-        s["phases"][-2]["status"] = "completed"
-        s["tests"]["file_paths"] = ["app.test.ts"]
-        s["tests"]["executed"] = True
-        s["tests"]["review_result"] = "Pass"
-    else:
-        # Complete define-contracts if not TDD
-        for p in s["phases"]:
-            if p["name"] == "define-contracts":
-                p["status"] = "completed"
-        s["contracts"]["written"] = True
-        s["contracts"]["validated"] = True
-    STATE_PATH.write_text(json.dumps(s, indent=2))
-
-    allow("Write code file", PRE_TOOL_USE, write_payload("feature.py"))
-    block("Write markdown in code phase", PRE_TOOL_USE, write_payload("readme.md"))
-    allow("pytest in write-code", PRE_TOOL_USE, bash_payload("pytest tests/"))
-    block("gh pr create in write-code", PRE_TOOL_USE, bash_payload("gh pr create"))
-
-    # -- Test review phase --
-    print("\n--- Test review phase ---")
-    s = read_state()
-    s["phases"].append({"name": "test-review", "status": "in_progress"})
-    for p in s["phases"]:
-        if p["name"] == "write-code":
-            p["status"] = "completed"
-    s["tests"]["file_paths"] = ["app.test.ts"]
-    STATE_PATH.write_text(json.dumps(s, indent=2))
-
-    allow("Edit test file in review", PRE_TOOL_USE, edit_payload("app.test.ts"))
-    block("Edit non-test file", PRE_TOOL_USE, edit_payload("other.py"))
-
-    # SubagentStop with Fail verdict — must include ## Files to revise
-    test_fail_msg = "Review feedback.\n\n## Files to revise\n- app.test.ts\n\nFail"
-    allow("Test review Fail", SUBAGENT_STOP,
-          subagent_stop_payload("TestReviewer", test_fail_msg),
-          note="Should trigger refactor sub-phase")
-
-    # SubagentStop with Pass verdict
-    s = read_state()
-    s["tests"]["reviews"] = []
-    STATE_PATH.write_text(json.dumps(s, indent=2))
-
-    test_pass_msg = "All tests look good.\n\n## Files to revise\n- app.test.ts\n\nPass"
-    allow("Test review Pass", SUBAGENT_STOP,
-          subagent_stop_payload("TestReviewer", test_pass_msg),
-          note="Should complete test-review phase")
-
-    # -- Code review phase --
-    print("\n--- Code review phase ---")
-    s = read_state()
-    s["phases"].append({"name": "code-review", "status": "in_progress"})
-    for p in s["phases"]:
-        if p["name"] == "test-review":
-            p["status"] = "completed"
-    s["code_files"]["file_paths"] = ["feature.py"]
-    STATE_PATH.write_text(json.dumps(s, indent=2))
-
-    allow("Edit code file in review", PRE_TOOL_USE, edit_payload("feature.py"))
-    block("Edit non-code file", PRE_TOOL_USE, edit_payload("unknown.py"))
-    allow("CodeReviewer agent", PRE_TOOL_USE, agent_payload("CodeReviewer"))
-
-    code_low_msg = (
-        "Confidence: 40\nQuality: 30\n\n"
-        "## Files to revise\n- feature.py\n\n"
-        "## Tests to revise\n- app.test.ts\n"
-    )
-    allow("Code review low scores -> revision", SUBAGENT_STOP,
-          subagent_stop_payload("CodeReviewer", code_low_msg),
-          note="Should trigger refactor sub-phase")
-
-    s = read_state()
-    s["code_files"]["reviews"] = []
-    STATE_PATH.write_text(json.dumps(s, indent=2))
-
-    code_high_msg = (
-        "Confidence: 95\nQuality: 93\n\n"
-        "## Files to revise\n- feature.py\n\n"
-        "## Tests to revise\n- app.test.ts\n"
-    )
-    allow("Code review high scores -> pass", SUBAGENT_STOP,
-          subagent_stop_payload("CodeReviewer", code_high_msg),
-          note="Should complete code-review phase")
-
-    # -- Quality check phase --
-    print("\n--- Quality check phase ---")
-    s = read_state()
-    s["phases"].append({"name": "quality-check", "status": "in_progress"})
-    for p in s["phases"]:
-        if p["name"] == "code-review":
-            p["status"] = "completed"
-    STATE_PATH.write_text(json.dumps(s, indent=2))
-
-    allow("QASpecialist agent", PRE_TOOL_USE, agent_payload("QASpecialist"))
-
-    # -- PR create phase --
     print("\n--- PR create phase ---")
     s = read_state()
-    s["phases"].append({"name": "pr-create", "status": "in_progress"})
-    for p in s["phases"]:
-        if p["name"] == "quality-check":
-            p["status"] = "completed"
-    s["quality_check_result"] = "Pass"
-    STATE_PATH.write_text(json.dumps(s, indent=2))
+    s["phases"] = [
+        {"name": "explore", "status": "completed"},
+        {"name": "research", "status": "completed"},
+        {"name": "plan", "status": "completed"},
+        {"name": "plan-review", "status": "completed"},
+        {"name": "install-deps", "status": "completed"},
+        {"name": "define-contracts", "status": "completed"},
+        {"name": "write-tests", "status": "completed"},
+        {"name": "test-review", "status": "completed"},
+        {"name": "write-code", "status": "completed"},
+        {"name": "quality-check", "status": "completed"},
+        {"name": "code-review", "status": "completed"},
+        {"name": "pr-create", "status": "in_progress"},
+    ]
+    write_state(s)
 
     block("PR create without --json", PRE_TOOL_USE, bash_payload("gh pr create --title test"))
     allow("PR create with --json", PRE_TOOL_USE, bash_payload("gh pr create --json number"))
 
-    # PostToolUse: PR created
     pr_output = json.dumps({"number": 42, "url": "https://github.com/org/repo/pull/42"})
-    allow("PR create output recorded", POST_TOOL_USE,
-          post_bash_payload("gh pr create --json number", pr_output),
-          note="pr.status=created, pr.number=42")
+    allow("PR create output recorded", POST_TOOL_USE, post_bash_payload("gh pr create --json number", pr_output))
 
-    # -- CI check phase --
     print("\n--- CI check phase ---")
     s = read_state()
     s["phases"].append({"name": "ci-check", "status": "in_progress"})
     for p in s["phases"]:
         if p["name"] == "pr-create":
             p["status"] = "completed"
-    s["pr"]["status"] = "created"
-    s["pr"]["number"] = 42
-    STATE_PATH.write_text(json.dumps(s, indent=2))
-
-    block("CI check without --json", PRE_TOOL_USE, bash_payload("gh pr checks"))
-    allow("CI check with --json", PRE_TOOL_USE, bash_payload("gh pr checks --json name,conclusion"))
-
-    # PostToolUse: CI failed
-    ci_fail = json.dumps([{"name": "build", "conclusion": "SUCCESS"}, {"name": "test", "conclusion": "FAILURE"}])
-    allow("CI failure recorded", POST_TOOL_USE,
-          post_bash_payload("gh pr checks --json name,conclusion", ci_fail),
-          note="ci.status=failed")
-
-    # PostToolUse: CI passed
-    s = read_state()
-    s["ci-check"]["status"] = "pending"
-    STATE_PATH.write_text(json.dumps(s, indent=2))
+    s["pr"] = {"status": "created", "number": 42}
+    write_state(s)
 
     ci_pass = json.dumps([{"name": "build", "conclusion": "SUCCESS"}, {"name": "test", "conclusion": "SUCCESS"}])
-    allow("CI pass recorded", POST_TOOL_USE,
-          post_bash_payload("gh pr checks --json name,conclusion", ci_pass),
-          note="ci.status=passed")
+    allow("CI pass recorded", POST_TOOL_USE, post_bash_payload("gh pr checks --json name,conclusion", ci_pass))
 
-    # -- Write report phase --
     print("\n--- Write report phase ---")
     s = read_state()
     s["phases"].append({"name": "write-report", "status": "in_progress"})
     for p in s["phases"]:
         if p["name"] == "ci-check":
             p["status"] = "completed"
-    STATE_PATH.write_text(json.dumps(s, indent=2))
+    write_state(s)
 
     allow("Write report", PRE_TOOL_USE, write_payload(".claude/reports/report.md"))
-    block("Write code in report phase", PRE_TOOL_USE, write_payload("feature.py"))
 
-    # -- Stop hook --
-    print("\n--- Stop hook ---")
 
-    # Incomplete workflow -> block
-    block("Stop before all phases done", STOP_HOOK, stop_payload())
+# ═══════════════════════════════════════════════════════════════════
+# Implement simulation
+# ═══════════════════════════════════════════════════════════════════
 
-    # Complete all phases
+
+def simulate_implement(tdd: bool) -> None:
+    print("\n--- Explore phase (implement) ---")
     s = read_state()
-    for p in s["phases"]:
-        p["status"] = "completed"
-    # Skip test phases in non-TDD mode
-    if not tdd:
-        s["skip"] = ["write-tests", "test-review"]
-    s["tests"]["file_paths"] = ["app.test.ts"]
-    s["tests"]["executed"] = True
-    s["tests"]["review_result"] = "Pass"
-    s["ci-check"]["status"] = "passed"
-    s["report_written"] = True
-    STATE_PATH.write_text(json.dumps(s, indent=2))
+    s["phases"] = [{"name": "explore", "status": "in_progress"}]
+    write_state(s)
 
-    allow("Stop after all phases done", STOP_HOOK, stop_payload())
+    allow("Read command in explore", PRE_TOOL_USE, bash_payload("ls -la"))
+    block("Write blocked in explore", PRE_TOOL_USE, write_payload("notes.md"))
 
-    # stop_hook_active prevents infinite loop
-    allow("Stop with stop_hook_active", STOP_HOOK, stop_payload(active=True),
-          note="Always allows to prevent infinite loop")
+    print("\n--- Plan phase (implement) ---")
+    s = read_state()
+    s["phases"] = [
+        {"name": "explore", "status": "completed"},
+        {"name": "research", "status": "completed"},
+        {"name": "plan", "status": "in_progress"},
+    ]
+    s["agents"].append({"name": "Plan", "status": "completed", "tool_use_id": "p-1"})
+    write_state(s)
+
+    impl_plan = (
+        "# Plan\n\n## Context\n\nSome context.\n\n"
+        "## Approach\n\nSome approach.\n\n"
+        "## Files to Create/Modify\n\n| Action | Path |\n|--------|------|\n| Create | src/app.py |\n\n"
+        "## Verification\n\nRun tests.\n"
+    )
+    allow("Write implement plan", PRE_TOOL_USE, write_payload(".claude/plans/latest-plan.md", impl_plan))
+
+    # Build plan should be blocked in implement workflow
+    build_plan = "# Plan\n\n## Dependencies\n- flask\n\n## Contracts\n- UserService\n\n## Tasks\n- Build login\n"
+    block("Build plan blocked in implement", PRE_TOOL_USE, write_payload(".claude/plans/latest-plan.md", build_plan))
+
+    print("\n--- Plan review (implement) ---")
+    s = read_state()
+    s["phases"].append({"name": "plan-review", "status": "in_progress"})
+    s["phases"][2]["status"] = "completed"
+    s["plan"]["file_path"] = ".claude/plans/latest-plan.md"
+    s["plan"]["written"] = True
+    write_state(s)
+
+    allow("PlanReview agent", PRE_TOOL_USE, agent_payload("PlanReview"))
+
+    print("\n--- Auto-phase blocking (implement) ---")
+    block("create-tasks skill blocked", PRE_TOOL_USE, skill_payload("create-tasks"),
+          note="Auto-phase cannot be invoked as skill")
+
+    print("\n--- Write code file guard (implement) ---")
+    s = read_state()
+    s["phases"] = [
+        {"name": "explore", "status": "completed"},
+        {"name": "research", "status": "completed"},
+        {"name": "plan", "status": "completed"},
+        {"name": "plan-review", "status": "completed"},
+        {"name": "create-tasks", "status": "completed"},
+        {"name": "write-code", "status": "in_progress"},
+    ]
+    s["plan_files_to_modify"] = ["src/app.py"]
+    write_state(s)
+
+    allow("Listed file allowed", PRE_TOOL_USE, write_payload("src/app.py"))
+    block("Unlisted file blocked", PRE_TOOL_USE, write_payload("src/other.py"),
+          note="Implement file guard blocks unlisted files")
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -602,21 +460,28 @@ def print_summary() -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Hook system dry run")
     parser.add_argument("--tdd", action="store_true", help="Include write-tests phase")
+    parser.add_argument("--implement", action="store_true", help="Run implement workflow simulation")
     args = parser.parse_args()
 
+    mode = "implement" if args.implement else "build"
     print(f"\n{'='*60}")
-    print(f"  Hook System Dry Run  {YELLOW}[TDD={'on' if args.tdd else 'off'}]{RESET}")
+    print(f"  Hook System Dry Run  {YELLOW}[{mode.upper()} TDD={'on' if args.tdd else 'off'}]{RESET}")
     print(f"{'='*60}")
 
-    # Backup and reset state
     backup = STATE_PATH.read_text() if STATE_PATH.exists() else ""
-    reset_state()
+    reset_state(mode)
 
     try:
-        simulate(args.tdd)
+        if args.implement:
+            simulate_implement(args.tdd)
+        else:
+            simulate_build(args.tdd)
     finally:
-        STATE_PATH.write_text(backup)
-        print(f"\n  {YELLOW}state.json restored.{RESET}")
+        if backup:
+            STATE_PATH.write_text(backup)
+        else:
+            STATE_PATH.unlink(missing_ok=True)
+        print(f"\n  {YELLOW}state.jsonl restored.{RESET}")
 
     print_summary()
     failed = sum(1 for r in results if not r["passed"])

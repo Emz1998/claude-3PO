@@ -106,7 +106,12 @@ def resolve_test_review(config: Config, state: StateStore) -> None:
         return
 
     if verdict == "Pass":
-        state.complete_phase("test-review")
+        # Complete whichever variant is the current phase
+        phase = state.current_phase
+        if phase in ("test-review", "tests-review"):
+            state.complete_phase(phase)
+        else:
+            state.complete_phase("test-review")
 
 
 def resolve_quality_check(state: StateStore) -> None:
@@ -200,6 +205,56 @@ def resolve_define_contracts(state: StateStore) -> None:
         state.complete_phase("define-contracts")
 
 
+def resolve_create_tasks(state: StateStore) -> None:
+    """Complete create-tasks when all project tasks have at least one subtask."""
+    if state.all_project_tasks_have_subtasks:
+        state.complete_phase("create-tasks")
+
+
+def resolve_validate(state: StateStore) -> None:
+    """Evaluate validate result (same as quality-check)."""
+    result = state.quality_check_result
+    if result == "Pass":
+        state.complete_phase("validate")
+
+
+def _auto_start_next(config: Config, state: StateStore) -> None:
+    """If the current phase just completed and the next is an auto-phase, start it."""
+    phase = state.current_phase
+    if not phase:
+        return
+    if state.get_phase_status(phase) != "completed":
+        return
+
+    workflow_type = state.get("workflow_type", "build")
+    phases = config.get_phases(workflow_type) or config.main_phases
+
+    if phase not in phases:
+        return
+
+    idx = phases.index(phase)
+    if idx + 1 >= len(phases):
+        return
+
+    next_phase = phases[idx + 1]
+    if not config.is_auto_phase(next_phase):
+        return
+
+    # For TDD: skip write-tests / test-review / tests-review if tdd=False
+    tdd = state.get("tdd", False)
+    if not tdd and next_phase in ("write-tests",):
+        # Skip write-tests and the following test-review/tests-review
+        skip_idx = idx + 1
+        while skip_idx < len(phases) and phases[skip_idx] in ("write-tests", "test-review", "tests-review"):
+            skip_idx += 1
+        if skip_idx < len(phases) and config.is_auto_phase(phases[skip_idx]):
+            next_phase = phases[skip_idx]
+        else:
+            return
+
+    state.add_phase(next_phase)
+
+
 def resolve(config: Config, state: StateStore) -> None:
     """Main resolver — dispatch based on current phase."""
     phase = state.current_phase
@@ -211,11 +266,14 @@ def resolve(config: Config, state: StateStore) -> None:
         "plan-review": lambda: resolve_plan_review(config, state),
         "install-deps": lambda: resolve_install_dependencies(state),
         "define-contracts": lambda: resolve_define_contracts(state),
+        "create-tasks": lambda: resolve_create_tasks(state),
         "write-tests": lambda: resolve_write_tests(state),
         "test-review": lambda: resolve_test_review(config, state),
+        "tests-review": lambda: resolve_test_review(config, state),
         "write-code": lambda: resolve_write_code(state),
         "code-review": lambda: resolve_code_review(config, state),
         "quality-check": lambda: resolve_quality_check(state),
+        "validate": lambda: resolve_validate(state),
         "pr-create": lambda: resolve_pr_create(state),
         "ci-check": lambda: resolve_ci_check(state),
         "write-report": lambda: resolve_report(state),
@@ -224,3 +282,6 @@ def resolve(config: Config, state: StateStore) -> None:
     resolver = resolvers.get(phase)
     if resolver:
         resolver()
+
+    # Auto-start next phase if it's an auto-phase
+    _auto_start_next(config, state)

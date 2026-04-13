@@ -1,10 +1,16 @@
 # ---------------------------------------------------------------------------
 # Phase classifications
 # ---------------------------------------------------------------------------
-MAIN_PHASES = ["explore", "research", "plan", "plan-review", "install-deps", "define-contracts", "write-tests", "test-review","write-code", "quality-check", "code-review", "pr-create", "ci-check", "write-report"]
-READ_ONLY_PHASES = ["explore", "plan", "research", "plan-review", "test-review", "code-review", "quality-check"]
+BUILD_PHASES = ["explore", "research", "plan", "plan-review", "install-deps", "define-contracts", "write-tests", "test-review", "write-code", "quality-check", "code-review", "pr-create", "ci-check", "write-report"]
+IMPLEMENT_PHASES = ["explore", "research", "plan", "plan-review", "create-tasks", "write-tests", "tests-review", "write-code", "validate", "code-review", "pr-create", "ci-check", "write-report"]
+AUTO_PHASES = ["create-tasks", "write-tests", "write-code"]
+
+# Backward compat: MAIN_PHASES = BUILD_PHASES
+MAIN_PHASES = ["explore", "research", "plan", "plan-review", "install-deps", "define-contracts", "write-tests", "test-review", "write-code", "quality-check", "code-review", "pr-create", "ci-check", "write-report"]
+
+READ_ONLY_PHASES = ["explore", "plan", "research", "plan-review", "test-review", "tests-review", "code-review", "quality-check", "validate"]
 CODE_WRITE_PHASES = ["write-tests", "write-code", "install-deps", "define-contracts", "refactor"]
-CODE_EDIT_PHASES = ["refactor", "plan-revision", "test-review", "code-review"]
+CODE_EDIT_PHASES = ["refactor", "plan-revision", "test-review", "tests-review", "code-review"]
 DOCS_WRITE_PHASES = ["plan", "write-report"]
 DOCS_EDIT_PHASES = ["plan-review"]
 CHECKPOINT_PHASE = ["present-plan"]
@@ -61,10 +67,13 @@ plan = "Plan"
 plan-review = "PlanReview"
 install-deps = ""
 define-contracts = ""
+create-tasks = ""
 write-tests = ""
 test-review = "TestReviewer"
+tests-review = "TestReviewer"
 write-code = ""
 quality-check = "QASpecialist"
+validate = "QASpecialist"
 code-review = "CodeReviewer"
 pr-create = ""
 ci-check = ""

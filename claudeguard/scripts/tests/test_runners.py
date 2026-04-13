@@ -5,7 +5,9 @@ from utils.runners import check_phases, check_tests, check_ci
 
 class TestCheckPhases:
     def test_all_completed(self, config, state):
-        for phase in config.main_phases:
+        workflow_type = state.get("workflow_type", "build")
+        phases = config.get_phases(workflow_type) or config.main_phases
+        for phase in phases:
             state.add_phase(phase)
             state.complete_phase(phase)
         check_phases(config, state)  # should not exit
@@ -18,11 +20,15 @@ class TestCheckPhases:
         assert exc.value.code == 1
 
     def test_skipped_phases_ignored(self, config, state):
-        state.set("skip", config.main_phases)
+        workflow_type = state.get("workflow_type", "build")
+        phases = config.get_phases(workflow_type) or config.main_phases
+        state.set("skip", phases)
         check_phases(config, state)  # all skipped, should pass
 
     def test_incomplete_phase(self, config, state):
-        for phase in config.main_phases:
+        workflow_type = state.get("workflow_type", "build")
+        phases = config.get_phases(workflow_type) or config.main_phases
+        for phase in phases:
             state.add_phase(phase)
         # none completed
         with pytest.raises(SystemExit) as exc:

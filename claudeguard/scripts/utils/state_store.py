@@ -1,36 +1,93 @@
-"""StateStore — JSON state with file-locking."""
+"""StateStore — Session-scoped JSONL state with file-locking.
+
+Each line in the JSONL file is a complete state snapshot for one session.
+Operations filter by session_id to isolate concurrent workflows.
+"""
 
 import json
+import time
 from pathlib import Path
 from typing import Any, Callable, Literal
 
-from models.state import Agent, State, ReviewResult
-from .file_manager import FileManager
+from models.state import Agent, ReviewResult
+from filelock import FileLock
 
 
 class StateStore:
-    def __init__(self, state_path: Path, default_state: dict[str, Any] | None = None):
+    def __init__(self, state_path: Path, session_id: str, default_state: dict[str, Any] | None = None):
         self._path = state_path
+        self._session_id = session_id
         self._default_state = default_state or {}
-        self._fm = FileManager(self._path, lock=True)
+        self._lock = FileLock(self._path.with_suffix(".lock"))
+
+    @property
+    def session_id(self) -> str:
+        return self._session_id
 
     # ── Core I/O ───────────────────────────────────────────────────
 
-    def load(self) -> dict[str, Any]:
+    def _read_all_lines(self) -> list[dict[str, Any]]:
+        """Read all session entries from the JSONL file."""
         if not self._path.exists():
-            return dict(self._default_state)
-        return self._fm.load_file()
+            return []
+        content = self._path.read_text(encoding="utf-8").strip()
+        if not content:
+            return []
+        entries = []
+        for line in content.splitlines():
+            line = line.strip()
+            if line:
+                try:
+                    entries.append(json.loads(line))
+                except json.JSONDecodeError:
+                    continue
+        return entries
+
+    def _write_all_lines(self, entries: list[dict[str, Any]]) -> None:
+        """Write all session entries back to the JSONL file."""
+        self._path.parent.mkdir(parents=True, exist_ok=True)
+        lines = [json.dumps(e, separators=(",", ":")) for e in entries]
+        self._path.write_text("\n".join(lines) + "\n" if lines else "", encoding="utf-8")
+
+    def _find_session(self, entries: list[dict[str, Any]]) -> int:
+        """Return index of the entry matching this session_id, or -1."""
+        for i, entry in enumerate(entries):
+            if entry.get("session_id") == self._session_id:
+                return i
+        return -1
+
+    def load(self) -> dict[str, Any]:
+        with self._lock:
+            entries = self._read_all_lines()
+            idx = self._find_session(entries)
+            if idx == -1:
+                return dict(self._default_state)
+            return entries[idx]
 
     def save(self, state: dict[str, Any] | None = None) -> None:
-        self._fm.save_file(state)
+        with self._lock:
+            entries = self._read_all_lines()
+            idx = self._find_session(entries)
+            data = state if state is not None else {}
+            data["session_id"] = self._session_id
+            if idx == -1:
+                entries.append(data)
+            else:
+                entries[idx] = data
+            self._write_all_lines(entries)
 
     def update(self, fn: Callable[[dict[str, Any]], None]) -> None:
-        def _seeded(data: dict) -> None:
-            if not data and self._default_state:
-                data.update(self._default_state)
-            fn(data)
-
-        self._fm.update_file(_seeded)
+        with self._lock:
+            entries = self._read_all_lines()
+            idx = self._find_session(entries)
+            if idx == -1:
+                data = dict(self._default_state)
+                data["session_id"] = self._session_id
+                fn(data)
+                entries.append(data)
+            else:
+                fn(entries[idx])
+            self._write_all_lines(entries)
 
     def get(self, key: str, default: Any = None) -> Any:
         data = self.load()
@@ -40,13 +97,25 @@ class StateStore:
         self.update(lambda d: d.update({key: value}))
 
     def reset(self, default_state: dict[str, Any] | None = None) -> None:
-        self._fm.save_file(default_state or {})
+        """Remove this session's entry and optionally write a new default."""
+        with self._lock:
+            entries = self._read_all_lines()
+            entries = [e for e in entries if e.get("session_id") != self._session_id]
+            if default_state:
+                default_state["session_id"] = self._session_id
+                entries.append(default_state)
+            self._write_all_lines(entries)
 
     def reinitialize(self, initial_state: dict[str, Any]) -> None:
-        self._fm.save_file(initial_state)
+        initial_state["session_id"] = self._session_id
+        self.save(initial_state)
 
     def delete(self) -> None:
-        self._path.unlink(missing_ok=True)
+        """Remove this session's entry from the JSONL file."""
+        with self._lock:
+            entries = self._read_all_lines()
+            entries = [e for e in entries if e.get("session_id") != self._session_id]
+            self._write_all_lines(entries)
 
     def archive(self, history_path: Path) -> None:
         """Append current state as a JSONL entry to history_path."""
@@ -57,11 +126,117 @@ class StateStore:
     @staticmethod
     def latest_from_history(history_path: Path) -> dict[str, Any] | None:
         """Return the last archived entry or None."""
-        history_fm = FileManager(history_path, lock=True)
-        entries = history_fm.load_file()
-        if not entries:
+        if not history_path.exists():
             return None
-        return entries[-1] if isinstance(entries, list) else None
+        content = history_path.read_text(encoding="utf-8").strip()
+        if not content:
+            return None
+        lines = content.splitlines()
+        for line in reversed(lines):
+            line = line.strip()
+            if line:
+                try:
+                    return json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+        return None
+
+    @staticmethod
+    def find_active_by_story(state_path: Path, story_id: str) -> list[dict[str, Any]]:
+        """Return all active sessions with the given story_id."""
+        lock = FileLock(state_path.with_suffix(".lock"))
+        with lock:
+            if not state_path.exists():
+                return []
+            content = state_path.read_text(encoding="utf-8").strip()
+            if not content:
+                return []
+            results = []
+            for line in content.splitlines():
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    entry = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if (
+                    entry.get("story_id") == story_id
+                    and entry.get("workflow_active") is True
+                ):
+                    results.append(entry)
+            return results
+
+    @staticmethod
+    def deactivate_by_story(state_path: Path, story_id: str) -> int:
+        """Deactivate all active sessions for a story_id. Returns count deactivated."""
+        lock = FileLock(state_path.with_suffix(".lock"))
+        with lock:
+            if not state_path.exists():
+                return 0
+            content = state_path.read_text(encoding="utf-8").strip()
+            if not content:
+                return 0
+            entries = []
+            count = 0
+            for line in content.splitlines():
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    entry = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if (
+                    entry.get("story_id") == story_id
+                    and entry.get("workflow_active") is True
+                ):
+                    entry["workflow_active"] = False
+                    count += 1
+                entries.append(entry)
+            lines = [json.dumps(e, separators=(",", ":")) for e in entries]
+            state_path.write_text("\n".join(lines) + "\n" if lines else "", encoding="utf-8")
+            return count
+
+    @classmethod
+    def cleanup_inactive(cls, state_path: Path, max_age_hours: int = 24) -> int:
+        """Remove sessions inactive for more than max_age_hours.
+
+        Called during initialize() to keep the JSONL file clean.
+        Returns the number of sessions removed.
+        """
+        lock = FileLock(state_path.with_suffix(".lock"))
+        with lock:
+            if not state_path.exists():
+                return 0
+            content = state_path.read_text(encoding="utf-8").strip()
+            if not content:
+                return 0
+
+            now = time.time()
+            cutoff = now - (max_age_hours * 3600)
+            kept = []
+            removed = 0
+
+            for line in content.splitlines():
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    entry = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+
+                # Keep if no timestamp or if recent enough
+                ts = entry.get("_last_updated", 0)
+                if ts and ts < cutoff:
+                    removed += 1
+                else:
+                    kept.append(entry)
+
+            lines = [json.dumps(e, separators=(",", ":")) for e in kept]
+            state_path.write_text("\n".join(lines) + "\n" if lines else "", encoding="utf-8")
+            return removed
 
     # ── Phases ─────────────────────────────────────────────────────
 
@@ -103,8 +278,6 @@ class StateStore:
             if p["name"] == name:
                 return p["status"]
         return None
-
-    # ── Sub-phases ─────────────────────────────────────────────────
 
     # ── Plan revision tracking ──────────────────────────────────────
 
@@ -553,3 +726,40 @@ class StateStore:
                 code_files.append(file_path)
 
         self.update(_add)
+
+    # ── Project tasks (implement workflow) ─────────────────────────
+
+    @property
+    def project_tasks(self) -> list[dict]:
+        return self.load().get("project_tasks", [])
+
+    def set_project_tasks(self, tasks: list[dict]) -> None:
+        self.set("project_tasks", tasks)
+
+    def add_subtask(self, parent_task_id: str, subtask: str) -> None:
+        def _add(d: dict) -> None:
+            ptasks = d.get("project_tasks", [])
+            for pt in ptasks:
+                if pt.get("id") == parent_task_id:
+                    subs = pt.setdefault("subtasks", [])
+                    if subtask not in subs:
+                        subs.append(subtask)
+                    break
+
+        self.update(_add)
+
+    @property
+    def all_project_tasks_have_subtasks(self) -> bool:
+        ptasks = self.project_tasks
+        if not ptasks:
+            return False
+        return all(len(pt.get("subtasks", [])) >= 1 for pt in ptasks)
+
+    # ── Plan files to modify (implement workflow) ──────────────────
+
+    @property
+    def plan_files_to_modify(self) -> list[str]:
+        return self.load().get("plan_files_to_modify", [])
+
+    def set_plan_files_to_modify(self, files: list[str]) -> None:
+        self.set("plan_files_to_modify", files)

@@ -21,10 +21,12 @@ from config import Config
 def main() -> None:
     hook_input = Hook.read_stdin()
 
-    state = StateStore(Path(__file__).resolve().parent / "state.json")
-    if not state.get("workflow_active"):
+    session_id = hook_input.get("session_id", "")
+    if not session_id:
         sys.exit(0)
-    if hook_input.get("session_id") != state.get("session_id"):
+
+    state = StateStore(Path(__file__).resolve().parent / "state.jsonl", session_id=session_id)
+    if not state.get("workflow_active"):
         sys.exit(0)
 
     config = Config()
@@ -40,7 +42,7 @@ def main() -> None:
 
     # Review phases: validate the agent report (scores/verdict)
     phase = state.current_phase
-    if phase in ("plan-review", "test-review", "code-review"):
+    if phase in ("plan-review", "test-review", "tests-review", "code-review"):
         guard = STOP_GUARDS.get("agent_report")
         if guard:
             decision, message = guard(hook_input, config, state)

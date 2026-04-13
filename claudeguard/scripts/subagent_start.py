@@ -15,10 +15,12 @@ from utils.extractors import extract_agent_name
 def main() -> None:
     hook_input = Hook.read_stdin()
 
-    state = StateStore(Path(__file__).resolve().parent / "state.json")
-    if not state.get("workflow_active"):
+    session_id = hook_input.get("session_id", "")
+    if not session_id:
         sys.exit(0)
-    if hook_input.get("session_id") != state.get("session_id"):
+
+    state = StateStore(Path(__file__).resolve().parent / "state.jsonl", session_id=session_id)
+    if not state.get("workflow_active"):
         sys.exit(0)
 
     agent_type = extract_agent_name(hook_input, key="agent_type")

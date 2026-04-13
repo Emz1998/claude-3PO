@@ -2,22 +2,23 @@
 name: build
 description: Build a feature from free-text instructions
 allowed-tools: Bash, Read, Glob, Grep, Write
-argument-hint: <instructions>
+argument-hint: <instructions> [--tdd] [--skip-explore] [--skip-research]
 model: haiku
 ---
 
 Build the coding task "$1" by following the phased workflow below. Each phase is enforced by hook guardrails — the system will block tool calls that don't match the current phase.
 
-> **Phase = Skill**. To transition between phases, invoke the corresponding `/skill` (e.g. `/explore`, `/research`, `/plan`, etc.). The guardrails track the current phase via skill invocations.
+> **Phase = Skill**. To transition between phases, invoke the corresponding `/skill` (e.g. `/explore`, `/research`, `/plan`, etc.). Auto-phases (write-tests, write-code) start automatically — do NOT invoke them as skills.
 
 ## Workflow Initialization
 
-!`python3 "${CLAUDE_PLUGIN_ROOT}/scripts/utils/initializer.py" build ${CLAUDE_SESSION_ID} $ARGUMENTS`
+!`python3 '${CLAUDE_PLUGIN_ROOT}/scripts/utils/initializer.py' build ${CLAUDE_SESSION_ID} $ARGUMENTS`
 
 ## Instructions
 
 - Follow the phased workflow strictly. The guardrails enforce phase ordering.
 - **Phases are skills.** Invoke `/explore`, `/research`, `/plan`, etc. to enter each phase.
+- **Auto-phases start automatically** — do NOT invoke `/write-tests` or `/write-code`.
 - All agents must be run in the **foreground** (not background).
 - Agent counts must match the limits or the guardrail will block you.
 - Only read and write files relevant to the current phase.
@@ -74,7 +75,7 @@ Allowed: Write (only `.claude/plans/latest-plan.md` and `.claude/contracts/lates
 3. If scores < 80, enters `plan-revision` sub-phase — edit plan and re-invoke PlanReview.
 4. Max 3 iterations.
 5. Edits must not remove `## Dependencies`, `## Contracts`, or `## Tasks` sections (guardrail enforced).
-6. Once approved, present the plan to the user.
+6. Once approved, the workflow **discontinues** for user review.
 
 Allowed: Edit (only `.claude/plans/latest-plan.md`), Read, Glob, Grep.
 
@@ -96,9 +97,9 @@ Allowed: Write (package manager files only), Bash (install commands only).
 
 Allowed: Write (code files only), Read, Glob, Grep.
 
-### 7. `/write-tests` (TDD only)
+### 7. write-tests (AUTO, TDD only)
 
-> Skip if TDD is not enabled.
+> **Auto-phase** — starts automatically after define-contracts. Skip if TDD is not enabled.
 
 1. Write failing test files (patterns: `*.test.ts`, `test_*.py`, `*_test.py`, etc.)
 2. Run tests to confirm they fail: `pytest`, `npm test`, `jest`, etc.
@@ -113,7 +114,9 @@ Allowed: Write (test files only), Bash (test commands only).
 
 Allowed: Edit (only test files written this session), Read, Glob, Grep.
 
-### 9. `/write-code`
+### 9. write-code (AUTO)
+
+> **Auto-phase** — starts automatically after test-review (TDD) or define-contracts (non-TDD).
 
 1. Write implementation code to pass tests (or implement plan directly if no TDD).
 2. Run tests to verify.
@@ -123,7 +126,7 @@ Allowed: Write (code files only), Edit, Read, Glob, Grep, Bash (test commands on
 ### 10. `/quality-check`
 
 1. Invoke the **QASpecialist** agent.
-2. If result is `Fail`, go back to `/write-code` and iterate.
+2. If result is `Fail`, go back to write-code and iterate.
 3. If `Pass`, proceed.
 
 Allowed: Read, Glob, Grep, Bash (test commands).
@@ -149,16 +152,15 @@ Allowed: Bash (`git push`, `git commit`, `git add`, `gh pr create`).
 
 1. Check CI: `gh pr checks --json name,conclusion`
 2. `--json` flag is **required**.
-3. If CI fails, go back to `/write-code` and iterate.
+3. If CI fails, go back to write-code and iterate.
 
 Allowed: Bash (`gh pr checks`, `gh pr status`).
 
 ### 14. `/write-report`
 
-1. Write report to `.claude/reports/latest-report.md`.
-2. Archive previous report to `.claude/reports/archive/`.
-3. Include frontmatter: `timestamp`, `date`, `task_description`, `pr_number`, `branch_name`.
-4. Present the report to the user before stopping.
+1. Write report to `.claude/reports/report.md`.
+2. Include frontmatter: `timestamp`, `date`, `task_description`, `pr_number`, `branch_name`.
+3. Present the report to the user before stopping.
 
 Allowed: Write (only `.claude/reports/`), Read.
 
@@ -166,13 +168,14 @@ Allowed: Write (only `.claude/reports/`), Read.
 
 - Follow phase order strictly. Guardrails enforce it.
 - Do not skip phases unless in the `skip` list.
+- Do not invoke auto-phases as skills.
 - Do not invoke agents beyond their max count.
 - Do not stop until all phases are completed — the stop hook will block you.
 - Validate work through tests, not assumptions.
 
 ## References
 
+- **Plan template**: `${CLAUDE_PLUGIN_ROOT}/templates/plan.md`
 - **Plan**: `.claude/plans/latest-plan.md`
 - **Contracts**: `.claude/contracts/latest-contracts.md`
-- **Report**: `.claude/reports/latest-report.md`
-- **Archive**: `.claude/reports/archive/`
+- **Report**: `.claude/reports/report.md`

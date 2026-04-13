@@ -171,7 +171,6 @@ class TestRecordAgentCompletion:
 
 class TestInjectPlanMetadata:
     def test_injects_frontmatter(self, tmp_path, state):
-        state.set("session_id", "test-sess-123")
         state.set("workflow_type", "implement")
         state.set("story_id", "SK-001")
 
@@ -182,14 +181,13 @@ class TestInjectPlanMetadata:
 
         content = plan_file.read_text()
         fm = parse_frontmatter(content)
-        assert fm["session_id"] == "test-sess-123"
+        assert fm["session_id"] == "test-session"
         assert fm["workflow_type"] == "implement"
         assert fm["story_id"] == "SK-001"
         assert "date" in fm
         assert "# My Plan" in content
 
     def test_replaces_existing_frontmatter(self, tmp_path, state):
-        state.set("session_id", "new-sess")
         state.set("workflow_type", "build")
 
         plan_file = tmp_path / "plan.md"
@@ -199,7 +197,7 @@ class TestInjectPlanMetadata:
 
         content = plan_file.read_text()
         fm = parse_frontmatter(content)
-        assert fm["session_id"] == "new-sess"
+        assert fm["session_id"] == "test-session"
         assert "old-sess" not in content
 
     def test_nonexistent_file_does_nothing(self, tmp_path, state):

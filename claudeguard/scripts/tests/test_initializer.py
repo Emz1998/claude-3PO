@@ -163,11 +163,13 @@ class TestBuildInitialState:
 
 class TestInitialize:
     def test_writes_state_file(self, tmp_path: Path):
-        state_path = tmp_path / "state.json"
-        state_path.write_text("{}")
+        state_path = tmp_path / "state.jsonl"
+        state_path.write_text("")
         initialize("implement", "sess-1", "--tdd SK-001 build a form", state_path)
 
-        state = json.loads(state_path.read_text())
+        # Read JSONL — find the session line
+        content = state_path.read_text().strip()
+        state = json.loads(content.splitlines()[0])
         assert state["session_id"] == "sess-1"
         assert state["workflow_active"] is True
         assert state["tdd"] is True
@@ -246,13 +248,23 @@ class TestArchivePlan:
         assert len(archived) == 1
 
     def test_reinitializes_existing_state(self, tmp_path: Path):
-        state_path = tmp_path / "state.json"
-        state_path.write_text(json.dumps({"session_id": "old", "workflow_active": False}))
+        state_path = tmp_path / "state.jsonl"
+        old_line = json.dumps({"session_id": "old", "workflow_active": False}, separators=(",", ":"))
+        state_path.write_text(old_line + "\n")
         initialize("implement", "new-sess", "build", state_path)
 
-        state = json.loads(state_path.read_text())
-        assert state["session_id"] == "new-sess"
-        assert state["workflow_active"] is True
+        # The new session should be present
+        content = state_path.read_text().strip()
+        lines = content.splitlines()
+        # Find the new-sess line
+        new_state = None
+        for line in lines:
+            entry = json.loads(line)
+            if entry.get("session_id") == "new-sess":
+                new_state = entry
+                break
+        assert new_state is not None
+        assert new_state["workflow_active"] is True
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -327,3 +339,179 @@ class TestArchiveContracts:
             property(lambda self: str(tmp_path / "nonexistent.md")),
         )
         archive_contracts(config)  # should not raise
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Duplicate story guard
+# ═══════════════════════════════════════════════════════════════════
+
+
+from utils.state_store import StateStore
+
+
+def _seed_active_session(state_path: Path, session_id: str, story_id: str, **extra) -> None:
+    """Write an active session entry to the JSONL file."""
+    entry = {
+        "session_id": session_id,
+        "workflow_active": True,
+        "workflow_type": "implement",
+        "story_id": story_id,
+        "phases": [{"name": "explore", "status": "completed"}],
+        **extra,
+    }
+    with open(state_path, "a") as f:
+        f.write(json.dumps(entry, separators=(",", ":")) + "\n")
+
+
+class TestDuplicateStoryGuard:
+    """Default: initialize fails if another active session has the same story_id."""
+
+    def test_blocks_duplicate_story(self, tmp_path: Path):
+        state_path = tmp_path / "state.jsonl"
+        _seed_active_session(state_path, "old-sess", "SK-001")
+
+        with pytest.raises(ValueError, match="SK-001.*already active"):
+            initialize("implement", "new-sess", "SK-001 build a form", state_path)
+
+    def test_allows_different_story(self, tmp_path: Path):
+        state_path = tmp_path / "state.jsonl"
+        _seed_active_session(state_path, "old-sess", "SK-001")
+
+        # SK-002 is different — should succeed
+        initialize("implement", "new-sess", "SK-002 build a form", state_path)
+        store = StateStore(state_path, session_id="new-sess")
+        assert store.get("story_id") == "SK-002"
+
+    def test_allows_when_no_active_sessions(self, tmp_path: Path):
+        state_path = tmp_path / "state.jsonl"
+        state_path.write_text("")
+
+        initialize("implement", "new-sess", "SK-001 build a form", state_path)
+        store = StateStore(state_path, session_id="new-sess")
+        assert store.get("story_id") == "SK-001"
+
+    def test_allows_when_old_session_inactive(self, tmp_path: Path):
+        state_path = tmp_path / "state.jsonl"
+        entry = json.dumps({
+            "session_id": "old-sess",
+            "workflow_active": False,
+            "story_id": "SK-001",
+        }, separators=(",", ":"))
+        state_path.write_text(entry + "\n")
+
+        initialize("implement", "new-sess", "SK-001 build a form", state_path)
+        store = StateStore(state_path, session_id="new-sess")
+        assert store.get("story_id") == "SK-001"
+
+    def test_build_without_story_id_skips_guard(self, tmp_path: Path):
+        state_path = tmp_path / "state.jsonl"
+        state_path.write_text("")
+
+        initialize("build", "new-sess", "build a login form", state_path)
+        store = StateStore(state_path, session_id="new-sess")
+        assert store.get("workflow_active") is True
+
+
+class TestResetFlag:
+    """--reset deactivates all old sessions for the story and starts fresh."""
+
+    def test_reset_deactivates_old_sessions(self, tmp_path: Path):
+        state_path = tmp_path / "state.jsonl"
+        _seed_active_session(state_path, "old-1", "SK-001")
+        _seed_active_session(state_path, "old-2", "SK-001")
+
+        initialize("implement", "new-sess", "--reset SK-001 build", state_path)
+
+        # Old sessions deactivated
+        old1 = StateStore(state_path, session_id="old-1")
+        old2 = StateStore(state_path, session_id="old-2")
+        assert old1.get("workflow_active") is False
+        assert old2.get("workflow_active") is False
+
+        # New session is fresh (no phases from old)
+        new = StateStore(state_path, session_id="new-sess")
+        assert new.get("workflow_active") is True
+        assert new.get("phases") == []
+
+    def test_reset_strips_flag_from_instructions(self, tmp_path: Path):
+        state_path = tmp_path / "state.jsonl"
+        _seed_active_session(state_path, "old", "SK-001")
+
+        initialize("implement", "new-sess", "--reset SK-001 build a form", state_path)
+        new = StateStore(state_path, session_id="new-sess")
+        assert new.get("instructions") == "build a form"
+
+
+class TestTakeoverFlag:
+    """--takeover copies latest session state and deactivates all old sessions."""
+
+    def test_takeover_copies_state(self, tmp_path: Path):
+        state_path = tmp_path / "state.jsonl"
+        _seed_active_session(
+            state_path, "old-sess", "SK-001",
+            plan={"file_path": "plan.md", "written": True, "revised": False, "reviews": []},
+            tasks=["Build login"],
+        )
+
+        initialize("implement", "new-sess", "--takeover SK-001 build", state_path)
+
+        new = StateStore(state_path, session_id="new-sess")
+        assert new.get("workflow_active") is True
+        assert new.get("plan", {}).get("written") is True
+        assert new.get("tasks") == ["Build login"]
+
+    def test_takeover_deactivates_all_old(self, tmp_path: Path):
+        state_path = tmp_path / "state.jsonl"
+        _seed_active_session(state_path, "old-1", "SK-001")
+        _seed_active_session(state_path, "old-2", "SK-001")
+
+        initialize("implement", "new-sess", "--takeover SK-001 build", state_path)
+
+        old1 = StateStore(state_path, session_id="old-1")
+        old2 = StateStore(state_path, session_id="old-2")
+        assert old1.get("workflow_active") is False
+        assert old2.get("workflow_active") is False
+
+    def test_takeover_copies_latest_session(self, tmp_path: Path):
+        """When multiple active sessions exist, takeover copies the last one."""
+        state_path = tmp_path / "state.jsonl"
+        _seed_active_session(state_path, "old-1", "SK-001", tasks=["Task A"])
+        _seed_active_session(state_path, "old-2", "SK-001", tasks=["Task B"])
+
+        initialize("implement", "new-sess", "--takeover SK-001 build", state_path)
+
+        new = StateStore(state_path, session_id="new-sess")
+        # Should copy from old-2 (last in file)
+        assert new.get("tasks") == ["Task B"]
+
+    def test_takeover_updates_session_id(self, tmp_path: Path):
+        state_path = tmp_path / "state.jsonl"
+        _seed_active_session(state_path, "old-sess", "SK-001")
+
+        initialize("implement", "new-sess", "--takeover SK-001 build", state_path)
+
+        new = StateStore(state_path, session_id="new-sess")
+        assert new.get("session_id") == "new-sess"
+
+    def test_takeover_preserves_old_instructions(self, tmp_path: Path):
+        """Takeover copies state — instructions come from the old session, not args."""
+        state_path = tmp_path / "state.jsonl"
+        _seed_active_session(state_path, "old", "SK-001", instructions="original task")
+
+        initialize("implement", "new-sess", "--takeover SK-001 new task", state_path)
+        new = StateStore(state_path, session_id="new-sess")
+        assert new.get("instructions") == "original task"
+
+
+class TestParseInstructionsFlags:
+    """--reset and --takeover should be stripped from instructions."""
+
+    def test_strips_reset(self):
+        assert parse_instructions("--reset SK-001 build a form") == "build a form"
+
+    def test_strips_takeover(self):
+        assert parse_instructions("--takeover SK-001 build a form") == "build a form"
+
+    def test_strips_all_flags(self):
+        result = parse_instructions("--tdd --reset --skip-explore SK-001 build")
+        assert result == "build"

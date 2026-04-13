@@ -22,7 +22,7 @@ from constants import STORY_ID_PATTERN
 from utils.state_store import StateStore
 from config import Config
 
-STATE_PATH = Path(__file__).resolve().parent.parent / "state.json"
+STATE_PATH = Path(__file__).resolve().parent.parent / "state.jsonl"
 
 
 # ---------------------------------------------------------------------------
@@ -45,7 +45,10 @@ def parse_story_id(args: str) -> str | None:
 
 
 def parse_instructions(args: str) -> str:
-    flags = ["--skip-explore", "--skip-research", "--skip-all", "--tdd"]
+    flags = [
+        "--skip-explore", "--skip-research", "--skip-all", "--tdd",
+        "--reset", "--takeover",
+    ]
     text = re.sub(STORY_ID_PATTERN, "", args)
     for flag in flags:
         text = text.replace(flag, "")
@@ -181,8 +184,39 @@ def initialize(
     archive_plan(config)
     archive_contracts(config)
 
+    # Clean up stale sessions
+    StateStore.cleanup_inactive(state_path)
+
+    story_id = parse_story_id(args)
+    reset = "--reset" in args
+    takeover = "--takeover" in args
+
+    # Duplicate story guard
+    if story_id:
+        active = StateStore.find_active_by_story(state_path, story_id)
+        if active and not reset and not takeover:
+            active_ids = [s.get("session_id") for s in active]
+            raise ValueError(
+                f"Story '{story_id}' already active in session(s): {active_ids}. "
+                f"Use --reset to start fresh or --takeover to continue."
+            )
+
+        if active and (reset or takeover):
+            StateStore.deactivate_by_story(state_path, story_id)
+
+    # Build initial state or copy from existing session
+    if takeover and story_id:
+        # Copy state from the latest active session (before we deactivated them)
+        # We already have the active list from before deactivation
+        if active:
+            copied = dict(active[-1])  # latest session
+            copied["session_id"] = session_id
+            store = StateStore(state_path, session_id=session_id)
+            store.reinitialize(copied)
+            return
+
     state = build_initial_state(workflow_type, session_id, args)
-    store = StateStore(state_path)
+    store = StateStore(state_path, session_id=session_id)
     store.reinitialize(state)
 
 

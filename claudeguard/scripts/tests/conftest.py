@@ -29,6 +29,7 @@ DEFAULT_STATE: dict = {
         "reviews": [],
     },
     "tasks": [],
+    "project_tasks": [],
     "dependencies": {"packages": [], "installed": False},
     "contracts": {
         "file_path": None,
@@ -57,23 +58,26 @@ DEFAULT_STATE: dict = {
     "pr": {"status": "pending", "number": None},
     "ci": {"status": "pending", "results": None},
     "report_written": False,
+    "plan_files_to_modify": [],
 }
+
+SESSION_ID = "test-session"
 
 
 @pytest.fixture
 def state_path(tmp_path: Path) -> Path:
-    p = tmp_path / "state.json"
-    p.write_text(json.dumps(DEFAULT_STATE, indent=2))
+    p = tmp_path / "state.jsonl"
+    # Write as JSONL: one line per session
+    line = json.dumps(DEFAULT_STATE, separators=(",", ":"))
+    p.write_text(line + "\n")
     return p
 
 
 @pytest.fixture
 def state(state_path: Path) -> StateStore:
-    return StateStore(state_path)
+    return StateStore(state_path, session_id=SESSION_ID)
 
 
 @pytest.fixture
 def config() -> Config:
     return Config()
-
-

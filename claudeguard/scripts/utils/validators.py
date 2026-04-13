@@ -94,16 +94,31 @@ def _check_read_only(command: str, phase: str) -> Result:
 # ═══════════════════════════════════════════════════════════════════
 
 
+def _get_workflow_phases(config: Config, state: StateStore) -> list[str]:
+    """Get the phase list for the current workflow type."""
+    workflow_type = state.get("workflow_type", "build")
+    phases = config.get_phases(workflow_type)
+    return phases if phases else config.main_phases
+
+
 def is_phase_allowed(hook_input: dict, config: Config, state: StateStore) -> Result:
     """Validate phase transition (skill invocation)."""
 
     current = state.current_phase
     status = state.get_phase_status(current)
     next_phase = extract_skill_name(hook_input)
+    phases = _get_workflow_phases(config, state)
+
+    # Block auto-phases from being invoked as skills
+    if config.is_auto_phase(next_phase):
+        raise ValueError(
+            f"'{next_phase}' is an auto-phase — it starts automatically after the previous phase completes. "
+            f"Do not invoke it as a skill."
+        )
 
     # No phases yet — allow the first one
     if not current:
-        _, message = validate_order(None, next_phase, config.main_phases)
+        _, message = validate_order(None, next_phase, phases)
         return True, message
 
     # Special case: research can run in parallel with explore
@@ -120,8 +135,9 @@ def is_phase_allowed(hook_input: dict, config: Config, state: StateStore) -> Res
             f"Phase '{current}' is not completed. Finish it before transitioning to '{next_phase}'."
         )
 
-    # Validate ordering
-    _, message = validate_order(current, next_phase, config.main_phases)
+    # Filter out auto-phases for skill-invoked ordering — they're handled by resolvers
+    skill_phases = [p for p in phases if not config.is_auto_phase(p)]
+    _, message = validate_order(current, next_phase, skill_phases)
     return True, message
 
 
@@ -231,21 +247,36 @@ def _is_code_path_allowed(file_path: str) -> None:
         )
 
 
-PLAN_REQUIRED_SECTIONS = ["## Dependencies", "## Contracts", "## Tasks"]
-PLAN_BULLET_SECTIONS = ["Dependencies", "Tasks"]
+def _is_implement_code_path_allowed(file_path: str, state: StateStore) -> None:
+    """Implement workflow: only allow files listed in plan's Files to Create/Modify."""
+    allowed = state.plan_files_to_modify
+    if file_path not in allowed:
+        raise ValueError(
+            f"Writing '{file_path}' not in plan's ## Files to Create/Modify"
+            f"\nAllowed: {allowed}"
+        )
 
 
-def _validate_plan_content(content: str) -> None:
-    """Check that plan content contains all required sections with bullet format."""
-    missing = [s for s in PLAN_REQUIRED_SECTIONS if s not in content]
+BUILD_PLAN_REQUIRED_SECTIONS = ["## Dependencies", "## Contracts", "## Tasks"]
+BUILD_PLAN_BULLET_SECTIONS = ["Dependencies", "Tasks"]
+
+IMPLEMENT_PLAN_REQUIRED_SECTIONS = ["## Context", "## Approach", "## Files to Create/Modify", "## Verification"]
+
+# Backward compat alias
+PLAN_REQUIRED_SECTIONS = BUILD_PLAN_REQUIRED_SECTIONS
+PLAN_BULLET_SECTIONS = BUILD_PLAN_BULLET_SECTIONS
+
+
+def _validate_build_plan_content(content: str) -> None:
+    """Check that build plan content contains all required sections with bullet format."""
+    missing = [s for s in BUILD_PLAN_REQUIRED_SECTIONS if s not in content]
     if missing:
         raise ValueError(f"Plan missing required sections: {missing}")
 
-    # Validate bullet format in key sections
     sections = extract_md_sections(content, 2)
     section_map = {name.strip(): body for name, body in sections}
 
-    for section_name in PLAN_BULLET_SECTIONS:
+    for section_name in BUILD_PLAN_BULLET_SECTIONS:
         body = section_map.get(section_name, "")
         has_subsections = "### " in body
         has_bullets = any(line.strip().startswith("- ") for line in body.splitlines())
@@ -260,6 +291,21 @@ def _validate_plan_content(content: str) -> None:
                 f"'{section_name}' must have at least one bullet item (- item). "
                 f"See the plan template for the correct format."
             )
+
+
+def _validate_implement_plan_content(content: str) -> None:
+    """Check that implement plan contains: Context, Approach, Files to Create/Modify, Verification."""
+    missing = [s for s in IMPLEMENT_PLAN_REQUIRED_SECTIONS if s not in content]
+    if missing:
+        raise ValueError(f"Plan missing required sections: {missing}")
+
+
+def _validate_plan_content(content: str, workflow_type: str = "build") -> None:
+    """Dispatch plan validation based on workflow type."""
+    if workflow_type == "implement":
+        _validate_implement_plan_content(content)
+    else:
+        _validate_build_plan_content(content)
 
 
 def _is_package_manager_path_allowed(file_path: str) -> None:
@@ -294,7 +340,8 @@ def is_file_write_allowed(
         if file_path == config.plan_file_path or file_path.endswith(
             config.plan_file_path
         ):
-            _validate_plan_content(content)
+            workflow_type = state.get("workflow_type", "build")
+            _validate_plan_content(content, workflow_type)
     elif phase == "install-deps":
         _is_package_manager_path_allowed(file_path)
     elif phase == "define-contracts":
@@ -302,7 +349,11 @@ def is_file_write_allowed(
     elif phase == "write-tests":
         _is_test_path_allowed(file_path)
     elif phase == "write-code":
-        _is_code_path_allowed(file_path)
+        workflow_type = state.get("workflow_type", "build")
+        if workflow_type == "implement":
+            _is_implement_code_path_allowed(file_path, state)
+        else:
+            _is_code_path_allowed(file_path)
     elif phase == "write-report":
         _is_report_path_allowed(file_path, config)
 
@@ -321,7 +372,7 @@ def _is_editable_phase(phase: str, config: Config) -> None:
 
 
 def _validate_plan_edit_preserves_sections(
-    hook_input: dict, file_path: str, config: Config
+    hook_input: dict, file_path: str, config: Config, workflow_type: str = "build"
 ) -> None:
     """Validate that a plan edit doesn't remove required sections."""
     from pathlib import Path
@@ -341,7 +392,8 @@ def _validate_plan_edit_preserves_sections(
 
     patched = current_content.replace(old_string, new_string, 1)
 
-    missing = [s for s in PLAN_REQUIRED_SECTIONS if s not in patched]
+    required = IMPLEMENT_PLAN_REQUIRED_SECTIONS if workflow_type == "implement" else BUILD_PLAN_REQUIRED_SECTIONS
+    missing = [s for s in required if s not in patched]
     if missing:
         raise ValueError(f"Edit would remove required sections: {missing}")
 
@@ -393,8 +445,9 @@ def is_file_edit_allowed(hook_input: dict, config: Config, state: StateStore) ->
 
     if phase == "plan-review":
         _is_plan_edit_allowed(file_path, config)
-        _validate_plan_edit_preserves_sections(hook_input, file_path, config)
-    elif phase == "test-review":
+        workflow_type = state.get("workflow_type", "build")
+        _validate_plan_edit_preserves_sections(hook_input, file_path, config, workflow_type)
+    elif phase in ("test-review", "tests-review"):
         _is_test_edit_allowed(file_path, state)
     elif phase == "code-review":
         _is_code_edit_allowed(file_path, state)
@@ -446,7 +499,7 @@ def _is_revision_done(next_agent: str, phase: str, state: StateStore) -> None:
         if last and last.get("status") == "Fail" and not state.plan_revised:
             raise ValueError("Plan must be revised before re-invoking PlanReview")
 
-    if phase == "test-review" and next_agent == "TestReviewer":
+    if phase in ("test-review", "tests-review") and next_agent == "TestReviewer":
         last = state.last_test_review
         if last and last.get("verdict") == "Fail":
             if not state.all_test_files_revised:
@@ -585,7 +638,7 @@ def is_agent_report_valid(
     """
 
     SCORE_PHASES = ["plan-review", "code-review"]
-    VERDICT_PHASES = ["test-review"]
+    VERDICT_PHASES = ["test-review", "tests-review", "quality-check", "validate"]
 
     phase = state.current_phase
     content = hook_input.get("last_assistant_message", "")
@@ -644,7 +697,7 @@ def validate_review_sections(content: str, phase: str) -> tuple[list[str], list[
         tests = _require_section(sections, "Tests to revise")
         return files, tests
 
-    if phase == "test-review":
+    if phase in ("test-review", "tests-review"):
         files = _require_section(sections, "Files to revise")
         return files, []
 

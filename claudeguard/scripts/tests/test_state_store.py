@@ -1,6 +1,10 @@
+import json
+import time
+
 import pytest
 from models.state import Agent
 from helpers import make_hook_input
+from utils.state_store import StateStore
 
 
 class TestPhases:
@@ -359,3 +363,163 @@ class TestTasksBulkSetter:
         state.add_task("Something")
         state.set_tasks([])
         assert state.tasks == []
+
+
+# ═══════════════════════════════════════════════════════════════════
+# JSONL — session isolation
+# ═══════════════════════════════════════════════════════════════════
+
+
+class TestSessionIsolation:
+    def test_two_sessions_isolated(self, tmp_path):
+        p = tmp_path / "state.jsonl"
+        s1 = StateStore(p, session_id="session-1")
+        s2 = StateStore(p, session_id="session-2")
+
+        s1.add_phase("explore")
+        s2.add_phase("plan")
+
+        assert s1.current_phase == "explore"
+        assert s2.current_phase == "plan"
+
+    def test_session_delete_preserves_others(self, tmp_path):
+        p = tmp_path / "state.jsonl"
+        s1 = StateStore(p, session_id="session-1")
+        s2 = StateStore(p, session_id="session-2")
+
+        s1.add_phase("explore")
+        s2.add_phase("plan")
+
+        s1.delete()
+
+        assert s1.current_phase == ""
+        assert s2.current_phase == "plan"
+
+    def test_reinitialize_replaces_session(self, tmp_path):
+        p = tmp_path / "state.jsonl"
+        s1 = StateStore(p, session_id="session-1")
+        s1.add_phase("explore")
+        s1.reinitialize({"phases": [{"name": "plan", "status": "in_progress"}]})
+        assert s1.current_phase == "plan"
+
+    def test_empty_file_returns_default(self, tmp_path):
+        p = tmp_path / "state.jsonl"
+        p.write_text("")
+        default = {"session_id": "s1", "workflow_active": True}
+        s = StateStore(p, session_id="s1", default_state=default)
+        data = s.load()
+        assert data.get("workflow_active") is True
+
+    def test_nonexistent_file_returns_default(self, tmp_path):
+        p = tmp_path / "state.jsonl"
+        default = {"session_id": "s1", "value": 42}
+        s = StateStore(p, session_id="s1", default_state=default)
+        assert s.get("value") == 42
+
+
+# ═══════════════════════════════════════════════════════════════════
+# JSONL — cleanup_inactive
+# ═══════════════════════════════════════════════════════════════════
+
+
+class TestCleanupInactive:
+    def test_removes_stale_sessions(self, tmp_path):
+        p = tmp_path / "state.jsonl"
+        old_ts = time.time() - 25 * 3600  # 25 hours ago
+        recent_ts = time.time()
+
+        lines = [
+            json.dumps({"session_id": "old", "_last_updated": old_ts}),
+            json.dumps({"session_id": "recent", "_last_updated": recent_ts}),
+        ]
+        p.write_text("\n".join(lines) + "\n")
+
+        removed = StateStore.cleanup_inactive(p, max_age_hours=24)
+        assert removed == 1
+
+        s = StateStore(p, session_id="recent")
+        assert s.get("session_id") == "recent"
+
+        s_old = StateStore(p, session_id="old")
+        assert s_old.get("session_id") is None
+
+    def test_keeps_sessions_without_timestamp(self, tmp_path):
+        p = tmp_path / "state.jsonl"
+        lines = [
+            json.dumps({"session_id": "no-ts"}),
+        ]
+        p.write_text("\n".join(lines) + "\n")
+
+        removed = StateStore.cleanup_inactive(p, max_age_hours=24)
+        assert removed == 0
+
+    def test_empty_file_returns_zero(self, tmp_path):
+        p = tmp_path / "state.jsonl"
+        p.write_text("")
+        removed = StateStore.cleanup_inactive(p, max_age_hours=24)
+        assert removed == 0
+
+    def test_nonexistent_file_returns_zero(self, tmp_path):
+        p = tmp_path / "nonexistent.jsonl"
+        removed = StateStore.cleanup_inactive(p, max_age_hours=24)
+        assert removed == 0
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Project tasks (implement workflow)
+# ═══════════════════════════════════════════════════════════════════
+
+
+class TestProjectTasks:
+    def test_set_project_tasks(self, state):
+        tasks = [
+            {"id": "T-001", "title": "Build login", "subtasks": []},
+            {"id": "T-002", "title": "Create schema", "subtasks": []},
+        ]
+        state.set_project_tasks(tasks)
+        assert len(state.project_tasks) == 2
+        assert state.project_tasks[0]["id"] == "T-001"
+
+    def test_add_subtask(self, state):
+        tasks = [{"id": "T-001", "title": "Build login", "subtasks": []}]
+        state.set_project_tasks(tasks)
+        state.add_subtask("T-001", "Implement login form")
+        assert "Implement login form" in state.project_tasks[0]["subtasks"]
+
+    def test_add_subtask_dedup(self, state):
+        tasks = [{"id": "T-001", "title": "Build login", "subtasks": []}]
+        state.set_project_tasks(tasks)
+        state.add_subtask("T-001", "Implement login form")
+        state.add_subtask("T-001", "Implement login form")
+        assert state.project_tasks[0]["subtasks"].count("Implement login form") == 1
+
+    def test_all_project_tasks_have_subtasks(self, state):
+        tasks = [
+            {"id": "T-001", "title": "Build login", "subtasks": []},
+            {"id": "T-002", "title": "Create schema", "subtasks": []},
+        ]
+        state.set_project_tasks(tasks)
+        assert not state.all_project_tasks_have_subtasks
+
+        state.add_subtask("T-001", "Sub 1")
+        assert not state.all_project_tasks_have_subtasks
+
+        state.add_subtask("T-002", "Sub 2")
+        assert state.all_project_tasks_have_subtasks
+
+    def test_no_project_tasks_returns_false(self, state):
+        assert not state.all_project_tasks_have_subtasks
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Plan files to modify (implement workflow)
+# ═══════════════════════════════════════════════════════════════════
+
+
+class TestPlanFilesToModify:
+    def test_set_plan_files_to_modify(self, state):
+        state.set_plan_files_to_modify(["src/app.py", "src/utils.py"])
+        assert state.plan_files_to_modify == ["src/app.py", "src/utils.py"]
+
+    def test_default_empty(self, state):
+        assert state.plan_files_to_modify == []

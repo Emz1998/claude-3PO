@@ -60,8 +60,9 @@ def _task_payload(subject: str, description: str = "A valid description") -> dic
 
 @pytest.fixture
 def state_path(tmp_path: Path) -> Path:
-    p = tmp_path / "state.json"
-    p.write_text(json.dumps(DEFAULT_STATE, indent=2))
+    p = tmp_path / "state.jsonl"
+    line = json.dumps(DEFAULT_STATE, separators=(",", ":"))
+    p.write_text(line + "\n")
     return p
 
 
@@ -116,8 +117,9 @@ class TestTaskCreatedWorkflowInactive:
     def test_inactive_workflow_allows_all(self, tmp_path):
         inactive_state = dict(DEFAULT_STATE)
         inactive_state["workflow_active"] = False
-        state_path = tmp_path / "state.json"
-        state_path.write_text(json.dumps(inactive_state, indent=2))
+        state_path = tmp_path / "state.jsonl"
+        line = json.dumps(inactive_state, separators=(",", ":"))
+        state_path.write_text(line + "\n")
         result = _run_hook(_task_payload("Anything goes"), state_path)
         assert result.returncode == 0
 
@@ -132,7 +134,8 @@ class TestTaskCreatedNoPlannedTasks:
     def test_no_tasks_in_state_blocks(self, tmp_path):
         state = dict(DEFAULT_STATE)
         state["tasks"] = []
-        state_path = tmp_path / "state.json"
-        state_path.write_text(json.dumps(state, indent=2))
+        state_path = tmp_path / "state.jsonl"
+        line = json.dumps(state, separators=(",", ":"))
+        state_path.write_text(line + "\n")
         result = _run_hook(_task_payload("Some task"), state_path)
         assert result.returncode == 2

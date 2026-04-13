@@ -175,6 +175,23 @@ def extract_contract_names(content: str) -> list[str]:
     return [name.strip() for name, _ in sections]
 
 
+def extract_plan_files_to_modify(content: str) -> list[str]:
+    """Extract file paths from ## Files to Create/Modify table.
+
+    Expects a markdown table with columns: Action | Path.
+    Returns the Path column values.
+    """
+    sections = extract_md_sections(content, 2)
+    for name, body in sections:
+        if name.strip() == "Files to Create/Modify":
+            table = extract_table(body)
+            if len(table) < 2:  # header + at least 1 data row
+                return []
+            # Skip header row, extract Path column (index 1)
+            return [row[1].strip() for row in table[1:] if len(row) > 1 and row[1].strip()]
+    return []
+
+
 def extract_ci_status(output: str) -> str:
     """Parse gh pr checks output to determine CI status.
 

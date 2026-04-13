@@ -17,8 +17,11 @@ from config import Config
 def check_phases(config: Config, state: StateStore) -> None:
     """Are all required phases completed?"""
     phases = state.phases
-    skip = state.load().get("skip", [])
-    required = [p for p in config.main_phases if p not in skip]
+    data = state.load()
+    skip = data.get("skip", [])
+    workflow_type = data.get("workflow_type", "build")
+    workflow_phases = config.get_phases(workflow_type) or config.main_phases
+    required = [p for p in workflow_phases if p not in skip]
 
     completed = {p["name"] for p in phases if p["status"] == "completed"}
     missing = [p for p in required if p not in completed]

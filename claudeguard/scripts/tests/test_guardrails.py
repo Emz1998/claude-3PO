@@ -16,6 +16,7 @@ agent_report_guard = STOP_GUARDS["agent_report"]
 
 class TestWriteGuard:
     def test_allows_valid_write(self, config, state):
+        state.set("workflow_type", "build")
         state.add_phase("plan")
         state.add_agent(Agent(name="Plan", status="completed", tool_use_id="p-1"))
         content = "# Plan\n\n## Dependencies\n- flask\n\n## Contracts\n- UserService\n\n## Tasks\n- Build login\n"

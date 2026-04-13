@@ -12,17 +12,19 @@ from utils.state_store import StateStore
 
 STATE_PATH = Path(os.environ.get(
     "TASK_CREATED_STATE_PATH",
-    str(Path(__file__).resolve().parent / "state.json"),
+    str(Path(__file__).resolve().parent / "state.jsonl"),
 ))
 
 
 def main() -> None:
     hook_input = Hook.read_stdin()
 
-    state = StateStore(STATE_PATH)
-    if not state.get("workflow_active"):
+    session_id = hook_input.get("session_id", "")
+    if not session_id:
         sys.exit(0)
-    if hook_input.get("session_id") != state.get("session_id"):
+
+    state = StateStore(STATE_PATH, session_id=session_id)
+    if not state.get("workflow_active"):
         sys.exit(0)
 
     task_subject = hook_input.get("task_subject", "")

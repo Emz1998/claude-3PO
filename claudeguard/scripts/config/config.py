@@ -104,6 +104,28 @@ class Config:
     # ── Phases ─────────────────────────────────────────────────────
 
     @property
+    def build_phases(self) -> list[str]:
+        return self._data.get("BUILD_PHASES", [])
+
+    @property
+    def implement_phases(self) -> list[str]:
+        return self._data.get("IMPLEMENT_PHASES", [])
+
+    @property
+    def auto_phases(self) -> list[str]:
+        return self._data.get("AUTO_PHASES", [])
+
+    def get_phases(self, workflow_type: str) -> list[str]:
+        if workflow_type == "build":
+            return self.build_phases
+        if workflow_type == "implement":
+            return self.implement_phases
+        return []
+
+    def is_auto_phase(self, phase: str) -> bool:
+        return phase in self.auto_phases
+
+    @property
     def main_phases(self) -> list[str]:
         return self._data.get("MAIN_PHASES", [])
 
