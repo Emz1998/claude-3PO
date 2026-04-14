@@ -26,6 +26,12 @@ TEST_REVIEWER_MAX = 3
 QA_SPECIALIST_MAX = 3
 CODE_REVIEWER_MAX = 3
 
+# ---------------------------------------------------------------------------
+# Plan validation
+# ---------------------------------------------------------------------------
+BUILD_PLAN_REQUIRED_SECTIONS = ["## Dependencies", "## Tasks", "## Files to Modify"]
+BUILD_PLAN_BULLET_SECTIONS = ["Dependencies", "Tasks"]
+IMPLEMENT_PLAN_REQUIRED_SECTIONS = ["## Context", "## Approach", "## Files to Create/Modify", "## Verification"]
 
 # ---------------------------------------------------------------------------
 # Safe domains for web access

@@ -132,6 +132,25 @@ class Config:
     def is_main_phase(self, phase: str) -> bool:
         return phase in self.main_phases
 
+    # ── Plan validation ─────────────────────────────────────────────
+
+    @property
+    def build_plan_required_sections(self) -> list[str]:
+        return self._data.get("BUILD_PLAN_REQUIRED_SECTIONS", [])
+
+    @property
+    def build_plan_bullet_sections(self) -> list[str]:
+        return self._data.get("BUILD_PLAN_BULLET_SECTIONS", [])
+
+    @property
+    def implement_plan_required_sections(self) -> list[str]:
+        return self._data.get("IMPLEMENT_PLAN_REQUIRED_SECTIONS", [])
+
+    def get_plan_required_sections(self, workflow_type: str) -> list[str]:
+        if workflow_type == "implement":
+            return self.implement_plan_required_sections
+        return self.build_plan_required_sections
+
     # ── Score thresholds ───────────────────────────────────────────
 
     def get_score_threshold(self, phase: str, score_type: str) -> int:
