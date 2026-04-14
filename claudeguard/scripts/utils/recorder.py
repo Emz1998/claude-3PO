@@ -39,8 +39,11 @@ def record_file_write(hook_input: dict, state: StateStore) -> None:
     file_path = hook_input.get("tool_input", {}).get("file_path", "")
 
     if phase == "plan":
-        state.set_plan_file_path(file_path)
-        state.set_plan_written(True)
+        from config import Config
+        _config = Config()
+        if file_path == _config.plan_file_path or file_path.endswith(_config.plan_file_path):
+            state.set_plan_file_path(file_path)
+            state.set_plan_written(True)
     elif phase == "define-contracts":
         state.add_contract_code_file(file_path)
         state.set_contracts_written(True)
@@ -220,8 +223,8 @@ def record_pr_create_output(output: str, state: StateStore) -> None:
 
 
 def record_plan_sections(file_path: str, state: StateStore) -> None:
-    """Auto-parse Dependencies and Tasks from plan and store in state."""
-    from .extractors import extract_plan_dependencies, extract_plan_tasks
+    """Auto-parse Dependencies, Tasks, and Files to Modify from plan and store in state."""
+    from .extractors import extract_plan_dependencies, extract_plan_tasks, extract_plan_files_to_modify
 
     path = Path(file_path)
     if not path.exists():
@@ -234,10 +237,14 @@ def record_plan_sections(file_path: str, state: StateStore) -> None:
     state.set_dependencies_packages(deps)
     state.set_tasks(tasks)
 
+    files = extract_plan_files_to_modify(content)
+    for f in files:
+        state.add_code_file_to_write(f)
+
 
 def record_contracts_file(file_path: str, state: StateStore) -> None:
-    """Auto-parse contract names from contracts.md and store in state."""
-    from .extractors import extract_contract_names
+    """Auto-parse contract names and file paths from contracts.md and store in state."""
+    from .extractors import extract_contract_names, extract_contract_files
 
     path = Path(file_path)
     if not path.exists():
@@ -245,9 +252,12 @@ def record_contracts_file(file_path: str, state: StateStore) -> None:
 
     content = path.read_text()
     names = extract_contract_names(content)
+    files = extract_contract_files(content)
 
     state.set_contracts_file_path(file_path)
     state.set_contracts_names(names)
+    if files:
+        state.set("contract_files", files)
 
 
 def record_dependency_install(command: str, state: StateStore) -> None:

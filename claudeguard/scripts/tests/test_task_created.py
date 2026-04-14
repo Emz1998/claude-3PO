@@ -16,10 +16,10 @@ TASK_CREATED_SCRIPT = SCRIPTS_DIR / "task_created.py"
 DEFAULT_STATE = {
     "session_id": "test-session",
     "workflow_active": True,
-    "workflow_type": "implement",
+    "workflow_type": "build",
     "phases": [{"name": "write-tests", "status": "in_progress"}],
     "tdd": False,
-    "story_id": "TEST-001",
+    "story_id": None,
     "skip": [],
     "instructions": "",
     "agents": [],
@@ -134,6 +134,87 @@ class TestTaskCreatedNoPlannedTasks:
     def test_no_tasks_in_state_blocks(self, tmp_path):
         state = dict(DEFAULT_STATE)
         state["tasks"] = []
+        state_path = tmp_path / "state.jsonl"
+        line = json.dumps(state, separators=(",", ":"))
+        state_path.write_text(line + "\n")
+        result = _run_hook(_task_payload("Some task"), state_path)
+        assert result.returncode == 2
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Implement workflow — project task matching + child recording
+# ═══════════════════════════════════════════════════════════════════
+
+
+IMPLEMENT_STATE = {
+    "session_id": "test-session",
+    "workflow_active": True,
+    "workflow_type": "implement",
+    "phases": [{"name": "create-tasks", "status": "in_progress"}],
+    "tdd": False,
+    "story_id": "SK-001",
+    "skip": [],
+    "instructions": "",
+    "agents": [],
+    "plan": {"file_path": None, "written": False, "revised": False, "reviews": []},
+    "tasks": [],
+    "project_tasks": [
+        {"id": "T-001", "title": "Build login", "status": "in_progress", "subtasks": []},
+        {"id": "T-002", "title": "Create schema", "status": "in_progress", "subtasks": []},
+    ],
+    "dependencies": {"packages": [], "installed": False},
+    "contracts": {"file_path": None, "names": [], "code_files": [], "written": False, "validated": False},
+    "tests": {"file_paths": [], "executed": False, "reviews": [], "files_to_revise": [], "files_revised": []},
+    "code_files_to_write": [],
+    "code_files": {"file_paths": [], "reviews": [], "tests_to_revise": [], "tests_revised": [], "files_to_revise": [], "files_revised": []},
+    "quality_check_result": None,
+    "pr": {"status": "pending", "number": None},
+    "ci": {"status": "pending", "results": None},
+    "report_written": False,
+    "plan_files_to_modify": [],
+}
+
+
+@pytest.fixture
+def implement_state_path(tmp_path: Path) -> Path:
+    p = tmp_path / "state.jsonl"
+    line = json.dumps(IMPLEMENT_STATE, separators=(",", ":"))
+    p.write_text(line + "\n")
+    return p
+
+
+class TestImplementTaskCreatedMatching:
+    def test_exact_match_allowed(self, implement_state_path):
+        result = _run_hook(_task_payload("Build login"), implement_state_path)
+        assert result.returncode == 0
+
+    def test_case_insensitive_match(self, implement_state_path):
+        result = _run_hook(_task_payload("build login"), implement_state_path)
+        assert result.returncode == 0
+
+    def test_substring_match(self, implement_state_path):
+        result = _run_hook(_task_payload("Build login with OAuth"), implement_state_path)
+        assert result.returncode == 0
+
+    def test_no_match_blocked(self, implement_state_path):
+        result = _run_hook(_task_payload("Deploy to production"), implement_state_path)
+        assert result.returncode == 2
+
+    def test_records_subtask_in_state(self, implement_state_path):
+        from utils.state_store import StateStore
+        _run_hook(_task_payload("Build login"), implement_state_path)
+        state = StateStore(implement_state_path, session_id="test-session")
+        ptasks = state.project_tasks
+        subs = ptasks[0]["subtasks"]
+        assert len(subs) == 1
+        assert subs[0]["subject"] == "Build login"
+        assert subs[0]["status"] == "in_progress"
+
+
+class TestImplementNoProjectTasks:
+    def test_no_project_tasks_blocks(self, tmp_path):
+        state = dict(IMPLEMENT_STATE)
+        state["project_tasks"] = []
         state_path = tmp_path / "state.jsonl"
         line = json.dumps(state, separators=(",", ":"))
         state_path.write_text(line + "\n")

@@ -90,15 +90,17 @@ class TestResolvePlanReview:
         assert state.last_plan_review["status"] == "Fail"
         assert state.plan_revised is False
 
-    def test_max_iterations_raises(self, config, state):
+    def test_third_fail_does_not_raise(self, config, state):
+        """3rd failed review sets status without raising — agent max prevents 4th."""
         state.add_phase("plan-review")
         state.add_plan_review({"confidence_score": 50, "quality_score": 50})
         state.set_last_plan_review_status("Fail")
         state.add_plan_review({"confidence_score": 60, "quality_score": 60})
         state.set_last_plan_review_status("Fail")
         state.add_plan_review({"confidence_score": 70, "quality_score": 70})
-        with pytest.raises(ValueError, match="max iterations"):
-            resolve_plan_review(config, state)
+        resolve_plan_review(config, state)
+        assert state.last_plan_review["status"] == "Fail"
+        assert not state.is_phase_completed("plan-review")
 
 
 class TestResolveWriteTests:
@@ -134,13 +136,15 @@ class TestResolveTestReview:
         resolve_test_review(config, state)
         assert not state.is_phase_completed("test-review")
 
-    def test_max_iterations_raises(self, config, state):
+    def test_third_fail_does_not_raise(self, config, state):
+        """3rd failed review sets verdict without raising — agent max prevents 4th."""
         state.add_phase("test-review")
         state.add_test_review("Fail")
         state.add_test_review("Fail")
         state.add_test_review("Fail")
-        with pytest.raises(ValueError, match="max iterations"):
-            resolve_test_review(config, state)
+        resolve_test_review(config, state)
+        assert state.last_test_review["verdict"] == "Fail"
+        assert not state.is_phase_completed("test-review")
 
 
 class TestResolveWriteCode:
@@ -179,15 +183,17 @@ class TestResolveCodeReview:
         assert state.files_to_revise == []
         assert state.files_revised == []
 
-    def test_max_iterations_raises(self, config, state):
+    def test_third_fail_does_not_raise(self, config, state):
+        """3rd failed review sets status without raising — agent max prevents 4th."""
         state.add_phase("code-review")
         state.add_code_review({"confidence_score": 50, "quality_score": 50})
         state.set_last_code_review_status("Fail")
         state.add_code_review({"confidence_score": 60, "quality_score": 60})
         state.set_last_code_review_status("Fail")
         state.add_code_review({"confidence_score": 70, "quality_score": 70})
-        with pytest.raises(ValueError, match="max iterations"):
-            resolve_code_review(config, state)
+        resolve_code_review(config, state)
+        assert state.last_code_review["status"] == "Fail"
+        assert not state.is_phase_completed("code-review")
 
 
 class TestResolveQualityCheck:

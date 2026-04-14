@@ -45,6 +45,7 @@ def make_default_state(workflow_type: str = "build") -> dict:
     return {
         "session_id": SESSION_ID,
         "workflow_active": True,
+        "status": "in_progress",
         "workflow_type": workflow_type,
         "phases": [],
         "tdd": False,
@@ -55,7 +56,7 @@ def make_default_state(workflow_type: str = "build") -> dict:
         "plan": {
             "file_path": None,
             "written": False,
-            "revised": False,
+            "revised": None,
             "reviews": [],
         },
         "tasks": [],
@@ -302,7 +303,7 @@ def simulate_build(tdd: bool) -> None:
     s["agents"].append({"name": "Plan", "status": "completed", "tool_use_id": "p-1"})
     write_state(s)
 
-    plan_content = "# Plan\n\n## Dependencies\n- flask\n\n## Contracts\n- UserService\n\n## Tasks\n- Build login\n"
+    plan_content = "# Plan\n\n## Dependencies\n- flask\n\n## Tasks\n- Build login\n\n## Files to Modify\n\n| Action | Path |\n|--------|------|\n| Create | src/app.py |\n"
     allow("Write plan file", PRE_TOOL_USE, write_payload(".claude/plans/latest-plan.md", plan_content))
     block("Write wrong plan path", PRE_TOOL_USE, write_payload("wrong.md"))
 

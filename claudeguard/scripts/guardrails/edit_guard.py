@@ -24,7 +24,9 @@ def handle(hook_input: dict, config: Config, state: StateStore) -> Decision:
             elif phase == "test-review" and file_path:
                 state.add_test_file_revised(file_path)
             elif phase == "code-review" and file_path:
-                if file_path in state.code_tests_to_revise:
+                basename = file_path.rsplit("/", 1)[-1]
+                to_revise_basenames = {p.rsplit("/", 1)[-1] for p in state.code_tests_to_revise}
+                if basename in to_revise_basenames:
                     state.add_code_test_revised(file_path)
                 else:
                     state.add_file_revised(file_path)

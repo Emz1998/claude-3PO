@@ -31,11 +31,15 @@ def main() -> None:
 
     failures: list[str] = []
 
+    # Always check phases; skip tests/CI in test mode (simulated, not real)
     checks = [
         lambda: check_phases(config, state),
-        lambda: check_tests(state),
-        lambda: check_ci(state),
     ]
+    if not state.get("test_mode"):
+        checks += [
+            lambda: check_tests(state),
+            lambda: check_ci(state),
+        ]
 
     for check in checks:
         try:

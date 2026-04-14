@@ -46,13 +46,14 @@ class TestAutoTransitionBuild:
 class TestAutoTransitionImplement:
     """Implement workflow: create-tasks auto-starts after plan-review pass."""
 
-    def test_create_tasks_auto_starts_after_plan_review_pass(self, config, state):
+    def test_plan_review_pass_does_not_auto_start_create_tasks(self, config, state):
+        """plan-review pass is a checkpoint — does not auto-start next phase."""
         state.set("workflow_type", "implement")
         state.add_phase("plan-review")
         state.add_plan_review({"confidence_score": 95, "quality_score": 95})
         resolve(config, state)
         assert state.is_phase_completed("plan-review")
-        assert state.current_phase == "create-tasks"
+        assert state.current_phase == "plan-review"  # checkpoint pause
 
     def test_write_tests_auto_starts_after_create_tasks(self, config, state):
         state.set("workflow_type", "implement")

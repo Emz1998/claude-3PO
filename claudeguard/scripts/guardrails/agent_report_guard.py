@@ -14,7 +14,7 @@ from utils.validators import (
     validate_review_sections,
 )
 from utils.extractors import extract_scores, extract_verdict
-from utils.recorder import record_scores, record_test_review_result
+from utils.recorder import record_scores, record_test_review_result, record_quality_check_result
 from utils.resolvers import resolve
 from utils.state_store import StateStore
 from config import Config
@@ -44,6 +44,10 @@ def handle(hook_input: dict, config: Config, state: StateStore) -> Decision:
         if phase == "test-review":
             _, verdict = verdict_valid(content, extract_verdict)
             record_test_review_result(verdict, state)
+
+        if phase in ("quality-check", "validate"):
+            _, verdict = verdict_valid(content, extract_verdict)
+            record_quality_check_result(verdict, state)
 
         # 3. Record file lists for revision enforcement
         if phase == "code-review" and files:

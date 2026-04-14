@@ -1,5 +1,5 @@
 ---
-name: code-reviewer
+name: CodeReviewer
 description: Use PROACTIVELY this agent when you need to review code for correctness, bugs, overengineering, security vulnerabilities, or adherence to best practices
 tools: Read, Grep, Glob
 model: opus

@@ -9,6 +9,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from guardrails import TOOL_GUARDS
 from utils.hook import Hook
 from utils.state_store import StateStore
+from utils.violations import log_violation, extract_action
 from config import Config
 
 
@@ -34,6 +35,23 @@ def main() -> None:
     decision, message = guard(hook_input, config, state)
 
     if decision == "block":
+        # For Skill blocks, use the attempted skill as phase context
+        # (e.g. /install-deps blocked before /plan → log as "install-deps", not "research")
+        phase = state.current_phase
+        if tool_name == "Skill":
+            from utils.extractors import extract_skill_name
+            phase = extract_skill_name(hook_input) or phase
+
+        log_violation(
+            session_id=session_id,
+            workflow_type=state.get("workflow_type", "build"),
+            story_id=state.get("story_id"),
+            prompt_summary=state.get("prompt_summary"),
+            phase=phase,
+            tool=tool_name,
+            action=extract_action(tool_name, hook_input),
+            reason=message,
+        )
         Hook.advanced_block("PreToolUse", message)
     else:
         Hook.system_message(message)

@@ -47,7 +47,7 @@ def parse_story_id(args: str) -> str | None:
 def parse_instructions(args: str) -> str:
     flags = [
         "--skip-explore", "--skip-research", "--skip-all", "--tdd",
-        "--reset", "--takeover",
+        "--reset", "--takeover", "--test",
     ]
     text = re.sub(STORY_ID_PATTERN, "", args)
     for flag in flags:
@@ -118,13 +118,16 @@ def archive_contracts(config: Config) -> None:
 def build_initial_state(workflow_type: str, session_id: str, args: str) -> dict:
     skip = parse_skip(args)
     tdd = "--tdd" in args
+    test_mode = "--test" in args
     story_id = parse_story_id(args)
     instructions = parse_instructions(args)
 
     return {
         "session_id": session_id,
         "workflow_active": True,
+        "status": "in_progress",
         "workflow_type": workflow_type,
+        "test_mode": test_mode,
         "phases": [],
         "tdd": tdd,
         "story_id": story_id,
@@ -134,7 +137,7 @@ def build_initial_state(workflow_type: str, session_id: str, args: str) -> dict:
         "plan": {
             "file_path": None,
             "written": False,
-            "revised": False,
+            "revised": None,
             "reviews": [],
         },
         "tasks": [],

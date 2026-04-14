@@ -31,7 +31,7 @@ class TestPhases:
 
 class TestPlanRevision:
     def test_plan_revised_default(self, state):
-        assert state.plan_revised is False
+        assert state.plan_revised is None
 
     def test_set_plan_revised(self, state):
         state.set_plan_revised(True)

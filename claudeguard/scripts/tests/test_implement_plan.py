@@ -82,12 +82,12 @@ class TestImplementPlanValidation:
         with pytest.raises(ValueError, match="Verification"):
             is_file_write_allowed(hook, config, state)
 
-    def test_build_plan_still_validates_old_format(self, config, state):
-        """Build plan still requires Dependencies, Contracts, Tasks."""
+    def test_build_plan_still_validates_build_format(self, config, state):
+        """Build plan requires Dependencies, Tasks, Files to Modify."""
         state.set("workflow_type", "build")
         state.add_phase("plan")
         state.add_agent(Agent(name="Plan", status="completed", tool_use_id="p-1"))
-        content = "# Plan\n\n## Dependencies\n- flask\n\n## Contracts\n- UserService\n\n## Tasks\n- Build login\n"
+        content = "# Plan\n\n## Dependencies\n- flask\n\n## Tasks\n- Build login\n\n## Files to Modify\n\n| Action | Path |\n|--------|------|\n| Create | src/app.py |\n"
         hook = make_hook_input("Write", {
             "file_path": ".claude/plans/latest-plan.md",
             "content": content,

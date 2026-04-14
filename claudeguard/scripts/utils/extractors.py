@@ -163,15 +163,27 @@ def extract_plan_tasks(content: str) -> list[str]:
 def extract_contract_names(content: str) -> list[str]:
     """Parse contract names from latest-contracts.md.
 
-    Extracts from both bullet items and ## headings.
+    Extraction priority:
+    1. Table in ## Specifications section (Name column)
+    2. Top-level bullet items (backward compat)
+    3. ## heading names excluding 'Specifications' (backward compat)
     """
-    # First try bullet items at top level
+    # Try table in Specifications section
+    sections = extract_md_sections(content, 2)
+    for name, body in sections:
+        if name.strip() == "Specifications":
+            table = extract_table(body)
+            if len(table) >= 2:  # header + at least 1 row
+                return [row[0].strip() for row in table[1:] if row and row[0].strip()]
+            # Specifications section exists but empty table — return empty
+            return []
+
+    # Fallback: bullet items at top level
     bullets = _extract_bullet_items(content)
     if bullets:
         return bullets
 
-    # Fall back to ## heading names
-    sections = extract_md_sections(content, 2)
+    # Fallback: ## heading names
     return [name.strip() for name, _ in sections]
 
 
@@ -183,12 +195,23 @@ def extract_plan_files_to_modify(content: str) -> list[str]:
     """
     sections = extract_md_sections(content, 2)
     for name, body in sections:
-        if name.strip() == "Files to Create/Modify":
+        if name.strip() in ("Files to Create/Modify", "Files to Modify"):
             table = extract_table(body)
             if len(table) < 2:  # header + at least 1 data row
                 return []
             # Skip header row, extract Path column (index 1)
             return [row[1].strip() for row in table[1:] if len(row) > 1 and row[1].strip()]
+    return []
+
+
+def extract_contract_files(content: str) -> list[str]:
+    """Extract file paths from ## Specifications table (File column, index 2)."""
+    sections = extract_md_sections(content, 2)
+    for name, body in sections:
+        if name.strip() == "Specifications":
+            table = extract_table(body)
+            if len(table) >= 2 and len(table[0]) > 2:
+                return [row[2].strip() for row in table[1:] if len(row) > 2 and row[2].strip()]
     return []
 
 

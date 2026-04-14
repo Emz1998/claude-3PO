@@ -5,85 +5,145 @@ allowed-tools: Bash, Read, Glob, Grep, Write, Edit, Agent, WebFetch
 model: haiku
 ---
 
-You are a **guardrail test runner**. Your job is to systematically test every guardrail by deliberately doing wrong things first (which MUST be blocked), then doing the correct thing to advance.
+You are a **guardrail test runner**. Systematically test every guardrail by deliberately doing wrong things first (which MUST be blocked), then doing the correct thing to advance.
 
 ## Workflow Initialization
 
-!`python3 '${CLAUDE_PLUGIN_ROOT}/scripts/utils/initializer.py' build ${CLAUDE_SESSION_ID} --tdd test guardrails`
+!`python3 '${CLAUDE_PLUGIN_ROOT}/scripts/utils/initializer.py' build ${CLAUDE_SESSION_ID} --tdd --test test guardrails`
 
-## How This Works
+## Rules
 
-1. At each phase, you will attempt **forbidden actions** that should be blocked by the guardrails.
-2. After each block, record it as a **PASS** (block was expected).
-3. If a forbidden action is NOT blocked, record it as a **FAIL**.
-4. Then perform the **correct action** to advance to the next phase.
-5. At the end, present a test report.
+- When you get blocked, that is the **expected** outcome. Record it as PASS.
+- If a step marked "should block" is NOT blocked, record it as FAIL.
+- All subagents must exit immediately — no real work. Every agent prompt: "Do not read any files. Respond with exactly: ..." followed by the required output format.
+- After each phase, read `state.jsonl` for your session and compare against the expected JSON. Record mismatches as FAIL.
+- After each phase that has blocks, read `.claude/logs/violations.md` and verify each block produced a violation entry. Record missing entries as FAIL.
+- Write results to `.claude/reports/E2E_TEST_REPORT.md` after each phase. This file is always writable in test mode.
+- The state file is at: `'${CLAUDE_PLUGIN_ROOT}/scripts/state.jsonl'`
+- The violations log is at: `.claude/logs/violations.md`
+- **IMPORTANT**: If you are completely blocked, use `/continue` to skip the blocked phase.
+- **IMPORTANT**: Direct manipulation of `state.jsonl` is allowed only once — during the plan-review reset step. All other state changes must go through the normal workflow.
+- **IMPORTANT**: If bugs are found, write it in the E2E_TEST_REPORT.md file. Do not try to fix them. Fixing them is a violation of the test.
 
-**Important**: When you get blocked, that is the EXPECTED outcome. Do NOT treat blocks as errors. Record them as passing tests.
+- **IMPORTANT**: Your role is to test, report and document the bugs, not to fix them.
+- **IMPORTANT**: `test-build` is only triggered by the user. Start with `explore` and `research` phases in parallel.
 
-**Important**: All subagents must exit immediately. Do NOT let them do real work — we are testing guardrails, not functionality. Every agent prompt must instruct the agent to respond with ONLY the required output format (scores, verdicts, etc.) and nothing else. Keep prompts under 2 sentences. Example: "Do not read any files. Respond with exactly: Confidence Score: 95\nQuality Score: 95"
+## Report Format
 
-## Test Report Format
+Present three tables at the end:
 
-Track results in this format and present at the end:
+**Guardrail Tests:**
 
 ```
-| Phase | Test | Expected | Actual | Result |
+| Phase | Step | Expected | Actual | Result |
 |-------|------|----------|--------|--------|
-| explore | Write file | BLOCK | BLOCK | PASS |
 ```
+
+**State Verification:**
+
+```
+| Phase | Check | Expected | Actual | Result |
+|-------|-------|----------|--------|--------|
+```
+
+**Violations Log:**
+
+```
+| Phase | Tool | Action | Logged | Result |
+|-------|------|--------|--------|--------|
+```
+
+For each block that occurred, verify a matching row exists in `.claude/logs/violations.md` with the correct Phase, Tool, and Action. Mark PASS if found, FAIL if missing.
 
 ---
 
-## Test Sequence
+**IMPORTANT**: Make sure to read the file first before editing it.
+**IMPORTANT**: Write report after each phase.
 
-Execute each step in order. For each "TRY" step, attempt the action. For each "DO" step, perform the correct action.
+## Phase: explore + research
 
-### explore + research (parallel)
+**IMPORTANT**: explore and research phases are expected to be completed in parallel.
 
-**Start**: Invoke `/explore` and `/research` in parallel (both as skills in the same message).
+Invoke `/explore` and `/research` in parallel (both skills in the same message).
 
-**TRY (expect BLOCK) — explore guards:**
-- Write a file: `Write` to `test-guardrail.py` — should block (read-only phase)
-- Edit a file: `Edit` on any file — should block (read-only phase)
-- Run a non-read-only command: `Bash` with `echo "write attempt"` — should block (not a read-only command)
-- Invoke wrong agent: `Agent` with `subagent_type: "Plan"` — should block (expected: Explore)
+1. `Write` to `test-guardrail.py` — _should block_ (read-only phase)
+2. `Edit` on any file — _should block_ (read-only phase)
+3. `Bash` with `echo "write attempt"` — _should block_ (not a read-only command)
+4. `Agent` with `subagent_type: "Plan"` — _should block_ (wrong agent for explore)
+5. `Bash` with `ls -la` — _should allow_
+6. `Agent` with `subagent_type: "Explore"`, prompt: "Respond with exactly: Done." — _should allow_
+7. Invoke 2 more Explore agents (total 3) with same prompt — _should allow_
+8. `Agent` with `subagent_type: "Explore"`, prompt: "Respond with exactly: Done." — _should block_ (4th Explore exceeds max of 3)
+9. `WebFetch` to `https://www.wikipedia.org` — _should block_ (not in safe domains)
+10. `WebFetch` to `https://docs.python.org/3/` — _should allow_
+11. `Agent` with `subagent_type: "Research"`, prompt: "Respond with exactly: Done." — _should allow_
+12. Invoke 1 more Research agent (total 2) with same prompt — _should allow_
+13. Wait for all agents to complete
 
-**TRY (expect ALLOW) — explore guards:**
-- Read-only command: `Bash` with `ls -la` — should allow
-- Correct agent: `Agent` with `subagent_type: "Explore"`, description: "Test", prompt: "Respond with exactly: Done." — should allow
+**State check:**
 
-**DO**: Invoke 2 more Explore agents (total 3) with the same minimal prompt.
+```json
+{
+  "phases": [
+    { "name": "explore", "status": "completed" },
+    { "name": "research", "status": "completed" }
+  ],
+  "agents": "3 Explore (completed) + 2 Research (completed)"
+}
+```
 
-**TRY (expect BLOCK) — webfetch guards:**
-- WebFetch unlisted domain: `WebFetch` to `https://www.wikipedia.org` — should block (not in safe domains list)
+**Violations check:** Read `.claude/logs/violations.md`. Verify these entries exist:
 
-**TRY (expect ALLOW) — webfetch guards:**
-- WebFetch safe domain: `WebFetch` to `https://docs.python.org/3/` — should allow
-- Research agent: `Agent` with `subagent_type: "Research"`, description: "Test", prompt: "Respond with exactly: Done." — should allow
+```markdown
+| ... | research | Write | test-guardrail.py | ... |
+| ... | research | Edit | ... | ... |
+| ... | research | Bash | echo "write attempt" | ... |
+| ... | research | Agent | Plan | ... |
+| ... | research | Agent | Explore | ... |
+| ... | research | WebFetch | https://www.wikipedia.org | ... |
+```
 
-**DO**: Invoke 1 more Research agent (total 2) with the same minimal prompt. Wait for all agents to complete.
+**Note:** Violations during parallel explore+research log phase as "research" (the last-added phase). This is expected — the blocks are correct regardless of phase label.
 
-### plan
+## Phase: plan
 
-**TRY (expect BLOCK) — phase ordering:**
-- Skip to `/install-deps` — should block (must complete plan first)
-- Re-invoke `/explore` — should block (cannot go backwards)
+1. `/install-deps` — _should block_ (must complete plan first, cannot skip ahead)
+2. `/explore` — _should block_ (cannot go backwards)
+3. Invoke `/plan`
+4. `Write` to `.claude/plans/latest-plan.md` with content `x` — _should block_ (Plan agent must complete first)
+5. `Agent` with `subagent_type: "Plan"`, prompt: "Respond with exactly: Done." — _should allow_
+6. `Write` to `.claude/plans/latest-plan.md` with content below — _should block_ (missing required sections)
 
-**DO**: Invoke `/plan` to enter plan phase.
+```markdown
+# Plan
 
-**TRY (expect BLOCK) — write guard:**
-- Write plan before Plan agent completes: `Write` to `.claude/plans/latest-plan.md` — should block (Plan agent must complete first)
+No sections here.
+```
 
-**DO**: Invoke `Agent` with `subagent_type: "Plan"`, description: "Test", prompt: "Respond with exactly: Done." — wait for completion.
+7. `Write` to `.claude/plans/latest-plan.md` with content below — _should block_ (Tasks must use bullets, not subsections)
 
-**TRY (expect BLOCK) — plan content validation:**
-- Write plan with missing sections: `Write` to `.claude/plans/latest-plan.md` with content `# Plan\nNo sections here.` — should block (missing required sections)
-- Write plan with Tasks as subsections: `Write` to `.claude/plans/latest-plan.md` with content `# Plan\n\n## Dependencies\n- None\n\n## Contracts\n- None\n\n## Tasks\n\n### Task 1\nDo something\n` — should block (Tasks must use bullets)
-- Write to wrong path: `Write` to `wrong-plan.md` — should block (wrong path)
+```markdown
+# Plan
 
-**TRY (expect ALLOW):**
-- Write valid plan: `Write` to `.claude/plans/latest-plan.md` with this content:
+## Dependencies
+
+- None
+
+## Tasks
+
+### Task 1
+
+Do something
+
+## Files to Modify
+
+| Action | Path         |
+| ------ | ------------ |
+| Create | src/hello.py |
+```
+
+8. `Write` to `wrong-plan.md` with any content — _should block_ (wrong path)
+9. `Write` to `.claude/plans/latest-plan.md` with valid content below — _should allow_
 
 ```
 # Test Plan
@@ -92,9 +152,6 @@ Execute each step in order. For each "TRY" step, attempt the action. For each "D
 Testing guardrails.
 
 ## Dependencies
-- None
-
-## Contracts
 - None
 
 ## Tasks
@@ -111,143 +168,633 @@ Testing guardrails.
 Run pytest.
 ```
 
-### plan-review
+10. `Write` to `.claude/contracts/latest-contracts.md` with content `# Contracts\n\nNo specs.` — _should block_ (missing ## Specifications)
+11. `Write` to `.claude/contracts/latest-contracts.md` with content below — _should allow_
 
-**DO**: Invoke `/plan-review`.
+```markdown
+# Contracts
 
-**TRY (expect BLOCK):**
-- Edit wrong file: `Edit` on `wrong.md` — should block (only plan file editable)
-- Write a file: `Write` to `anything.py` — should block (docs-edit phase, no writes)
+## Specifications
 
-**TRY (expect ALLOW):**
-- Edit plan file: `Edit` on `.claude/plans/latest-plan.md`, old_string: "Testing guardrails", new_string: "Testing the guardrail system" — should allow
+| Name         | Type     | File         | Description    |
+| ------------ | -------- | ------------ | -------------- |
+| HelloService | function | src/hello.py | Hello function |
+```
 
-**DO**: Invoke `Agent` with `subagent_type: "PlanReview"`, description: "Test", prompt: "Do not read any files. Respond with exactly:\n\nConfidence Score: 95\nQuality Score: 95"
+**State check:**
 
-Wait for completion. The workflow should **discontinue** (checkpoint). This is expected.
+```json
+{
+  "plan": {
+    "written": true,
+    "file_path": ".claude/plans/latest-plan.md",
+    "revised": null
+  },
+  "tasks": ["Create hello function"],
+  "dependencies": {
+    "packages": ["None"]
+  },
+  "contracts": {
+    "names": ["HelloService"],
+    "file_path": ".claude/contracts/latest-contracts.md"
+  },
+  "contract_files": ["src/hello.py"]
+}
+```
 
-### install-deps
+**Violations check:**
 
-**DO**: Invoke `/install-deps`.
+```markdown
+| ... | install-deps | Skill | install-deps | ... |
+| ... | explore | Skill | explore | ... |
+| ... | plan | Write | .claude/plans/latest-plan.md | ... |
+| ... | plan | Write | .claude/plans/latest-plan.md | ... |
+| ... | plan | Write | .claude/plans/latest-plan.md | ... |
+| ... | plan | Write | wrong-plan.md | ... |
+| ... | plan | Write | .claude/contracts/latest-contracts.md | ... |
+```
 
-**TRY (expect BLOCK):**
-- Write code file: `Write` to `app.py` — should block (only package manager files)
-- Run non-install command: `Bash` with `echo "not an install"` — should block
+**IMPORTANT**: Write report after this phase.
 
-**TRY (expect ALLOW):**
-- Write package manager file: `Write` to `requirements.txt` with content `# test deps` — should allow
-- Run install command: `Bash` with `pip install -r requirements.txt` — should allow (records deps installed)
+## Phase: plan-review
 
-### define-contracts
+1. Invoke `/plan-review`
+2. `Edit` on any existing non-plan file (e.g. `claudeguard/scripts/stop.py`) — _should block_ (only plan file editable)
+3. `Write` to `anything.py` — _should block_ (docs-edit phase, no writes)
+4. `Edit` on `.claude/plans/latest-plan.md`, old*string: "Testing guardrails", new_string: "Testing the guardrail system" — \_should allow*
 
-**DO**: Invoke `/define-contracts`.
+### Iteration 1 (expect Fail)
 
-**TRY (expect BLOCK):**
-- Write markdown: `Write` to `notes.md` — should block (code files only)
+1. `Agent` with `subagent_type: "PlanReview"`, prompt below — _should allow_
 
-**TRY (expect ALLOW):**
-- Write code file: `Write` to `src/hello.py` with content `def hello(): pass` — should allow
+```
+Do not read any files. Respond with exactly:
 
-**DO**: Write contracts file to complete the phase:
-- `Write` to `.claude/contracts/latest-contracts.md` with content `- None`
+Confidence Score: 50
+Quality Score: 60
+```
 
-### write-tests (AUTO)
+**State check:**
 
-After define-contracts completes, write-tests should auto-start.
+```json
+{
+  "plan": {
+    "reviews": [
+      {
+        "scores": { "confidence_score": 50, "quality_score": 60 },
+        "status": "Fail"
+      }
+    ],
+    "revised": false
+  }
+}
+```
 
-**TRY (expect BLOCK):**
-- Invoke `/write-tests` as skill — should block (auto-phase)
-- Write non-test file: `Write` to `app.py` — should block (test files only)
+2. `Agent` with `subagent_type: "PlanReview"` — _should block_ (plan must be revised first)
+3. `Edit` on `.claude/plans/latest-plan.md`, old*string: "Testing the guardrail system", new_string: "Testing the guardrail system — revised" — \_should allow*
 
-**TRY (expect ALLOW):**
-- Write test file: `Write` to `test_hello.py` with content:
+**State check:**
+
+```json
+{
+  "plan": { "revised": true }
+}
+```
+
+### Iteration 2 (expect Fail)
+
+1. `Agent` with `subagent_type: "PlanReview"`, prompt below — _should allow_
+
+```
+Do not read any files. Respond with exactly:
+
+Confidence Score: 70
+Quality Score: 75
+```
+
+2. `Edit` on `.claude/plans/latest-plan.md`, old*string: "revised", new_string: "revised again" — \_should allow*
+
+### Iteration 3 (expect discontinue)
+
+1. `Agent` with `subagent_type: "PlanReview"`, prompt below — _should allow_
+
+```
+Do not read any files. Respond with exactly:
+
+Confidence Score: 60
+Quality Score: 60
+```
+
+**State check:**
+
+```json
+{
+  "plan": {
+    "reviews": [
+      { "status": "Fail" },
+      { "status": "Fail" },
+      { "status": "Fail" }
+    ]
+  }
+}
+```
+
+### Recovery via /plan-approved (exhaustion)
+
+1. `/continue` — _should block_ (use /plan-approved for plan-review)
+2. `/plan-approved` — _should allow_ (approves exhausted plan-review, proceeds to next phase)
+
+**State check:**
+
+```json
+{
+  "phases": [
+    { "name": "plan-review", "status": "completed" },
+    { "name": "create-tasks", "status": "in_progress" }
+  ]
+}
+```
+
+**Reset plan-review state for checkpoint/revise-plan flow:**
+
+`/reset-plan-review`
+
+### Passing review (checkpoint)
+
+1. `Agent` with `subagent_type: "PlanReview"`, prompt below — _should allow_
+
+```
+Do not read any files. Respond with exactly:
+
+Confidence Score: 95
+Quality Score: 95
+```
+
+Workflow **discontinues** at checkpoint — this is expected.
+
+### /revise-plan happy path
+
+1. `/revise-plan fix the approach` — _should allow_ (reopens plan-review, resets review count)
+
+**State check:**
+
+```json
+{
+  "phases": [{ "name": "plan-review", "status": "in_progress" }],
+  "plan": { "revised": false, "reviews": [] }
+}
+```
+
+2. `Agent` with `subagent_type: "PlanReview"` — _should block_ (must edit plan first)
+3. `Edit` on `.claude/plans/latest-plan.md`, old*string: "Testing guardrails", new_string: "Testing guardrails — user revised" — \_should allow*
+4. `Agent` with `subagent_type: "PlanReview"`, prompt below — _should allow_
+
+```
+Do not read any files. Respond with exactly:
+
+Confidence Score: 95
+Quality Score: 95
+```
+
+Workflow **discontinues** again at checkpoint.
+
+### /plan-approved and edge cases
+
+1. `/plan-approved` — _should allow_ (resume after checkpoint, auto-starts create-tasks)
+
+**State check:**
+
+```json
+{
+  "phases": [
+    { "name": "plan-review", "status": "completed" },
+    { "name": "create-tasks", "status": "in_progress" }
+  ]
+}
+```
+
+2. `/revise-plan more changes` — _should block_ (current phase is create-tasks, not plan-review)
+
+**Violations check:**
+
+```markdown
+| ... | plan-review | Edit | (non-plan file) | ... |
+| ... | plan-review | Write | anything.py | ... |
+| ... | plan-review | Agent | PlanReview | ... |
+| ... | continue | Skill | continue | ... |
+| ... | plan-review | Agent | PlanReview | ... |
+| ... | revise-plan | Skill | revise-plan | ... |
+```
+
+**IMPORTANT**: Write report after this phase.
+
+## Phase: create-tasks (AUTO)
+
+Auto-starts after plan-review. Verify by reading state.
+
+1. `TaskCreate` with subject: "Deploy to production", description: "Ship it" — _should block_ (does not match any planned task)
+3. `TaskCreate` with subject: "", description: "Something" — _should block_ (empty subject)
+4. `TaskCreate` with subject: "Create hello function", description: "" — _should block_ (empty description)
+5. `TaskCreate` with subject: "Create hello function", description: "Implement the hello() function" — _should allow_
+
+**State check:**
+
+```json
+{
+  "created_tasks": ["Create hello function"],
+  "phases": [{ "name": "create-tasks", "status": "completed" }]
+}
+```
+
+**Violations check:**
+
+```markdown
+| ... | create-tasks | TaskCreate | Deploy to production | ... |
+| ... | create-tasks | TaskCreate | | ... |
+| ... | create-tasks | TaskCreate | Create hello function | ... |
+```
+
+Note: Row 3 has empty Action (empty subject). Row 4 has subject but empty description.
+
+**IMPORTANT**: Write report after this phase.
+
+## Phase: install-deps
+
+1. Invoke `/install-deps`
+2. `Write` to `app.py` — _should block_ (only package manager files)
+3. `Bash` with `echo "not an install"` — _should block_ (not an install command)
+4. `Write` to `requirements.txt` with content `# test deps` — _should allow_
+5. `Bash` with `pip install -r requirements.txt` — _should allow_
+
+**State check:**
+
+```json
+{
+  "dependencies": { "installed": true }
+}
+```
+
+**Violations check:**
+
+```markdown
+| ... | install-deps | Write | app.py | ... |
+| ... | install-deps | Bash | echo "not an install" | ... |
+```
+
+**IMPORTANT**: Write report after this phase.
+
+## Phase: define-contracts
+
+1. Invoke `/define-contracts`
+2. `Write` to `notes.md` — _should block_ (not in contracts file list)
+3. `Write` to `src/random.py` with content `x = 1` — _should block_ (not in contracts file list)
+4. `Write` to `src/hello.py` with content below — _should allow_ (listed in contracts, contains contract name)
+
+```python
+def HelloService(): return "hello"
+```
+
+**State check:**
+
+```json
+{
+  "contracts": {
+    "written": true,
+    "validated": true,
+    "code_files": ["src/hello.py"]
+  },
+  "phases": [{ "name": "define-contracts", "status": "completed" }]
+}
+```
+
+**Violations check:**
+
+```markdown
+| ... | define-contracts | Write | notes.md | ... |
+| ... | define-contracts | Write | src/random.py | ... |
+```
+
+**IMPORTANT**: Write report after this phase.
+
+## Phase: write-tests (AUTO)
+
+Auto-starts after define-contracts completes. Verify by reading `state.jsonl` — write-tests should be `in_progress`.
+
+1. `Write` to `app.py` — _should block_ (test files only)
+3. `Write` to `test_hello.py` with content below — _should allow_
+
 ```python
 def test_hello():
     from hello import hello
     assert hello() is None
 ```
-- Run tests: `Bash` with `python -m pytest test_hello.py -v` — should allow
 
-### test-review
+4. `Bash` with `python -m pytest test_hello.py -v` — _should allow_
 
-**DO**: Invoke `/test-review`.
+**State check:**
 
-**TRY (expect BLOCK):**
-- Edit unknown file: `Edit` on `unknown.py` — should block (not a test file in session)
+```json
+{
+  "tests": {
+    "file_paths": ["test_hello.py"],
+    "executed": true
+  },
+  "phases": [{ "name": "write-tests", "status": "completed" }]
+}
+```
 
-**TRY (expect ALLOW):**
-- Edit test file: `Edit` on `test_hello.py`, old_string: `assert hello() is None`, new_string: `assert hello() is None  # verified` — should allow
+**Violations check:**
 
-**DO**: Invoke `Agent` with `subagent_type: "TestReviewer"`, description: "Test", prompt: "Do not read any files. Respond with exactly:\n\n## Files to revise\n- test_hello.py\n\nPass"
+```markdown
+| ... | write-tests | Write | app.py | ... |
+```
 
-### write-code (AUTO)
+**IMPORTANT**: Write report after this phase.
 
-After test-review passes, write-code should auto-start.
+## Phase: test-review
 
-**TRY (expect BLOCK):**
-- Invoke `/write-code` as skill — should block (auto-phase)
-- Write markdown: `Write` to `readme.md` — should block (code files only)
+1. Invoke `/test-review`
+2. `Edit` on any existing non-test file (e.g. `claudeguard/scripts/stop.py`) — _should block_ (not a test file in session)
+3. `Edit` on `test_hello.py`, old*string: `assert hello() is None`, new_string: `assert hello() is None  # verified` — \_should allow*
 
-**TRY (expect ALLOW):**
-- Write code file: `Write` to `src/hello.py` with content `def hello(): return "hello"` — should allow
-- Run tests: `Bash` with `python -m pytest test_hello.py -v` — should allow
+### Iteration 1 (expect Fail)
 
-### quality-check
+1. `Agent` with `subagent_type: "TestReviewer"`, prompt below — _should allow_
 
-**DO**: Invoke `/quality-check`.
+```
+Do not read any files. Respond with exactly:
 
-**DO**: Invoke `Agent` with `subagent_type: "QASpecialist"`, description: "Test", prompt: "Do not read any files. Respond with exactly:\n\nPass"
+## Files to revise
+- test_hello.py
 
-### code-review
+Fail
+```
 
-**DO**: Invoke `/code-review`.
+**State check:**
 
-**TRY (expect BLOCK):**
-- Edit file not in session: `Edit` on `random.py` — should block
+```json
+{
+  "tests": {
+    "reviews": [{ "verdict": "Fail" }]
+  }
+}
+```
 
-**TRY (expect ALLOW):**
-- Edit code file in session: `Edit` on `src/hello.py`, old_string: `return "hello"`, new_string: `return "hello world"` — should allow
+### Revision + passing review
 
-**DO**: Invoke `Agent` with `subagent_type: "CodeReviewer"`, description: "Test", prompt: "Do not read any files. Respond with exactly:\n\nConfidence Score: 95\nQuality Score: 92\n\n## Files to revise\n- src/hello.py\n\n## Tests to revise\n- test_hello.py"
+1. `Edit` on `test_hello.py`, old*string: `assert hello() is None  # verified`, new_string: `assert hello() is None  # revised` — \_should allow*
+2. `Agent` with `subagent_type: "TestReviewer"`, prompt below — _should allow_
 
-### pr-create
+```
+Do not read any files. Respond with exactly:
 
-**DO**: Invoke `/pr-create`.
+## Files to revise
+- test_hello.py
 
-**TRY (expect BLOCK):**
-- PR create without --json: `Bash` with `gh pr create --title test` — should block
+Pass
+```
 
-**TRY (expect ALLOW):**
-- Git read command: `Bash` with `git status` — should allow (read-only always allowed)
+**State check:**
 
-**Note**: Skip actual PR creation. Move to next phase.
+```json
+{
+  "tests": {
+    "reviews": [{ "verdict": "Fail" }, { "verdict": "Pass" }]
+  },
+  "phases": [{ "name": "test-review", "status": "completed" }]
+}
+```
 
-### ci-check
+**Violations check:**
 
-**DO**: Invoke `/ci-check`.
+```markdown
+| ... | test-review | Edit | (non-test file) | ... |
+```
 
-**TRY (expect BLOCK):**
-- CI check without --json: `Bash` with `gh pr checks` — should block
+**IMPORTANT**: Write report after this phase.
 
-**Note**: Skip actual CI check. Move to next phase.
+## Phase: write-code (AUTO)
 
-### write-report
+Auto-starts after test-review passes. Verify by reading `state.jsonl` — write-code should be `in_progress`.
 
-**DO**: Invoke `/write-report`.
+1. `Write` to `readme.md` — _should block_ (code files only)
+3. `Write` to `src/hello.py` with content below — _should allow_
 
-**TRY (expect BLOCK):**
-- Write code file: `Write` to `feature.py` — should block (report phase, only report path)
+```python
+def hello(): return "hello"
+```
 
-**TRY (expect ALLOW):**
-- Write report: `Write` to `.claude/reports/report.md` with content `# Test Report\n\nAll guardrails tested.` — should allow
+4. `Bash` with `python -m pytest test_hello.py -v` — _should allow_
+
+**State check:**
+
+```json
+{
+  "code_files": {
+    "file_paths": ["src/hello.py"]
+  },
+  "phases": [{ "name": "write-code", "status": "completed" }]
+}
+```
+
+**Violations check:**
+
+```markdown
+| ... | write-code | Write | readme.md | ... |
+```
+
+**IMPORTANT**: Write report after this phase.
+
+## Phase: quality-check
+
+1. Invoke `/quality-check`
+
+### Iteration 1 (expect Fail)
+
+1. `Agent` with `subagent_type: "QASpecialist"`, prompt below — _should allow_
+
+```
+Do not read any files. Respond with exactly:
+
+Fail
+```
+
+**State check:**
+
+```json
+{
+  "quality_check_result": "Fail"
+}
+```
+
+### Passing review
+
+1. `Agent` with `subagent_type: "QASpecialist"`, prompt below — _should allow_
+
+```
+Do not read any files. Respond with exactly:
+
+Pass
+```
+
+**State check:**
+
+```json
+{
+  "quality_check_result": "Pass"
+}
+```
+
+**IMPORTANT**: Write report after this phase.
+
+## Phase: code-review
+
+1. Invoke `/code-review`
+2. `Edit` on any existing non-code-session file (e.g. `claudeguard/scripts/stop.py`) — _should block_ (not in session code files)
+3. `Edit` on `src/hello.py`, old*string: `return "hello"`, new_string: `return "hello world"` — \_should allow*
+
+### Iteration 1 (expect Fail)
+
+1. `Agent` with `subagent_type: "CodeReviewer"`, prompt below — _should allow_
+
+```
+Do not read any files. Respond with exactly:
+
+Confidence Score: 50
+Quality Score: 50
+
+## Files to revise
+- src/hello.py
+
+## Tests to revise
+- test_hello.py
+```
+
+**State check:**
+
+```json
+{
+  "code_files": {
+    "reviews": [{ "status": "Fail" }]
+  }
+}
+```
+
+### /revise-plan edge case (code-review)
+
+1. `/revise-plan something` — _should block_ (only works during plan-review phase)
+
+### Revision + passing review
+
+1. `Edit` on `src/hello.py`, old*string: `return "hello world"`, new_string: `return "hello world!"` — \_should allow*
+2. `Agent` with `subagent_type: "CodeReviewer"`, prompt below — _should allow_
+
+```
+Do not read any files. Respond with exactly:
+
+Confidence Score: 95
+Quality Score: 92
+
+## Files to revise
+- src/hello.py
+
+## Tests to revise
+- test_hello.py
+```
+
+**State check:**
+
+```json
+{
+  "code_files": {
+    "reviews": [{ "status": "Fail" }, { "status": "Pass" }]
+  },
+  "phases": [{ "name": "code-review", "status": "completed" }]
+}
+```
+
+**Violations check:**
+
+```markdown
+| ... | code-review | Edit | (non-session file) | ... |
+| ... | revise-plan | Skill | revise-plan | ... |
+```
+
+**IMPORTANT**: Write report after this phase.
+
+## Phase: pr-create
+
+1. Invoke `/pr-create`
+2. `Bash` with `echo "hello"` — _should block_ (not in PR commands list)
+3. `Bash` with `gh pr create --title test` — _should block_ (missing --json flag)
+4. `Bash` with `git status` — _should allow_ (read-only always allowed)
+
+**Note:** Skip actual PR creation. Move to next phase.
+
+**Violations check:**
+
+```markdown
+| ... | pr-create | Bash | echo "hello" | ... |
+| ... | pr-create | Bash | gh pr create --title test | ... |
+```
+
+**IMPORTANT**: Write report after this phase.
+
+## Phase: ci-check
+
+1. Invoke `/ci-check`
+2. `Bash` with `echo "hello"` — _should block_ (not in CI commands list)
+3. `Bash` with `gh pr checks` — _should block_ (missing --json flag)
+
+**Note:** Skip actual CI check. Move to next phase.
+
+**Violations check:**
+
+```markdown
+| ... | ci-check | Bash | echo "hello" | ... |
+| ... | ci-check | Bash | gh pr checks | ... |
+```
+
+**IMPORTANT**: Write report after this phase.
+
+## Stop hook
+
+Before entering write-report, the workflow is incomplete. Attempting to stop should be blocked.
+
+1. Attempt to stop (present final message without invoking `/write-report`) — _should block_ (not all phases completed)
+
+## Phase: write-report
+
+1. Invoke `/write-report`
+2. `Write` to `feature.py` — _should block_ (report phase, only report path)
+3. `Write` to `.claude/reports/report.md` with content below — _should allow_
+
+```markdown
+# Test Report
+
+All guardrails tested.
+```
+
+**State check:**
+
+```json
+{
+  "report_written": true
+}
+```
+
+**Violations check:**
+
+```markdown
+| ... | write-report | Write | feature.py | ... |
+```
 
 ---
 
 ## Final Report
 
-Present the test results table. Count total tests, PASS, and FAIL.
+1. Present all three tables (Guardrail Tests + State Verification + Violations Log). Count totals.
+2. Clean up test files: `test_hello.py`, `src/hello.py`, `requirements.txt`.
 
-Clean up any test files created (`test_hello.py`, `src/hello.py`, `requirements.txt`).
-
-If all tests pass: **All build guardrails verified.**
+If all pass: **All build guardrails verified.**
 If any fail: **GUARDRAIL FAILURES DETECTED — investigate before using in production.**

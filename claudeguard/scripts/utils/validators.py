@@ -101,6 +101,115 @@ def _get_workflow_phases(config: Config, state: StateStore) -> list[str]:
     return phases if phases else config.main_phases
 
 
+REVIEW_PHASES = {"plan-review", "test-review", "tests-review", "code-review", "quality-check", "validate"}
+
+
+def _is_review_exhausted(phase: str, state: StateStore) -> bool:
+    """Check if a review phase hit max iterations (3)."""
+    if phase == "plan-review":
+        return state.plan_review_count >= 3 and state.last_plan_review.get("status") == "Fail"
+    if phase in ("test-review", "tests-review"):
+        return state.test_review_count >= 3 and state.last_test_review.get("verdict") == "Fail"
+    if phase == "code-review":
+        return state.code_review_count >= 3 and state.last_code_review.get("status") == "Fail"
+    if phase in ("quality-check", "validate"):
+        return state.qa_specialist_count >= 3 and state.quality_check_result == "Fail"
+    return False
+
+
+def _handle_continue(config: Config, state: StateStore) -> Result:
+    """/continue — force-complete the current phase and proceed."""
+    current = state.current_phase
+
+    if current == "plan-review":
+        raise ValueError(
+            "Use '/plan-approved' to approve the plan, or '/revise-plan' to revise it."
+        )
+
+    status = state.get_phase_status(current)
+
+    # Phase already completed — auto-start next
+    if status == "completed":
+        from .resolvers import _auto_start_next
+        _auto_start_next(config, state)
+        return True, f"Continuing after completed phase: {current}"
+
+    # Phase in progress — force-complete it
+    if status == "in_progress":
+        state.complete_phase(current)
+        from .resolvers import _auto_start_next
+        _auto_start_next(config, state)
+        return True, f"Force-completed phase: {current}"
+
+    raise ValueError(
+        f"'/continue' cannot continue — current phase '{current}' has status '{status}'."
+    )
+
+
+def _handle_plan_approved(config: Config, state: StateStore) -> Result:
+    """/plan-approved — user approves plan and proceeds to next phase."""
+    current = state.current_phase
+    status = state.get_phase_status(current)
+
+    if current != "plan-review":
+        raise ValueError(
+            "'/plan-approved' can only be used during plan-review. "
+            f"Current phase: '{current}'"
+        )
+
+    # Case 1: plan-review passed (checkpoint)
+    if status == "completed":
+        from .resolvers import _auto_start_next
+        _auto_start_next(config, state, skip_checkpoint=True)
+        return True, "Plan approved. Proceeding to next phase."
+
+    # Case 2: plan-review exhausted (3 fails, user approves anyway)
+    if status == "in_progress" and _is_review_exhausted("plan-review", state):
+        state.complete_phase("plan-review")
+        from .resolvers import _auto_start_next
+        _auto_start_next(config, state, skip_checkpoint=True)
+        return True, "Plan approved (after review exhaustion). Proceeding to next phase."
+
+    raise ValueError(
+        "'/plan-approved' requires plan-review to be at checkpoint (passed) or exhausted (3 fails). "
+        f"Current status: {status}, review count: {state.plan_review_count}"
+    )
+
+
+def _handle_revise_plan(state: StateStore) -> Result:
+    """/revise-plan — reopen plan-review for editing after pass or exhaustion."""
+    current = state.current_phase
+    status = state.get_phase_status(current)
+
+    if current != "plan-review":
+        raise ValueError(
+            "'/revise-plan' can only be used during plan-review. "
+            f"Current phase: '{current}'"
+        )
+
+    is_checkpoint = status == "completed"
+    is_exhausted = status == "in_progress" and _is_review_exhausted("plan-review", state)
+
+    if not is_checkpoint and not is_exhausted:
+        raise ValueError(
+            "'/revise-plan' requires plan-review to be at checkpoint (passed) or exhausted (3 fails). "
+            f"Current status: {status}, review count: {state.plan_review_count}"
+        )
+
+    # Reopen the phase and reset reviews for fresh cycle
+    def _reopen(d: dict) -> None:
+        for p in d.get("phases", []):
+            if p["name"] == "plan-review":
+                p["status"] = "in_progress"
+                break
+        plan = d.setdefault("plan", {})
+        plan["revised"] = False
+        plan["reviews"] = []  # reset for fresh review cycle
+
+    state.update(_reopen)
+    return True, "Plan-review reopened for revision. Edit the plan, then re-invoke PlanReview."
+
+
 def is_phase_allowed(hook_input: dict, config: Config, state: StateStore) -> Result:
     """Validate phase transition (skill invocation)."""
 
@@ -108,6 +217,24 @@ def is_phase_allowed(hook_input: dict, config: Config, state: StateStore) -> Res
     status = state.get_phase_status(current)
     next_phase = extract_skill_name(hook_input)
     phases = _get_workflow_phases(config, state)
+
+    # /continue — force-complete a stuck review phase (not plan-review)
+    if next_phase == "continue":
+        return _handle_continue(config, state)
+
+    # /plan-approved — user approves plan and proceeds
+    if next_phase == "plan-approved":
+        return _handle_plan_approved(config, state)
+
+    # /revise-plan — reopen plan-review after pass or exhaustion
+    if next_phase == "revise-plan":
+        return _handle_revise_plan(state)
+
+    # /reset-plan-review — test-only state reset
+    if next_phase == "reset-plan-review":
+        if state.get("test_mode"):
+            return True, "Test-mode reset allowed"
+        raise ValueError("'/reset-plan-review' is only available in test mode.")
 
     # Block auto-phases from being invoked as skills
     if config.is_auto_phase(next_phase):
@@ -137,7 +264,17 @@ def is_phase_allowed(hook_input: dict, config: Config, state: StateStore) -> Res
 
     # Filter out auto-phases for skill-invoked ordering — they're handled by resolvers
     skill_phases = [p for p in phases if not config.is_auto_phase(p)]
-    _, message = validate_order(current, next_phase, skill_phases)
+    # When TDD is disabled, test-review/tests-review are skipped — remove from ordering
+    if not state.get("tdd", False):
+        skill_phases = [p for p in skill_phases if p not in ("test-review", "tests-review")]
+    prev_for_ordering = current
+    if config.is_auto_phase(current):
+        completed = [p["name"] for p in state.phases if p["status"] == "completed"]
+        for p in reversed(completed):
+            if p in skill_phases:
+                prev_for_ordering = p
+                break
+    _, message = validate_order(prev_for_ordering, next_phase, skill_phases)
     return True, message
 
 
@@ -188,6 +325,10 @@ def is_command_allowed(hook_input: dict, config: Config, state: StateStore) -> R
     if phase in config.docs_write_phases:
         return _check_read_only(command, phase)
 
+    # Read-only commands allowed in any phase
+    if any(command.startswith(cmd) for cmd in READ_ONLY_COMMANDS):
+        return True, f"Read-only command allowed in phase: {phase}"
+
     # Phase-specific whitelist
     _check_phase_commands(command, phase)
 
@@ -230,6 +371,29 @@ def _is_plan_path_allowed(file_path: str, config: Config) -> None:
         raise ValueError(f"Writing '{file_path}' not allowed" f"\nAllowed: {allowed}")
 
 
+def _validate_contracts_content(content: str) -> None:
+    """Check that contracts file has ## Specifications with at least one table row."""
+    if "## Specifications" not in content:
+        raise ValueError(
+            "Contracts file missing required section: ## Specifications. "
+            "See the contracts template for the correct format."
+        )
+
+    sections = extract_md_sections(content, 2)
+    for name, body in sections:
+        if name.strip() == "Specifications":
+            from .extractors import extract_table
+            table = extract_table(body)
+            if len(table) < 2:  # header + at least 1 data row
+                raise ValueError(
+                    "## Specifications must have at least one contract in the table. "
+                    "See the contracts template for the correct format."
+                )
+            return
+
+    raise ValueError("## Specifications section is empty.")
+
+
 def _is_test_path_allowed(file_path: str) -> None:
     basename = file_path.rsplit("/", 1)[-1]
     if not any(fnmatch(basename, p) for p in TEST_FILE_PATTERNS):
@@ -247,6 +411,15 @@ def _is_code_path_allowed(file_path: str) -> None:
         )
 
 
+def _is_contract_file_allowed(file_path: str, contract_files: list[str]) -> None:
+    """Define-contracts: only allow files listed in contracts ## Specifications File column."""
+    if file_path not in contract_files and not any(file_path.endswith(f) for f in contract_files):
+        raise ValueError(
+            f"Writing '{file_path}' not in contracts ## Specifications file list"
+            f"\nAllowed: {contract_files}"
+        )
+
+
 def _is_implement_code_path_allowed(file_path: str, state: StateStore) -> None:
     """Implement workflow: only allow files listed in plan's Files to Create/Modify."""
     allowed = state.plan_files_to_modify
@@ -257,7 +430,7 @@ def _is_implement_code_path_allowed(file_path: str, state: StateStore) -> None:
         )
 
 
-BUILD_PLAN_REQUIRED_SECTIONS = ["## Dependencies", "## Contracts", "## Tasks"]
+BUILD_PLAN_REQUIRED_SECTIONS = ["## Dependencies", "## Tasks", "## Files to Modify"]
 BUILD_PLAN_BULLET_SECTIONS = ["Dependencies", "Tasks"]
 
 IMPLEMENT_PLAN_REQUIRED_SECTIONS = ["## Context", "## Approach", "## Files to Create/Modify", "## Verification"]
@@ -323,6 +496,9 @@ def _is_report_path_allowed(file_path: str, config: Config) -> None:
         raise ValueError(f"Writing '{file_path}' not allowed" f"\nAllowed: {expected}")
 
 
+E2E_TEST_REPORT = ".claude/reports/E2E_TEST_REPORT.md"
+
+
 def is_file_write_allowed(
     hook_input: dict, config: Config, state: StateStore
 ) -> Result:
@@ -330,6 +506,10 @@ def is_file_write_allowed(
 
     phase = state.current_phase
     file_path = hook_input.get("tool_input", {}).get("file_path", "")
+
+    # Test mode: always allow writing the E2E test report
+    if state.get("test_mode") and (file_path == E2E_TEST_REPORT or file_path.endswith(E2E_TEST_REPORT)):
+        return True, "E2E test report write allowed (test mode)"
 
     _is_writable_phase(phase, config)
 
@@ -342,10 +522,21 @@ def is_file_write_allowed(
         ):
             workflow_type = state.get("workflow_type", "build")
             _validate_plan_content(content, workflow_type)
+        if config.contracts_file_path and (
+            file_path == config.contracts_file_path
+            or file_path.endswith(config.contracts_file_path)
+        ):
+            workflow_type = state.get("workflow_type", "build")
+            if workflow_type == "build":
+                _validate_contracts_content(content)
     elif phase == "install-deps":
         _is_package_manager_path_allowed(file_path)
     elif phase == "define-contracts":
-        _is_code_path_allowed(file_path)
+        contract_files = state.get("contract_files", [])
+        if contract_files:
+            _is_contract_file_allowed(file_path, contract_files)
+        else:
+            _is_code_path_allowed(file_path)
     elif phase == "write-tests":
         _is_test_path_allowed(file_path)
     elif phase == "write-code":
@@ -441,6 +632,10 @@ def is_file_edit_allowed(hook_input: dict, config: Config, state: StateStore) ->
     phase = state.current_phase
     file_path = hook_input.get("tool_input", {}).get("file_path", "")
 
+    # Test mode: always allow editing the E2E test report
+    if state.get("test_mode") and (file_path == E2E_TEST_REPORT or file_path.endswith(E2E_TEST_REPORT)):
+        return True, "E2E test report edit allowed (test mode)"
+
     _is_editable_phase(phase, config)
 
     if phase == "plan-review":
@@ -495,8 +690,7 @@ def _is_agent_count_under_max(
 def _is_revision_done(next_agent: str, phase: str, state: StateStore) -> None:
     """Block review agents if revision hasn't happened since last Fail."""
     if phase == "plan-review" and next_agent == "PlanReview":
-        last = state.last_plan_review
-        if last and last.get("status") == "Fail" and not state.plan_revised:
+        if state.plan_revised is False:
             raise ValueError("Plan must be revised before re-invoking PlanReview")
 
     if phase in ("test-review", "tests-review") and next_agent == "TestReviewer":
@@ -529,8 +723,12 @@ def is_agent_allowed(hook_input: dict, config: Config, state: StateStore) -> Res
     if phase == "explore" and _is_parallel_research_allowed(state, next_agent):
         return True, "Running Research in parallel with Explore"
 
-    # Parallel case: explore is still in_progress but current_phase is research
-    if next_agent == "Explore" and state.get_phase_status("explore") == "in_progress":
+    # Parallel case: research is running but user wants more Explore agents
+    if (
+        next_agent == "Explore"
+        and phase == "research"
+        and state.get_phase_status("explore") is not None
+    ):
         phase = "explore"
 
     _is_expected_agent(next_agent, phase, config)

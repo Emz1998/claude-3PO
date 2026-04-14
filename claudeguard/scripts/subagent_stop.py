@@ -42,7 +42,7 @@ def main() -> None:
 
     # Review phases: validate the agent report (scores/verdict)
     phase = state.current_phase
-    if phase in ("plan-review", "test-review", "tests-review", "code-review"):
+    if phase in ("plan-review", "test-review", "tests-review", "code-review", "quality-check", "validate"):
         guard = STOP_GUARDS.get("agent_report")
         if guard:
             decision, message = guard(hook_input, config, state)

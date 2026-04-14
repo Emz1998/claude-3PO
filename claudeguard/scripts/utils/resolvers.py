@@ -54,8 +54,6 @@ def resolve_plan_review(config: Config, state: StateStore) -> None:
         is_revision_needed("plan", confidence, quality, config)
     except ValueError:
         state.set_last_plan_review_status("Fail")
-        if state.plan_review_count >= 3:
-            raise ValueError("Plan review reached max iterations (3). Discontinuing.")
         state.set_plan_revised(False)
         return
 
@@ -84,8 +82,6 @@ def resolve_code_review(config: Config, state: StateStore) -> None:
         is_revision_needed("code", confidence, quality, config)
     except ValueError:
         state.set_last_code_review_status("Fail")
-        if state.code_review_count >= 3:
-            raise ValueError("Code review reached max iterations (3). Discontinuing.")
         return
 
     state.set_last_code_review_status("Pass")
@@ -101,8 +97,6 @@ def resolve_test_review(config: Config, state: StateStore) -> None:
     verdict = last.get("verdict")
 
     if verdict == "Fail":
-        if state.test_review_count >= 3:
-            raise ValueError("Test review reached max iterations (3). Discontinuing.")
         return
 
     if verdict == "Pass":
@@ -124,8 +118,8 @@ def resolve_quality_check(state: StateStore) -> None:
 
 def resolve_write_code(state: StateStore) -> None:
     """Check if all expected code files are written and complete the phase."""
-    to_write = set(state.code_files_to_write)
-    written = set(state.code_files.get("file_paths", []))
+    to_write = state._basenames(state.code_files_to_write)
+    written = state._basenames(state.code_files.get("file_paths", []))
 
     if to_write and not (to_write - written):
         state.complete_phase("write-code")
@@ -199,16 +193,53 @@ def resolve_install_dependencies(state: StateStore) -> None:
 
 
 def resolve_define_contracts(state: StateStore) -> None:
-    """Complete when contracts are validated and written as code."""
+    """Complete when all contract names are found in written code files."""
+    from pathlib import Path
+
     contracts = state.contracts
-    if contracts.get("written") and contracts.get("validated"):
+    if not contracts.get("written"):
+        return
+
+    # If already validated, just check completion
+    if contracts.get("validated"):
+        state.complete_phase("define-contracts")
+        return
+
+    # Validate: each contract name must appear in a written code file
+    names = contracts.get("names", [])
+    code_files = contracts.get("code_files", [])
+
+    if not names or not code_files:
+        return
+
+    # Read each code file and check for contract names
+    found_names = set()
+    for fp in code_files:
+        path = Path(fp)
+        if path.exists():
+            content = path.read_text()
+            for name in names:
+                if name in content:
+                    found_names.add(name)
+
+    if found_names >= set(names):
+        state.set_contracts_validated(True)
         state.complete_phase("define-contracts")
 
 
 def resolve_create_tasks(state: StateStore) -> None:
-    """Complete create-tasks when all project tasks have at least one subtask."""
-    if state.all_project_tasks_have_subtasks:
-        state.complete_phase("create-tasks")
+    """Complete create-tasks based on workflow type.
+
+    Build: all plan ## Tasks bullets have a matching created task.
+    Implement: all project tasks have at least one subtask.
+    """
+    workflow_type = state.get("workflow_type", "build")
+    if workflow_type == "implement":
+        if state.all_project_tasks_have_subtasks:
+            state.complete_phase("create-tasks")
+    else:
+        if state.all_tasks_created:
+            state.complete_phase("create-tasks")
 
 
 def resolve_validate(state: StateStore) -> None:
@@ -218,12 +249,16 @@ def resolve_validate(state: StateStore) -> None:
         state.complete_phase("validate")
 
 
-def _auto_start_next(config: Config, state: StateStore) -> None:
+def _auto_start_next(config: Config, state: StateStore, skip_checkpoint: bool = False) -> None:
     """If the current phase just completed and the next is an auto-phase, start it."""
     phase = state.current_phase
     if not phase:
         return
     if state.get_phase_status(phase) != "completed":
+        return
+
+    # Checkpoint: plan-review pass pauses for user to /plan-approved or /revise-plan
+    if phase == "plan-review" and not skip_checkpoint:
         return
 
     workflow_type = state.get("workflow_type", "build")
@@ -255,6 +290,26 @@ def _auto_start_next(config: Config, state: StateStore) -> None:
     state.add_phase(next_phase)
 
 
+def _check_workflow_complete(config: Config, state: StateStore) -> None:
+    """If all required phases are completed, mark workflow as completed."""
+    if state.get("status") == "completed":
+        return
+
+    workflow_type = state.get("workflow_type", "build")
+    phases = config.get_phases(workflow_type) or config.main_phases
+    skip = state.get("skip", [])
+    tdd = state.get("tdd", False)
+
+    required = [p for p in phases if p not in skip]
+    if not tdd:
+        required = [p for p in required if p not in ("write-tests", "test-review", "tests-review")]
+
+    completed = {p["name"] for p in state.phases if p["status"] == "completed"}
+    if all(p in completed for p in required):
+        state.set("status", "completed")
+        state.set("workflow_active", False)
+
+
 def resolve(config: Config, state: StateStore) -> None:
     """Main resolver — dispatch based on current phase."""
     phase = state.current_phase
@@ -283,5 +338,12 @@ def resolve(config: Config, state: StateStore) -> None:
     if resolver:
         resolver()
 
+    # Parallel case: resolve explore if it's still in_progress while research is current
+    if phase == "research" and state.get_phase_status("explore") == "in_progress":
+        resolve_explore(config, state)
+
     # Auto-start next phase if it's an auto-phase
     _auto_start_next(config, state)
+
+    # Check if all required phases are done
+    _check_workflow_complete(config, state)

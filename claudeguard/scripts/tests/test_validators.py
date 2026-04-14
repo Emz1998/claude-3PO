@@ -84,7 +84,7 @@ class TestIsFileWriteAllowed:
         state.set("workflow_type", "build")
         state.add_phase("plan")
         state.add_agent(Agent(name="Plan", status="completed", tool_use_id="p-1"))
-        content = "# Plan\n\n## Dependencies\n- flask\n\n## Contracts\n- UserService\n\n## Tasks\n- Build login\n"
+        content = "# Plan\n\n## Dependencies\n- flask\n\n## Tasks\n- Build login\n\n## Files to Modify\n\n| Action | Path |\n|--------|------|\n| Create | src/app.py |\n"
         hook = make_hook_input("Write", {"file_path": ".claude/plans/latest-plan.md", "content": content})
         ok, _ = is_file_write_allowed(hook, config, state)
         assert ok is True
@@ -248,6 +248,7 @@ class TestIsAgentAllowed:
         state.add_phase("plan-review")
         state.add_plan_review({"confidence_score": 50, "quality_score": 50})
         state.set_last_plan_review_status("Fail")
+        state.set_plan_revised(False)
         hook = make_hook_input("Agent", {"subagent_type": "PlanReview"})
         with pytest.raises(ValueError, match="must be revised"):
             is_agent_allowed(hook, config, state)
@@ -501,20 +502,22 @@ class TestValidateReviewSections:
 
 
 class TestPlanContentValidation:
-    """Plan Write must include ## Dependencies, ## Contracts, ## Tasks sections (build workflow)."""
+    """Plan Write must include ## Dependencies, ## Tasks, ## Files to Modify sections (build workflow)."""
 
     @pytest.fixture(autouse=True)
     def _set_build_workflow(self, state):
         state.set("workflow_type", "build")
 
-    def _plan_content(self, deps=True, contracts=True, tasks=True):
+    _FILES_TABLE = "## Files to Modify\n\n| Action | Path |\n|--------|------|\n| Create | src/app.py |\n"
+
+    def _plan_content(self, deps=True, tasks=True, files=True):
         parts = ["# Implementation Plan\n"]
         if deps:
             parts.append("## Dependencies\n- flask\n")
-        if contracts:
-            parts.append("## Contracts\n- UserService\n")
         if tasks:
             parts.append("## Tasks\n- Build login\n")
+        if files:
+            parts.append(self._FILES_TABLE)
         return "\n".join(parts)
 
     def test_plan_write_with_all_sections_allowed(self, config, state):
@@ -537,16 +540,6 @@ class TestPlanContentValidation:
         with pytest.raises(ValueError, match="Dependencies"):
             is_file_write_allowed(hook, config, state)
 
-    def test_plan_write_missing_contracts_blocked(self, config, state):
-        state.add_phase("plan")
-        state.add_agent(Agent(name="Plan", status="completed", tool_use_id="p-1"))
-        hook = make_hook_input("Write", {
-            "file_path": ".claude/plans/latest-plan.md",
-            "content": self._plan_content(contracts=False),
-        })
-        with pytest.raises(ValueError, match="Contracts"):
-            is_file_write_allowed(hook, config, state)
-
     def test_plan_write_missing_tasks_blocked(self, config, state):
         state.add_phase("plan")
         state.add_agent(Agent(name="Plan", status="completed", tool_use_id="p-1"))
@@ -555,6 +548,16 @@ class TestPlanContentValidation:
             "content": self._plan_content(tasks=False),
         })
         with pytest.raises(ValueError, match="Tasks"):
+            is_file_write_allowed(hook, config, state)
+
+    def test_plan_write_missing_files_to_modify_blocked(self, config, state):
+        state.add_phase("plan")
+        state.add_agent(Agent(name="Plan", status="completed", tool_use_id="p-1"))
+        hook = make_hook_input("Write", {
+            "file_path": ".claude/plans/latest-plan.md",
+            "content": self._plan_content(files=False),
+        })
+        with pytest.raises(ValueError, match="Files to Modify"):
             is_file_write_allowed(hook, config, state)
 
     def test_plan_write_missing_all_sections_blocked(self, config, state):
@@ -574,12 +577,12 @@ class TestPlanContentValidation:
         content = (
             "# Plan\n\n"
             "## Dependencies\n- flask\n\n"
-            "## Contracts\n- UserService\n\n"
             "## Tasks\n\n"
             "### Task 1: Build login\n"
             "Some description.\n\n"
             "### Task 2: Create schema\n"
-            "Some description.\n"
+            "Some description.\n\n"
+            + self._FILES_TABLE
         )
         hook = make_hook_input("Write", {
             "file_path": ".claude/plans/latest-plan.md",
@@ -596,8 +599,8 @@ class TestPlanContentValidation:
             "# Plan\n\n"
             "## Dependencies\n\n"
             "### Python packages\n- flask\n\n"
-            "## Contracts\n- UserService\n\n"
-            "## Tasks\n- Build login\n"
+            "## Tasks\n- Build login\n\n"
+            + self._FILES_TABLE
         )
         hook = make_hook_input("Write", {
             "file_path": ".claude/plans/latest-plan.md",
@@ -613,8 +616,8 @@ class TestPlanContentValidation:
         content = (
             "# Plan\n\n"
             "## Dependencies\n- flask\n\n"
-            "## Contracts\n- UserService\n\n"
-            "## Tasks\n\nSome prose but no bullet items.\n"
+            "## Tasks\n\nSome prose but no bullet items.\n\n"
+            + self._FILES_TABLE
         )
         hook = make_hook_input("Write", {
             "file_path": ".claude/plans/latest-plan.md",
@@ -630,7 +633,9 @@ class TestPlanContentValidation:
 
 
 class TestPlanEditSectionPreservation:
-    """Plan Edit in plan-review must not remove ## Dependencies, ## Contracts, ## Tasks (build workflow)."""
+    """Plan Edit in plan-review must not remove ## Dependencies, ## Tasks, ## Files to Modify (build workflow)."""
+
+    _VALID_PLAN = "# Plan\n\n## Dependencies\n- flask\n\n## Tasks\n- Build login\n\n## Files to Modify\n\n| Action | Path |\n|--------|------|\n| Create | src/app.py |\n"
 
     @pytest.fixture(autouse=True)
     def _set_build_workflow(self, state):
@@ -638,9 +643,7 @@ class TestPlanEditSectionPreservation:
 
     def test_edit_preserving_sections_allowed(self, config, state, tmp_path, monkeypatch):
         plan_file = tmp_path / "latest-plan.md"
-        plan_file.write_text(
-            "# Plan\n\n## Dependencies\n- flask\n\n## Contracts\n- UserService\n\n## Tasks\n- Build login\n"
-        )
+        plan_file.write_text(self._VALID_PLAN)
         monkeypatch.setattr(type(config), "plan_file_path", property(lambda self: str(plan_file)))
         state.add_phase("plan-review")
         hook = make_hook_input("Edit", {
@@ -653,9 +656,7 @@ class TestPlanEditSectionPreservation:
 
     def test_edit_removing_dependencies_blocked(self, config, state, tmp_path, monkeypatch):
         plan_file = tmp_path / "latest-plan.md"
-        plan_file.write_text(
-            "# Plan\n\n## Dependencies\n- flask\n\n## Contracts\n- UserService\n\n## Tasks\n- Build login\n"
-        )
+        plan_file.write_text(self._VALID_PLAN)
         monkeypatch.setattr(type(config), "plan_file_path", property(lambda self: str(plan_file)))
         state.add_phase("plan-review")
         hook = make_hook_input("Edit", {
@@ -668,9 +669,7 @@ class TestPlanEditSectionPreservation:
 
     def test_edit_removing_tasks_blocked(self, config, state, tmp_path, monkeypatch):
         plan_file = tmp_path / "latest-plan.md"
-        plan_file.write_text(
-            "# Plan\n\n## Dependencies\n- flask\n\n## Contracts\n- UserService\n\n## Tasks\n- Build login\n"
-        )
+        plan_file.write_text(self._VALID_PLAN)
         monkeypatch.setattr(type(config), "plan_file_path", property(lambda self: str(plan_file)))
         state.add_phase("plan-review")
         hook = make_hook_input("Edit", {

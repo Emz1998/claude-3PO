@@ -136,7 +136,7 @@ class TestBuildInitialState:
     def test_all_schema_keys_present(self):
         state = build_initial_state("implement", "sess-1", "")
         expected_keys = {
-            "session_id", "workflow_active", "workflow_type", "phases",
+            "session_id", "workflow_active", "status", "workflow_type", "test_mode", "phases",
             "tdd", "story_id", "skip", "instructions",
             "agents", "plan", "tasks", "dependencies", "contracts",
             "tests", "code_files_to_write",
@@ -291,7 +291,7 @@ class TestBuildInitialStateDepsContracts:
     def test_all_schema_keys_include_new_fields(self):
         state = build_initial_state("implement", "sess-1", "")
         expected_keys = {
-            "session_id", "workflow_active", "workflow_type", "phases",
+            "session_id", "workflow_active", "status", "workflow_type", "test_mode", "phases",
             "tdd", "story_id", "skip", "instructions",
             "agents", "plan", "tasks", "tests", "code_files_to_write",
             "code_files", "quality_check_result", "pr", "ci-check",

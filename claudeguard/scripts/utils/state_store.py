@@ -282,10 +282,10 @@ class StateStore:
     # ── Plan revision tracking ──────────────────────────────────────
 
     @property
-    def plan_revised(self) -> bool:
-        return self.load().get("plan", {}).get("revised", False)
+    def plan_revised(self) -> bool | None:
+        return self.load().get("plan", {}).get("revised", None)
 
-    def set_plan_revised(self, revised: bool) -> None:
+    def set_plan_revised(self, revised: bool | None) -> None:
         def _set(d: dict) -> None:
             d.setdefault("plan", {})["revised"] = revised
 
@@ -318,10 +318,15 @@ class StateStore:
 
         self.update(_add)
 
+    @staticmethod
+    def _basenames(paths: list[str]) -> set:
+        """Extract basenames for path-agnostic comparison."""
+        return {p.rsplit("/", 1)[-1] for p in paths}
+
     @property
     def all_files_revised(self) -> bool:
-        to_revise = set(self.files_to_revise)
-        revised = set(self.files_revised)
+        to_revise = self._basenames(self.files_to_revise)
+        revised = self._basenames(self.files_revised)
         return bool(to_revise) and not (to_revise - revised)
 
     # ── Code review: test revision tracking (TDD) ─────────────────
@@ -353,8 +358,8 @@ class StateStore:
 
     @property
     def all_code_tests_revised(self) -> bool:
-        to_revise = set(self.code_tests_to_revise)
-        revised = set(self.code_tests_revised)
+        to_revise = self._basenames(self.code_tests_to_revise)
+        revised = self._basenames(self.code_tests_revised)
         return bool(to_revise) and not (to_revise - revised)
 
     # ── Agents ─────────────────────────────────────────────────────
@@ -513,8 +518,8 @@ class StateStore:
 
     @property
     def all_test_files_revised(self) -> bool:
-        to_revise = set(self.test_files_to_revise)
-        revised = set(self.test_files_revised)
+        to_revise = self._basenames(self.test_files_to_revise)
+        revised = self._basenames(self.test_files_revised)
         return bool(to_revise) and not (to_revise - revised)
 
     # ── Code files to write ──────────────────────────────────────────
@@ -587,6 +592,10 @@ class StateStore:
 
     def set_quality_check_result(self, result: ReviewResult) -> None:
         self.set("quality_check_result", result)
+
+    @property
+    def qa_specialist_count(self) -> int:
+        return self.count_agents("QASpecialist")
 
     # ── PR ─────────────────────────────────────────────────────────
 
@@ -663,6 +672,27 @@ class StateStore:
     def set_tasks(self, tasks: list[str]) -> None:
         self.set("tasks", tasks)
 
+    # ── Created tasks (build workflow — tracks TaskCreate completions) ─
+
+    @property
+    def created_tasks(self) -> list[str]:
+        return self.load().get("created_tasks", [])
+
+    def add_created_task(self, subject: str) -> None:
+        def _add(d: dict) -> None:
+            ct = d.get("created_tasks", [])
+            if subject not in ct:
+                ct.append(subject)
+            d["created_tasks"] = ct
+
+        self.update(_add)
+
+    @property
+    def all_tasks_created(self) -> bool:
+        planned = set(self.tasks)
+        created = set(self.created_tasks)
+        return bool(planned) and not (planned - created)
+
     # ── Dependencies ──────────────────────────────────────────────
 
     @property
@@ -736,17 +766,64 @@ class StateStore:
     def set_project_tasks(self, tasks: list[dict]) -> None:
         self.set("project_tasks", tasks)
 
-    def add_subtask(self, parent_task_id: str, subtask: str) -> None:
+    def add_subtask(self, parent_task_id: str, subtask: dict | str) -> None:
         def _add(d: dict) -> None:
             ptasks = d.get("project_tasks", [])
             for pt in ptasks:
                 if pt.get("id") == parent_task_id:
                     subs = pt.setdefault("subtasks", [])
-                    if subtask not in subs:
-                        subs.append(subtask)
+                    # Dedup by task_id if dict, by value if string
+                    if isinstance(subtask, dict):
+                        if not any(s.get("task_id") == subtask.get("task_id") for s in subs if isinstance(s, dict)):
+                            subs.append(subtask)
+                    else:
+                        if subtask not in subs:
+                            subs.append(subtask)
                     break
 
         self.update(_add)
+
+    def complete_subtask(self, parent_task_id: str, task_id: str) -> None:
+        def _complete(d: dict) -> None:
+            ptasks = d.get("project_tasks", [])
+            for pt in ptasks:
+                if pt.get("id") == parent_task_id:
+                    for sub in pt.get("subtasks", []):
+                        if isinstance(sub, dict) and sub.get("task_id") == task_id:
+                            sub["status"] = "completed"
+                            break
+                    break
+
+        self.update(_complete)
+
+    def complete_project_task(self, parent_task_id: str) -> None:
+        def _complete(d: dict) -> None:
+            ptasks = d.get("project_tasks", [])
+            for pt in ptasks:
+                if pt.get("id") == parent_task_id:
+                    pt["status"] = "completed"
+                    break
+
+        self.update(_complete)
+
+    def is_parent_task_complete(self, parent_task_id: str) -> bool:
+        for pt in self.project_tasks:
+            if pt.get("id") == parent_task_id:
+                subs = pt.get("subtasks", [])
+                if not subs:
+                    return False
+                return all(
+                    (s.get("status") == "completed" if isinstance(s, dict) else False)
+                    for s in subs
+                )
+        return False
+
+    def get_parent_for_subtask(self, task_id: str) -> str | None:
+        for pt in self.project_tasks:
+            for sub in pt.get("subtasks", []):
+                if isinstance(sub, dict) and sub.get("task_id") == task_id:
+                    return pt.get("id")
+        return None
 
     @property
     def all_project_tasks_have_subtasks(self) -> bool:

@@ -8,11 +8,10 @@ class TestGetPhases:
     def test_build_phases(self, config):
         phases = config.get_phases("build")
         assert "explore" in phases
+        assert "create-tasks" in phases
         assert "install-deps" in phases
         assert "define-contracts" in phases
         assert "write-report" in phases
-        # Build has install-deps and define-contracts
-        assert "create-tasks" not in phases
 
     def test_implement_phases(self, config):
         phases = config.get_phases("implement")

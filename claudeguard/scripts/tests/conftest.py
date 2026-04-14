@@ -15,6 +15,7 @@ from config import Config
 DEFAULT_STATE: dict = {
     "session_id": "test-session",
     "workflow_active": True,
+    "status": "in_progress",
     "workflow_type": "implement",
     "phases": [],
     "tdd": False,
@@ -25,7 +26,7 @@ DEFAULT_STATE: dict = {
     "plan": {
         "file_path": None,
         "written": False,
-        "revised": False,
+        "revised": None,
         "reviews": [],
     },
     "tasks": [],

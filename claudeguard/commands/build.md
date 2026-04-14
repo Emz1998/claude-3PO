@@ -63,8 +63,8 @@ Runs in parallel with `/explore`. Allowed: Read, Glob, Grep, WebFetch, WebSearch
 The plan **must** follow the template format (guardrail enforced):
 
 - `## Dependencies` — bullet list of packages (`- package-name`). No ### subsections.
-- `## Contracts` — bullet list of contract names (`- ContractName`). No ### subsections.
 - `## Tasks` — bullet list of task subjects (`- Task subject`). No ### subsections. Each bullet becomes a planned task validated by the TaskCreated hook.
+- `## Files to Modify` — table with Action and Path columns.
 
 Allowed: Write (only `.claude/plans/latest-plan.md` and `.claude/contracts/latest-contracts.md`), Read, Bash (read-only).
 

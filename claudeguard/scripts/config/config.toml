@@ -1,12 +1,12 @@
 # ---------------------------------------------------------------------------
 # Phase classifications
 # ---------------------------------------------------------------------------
-BUILD_PHASES = ["explore", "research", "plan", "plan-review", "install-deps", "define-contracts", "write-tests", "test-review", "write-code", "quality-check", "code-review", "pr-create", "ci-check", "write-report"]
+BUILD_PHASES = ["explore", "research", "plan", "plan-review", "create-tasks", "install-deps", "define-contracts", "write-tests", "test-review", "write-code", "quality-check", "code-review", "pr-create", "ci-check", "write-report"]
 IMPLEMENT_PHASES = ["explore", "research", "plan", "plan-review", "create-tasks", "write-tests", "tests-review", "write-code", "validate", "code-review", "pr-create", "ci-check", "write-report"]
 AUTO_PHASES = ["create-tasks", "write-tests", "write-code"]
 
 # Backward compat: MAIN_PHASES = BUILD_PHASES
-MAIN_PHASES = ["explore", "research", "plan", "plan-review", "install-deps", "define-contracts", "write-tests", "test-review", "write-code", "quality-check", "code-review", "pr-create", "ci-check", "write-report"]
+MAIN_PHASES = ["explore", "research", "plan", "plan-review", "create-tasks", "install-deps", "define-contracts", "write-tests", "test-review", "write-code", "quality-check", "code-review", "pr-create", "ci-check", "write-report"]
 
 READ_ONLY_PHASES = ["explore", "plan", "research", "plan-review", "test-review", "tests-review", "code-review", "quality-check", "validate"]
 CODE_WRITE_PHASES = ["write-tests", "write-code", "install-deps", "define-contracts", "refactor"]
@@ -23,7 +23,7 @@ RESEARCH_MAX = 2
 PLAN_MAX = 1
 PLAN_REVIEW_MAX = 3
 TEST_REVIEWER_MAX = 3
-QA_SPECIALIST_MAX = 1
+QA_SPECIALIST_MAX = 3
 CODE_REVIEWER_MAX = 3
 
 
