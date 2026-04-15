@@ -6,8 +6,9 @@ by resolvers after the previous phase completes — no skill command needed.
 
 import pytest
 from models.state import Agent
-from utils.resolvers import resolve
-from utils.state_store import StateStore
+from guardrails import phase_guard
+from utils.resolver import resolve
+from lib.state_store import StateStore
 
 
 class TestAutoTransitionBuild:
@@ -91,34 +92,31 @@ class TestAutoPhaseNotSkillInvoked:
     """Auto phases should NOT be invokable via skill command — they start automatically."""
 
     def test_create_tasks_blocks_as_skill(self, config, state):
-        from utils.validators import is_phase_allowed
         from helpers import make_hook_input
 
         state.set("workflow_type", "implement")
         state.add_phase("plan-review")
         state.set_phase_completed("plan-review")
         hook = make_hook_input("Skill", {"skill": "create-tasks"})
-        with pytest.raises(ValueError):
-            is_phase_allowed(hook, config, state)
+        decision, _ = phase_guard(hook, config, state)
+        assert decision == "block"
 
     def test_write_tests_blocks_as_skill(self, config, state):
-        from utils.validators import is_phase_allowed
         from helpers import make_hook_input
 
         state.set("workflow_type", "build")
         state.add_phase("define-contracts")
         state.set_phase_completed("define-contracts")
         hook = make_hook_input("Skill", {"skill": "write-tests"})
-        with pytest.raises(ValueError):
-            is_phase_allowed(hook, config, state)
+        decision, _ = phase_guard(hook, config, state)
+        assert decision == "block"
 
     def test_write_code_blocks_as_skill(self, config, state):
-        from utils.validators import is_phase_allowed
         from helpers import make_hook_input
 
         state.set("workflow_type", "build")
         state.add_phase("test-review")
         state.set_phase_completed("test-review")
         hook = make_hook_input("Skill", {"skill": "write-code"})
-        with pytest.raises(ValueError):
-            is_phase_allowed(hook, config, state)
+        decision, _ = phase_guard(hook, config, state)
+        assert decision == "block"

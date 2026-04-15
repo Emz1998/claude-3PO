@@ -1,6 +1,6 @@
 import pytest
 from models.state import Agent
-from utils.runners import check_phases, check_tests, check_ci
+from guardrails.stop_guard import StopGuard
 
 
 class TestCheckPhases:
@@ -10,20 +10,22 @@ class TestCheckPhases:
         for phase in phases:
             state.add_phase(phase)
             state.set_phase_completed(phase)
-        check_phases(config, state)  # should not exit
+        guard = StopGuard(config, state)
+        guard._check_phases()  # should not raise
 
     def test_missing_phase(self, config, state):
         state.add_phase("explore")
         state.set_phase_completed("explore")
-        with pytest.raises(SystemExit) as exc:
-            check_phases(config, state)
-        assert exc.value.code == 1
+        guard = StopGuard(config, state)
+        with pytest.raises(ValueError, match="not completed"):
+            guard._check_phases()
 
     def test_skipped_phases_ignored(self, config, state):
         workflow_type = state.get("workflow_type", "build")
         phases = config.get_phases(workflow_type) or config.main_phases
         state.set("skip", phases)
-        check_phases(config, state)  # all skipped, should pass
+        guard = StopGuard(config, state)
+        guard._check_phases()  # all skipped, should pass
 
     def test_inset_phase_completed(self, config, state):
         workflow_type = state.get("workflow_type", "build")
@@ -31,58 +33,62 @@ class TestCheckPhases:
         for phase in phases:
             state.add_phase(phase)
         # none completed
-        with pytest.raises(SystemExit) as exc:
-            check_phases(config, state)
-        assert exc.value.code == 1
+        guard = StopGuard(config, state)
+        with pytest.raises(ValueError, match="not completed"):
+            guard._check_phases()
 
 
 class TestCheckTests:
-    def test_all_passing(self, state):
+    def test_all_passing(self, config, state):
         state.add_test_file("test_app.py")
         state.set_tests_executed(True)
         state.add_test_review("Pass")
-        check_tests(state)  # should not exit
+        guard = StopGuard(config, state)
+        guard._check_tests()  # should not raise
 
-    def test_no_test_files(self, state):
-        with pytest.raises(SystemExit) as exc:
-            check_tests(state)
-        assert exc.value.code == 1
+    def test_no_test_files(self, config, state):
+        guard = StopGuard(config, state)
+        with pytest.raises(ValueError, match="No test files"):
+            guard._check_tests()
 
-    def test_not_executed(self, state):
+    def test_not_executed(self, config, state):
         state.add_test_file("test_app.py")
-        with pytest.raises(SystemExit) as exc:
-            check_tests(state)
-        assert exc.value.code == 1
+        guard = StopGuard(config, state)
+        with pytest.raises(ValueError, match="not executed"):
+            guard._check_tests()
 
-    def test_review_failed(self, state):
+    def test_review_failed(self, config, state):
         state.add_test_file("test_app.py")
         state.set_tests_executed(True)
         state.add_test_review("Fail")
-        with pytest.raises(SystemExit) as exc:
-            check_tests(state)
-        assert exc.value.code == 1
+        guard = StopGuard(config, state)
+        with pytest.raises(ValueError, match="verdict"):
+            guard._check_tests()
 
-    def test_skipped(self, state):
+    def test_skipped(self, config, state):
         state.set("skip", ["write-tests", "test-review"])
-        check_tests(state)  # should not exit
+        guard = StopGuard(config, state)
+        guard._check_tests()  # should not raise
 
 
 class TestCheckCI:
-    def test_passed(self, state):
+    def test_passed(self, config, state):
         state.set_ci_status("passed")
-        check_ci(state)  # should not exit
+        guard = StopGuard(config, state)
+        guard._check_ci()  # should not raise
 
-    def test_failed(self, state):
+    def test_failed(self, config, state):
         state.set_ci_status("failed")
-        with pytest.raises(SystemExit) as exc:
-            check_ci(state)
-        assert exc.value.code == 1
+        guard = StopGuard(config, state)
+        with pytest.raises(ValueError, match="CI checks failed"):
+            guard._check_ci()
 
-    def test_pending(self, state):
-        with pytest.raises(SystemExit) as exc:
-            check_ci(state)
-        assert exc.value.code == 1
+    def test_pending(self, config, state):
+        guard = StopGuard(config, state)
+        with pytest.raises(ValueError, match="CI status"):
+            guard._check_ci()
 
-    def test_skipped(self, state):
+    def test_skipped(self, config, state):
         state.set("skip", ["ci-check"])
-        check_ci(state)  # should not exit
+        guard = StopGuard(config, state)
+        guard._check_ci()  # should not raise

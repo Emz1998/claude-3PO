@@ -8,7 +8,7 @@ TaskCompleted → marks child done, auto-completes parent when all children done
 import json
 import pytest
 from pathlib import Path
-from utils.state_store import StateStore
+from lib.state_store import StateStore
 from helpers import make_hook_input
 
 

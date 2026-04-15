@@ -4,8 +4,8 @@ import json
 import pytest
 from pathlib import Path
 
-from utils.parser import parse_skip, parse_story_id, parse_instructions, parse_frontmatter
-from utils.archiver import archive_plan, archive_contracts
+from lib.parser import parse_skip, parse_story_id, parse_instructions, parse_frontmatter
+from lib.archiver import archive_plan, archive_contracts
 from utils.initializer import (
     build_initial_state,
     initialize,
@@ -337,7 +337,7 @@ class TestArchiveContracts:
 # ═══════════════════════════════════════════════════════════════════
 
 
-from utils.state_store import StateStore
+from lib.state_store import StateStore
 
 
 def _seed_active_session(state_path: Path, session_id: str, story_id: str, **extra) -> None:

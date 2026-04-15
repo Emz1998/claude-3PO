@@ -5,7 +5,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from summarize_prompt import extract_build_instructions
+from lib.extractors import extract_build_instructions
 
 
 class TestExtractBuildInstructions:

@@ -7,7 +7,7 @@ Build workflow: allows (validation happens in TaskCreated hook).
 
 from typing import Literal
 
-from utils.state_store import StateStore
+from lib.state_store import StateStore
 from config import Config
 
 

@@ -1,6 +1,6 @@
 import pytest
 from models.state import Agent
-from utils.resolvers import (
+from utils.resolver import (
     resolve_explore,
     resolve_research,
     resolve_plan,
@@ -17,7 +17,7 @@ from utils.resolvers import (
 )
 
 try:
-    from utils.resolvers import resolve_install_dependencies, resolve_define_contracts
+    from utils.resolver import resolve_install_dependencies, resolve_define_contracts
 except ImportError:
     resolve_install_dependencies = None
     resolve_define_contracts = None

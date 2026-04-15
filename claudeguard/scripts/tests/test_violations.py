@@ -3,13 +3,13 @@
 import json
 import pytest
 from pathlib import Path
-from utils.violations import log_violation, resolve_pending_summaries, VIOLATIONS_PATH
+from lib.violations import log_violation, resolve_pending_summaries, VIOLATIONS_PATH
 
 
 @pytest.fixture
 def violations_path(tmp_path: Path, monkeypatch) -> Path:
     p = tmp_path / "violations.md"
-    monkeypatch.setattr("utils.violations.VIOLATIONS_PATH", p)
+    monkeypatch.setattr("lib.violations.VIOLATIONS_PATH", p)
     return p
 
 

@@ -3,9 +3,9 @@
 import pytest
 from pathlib import Path
 from models.state import Agent
-from utils.extractors import extract_contract_names, extract_contract_files
-from utils.validators import is_file_write_allowed
-from utils.resolvers import resolve_define_contracts
+from lib.extractors import extract_contract_names, extract_contract_files
+from guardrails import write_guard
+from utils.resolver import resolve_define_contracts
 from helpers import make_hook_input
 
 
@@ -85,28 +85,30 @@ class TestDefineContractsFileGuard:
     def test_listed_file_allowed(self, config, state):
         self._setup_state(state)
         hook = make_hook_input("Write", {"file_path": "src/services/user.py"})
-        ok, _ = is_file_write_allowed(hook, config, state)
-        assert ok is True
+        decision, _ = write_guard(hook, config, state)
+        assert decision == "allow"
 
     def test_unlisted_file_blocked(self, config, state):
         self._setup_state(state)
         hook = make_hook_input("Write", {"file_path": "src/random.py"})
-        with pytest.raises(ValueError, match="not in contracts"):
-            is_file_write_allowed(hook, config, state)
+        decision, msg = write_guard(hook, config, state)
+        assert decision == "block"
+        assert "not in contracts" in msg.lower()
 
     def test_markdown_blocked(self, config, state):
         self._setup_state(state)
         hook = make_hook_input("Write", {"file_path": "notes.md"})
-        with pytest.raises(ValueError, match="not in contracts"):
-            is_file_write_allowed(hook, config, state)
+        decision, msg = write_guard(hook, config, state)
+        assert decision == "block"
+        assert "not in contracts" in msg.lower()
 
     def test_no_contract_files_falls_back_to_code_ext(self, config, state):
         """If no contract_files in state, fall back to code extension check."""
         state.set("workflow_type", "build")
         state.add_phase("define-contracts")
         hook = make_hook_input("Write", {"file_path": "src/anything.py"})
-        ok, _ = is_file_write_allowed(hook, config, state)
-        assert ok is True
+        decision, _ = write_guard(hook, config, state)
+        assert decision == "allow"
 
 
 # ═══════════════════════════════════════════════════════════════════

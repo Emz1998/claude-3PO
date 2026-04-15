@@ -11,7 +11,7 @@ import pytest
 from pathlib import Path
 
 SCRIPTS_DIR = Path(__file__).resolve().parent.parent
-TASK_CREATED_SCRIPT = SCRIPTS_DIR / "task_created.py"
+TASK_CREATED_SCRIPT = SCRIPTS_DIR / "dispatchers" / "task_created.py"
 
 DEFAULT_STATE = {
     "session_id": "test-session",
@@ -201,7 +201,7 @@ class TestImplementTaskCreatedMatching:
         assert result.returncode == 2
 
     def test_records_subtask_in_state(self, implement_state_path):
-        from utils.state_store import StateStore
+        from lib.state_store import StateStore
         _run_hook(_task_payload("Build login"), implement_state_path)
         state = StateStore(implement_state_path, session_id="test-session")
         ptasks = state.project_tasks

@@ -2,7 +2,7 @@
 
 import pytest
 from models.state import Agent
-from utils.validators import is_phase_allowed, is_agent_allowed
+from guardrails import phase_guard, agent_guard
 from helpers import make_hook_input
 
 
@@ -22,8 +22,8 @@ class TestPlanRevisedNullState:
         state.set("workflow_type", "build")
         state.add_phase("plan-review")
         hook = make_hook_input("Agent", {"subagent_type": "PlanReview"})
-        ok, _ = is_agent_allowed(hook, config, state)
-        assert ok is True
+        decision, _ = agent_guard(hook, config, state)
+        assert decision == "allow"
 
     def test_plan_review_blocked_when_false(self, config, state):
         """PlanReview blocked when plan_revised=False (needs edit first)."""
@@ -33,8 +33,9 @@ class TestPlanRevisedNullState:
         state.set_last_plan_review_status("Fail")
         state.set_plan_revised(False)
         hook = make_hook_input("Agent", {"subagent_type": "PlanReview"})
-        with pytest.raises(ValueError, match="must be revised"):
-            is_agent_allowed(hook, config, state)
+        decision, msg = agent_guard(hook, config, state)
+        assert decision == "block"
+        assert "revised" in msg.lower()
 
     def test_plan_review_allowed_when_true(self, config, state):
         """PlanReview allowed after plan edited (plan_revised=True)."""
@@ -44,8 +45,8 @@ class TestPlanRevisedNullState:
         state.set_last_plan_review_status("Fail")
         state.set_plan_revised(True)
         hook = make_hook_input("Agent", {"subagent_type": "PlanReview"})
-        ok, _ = is_agent_allowed(hook, config, state)
-        assert ok is True
+        decision, _ = agent_guard(hook, config, state)
+        assert decision == "allow"
 
 
 # ===================================================================
@@ -62,8 +63,8 @@ class TestRevisePlan:
         state.set_phase_completed("plan-review")
 
         hook = make_hook_input("Skill", {"skill": "revise-plan"})
-        ok, msg = is_phase_allowed(hook, config, state)
-        assert ok is True
+        decision, msg = phase_guard(hook, config, state)
+        assert decision == "allow"
 
         # Phase should be back to in_progress
         assert state.get_phase_status("plan-review") == "in_progress"
@@ -84,8 +85,8 @@ class TestRevisePlan:
         state.set_last_plan_review_status("Fail")
 
         hook = make_hook_input("Skill", {"skill": "revise-plan"})
-        ok, msg = is_phase_allowed(hook, config, state)
-        assert ok is True
+        decision, msg = phase_guard(hook, config, state)
+        assert decision == "allow"
 
         # Phase should be back to in_progress
         assert state.get_phase_status("plan-review") == "in_progress"
@@ -101,16 +102,17 @@ class TestRevisePlan:
         state.set_last_plan_review_status("Fail")
 
         hook = make_hook_input("Skill", {"skill": "revise-plan"})
-        with pytest.raises(ValueError, match="checkpoint.*or exhausted"):
-            is_phase_allowed(hook, config, state)
+        decision, msg = phase_guard(hook, config, state)
+        assert decision == "block"
 
     def test_blocked_in_wrong_phase(self, config, state):
         state.set("workflow_type", "build")
         state.add_phase("explore")
 
         hook = make_hook_input("Skill", {"skill": "revise-plan"})
-        with pytest.raises(ValueError, match="only.*during plan-review"):
-            is_phase_allowed(hook, config, state)
+        decision, msg = phase_guard(hook, config, state)
+        assert decision == "block"
+        assert "plan-review" in msg
 
     def test_blocked_when_plan_review_not_current(self, config, state):
         """Can't revise-plan if we've already moved past plan-review."""
@@ -122,8 +124,9 @@ class TestRevisePlan:
         state.add_phase("install-deps")
 
         hook = make_hook_input("Skill", {"skill": "revise-plan"})
-        with pytest.raises(ValueError, match="only.*during plan-review"):
-            is_phase_allowed(hook, config, state)
+        decision, msg = phase_guard(hook, config, state)
+        assert decision == "block"
+        assert "plan-review" in msg
 
     def test_edit_then_plan_review_allowed(self, config, state):
         """After /revise-plan, editing plan sets plan_revised=True, then PlanReview allowed."""
@@ -135,16 +138,17 @@ class TestRevisePlan:
 
         # /revise-plan
         hook = make_hook_input("Skill", {"skill": "revise-plan"})
-        is_phase_allowed(hook, config, state)
+        phase_guard(hook, config, state)
 
         # PlanReview blocked before edit
         hook = make_hook_input("Agent", {"subagent_type": "PlanReview"})
-        with pytest.raises(ValueError, match="must be revised"):
-            is_agent_allowed(hook, config, state)
+        decision, msg = agent_guard(hook, config, state)
+        assert decision == "block"
+        assert "revised" in msg.lower()
 
         # Simulate edit
         state.set_plan_revised(True)
 
         # PlanReview now allowed
-        ok, _ = is_agent_allowed(hook, config, state)
-        assert ok is True
+        decision, _ = agent_guard(hook, config, state)
+        assert decision == "allow"

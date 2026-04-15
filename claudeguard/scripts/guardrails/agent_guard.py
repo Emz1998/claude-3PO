@@ -1,14 +1,16 @@
 """AgentValidator — Validates agent invocation against phase and count restrictions."""
 
-from utils.state_store import StateStore
-from utils.extractors import extract_agent_name
+from typing import Literal
+
+from lib.state_store import StateStore
+from lib.extractors import extract_agent_name
 from config import Config
 
 
-Result = tuple[bool, str]
+Decision = tuple[Literal["allow", "block"], str]
 
 
-class AgentInvocationGuard:
+class AgentValidator:
     """Validate agent invocation against phase and count restrictions."""
 
     def __init__(self, hook_input: dict, config: Config, state: StateStore):
@@ -106,7 +108,7 @@ class AgentInvocationGuard:
 
     # ── Validate ──────────────────────────────────────────────────
 
-    def validate(self) -> tuple[str, str]:
+    def validate(self) -> Decision:
         """Returns ("allow", message) or ("block", reason)."""
         try:
             if self.phase == "explore" and self._is_parallel_research_allowed():

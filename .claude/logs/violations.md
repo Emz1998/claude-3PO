@@ -653,3 +653,183 @@ Planned tasks: ['Build authentication module', 'Create user database schema', 'W
 | 2026-04-14T19:39:29 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Deploy to production | Task 'Deploy to production' does not match any project task.
 Project tasks: ['Build login', 'Create schema'] |
 | 2026-04-14T19:39:30 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Some task | No project tasks found in state. The create-tasks phase must load tasks from the project manager first. |
+| 2026-04-14T20:33:05 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Deploy to production | Task 'Deploy to production' does not match any planned task.
+Planned tasks: ['Build authentication module', 'Create user database schema', 'Write API endpoints'] |
+| 2026-04-14T20:33:05 | test-session | build | N/A | Pending... | write-tests | TaskCreate |  | Task must have a non-empty subject. |
+| 2026-04-14T20:33:05 | test-session | build | N/A | Pending... | write-tests | TaskCreate |     | Task must have a non-empty subject. |
+| 2026-04-14T20:33:05 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Build authentication module | Task must have a non-empty description. |
+| 2026-04-14T20:33:06 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Build authentication module | Task must have a non-empty description. |
+| 2026-04-14T20:33:07 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Some task | No planned tasks found in state. Create a plan with ## Tasks first. |
+| 2026-04-14T20:33:08 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Deploy to production | Task 'Deploy to production' does not match any project task.
+Project tasks: ['Build login', 'Create schema'] |
+| 2026-04-14T20:33:08 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Some task | No project tasks found in state. The create-tasks phase must load tasks from the project manager first. |
+| 2026-04-14T20:36:48 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Deploy to production | Task 'Deploy to production' does not match any planned task.
+Planned tasks: ['Build authentication module', 'Create user database schema', 'Write API endpoints'] |
+| 2026-04-14T20:36:48 | test-session | build | N/A | Pending... | write-tests | TaskCreate |  | Task must have a non-empty subject. |
+| 2026-04-14T20:36:48 | test-session | build | N/A | Pending... | write-tests | TaskCreate |     | Task must have a non-empty subject. |
+| 2026-04-14T20:36:49 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Build authentication module | Task must have a non-empty description. |
+| 2026-04-14T20:36:49 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Build authentication module | Task must have a non-empty description. |
+| 2026-04-14T20:36:50 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Some task | No planned tasks found in state. Create a plan with ## Tasks first. |
+| 2026-04-14T20:36:51 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Deploy to production | Task 'Deploy to production' does not match any project task.
+Project tasks: ['Build login', 'Create schema'] |
+| 2026-04-14T20:36:51 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Some task | No project tasks found in state. The create-tasks phase must load tasks from the project manager first. |
+| 2026-04-14T20:38:50 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Deploy to production | Task 'Deploy to production' does not match any planned task.
+Planned tasks: ['Build authentication module', 'Create user database schema', 'Write API endpoints'] |
+| 2026-04-14T20:38:50 | test-session | build | N/A | Pending... | write-tests | TaskCreate |  | Task must have a non-empty subject. |
+| 2026-04-14T20:38:50 | test-session | build | N/A | Pending... | write-tests | TaskCreate |     | Task must have a non-empty subject. |
+| 2026-04-14T20:38:51 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Build authentication module | Task must have a non-empty description. |
+| 2026-04-14T20:38:51 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Build authentication module | Task must have a non-empty description. |
+| 2026-04-14T20:38:52 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Some task | No planned tasks found in state. Create a plan with ## Tasks first. |
+| 2026-04-14T20:38:53 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Deploy to production | Task 'Deploy to production' does not match any project task.
+Project tasks: ['Build login', 'Create schema'] |
+| 2026-04-14T20:38:53 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Some task | No project tasks found in state. The create-tasks phase must load tasks from the project manager first. |
+| 2026-04-14T21:38:52 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Deploy to production | Task 'Deploy to production' does not match any planned task.
+Planned tasks: ['Build authentication module', 'Create user database schema', 'Write API endpoints'] |
+| 2026-04-14T21:38:52 | test-session | build | N/A | Pending... | write-tests | TaskCreate |  | Task must have a non-empty subject. |
+| 2026-04-14T21:38:53 | test-session | build | N/A | Pending... | write-tests | TaskCreate |     | Task must have a non-empty subject. |
+| 2026-04-14T21:38:53 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Build authentication module | Task must have a non-empty description. |
+| 2026-04-14T21:38:53 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Build authentication module | Task must have a non-empty description. |
+| 2026-04-14T21:38:54 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Some task | No planned tasks found in state. Create a plan with ## Tasks first. |
+| 2026-04-14T21:38:55 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Deploy to production | Task 'Deploy to production' does not match any project task.
+Project tasks: ['Build login', 'Create schema'] |
+| 2026-04-14T21:38:56 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Some task | No project tasks found in state. The create-tasks phase must load tasks from the project manager first. |
+| 2026-04-14T21:45:49 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Deploy to production | Task 'Deploy to production' does not match any planned task.
+Planned tasks: ['Build authentication module', 'Create user database schema', 'Write API endpoints'] |
+| 2026-04-14T21:45:49 | test-session | build | N/A | Pending... | write-tests | TaskCreate |  | Task must have a non-empty subject. |
+| 2026-04-14T21:45:50 | test-session | build | N/A | Pending... | write-tests | TaskCreate |     | Task must have a non-empty subject. |
+| 2026-04-14T21:45:51 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Build authentication module | Task must have a non-empty description. |
+| 2026-04-14T21:45:51 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Build authentication module | Task must have a non-empty description. |
+| 2026-04-14T21:45:52 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Some task | No planned tasks found in state. Create a plan with ## Tasks first. |
+| 2026-04-14T21:45:53 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Deploy to production | Task 'Deploy to production' does not match any project task.
+Project tasks: ['Build login', 'Create schema'] |
+| 2026-04-14T21:45:54 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Some task | No project tasks found in state. The create-tasks phase must load tasks from the project manager first. |
+| 2026-04-14T21:46:37 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Deploy to production | Task 'Deploy to production' does not match any planned task.
+Planned tasks: ['Build authentication module', 'Create user database schema', 'Write API endpoints'] |
+| 2026-04-14T21:46:37 | test-session | build | N/A | Pending... | write-tests | TaskCreate |  | Task must have a non-empty subject. |
+| 2026-04-14T21:46:37 | test-session | build | N/A | Pending... | write-tests | TaskCreate |     | Task must have a non-empty subject. |
+| 2026-04-14T21:46:38 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Build authentication module | Task must have a non-empty description. |
+| 2026-04-14T21:46:38 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Build authentication module | Task must have a non-empty description. |
+| 2026-04-14T21:46:40 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Some task | No planned tasks found in state. Create a plan with ## Tasks first. |
+| 2026-04-14T21:46:41 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Deploy to production | Task 'Deploy to production' does not match any project task.
+Project tasks: ['Build login', 'Create schema'] |
+| 2026-04-14T21:46:41 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Some task | No project tasks found in state. The create-tasks phase must load tasks from the project manager first. |
+| 2026-04-14T21:48:24 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Deploy to production | Task 'Deploy to production' does not match any planned task.
+Planned tasks: ['Build authentication module', 'Create user database schema', 'Write API endpoints'] |
+| 2026-04-14T21:48:24 | test-session | build | N/A | Pending... | write-tests | TaskCreate |  | Task must have a non-empty subject. |
+| 2026-04-14T21:48:24 | test-session | build | N/A | Pending... | write-tests | TaskCreate |     | Task must have a non-empty subject. |
+| 2026-04-14T21:48:25 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Build authentication module | Task must have a non-empty description. |
+| 2026-04-14T21:48:25 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Build authentication module | Task must have a non-empty description. |
+| 2026-04-14T21:48:27 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Some task | No planned tasks found in state. Create a plan with ## Tasks first. |
+| 2026-04-14T21:48:28 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Deploy to production | Task 'Deploy to production' does not match any project task.
+Project tasks: ['Build login', 'Create schema'] |
+| 2026-04-14T21:48:28 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Some task | No project tasks found in state. The create-tasks phase must load tasks from the project manager first. |
+| 2026-04-14T21:51:45 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Deploy to production | Task 'Deploy to production' does not match any planned task.
+Planned tasks: ['Build authentication module', 'Create user database schema', 'Write API endpoints'] |
+| 2026-04-14T21:51:45 | test-session | build | N/A | Pending... | write-tests | TaskCreate |  | Task must have a non-empty subject. |
+| 2026-04-14T21:51:46 | test-session | build | N/A | Pending... | write-tests | TaskCreate |     | Task must have a non-empty subject. |
+| 2026-04-14T21:51:46 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Build authentication module | Task must have a non-empty description. |
+| 2026-04-14T21:51:46 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Build authentication module | Task must have a non-empty description. |
+| 2026-04-14T21:51:48 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Some task | No planned tasks found in state. Create a plan with ## Tasks first. |
+| 2026-04-14T21:51:49 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Deploy to production | Task 'Deploy to production' does not match any project task.
+Project tasks: ['Build login', 'Create schema'] |
+| 2026-04-14T21:51:49 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Some task | No project tasks found in state. The create-tasks phase must load tasks from the project manager first. |
+| 2026-04-14T21:55:38 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Deploy to production | Task 'Deploy to production' does not match any planned task.
+Planned tasks: ['Build authentication module', 'Create user database schema', 'Write API endpoints'] |
+| 2026-04-14T21:55:38 | test-session | build | N/A | Pending... | write-tests | TaskCreate |  | Task must have a non-empty subject. |
+| 2026-04-14T21:55:39 | test-session | build | N/A | Pending... | write-tests | TaskCreate |     | Task must have a non-empty subject. |
+| 2026-04-14T21:55:39 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Build authentication module | Task must have a non-empty description. |
+| 2026-04-14T21:55:39 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Build authentication module | Task must have a non-empty description. |
+| 2026-04-14T21:55:40 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Some task | No planned tasks found in state. Create a plan with ## Tasks first. |
+| 2026-04-14T21:55:42 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Deploy to production | Task 'Deploy to production' does not match any project task.
+Project tasks: ['Build login', 'Create schema'] |
+| 2026-04-14T21:55:42 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Some task | No project tasks found in state. The create-tasks phase must load tasks from the project manager first. |
+| 2026-04-14T22:05:44 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Deploy to production | Task 'Deploy to production' does not match any planned task.
+Planned tasks: ['Build authentication module', 'Create user database schema', 'Write API endpoints'] |
+| 2026-04-14T22:05:44 | test-session | build | N/A | Pending... | write-tests | TaskCreate |  | Task must have a non-empty subject. |
+| 2026-04-14T22:05:45 | test-session | build | N/A | Pending... | write-tests | TaskCreate |     | Task must have a non-empty subject. |
+| 2026-04-14T22:05:45 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Build authentication module | Task must have a non-empty description. |
+| 2026-04-14T22:05:45 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Build authentication module | Task must have a non-empty description. |
+| 2026-04-14T22:05:46 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Some task | No planned tasks found in state. Create a plan with ## Tasks first. |
+| 2026-04-14T22:05:47 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Deploy to production | Task 'Deploy to production' does not match any project task.
+Project tasks: ['Build login', 'Create schema'] |
+| 2026-04-14T22:05:48 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Some task | No project tasks found in state. The create-tasks phase must load tasks from the project manager first. |
+| 2026-04-14T22:06:49 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Deploy to production | Task 'Deploy to production' does not match any planned task.
+Planned tasks: ['Build authentication module', 'Create user database schema', 'Write API endpoints'] |
+| 2026-04-14T22:06:49 | test-session | build | N/A | Pending... | write-tests | TaskCreate |  | Task must have a non-empty subject. |
+| 2026-04-14T22:06:50 | test-session | build | N/A | Pending... | write-tests | TaskCreate |     | Task must have a non-empty subject. |
+| 2026-04-14T22:06:50 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Build authentication module | Task must have a non-empty description. |
+| 2026-04-14T22:06:50 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Build authentication module | Task must have a non-empty description. |
+| 2026-04-14T22:06:52 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Some task | No planned tasks found in state. Create a plan with ## Tasks first. |
+| 2026-04-14T22:06:53 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Deploy to production | Task 'Deploy to production' does not match any project task.
+Project tasks: ['Build login', 'Create schema'] |
+| 2026-04-14T22:06:53 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Some task | No project tasks found in state. The create-tasks phase must load tasks from the project manager first. |
+| 2026-04-14T22:45:19 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Deploy to production | Task 'Deploy to production' does not match any planned task.
+Planned tasks: ['Build authentication module', 'Create user database schema', 'Write API endpoints'] |
+| 2026-04-14T22:45:19 | test-session | build | N/A | Pending... | write-tests | TaskCreate |  | Task must have a non-empty subject. |
+| 2026-04-14T22:45:19 | test-session | build | N/A | Pending... | write-tests | TaskCreate |     | Task must have a non-empty subject. |
+| 2026-04-14T22:45:20 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Build authentication module | Task must have a non-empty description. |
+| 2026-04-14T22:45:20 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Build authentication module | Task must have a non-empty description. |
+| 2026-04-14T22:45:21 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Some task | No planned tasks found in state. Create a plan with ## Tasks first. |
+| 2026-04-14T22:45:22 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Deploy to production | Task 'Deploy to production' does not match any project task.
+Project tasks: ['Build login', 'Create schema'] |
+| 2026-04-14T22:45:22 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Some task | No project tasks found in state. The create-tasks phase must load tasks from the project manager first. |
+| 2026-04-14T22:45:54 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Deploy to production | Task 'Deploy to production' does not match any planned task.
+Planned tasks: ['Build authentication module', 'Create user database schema', 'Write API endpoints'] |
+| 2026-04-14T22:45:54 | test-session | build | N/A | Pending... | write-tests | TaskCreate |  | Task must have a non-empty subject. |
+| 2026-04-14T22:45:55 | test-session | build | N/A | Pending... | write-tests | TaskCreate |     | Task must have a non-empty subject. |
+| 2026-04-14T22:45:55 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Build authentication module | Task must have a non-empty description. |
+| 2026-04-14T22:45:55 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Build authentication module | Task must have a non-empty description. |
+| 2026-04-14T22:45:56 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Some task | No planned tasks found in state. Create a plan with ## Tasks first. |
+| 2026-04-14T22:45:57 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Deploy to production | Task 'Deploy to production' does not match any project task.
+Project tasks: ['Build login', 'Create schema'] |
+| 2026-04-14T22:45:57 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Some task | No project tasks found in state. The create-tasks phase must load tasks from the project manager first. |
+| 2026-04-14T22:56:13 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Deploy to production | Task 'Deploy to production' does not match any planned task.
+Planned tasks: ['Build authentication module', 'Create user database schema', 'Write API endpoints'] |
+| 2026-04-14T22:56:13 | test-session | build | N/A | Pending... | write-tests | TaskCreate |  | Task must have a non-empty subject. |
+| 2026-04-14T22:56:13 | test-session | build | N/A | Pending... | write-tests | TaskCreate |     | Task must have a non-empty subject. |
+| 2026-04-14T22:56:14 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Build authentication module | Task must have a non-empty description. |
+| 2026-04-14T22:56:14 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Build authentication module | Task must have a non-empty description. |
+| 2026-04-14T22:56:16 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Some task | No planned tasks found in state. Create a plan with ## Tasks first. |
+| 2026-04-14T22:56:17 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Deploy to production | Task 'Deploy to production' does not match any project task.
+Project tasks: ['Build login', 'Create schema'] |
+| 2026-04-14T22:56:17 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Some task | No project tasks found in state. The create-tasks phase must load tasks from the project manager first. |
+| 2026-04-14T23:03:00 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Deploy to production | Task 'Deploy to production' does not match any planned task.
+Planned tasks: ['Build authentication module', 'Create user database schema', 'Write API endpoints'] |
+| 2026-04-14T23:03:00 | test-session | build | N/A | Pending... | write-tests | TaskCreate |  | Task must have a non-empty subject. |
+| 2026-04-14T23:03:00 | test-session | build | N/A | Pending... | write-tests | TaskCreate |     | Task must have a non-empty subject. |
+| 2026-04-14T23:03:01 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Build authentication module | Task must have a non-empty description. |
+| 2026-04-14T23:03:01 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Build authentication module | Task must have a non-empty description. |
+| 2026-04-14T23:03:02 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Some task | No planned tasks found in state. Create a plan with ## Tasks first. |
+| 2026-04-14T23:03:03 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Deploy to production | Task 'Deploy to production' does not match any project task.
+Project tasks: ['Build login', 'Create schema'] |
+| 2026-04-14T23:03:04 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Some task | No project tasks found in state. The create-tasks phase must load tasks from the project manager first. |
+| 2026-04-14T23:10:05 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Deploy to production | Task 'Deploy to production' does not match any planned task.
+Planned tasks: ['Build authentication module', 'Create user database schema', 'Write API endpoints'] |
+| 2026-04-14T23:10:06 | test-session | build | N/A | Pending... | write-tests | TaskCreate |  | Task must have a non-empty subject. |
+| 2026-04-14T23:10:06 | test-session | build | N/A | Pending... | write-tests | TaskCreate |     | Task must have a non-empty subject. |
+| 2026-04-14T23:10:06 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Build authentication module | Task must have a non-empty description. |
+| 2026-04-14T23:10:07 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Build authentication module | Task must have a non-empty description. |
+| 2026-04-14T23:10:08 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Some task | No planned tasks found in state. Create a plan with ## Tasks first. |
+| 2026-04-14T23:10:09 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Deploy to production | Task 'Deploy to production' does not match any project task.
+Project tasks: ['Build login', 'Create schema'] |
+| 2026-04-14T23:10:09 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Some task | No project tasks found in state. The create-tasks phase must load tasks from the project manager first. |
+| 2026-04-14T23:17:17 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Deploy to production | Task 'Deploy to production' does not match any planned task.
+Planned tasks: ['Build authentication module', 'Create user database schema', 'Write API endpoints'] |
+| 2026-04-14T23:17:17 | test-session | build | N/A | Pending... | write-tests | TaskCreate |  | Task must have a non-empty subject. |
+| 2026-04-14T23:17:18 | test-session | build | N/A | Pending... | write-tests | TaskCreate |     | Task must have a non-empty subject. |
+| 2026-04-14T23:17:18 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Build authentication module | Task must have a non-empty description. |
+| 2026-04-14T23:17:18 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Build authentication module | Task must have a non-empty description. |
+| 2026-04-14T23:17:19 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Some task | No planned tasks found in state. Create a plan with ## Tasks first. |
+| 2026-04-14T23:17:20 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Deploy to production | Task 'Deploy to production' does not match any project task.
+Project tasks: ['Build login', 'Create schema'] |
+| 2026-04-14T23:17:20 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Some task | No project tasks found in state. The create-tasks phase must load tasks from the project manager first. |
+| 2026-04-14T23:17:45 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Deploy to production | Task 'Deploy to production' does not match any planned task.
+Planned tasks: ['Build authentication module', 'Create user database schema', 'Write API endpoints'] |
+| 2026-04-14T23:17:45 | test-session | build | N/A | Pending... | write-tests | TaskCreate |  | Task must have a non-empty subject. |
+| 2026-04-14T23:17:46 | test-session | build | N/A | Pending... | write-tests | TaskCreate |     | Task must have a non-empty subject. |
+| 2026-04-14T23:17:46 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Build authentication module | Task must have a non-empty description. |
+| 2026-04-14T23:17:46 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Build authentication module | Task must have a non-empty description. |
+| 2026-04-14T23:17:48 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Some task | No planned tasks found in state. Create a plan with ## Tasks first. |
+| 2026-04-14T23:17:49 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Deploy to production | Task 'Deploy to production' does not match any project task.
+Project tasks: ['Build login', 'Create schema'] |
+| 2026-04-14T23:17:50 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Some task | No project tasks found in state. The create-tasks phase must load tasks from the project manager first. |

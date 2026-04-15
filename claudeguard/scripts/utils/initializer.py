@@ -15,9 +15,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from utils.parser import parse_skip, parse_story_id, parse_instructions
-from utils.archiver import archive_plan, archive_contracts
-from utils.state_store import StateStore
+from lib.parser import parse_skip, parse_story_id, parse_instructions
+from lib.archiver import archive_plan, archive_contracts
+from lib.state_store import StateStore
 from config import Config
 
 STATE_PATH = Path(__file__).resolve().parent.parent / "state.jsonl"
@@ -122,9 +122,8 @@ def initialize(
         if active and (reset or takeover):
             store.deactivate_by_story(story_id)
 
-    # Build initial state or copy from existing session
-    if takeover and story_id:
-        if active:
+        # Takeover: copy existing session state
+        if takeover and active:
             copied = dict(active[-1])
             copied["session_id"] = session_id
             store.reinitialize(copied)

@@ -5,8 +5,8 @@ subtask recording, and auto-advance when all project tasks have subtasks.
 """
 
 import pytest
-from utils.resolvers import resolve_create_tasks, resolve
-from utils.state_store import StateStore
+from utils.resolver import resolve_create_tasks, resolve
+from lib.state_store import StateStore
 
 
 class TestResolveCreateTasks:

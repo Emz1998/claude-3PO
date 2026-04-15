@@ -2,8 +2,8 @@
 
 import pytest
 from models.state import Agent
-from utils.validators import is_file_write_allowed
-from utils.extractors import extract_plan_files_to_modify
+from guardrails import write_guard
+from lib.extractors import extract_plan_files_to_modify
 from helpers import make_hook_input
 
 
@@ -35,8 +35,8 @@ class TestImplementPlanValidation:
             "file_path": ".claude/plans/latest-plan.md",
             "content": self._impl_plan(),
         })
-        ok, _ = is_file_write_allowed(hook, config, state)
-        assert ok is True
+        decision, _ = write_guard(hook, config, state)
+        assert decision == "allow"
 
     def test_missing_context_blocked(self, config, state):
         state.set("workflow_type", "implement")
@@ -46,8 +46,9 @@ class TestImplementPlanValidation:
             "file_path": ".claude/plans/latest-plan.md",
             "content": self._impl_plan(context=False),
         })
-        with pytest.raises(ValueError, match="Context"):
-            is_file_write_allowed(hook, config, state)
+        decision, msg = write_guard(hook, config, state)
+        assert decision == "block"
+        assert "Context" in msg
 
     def test_missing_approach_blocked(self, config, state):
         state.set("workflow_type", "implement")
@@ -57,8 +58,9 @@ class TestImplementPlanValidation:
             "file_path": ".claude/plans/latest-plan.md",
             "content": self._impl_plan(approach=False),
         })
-        with pytest.raises(ValueError, match="Approach"):
-            is_file_write_allowed(hook, config, state)
+        decision, msg = write_guard(hook, config, state)
+        assert decision == "block"
+        assert "Approach" in msg
 
     def test_missing_files_blocked(self, config, state):
         state.set("workflow_type", "implement")
@@ -68,8 +70,9 @@ class TestImplementPlanValidation:
             "file_path": ".claude/plans/latest-plan.md",
             "content": self._impl_plan(files=False),
         })
-        with pytest.raises(ValueError, match="Files to Create/Modify"):
-            is_file_write_allowed(hook, config, state)
+        decision, msg = write_guard(hook, config, state)
+        assert decision == "block"
+        assert "Files to Create/Modify" in msg
 
     def test_missing_verification_blocked(self, config, state):
         state.set("workflow_type", "implement")
@@ -79,8 +82,9 @@ class TestImplementPlanValidation:
             "file_path": ".claude/plans/latest-plan.md",
             "content": self._impl_plan(verification=False),
         })
-        with pytest.raises(ValueError, match="Verification"):
-            is_file_write_allowed(hook, config, state)
+        decision, msg = write_guard(hook, config, state)
+        assert decision == "block"
+        assert "Verification" in msg
 
     def test_build_plan_still_validates_build_format(self, config, state):
         """Build plan requires Dependencies, Tasks, Files to Modify."""
@@ -92,8 +96,8 @@ class TestImplementPlanValidation:
             "file_path": ".claude/plans/latest-plan.md",
             "content": content,
         })
-        ok, _ = is_file_write_allowed(hook, config, state)
-        assert ok is True
+        decision, _ = write_guard(hook, config, state)
+        assert decision == "allow"
 
 
 # ═══════════════════════════════════════════════════════════════════

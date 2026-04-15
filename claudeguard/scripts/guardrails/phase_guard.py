@@ -1,11 +1,13 @@
 """PhaseValidator — Validates phase transitions (skill invocations)."""
 
-from utils.state_store import StateStore
-from utils.extractors import extract_skill_name
+from typing import Literal
+
+from lib.state_store import StateStore
+from lib.extractors import extract_skill_name
 from config import Config
 
 
-Result = tuple[bool, str]
+Decision = tuple[Literal["allow", "block"], str]
 
 REVIEW_PHASES = {
     "plan-review",
@@ -17,7 +19,7 @@ REVIEW_PHASES = {
 }
 
 
-class PhaseGuard:
+class PhaseValidator:
     """Validate phase transition (skill invocation)."""
 
     def __init__(self, hook_input: dict, config: Config, state: StateStore):
@@ -91,30 +93,30 @@ class PhaseGuard:
 
     # ── Skill handlers ────────────────────────────────────────────
 
-    def _handle_continue(self) -> Result:
+    def _handle_continue(self) -> Decision:
         if self.current == "plan-review":
             raise ValueError(
                 "Use '/plan-approved' to approve the plan, or '/revise-plan' to revise it."
             )
 
         if self.status == "completed":
-            from utils.resolvers import _auto_start_next
+            from utils.resolver import _auto_start_next
 
             _auto_start_next(self.config, self.state)
-            return True, f"Continuing after completed phase: {self.current}"
+            return "allow", f"Continuing after completed phase: {self.current}"
 
         if self.status == "in_progress":
             self.state.set_phase_completed(self.current)
-            from utils.resolvers import _auto_start_next
+            from utils.resolver import _auto_start_next
 
             _auto_start_next(self.config, self.state)
-            return True, f"Force-completed phase: {self.current}"
+            return "allow", f"Force-completed phase: {self.current}"
 
         raise ValueError(
             f"'/continue' cannot continue — current phase '{self.current}' has status '{self.status}'."
         )
 
-    def _handle_plan_approved(self) -> Result:
+    def _handle_plan_approved(self) -> Decision:
         if self.current != "plan-review":
             raise ValueError(
                 "'/plan-approved' can only be used during plan-review. "
@@ -122,18 +124,18 @@ class PhaseGuard:
             )
 
         if self.status == "completed":
-            from utils.resolvers import _auto_start_next
+            from utils.resolver import _auto_start_next
 
             _auto_start_next(self.config, self.state, skip_checkpoint=True)
-            return True, "Plan approved. Proceeding to next phase."
+            return "allow", "Plan approved. Proceeding to next phase."
 
         if self.status == "in_progress" and self._is_review_exhausted("plan-review"):
             self.state.set_phase_completed("plan-review")
-            from utils.resolvers import _auto_start_next
+            from utils.resolver import _auto_start_next
 
             _auto_start_next(self.config, self.state, skip_checkpoint=True)
             return (
-                True,
+                "allow",
                 "Plan approved (after review exhaustion). Proceeding to next phase.",
             )
 
@@ -142,7 +144,7 @@ class PhaseGuard:
             f"Current status: {self.status}, review count: {self.state.plan_review_count}"
         )
 
-    def _handle_revise_plan(self) -> Result:
+    def _handle_revise_plan(self) -> Decision:
         if self.current != "plan-review":
             raise ValueError(
                 "'/revise-plan' can only be used during plan-review. "
@@ -171,13 +173,13 @@ class PhaseGuard:
 
         self.state.update(_reopen)
         return (
-            True,
+            "allow",
             "Plan-review reopened for revision. Edit the plan, then re-invoke PlanReview.",
         )
 
-    def _handle_reset_plan_review(self) -> Result:
+    def _handle_reset_plan_review(self) -> Decision:
         if self.state.get("test_mode"):
-            return True, "Test-mode reset allowed"
+            return "allow", "Test-mode reset allowed"
         raise ValueError("'/reset-plan-review' is only available in test mode.")
 
     # ── Transition validation ─────────────────────────────────────
@@ -220,35 +222,39 @@ class PhaseGuard:
 
     # ── Validate ──────────────────────────────────────────────────
 
-    def validate(self) -> Result:
-        # Skill command handlers
-        if self.next_phase == "continue":
-            return self._handle_continue()
-        if self.next_phase == "plan-approved":
-            return self._handle_plan_approved()
-        if self.next_phase == "revise-plan":
-            return self._handle_revise_plan()
-        if self.next_phase == "reset-plan-review":
-            return self._handle_reset_plan_review()
+    def validate(self) -> Decision:
+        """Returns ("allow", message) or ("block", reason)."""
+        try:
+            # Skill command handlers
+            if self.next_phase == "continue":
+                return self._handle_continue()
+            if self.next_phase == "plan-approved":
+                return self._handle_plan_approved()
+            if self.next_phase == "revise-plan":
+                return self._handle_revise_plan()
+            if self.next_phase == "reset-plan-review":
+                return self._handle_reset_plan_review()
 
-        self._check_not_auto_phase()
+            self._check_not_auto_phase()
 
-        # No phases yet — allow the first one
-        if not self.current:
-            message = self._validate_order(None, self.next_phase, self.phases)
-            return True, message
+            # No phases yet — allow the first one
+            if not self.current:
+                message = self._validate_order(None, self.next_phase, self.phases)
+                return "allow", message
 
-        # Parallel explore + research
-        if (
-            self.current == "explore"
-            and self.status == "in_progress"
-            and self.next_phase == "research"
-        ):
-            return True, "Running Research in parallel with Explore"
+            # Parallel explore + research
+            if (
+                self.current == "explore"
+                and self.status == "in_progress"
+                and self.next_phase == "research"
+            ):
+                return "allow", "Running Research in parallel with Explore"
 
-        self._check_current_phase_done()
+            self._check_current_phase_done()
 
-        skill_phases = self._get_skill_phases()
-        prev = self._resolve_prev_for_ordering()
-        message = self._validate_order(prev, self.next_phase, skill_phases)
-        return True, message
+            skill_phases = self._get_skill_phases()
+            prev = self._resolve_prev_for_ordering()
+            message = self._validate_order(prev, self.next_phase, skill_phases)
+            return "allow", message
+        except ValueError as e:
+            return "block", str(e)

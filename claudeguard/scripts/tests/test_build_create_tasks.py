@@ -5,8 +5,8 @@ Phase completes when all planned tasks have a matching entry in state.created_ta
 """
 
 import pytest
-from utils.state_store import StateStore
-from utils.resolvers import resolve_create_tasks, resolve
+from lib.state_store import StateStore
+from utils.resolver import resolve_create_tasks, resolve
 
 
 class TestBuildCreatedTasks:

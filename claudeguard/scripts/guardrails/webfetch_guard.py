@@ -2,10 +2,12 @@
 
 from urllib.parse import urlparse
 
+from typing import Literal
+
 from config import Config
 
 
-Result = tuple[bool, str]
+Decision = tuple[Literal["allow", "block"], str]
 
 
 class WebFetchValidator:
@@ -31,8 +33,12 @@ class WebFetchValidator:
                 return
         raise ValueError(f"Domain '{host}' is not in the safe domains list")
 
-    def validate(self) -> Result:
-        self._check_url_present()
-        host = self._check_hostname_parseable()
-        self._check_domain_safe(host)
-        return True, f"Domain '{host}' is safe"
+    def validate(self) -> Decision:
+        """Returns ("allow", message) or ("block", reason)."""
+        try:
+            self._check_url_present()
+            host = self._check_hostname_parseable()
+            self._check_domain_safe(host)
+            return "allow", f"Domain '{host}' is safe"
+        except ValueError as e:
+            return "block", str(e)

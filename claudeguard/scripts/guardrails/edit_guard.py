@@ -1,10 +1,12 @@
 """FileEditValidator — Validates file edits against phase and path restrictions."""
 
-from utils.state_store import StateStore
+from typing import Literal
+
+from lib.state_store import StateStore
 from config import Config
 
 
-Result = tuple[bool, str]
+Decision = tuple[Literal["allow", "block"], str]
 
 E2E_TEST_REPORT = ".claude/reports/E2E_TEST_REPORT.md"
 
@@ -122,17 +124,21 @@ class FileEditValidator:
     def _validate_code_review(self) -> None:
         self._check_code_edit_path()
 
-    def validate(self) -> Result:
-        if self._is_test_report():
-            return True, "E2E test report edit allowed (test mode)"
+    def validate(self) -> Decision:
+        """Returns ("allow", message) or ("block", reason)."""
+        try:
+            if self._is_test_report():
+                return "allow", "E2E test report edit allowed (test mode)"
 
-        self._check_editable_phase()
+            self._check_editable_phase()
 
-        if self.phase == "plan-review":
-            self._validate_plan_review()
-        elif self.phase in ("test-review", "tests-review"):
-            self._validate_test_review()
-        elif self.phase == "code-review":
-            self._validate_code_review()
+            if self.phase == "plan-review":
+                self._validate_plan_review()
+            elif self.phase in ("test-review", "tests-review"):
+                self._validate_test_review()
+            elif self.phase == "code-review":
+                self._validate_code_review()
 
-        return True, f"File edit allowed in phase: {self.phase}"
+            return "allow", f"File edit allowed in phase: {self.phase}"
+        except ValueError as e:
+            return "block", str(e)

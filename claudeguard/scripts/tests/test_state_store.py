@@ -4,7 +4,7 @@ import time
 import pytest
 from models.state import Agent
 from helpers import make_hook_input
-from utils.state_store import StateStore
+from lib.state_store import StateStore
 
 
 class TestPhases:

@@ -4,8 +4,8 @@ Note: /continue does not handle plan-review. Use /plan-approved instead.
 """
 
 import pytest
-from utils.state_store import StateStore
-from utils.validators import is_phase_allowed
+from lib.state_store import StateStore
+from guardrails import phase_guard
 from helpers import make_hook_input
 
 
@@ -19,8 +19,8 @@ class TestContinueForceCompletes:
         state.set_last_code_review_status("Fail")
 
         hook = make_hook_input("Skill", {"skill": "continue"})
-        ok, _ = is_phase_allowed(hook, config, state)
-        assert ok is True
+        decision, _ = phase_guard(hook, config, state)
+        assert decision == "allow"
         assert state.is_phase_completed("code-review")
 
     def test_continue_force_completes_test_review(self, config, state):
@@ -29,8 +29,8 @@ class TestContinueForceCompletes:
         state.add_test_review("Fail")
 
         hook = make_hook_input("Skill", {"skill": "continue"})
-        ok, _ = is_phase_allowed(hook, config, state)
-        assert ok is True
+        decision, _ = phase_guard(hook, config, state)
+        assert decision == "allow"
         assert state.is_phase_completed("test-review")
 
     def test_continue_force_completes_non_review_phase(self, config, state):
@@ -38,8 +38,8 @@ class TestContinueForceCompletes:
         state.add_phase("write-code")
 
         hook = make_hook_input("Skill", {"skill": "continue"})
-        ok, _ = is_phase_allowed(hook, config, state)
-        assert ok is True
+        decision, _ = phase_guard(hook, config, state)
+        assert decision == "allow"
         assert state.is_phase_completed("write-code")
 
 
@@ -54,8 +54,8 @@ class TestContinueAfterCompleted:
         state.set_phase_completed("code-review")
 
         hook = make_hook_input("Skill", {"skill": "continue"})
-        ok, _ = is_phase_allowed(hook, config, state)
-        assert ok is True
+        decision, _ = phase_guard(hook, config, state)
+        assert decision == "allow"
 
 
 class TestContinueBlocked:
@@ -70,10 +70,11 @@ class TestContinueBlocked:
         state.set_phase_completed("plan-review")
 
         hook = make_hook_input("Skill", {"skill": "continue"})
-        with pytest.raises(ValueError, match="plan-approved"):
-            is_phase_allowed(hook, config, state)
+        decision, msg = phase_guard(hook, config, state)
+        assert decision == "block"
+        assert "plan-approved" in msg
 
     def test_blocked_when_no_phases(self, config, state):
         hook = make_hook_input("Skill", {"skill": "continue"})
-        with pytest.raises(ValueError):
-            is_phase_allowed(hook, config, state)
+        decision, _ = phase_guard(hook, config, state)
+        assert decision == "block"

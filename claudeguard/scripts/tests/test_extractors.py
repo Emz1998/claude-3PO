@@ -3,7 +3,7 @@
 import pytest
 
 try:
-    from utils.extractors import (
+    from lib.extractors import (
         extract_plan_dependencies,
         extract_plan_tasks,
         extract_contract_names,

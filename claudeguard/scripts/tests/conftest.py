@@ -8,7 +8,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from utils.state_store import StateStore
+from lib.state_store import StateStore
 from config import Config
 
 

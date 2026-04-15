@@ -2,8 +2,8 @@
 
 import pytest
 from models.state import Agent
-from utils.extractors import extract_contract_names
-from utils.validators import is_file_write_allowed
+from lib.extractors import extract_contract_names
+from guardrails import write_guard
 from helpers import make_hook_input
 
 
@@ -83,8 +83,8 @@ class TestContractsContentValidation:
             "file_path": ".claude/contracts/latest-contracts.md",
             "content": self._valid_contracts(),
         })
-        ok, _ = is_file_write_allowed(hook, config, state)
-        assert ok is True
+        decision, _ = write_guard(hook, config, state)
+        assert decision == "allow"
 
     def test_missing_specifications_blocked(self, config, state):
         state.set("workflow_type", "build")
@@ -94,8 +94,9 @@ class TestContractsContentValidation:
             "file_path": ".claude/contracts/latest-contracts.md",
             "content": "# Contracts\n\nJust some text.\n",
         })
-        with pytest.raises(ValueError, match="Specifications"):
-            is_file_write_allowed(hook, config, state)
+        decision, msg = write_guard(hook, config, state)
+        assert decision == "block"
+        assert "Specifications" in msg
 
     def test_empty_table_blocked(self, config, state):
         state.set("workflow_type", "build")
@@ -111,8 +112,9 @@ class TestContractsContentValidation:
             "file_path": ".claude/contracts/latest-contracts.md",
             "content": content,
         })
-        with pytest.raises(ValueError, match="at least one contract"):
-            is_file_write_allowed(hook, config, state)
+        decision, msg = write_guard(hook, config, state)
+        assert decision == "block"
+        assert "at least one contract" in msg
 
     def test_implement_skips_contracts_validation(self, config, state):
         """Implement workflow doesn't write contracts — but if it did, no validation."""
@@ -123,5 +125,5 @@ class TestContractsContentValidation:
             "file_path": ".claude/contracts/latest-contracts.md",
             "content": "- None",
         })
-        ok, _ = is_file_write_allowed(hook, config, state)
-        assert ok is True
+        decision, _ = write_guard(hook, config, state)
+        assert decision == "allow"
