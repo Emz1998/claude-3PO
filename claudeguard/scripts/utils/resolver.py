@@ -383,86 +383,8 @@ class Resolver:
 
 
 # ══════════════════════════════════════════════════════════════════
-# Backward-compatible wrapper functions
+# Public API
 # ══════════════════════════════════════════════════════════════════
-
-
-def is_revision_needed(
-    file_type: Literal["plan", "report", "tests", "code"],
-    confidence_score: int,
-    quality_score: int,
-    config: Config,
-) -> bool:
-    r = Resolver(config, StateStore.__new__(StateStore))
-    return r._is_revision_needed(file_type, confidence_score, quality_score)
-
-
-def resolve_plan_review(config: Config, state: StateStore) -> None:
-    Resolver(config, state)._resolve_plan_review()
-
-
-def resolve_code_review(config: Config, state: StateStore) -> None:
-    Resolver(config, state)._resolve_code_review()
-
-
-def resolve_test_review(config: Config, state: StateStore) -> None:
-    Resolver(config, state)._resolve_test_review()
-
-
-def resolve_quality_check(state: StateStore) -> None:
-    Resolver(Config(), state)._resolve_quality_check()
-
-
-def resolve_validate(state: StateStore) -> None:
-    Resolver(Config(), state)._resolve_validate()
-
-
-def resolve_explore(config: Config, state: StateStore) -> None:
-    Resolver(config, state)._resolve_explore()
-
-
-def resolve_research(config: Config, state: StateStore) -> None:
-    Resolver(config, state)._resolve_research()
-
-
-def resolve_plan(config: Config, state: StateStore) -> None:
-    Resolver(config, state)._resolve_plan()
-
-
-def resolve_write_code(state: StateStore) -> None:
-    Resolver(Config(), state)._resolve_write_code()
-
-
-def resolve_write_tests(state: StateStore) -> None:
-    Resolver(Config(), state)._resolve_write_tests()
-
-
-def resolve_install_dependencies(state: StateStore) -> None:
-    Resolver(Config(), state)._resolve_install_deps()
-
-
-def resolve_define_contracts(state: StateStore) -> None:
-    Resolver(Config(), state)._resolve_define_contracts()
-
-
-def resolve_create_tasks(state: StateStore) -> None:
-    Resolver(Config(), state)._resolve_create_tasks()
-
-
-def resolve_pr_create(state: StateStore) -> None:
-    Resolver(Config(), state)._resolve_pr_create()
-
-
-def resolve_ci_check(state: StateStore) -> None:
-    Resolver(Config(), state)._resolve_ci_check()
-
-
-def resolve_report(state: StateStore) -> None:
-    Resolver(Config(), state)._resolve_report()
-
-
-def _auto_start_next(config: Config, state: StateStore, skip_checkpoint: bool = False) -> None:
-    Resolver(config, state).auto_start_next(skip_checkpoint)
 
 
 def resolve(config: Config, state: StateStore) -> None:

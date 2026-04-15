@@ -1,4 +1,4 @@
-"""AgentValidator — Validates agent invocation against phase and count restrictions."""
+"""AgentGuard — Validates agent invocation against phase and count restrictions."""
 
 from typing import Literal
 
@@ -10,7 +10,7 @@ from config import Config
 Decision = tuple[Literal["allow", "block"], str]
 
 
-class AgentValidator:
+class AgentGuard:
     """Validate agent invocation against phase and count restrictions."""
 
     def __init__(self, hook_input: dict, config: Config, state: StateStore):

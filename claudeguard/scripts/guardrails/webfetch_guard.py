@@ -1,4 +1,4 @@
-"""WebFetchValidator — Validates that a WebFetch URL targets a safe domain."""
+"""WebFetchGuard — Validates that a WebFetch URL targets a safe domain."""
 
 from urllib.parse import urlparse
 
@@ -10,7 +10,7 @@ from config import Config
 Decision = tuple[Literal["allow", "block"], str]
 
 
-class WebFetchValidator:
+class WebFetchGuard:
     """Validate that a WebFetch URL targets a safe domain."""
 
     def __init__(self, hook_input: dict, config: Config):

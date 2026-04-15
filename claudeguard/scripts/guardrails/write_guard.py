@@ -1,4 +1,4 @@
-"""FileWriteValidator — Validates file writes against phase and path restrictions."""
+"""FileWriteGuard — Validates file writes against phase and path restrictions."""
 
 from fnmatch import fnmatch
 
@@ -19,7 +19,7 @@ Decision = tuple[Literal["allow", "block"], str]
 E2E_TEST_REPORT = ".claude/reports/E2E_TEST_REPORT.md"
 
 
-class FileWriteValidator:
+class FileWriteGuard:
     """Validate file write against phase and path restrictions."""
 
     def __init__(self, hook_input: dict, config: Config, state: StateStore):

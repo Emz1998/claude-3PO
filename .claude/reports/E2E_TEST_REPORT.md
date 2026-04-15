@@ -1,4 +1,4 @@
-# E2E Test Report - Build Workflow Guardrails
+# E2E Guardrail Test Report
 
 ## Phase: explore + research
 
@@ -6,19 +6,18 @@
 
 | Phase | Step | Expected | Actual | Result |
 |-------|------|----------|--------|--------|
-| explore+research | Write test-guardrail.py | BLOCK | Blocked | PASS |
-| explore+research | Edit CLAUDE.md | BLOCK | Blocked | PASS |
-| explore+research | Bash echo | BLOCK | Blocked | PASS |
-| explore+research | Agent Plan | BLOCK | Blocked | PASS |
-| explore+research | Bash ls -la | ALLOW | Allowed | PASS |
-| explore+research | Explore #1 | ALLOW | Allowed | PASS |
-| explore+research | Explore #2 | ALLOW | Allowed | PASS |
-| explore+research | Explore #3 | ALLOW | Allowed | PASS |
-| explore+research | Explore #4 (over max) | BLOCK | Blocked | PASS |
-| explore+research | WebFetch wikipedia | BLOCK | Blocked | PASS |
-| explore+research | WebFetch python docs | ALLOW | Allowed | PASS |
-| explore+research | Research #1 | ALLOW | Allowed | PASS |
-| explore+research | Research #2 | ALLOW | Allowed | PASS |
+| explore+research | Write to test-guardrail.py | Block | Blocked (File write not allowed in phase: research) | PASS |
+| explore+research | Edit on CLAUDE.md | Block | Blocked (File edit not allowed in phase: research) | PASS |
+| explore+research | Bash echo "write attempt" | Block | Blocked (Phase 'research' only allows read-only commands) | PASS |
+| explore+research | Agent subagent_type=Plan | Block | Blocked (Agent 'Plan' not allowed in phase: research) | PASS |
+| explore+research | Bash ls -la | Allow | Allowed | PASS |
+| explore+research | Agent Explore x1 | Allow | Allowed (Done.) | PASS |
+| explore+research | Agent Explore x2 (total 3) | Allow | Allowed (Done.) | PASS |
+| explore+research | Agent Explore x4 (exceeds max) | Block | Blocked (Agent 'Explore' at max (3) in phase: explore) | PASS |
+| explore+research | WebFetch wikipedia.org | Block | Blocked (Domain not in safe domains list) | PASS |
+| explore+research | WebFetch docs.python.org | Allow | Allowed | PASS |
+| explore+research | Agent Research x1 | Allow | Allowed (Done.) | PASS |
+| explore+research | Agent Research x2 (total 2) | Allow | Allowed (Done.) | PASS |
 
 ### State Verification
 
@@ -26,19 +25,23 @@
 |-------|-------|----------|--------|--------|
 | explore | status | completed | completed | PASS |
 | research | status | completed | completed | PASS |
-| agents | 3 Explore completed | 3 | 3 | PASS |
-| agents | 2 Research completed | 2 | 2 | PASS |
+| agents | Explore count | 3 completed | 3 completed | PASS |
+| agents | Research count | 2 completed | 2 completed | PASS |
 
 ### Violations Log
 
 | Phase | Tool | Action | Logged | Result |
 |-------|------|--------|--------|--------|
-| research | Write | test-guardrail.py | Yes | PASS |
-| research | Edit | CLAUDE.md | Yes | PASS |
+| research | Write | /home/emhar/avaris-ai/test-guardrail.py | Yes | PASS |
+| research | Edit | /home/emhar/avaris-ai/CLAUDE.md | Yes | PASS |
 | research | Bash | echo "write attempt" | Yes | PASS |
 | research | Agent | Plan | Yes | PASS |
-| research | Agent | Explore (4th) | Yes | PASS |
-| research | WebFetch | wikipedia.org | Yes | PASS |
+| research | Agent | Explore (4th, exceeds max) | Yes | PASS |
+| research | WebFetch | https://www.wikipedia.org | Yes | PASS |
+
+**Phase Result: ALL PASS (12/12 guardrail tests, 4/4 state checks, 6/6 violation entries)**
+
+---
 
 ## Phase: plan
 
@@ -46,17 +49,17 @@
 
 | Phase | Step | Expected | Actual | Result |
 |-------|------|----------|--------|--------|
-| plan | Skill install-deps (skip ahead) | BLOCK | Blocked | PASS |
-| plan | Skill explore (go backwards) | BLOCK | Blocked | PASS |
-| plan | Invoke /plan | ALLOW | Allowed | PASS |
-| plan | Write plan before Plan agent | BLOCK | Blocked | PASS |
-| plan | Agent Plan | ALLOW | Allowed | PASS |
-| plan | Write plan missing sections | BLOCK | Blocked (missing Dependencies, Tasks, Files to Modify) | PASS |
-| plan | Write plan subsection tasks | BLOCK | Blocked (Tasks must use bullets) | PASS |
-| plan | Write wrong-plan.md | BLOCK | Blocked (wrong path) | PASS |
-| plan | Write valid plan | ALLOW | Allowed | PASS |
-| plan | Write contracts missing Specifications | BLOCK | Blocked | PASS |
-| plan | Write valid contracts | ALLOW | Allowed | PASS |
+| plan | Skill /install-deps (skip ahead) | Block | Blocked (Must complete plan, plan-review first) | PASS |
+| plan | Skill /explore (go backwards) | Block | Blocked (Cannot go backwards) | PASS |
+| plan | Skill /plan | Allow | Allowed | PASS |
+| plan | Write latest-plan.md (before Plan agent) | Block | Blocked (Plan agent must be invoked first) | PASS |
+| plan | Agent Plan | Allow | Allowed (Done.) | PASS |
+| plan | Write latest-plan.md (missing sections) | Block | Blocked (missing Dependencies, Tasks, Files to Modify) | PASS |
+| plan | Write latest-plan.md (Tasks with subsections) | Block | Blocked (Tasks must use bullet items) | PASS |
+| plan | Write wrong-plan.md (wrong path) | Block | Blocked (not in allowed paths) | PASS |
+| plan | Write latest-plan.md (valid content) | Allow | Allowed | PASS |
+| plan | Write latest-contracts.md (missing Specifications) | Block | Blocked (missing ## Specifications) | PASS |
+| plan | Write latest-contracts.md (valid content) | Allow | Allowed | PASS |
 
 ### State Verification
 
@@ -75,17 +78,17 @@
 
 | Phase | Tool | Action | Logged | Result |
 |-------|------|--------|--------|--------|
-| plan | Skill | install-deps | Yes (logged as "research" phase) | PASS |
-| plan | Skill | explore | Yes (logged as "research" phase) | PASS |
-| plan | Write | latest-plan.md (before agent) | Yes | PASS |
-| plan | Write | latest-plan.md (missing sections) | Yes | PASS |
-| plan | Write | latest-plan.md (subsection tasks) | Yes | PASS |
+| install-deps | Skill | install-deps | Yes | PASS |
+| explore | Skill | explore | Yes | PASS |
+| plan | Write | .claude/plans/latest-plan.md (no agent) | Yes | PASS |
+| plan | Write | .claude/plans/latest-plan.md (missing sections) | Yes | PASS |
+| plan | Write | .claude/plans/latest-plan.md (bad tasks format) | Yes | PASS |
 | plan | Write | wrong-plan.md | Yes | PASS |
-| plan | Write | latest-contracts.md (missing specs) | Yes | PASS |
+| plan | Write | .claude/contracts/latest-contracts.md (missing Specifications) | Yes | PASS |
 
-### Bugs
+**Phase Result: ALL PASS (11/11 guardrail tests, 8/8 state checks, 7/7 violation entries)**
 
-- **BUG-001**: install-deps and explore skill violations logged with phase "research" instead of "plan". The blocks occurred before `/plan` was invoked, so the state still showed "research" as the last phase. The blocks are correct, but the phase label in violations.md is misleading.
+---
 
 ## Phase: plan-review
 
@@ -93,68 +96,68 @@
 
 | Phase | Step | Expected | Actual | Result |
 |-------|------|----------|--------|--------|
-| plan-review | Edit wrong.md | BLOCK | Tool failed (file not found) — guardrail did NOT fire | FAIL |
-| plan-review | Write anything.py | BLOCK | Blocked | PASS |
-| plan-review | Edit plan file (allowed) | ALLOW | Allowed | PASS |
-| plan-review | PlanReview iter 1 (50/60) | ALLOW | Allowed, status=Fail | PASS |
-| plan-review | PlanReview without revision | BLOCK | Blocked | PASS |
-| plan-review | Edit plan (revision) | ALLOW | Allowed | PASS |
-| plan-review | PlanReview iter 2 (70/75) | ALLOW | Allowed, status=Fail | PASS |
-| plan-review | Edit plan (revision 2) | ALLOW | Allowed | PASS |
-| plan-review | PlanReview iter 3 (60/60) | ALLOW | Allowed, status=Fail | PASS |
-| plan-review | /continue (exhaustion) | BLOCK | Blocked (use /plan-approved) | PASS |
-| plan-review | /plan-approved (exhaustion) | ALLOW | Allowed, create-tasks started | PASS |
-| plan-review | Reset via /reset-plan-review | ALLOW | Reset OK | PASS |
-| plan-review | PlanReview 95/95 (checkpoint) | ALLOW | Allowed, checkpoint discontinue | PASS |
-| plan-review | /revise-plan fix the approach | ALLOW | Allowed, plan-review reopened | PASS |
-| plan-review | PlanReview without edit (revise) | BLOCK | Blocked | PASS |
-| plan-review | Edit plan (user revised) | ALLOW | Allowed | PASS |
-| plan-review | PlanReview 95/95 (checkpoint 2) | ALLOW | Allowed, checkpoint discontinue | PASS |
-| plan-review | /plan-approved (checkpoint) | ALLOW | Allowed, create-tasks started | PASS |
-| create-tasks | /revise-plan wrong phase | BLOCK | Blocked | PASS |
+| plan-review | Skill /plan-review | Allow | Allowed | PASS |
+| plan-review | Edit non-plan file (config.py) | Block | Blocked (not allowed, only .claude/plans/latest-plan.md) | PASS |
+| plan-review | Write anything.py | Block | Blocked (File write not allowed in phase: plan-review) | PASS |
+| plan-review | Edit .claude/plans/latest-plan.md | Allow | Allowed | PASS |
+| plan-review | PlanReview agent (iter 1, scores 50/60) | Allow | Allowed (Fail) | PASS |
+| plan-review | PlanReview agent (before revision) | Block | Blocked (Plan must be revised first) | PASS |
+| plan-review | Edit plan (revised) | Allow | Allowed | PASS |
+| plan-review | PlanReview agent (iter 2, scores 70/75) | Allow | Allowed (Fail) | PASS |
+| plan-review | Edit plan (iter 2 revision) | Allow | Allowed | PASS |
+| plan-review | PlanReview agent (iter 3, scores 60/60) | Allow | Allowed (Fail, exhausted) | PASS |
+| plan-review | Skill /continue (exhausted) | Block | Blocked (use /plan-approved) | PASS |
+| plan-review | Skill /plan-approved (exhausted) | Allow | Allowed | PASS |
+| plan-review | Skill /reset-plan-review | Allow | Allowed (reset for checkpoint test) | PASS |
+| plan-review | PlanReview agent (checkpoint, scores 95/95) | Allow | Allowed (discontinue) | PASS |
+| plan-review | Skill /revise-plan fix the approach | Allow | Allowed (reopened plan-review) | PASS |
+| plan-review | PlanReview before edit (revise-plan flow) | Block | Blocked (Plan must be revised first) | PASS |
+| plan-review | Edit plan (user revised) | Allow | Allowed | PASS |
+| plan-review | PlanReview agent (revise-plan, scores 95/95) | Allow | Allowed (checkpoint discontinue) | PASS |
+| plan-review | Skill /plan-approved (after checkpoint) | Allow | Allowed (auto-started create-tasks) | PASS |
+| plan-review | Skill /revise-plan (wrong phase) | Block | Blocked (current phase: create-tasks) | PASS |
 
 ### State Verification
 
 | Phase | Check | Expected | Actual | Result |
 |-------|-------|----------|--------|--------|
-| plan-review | iter 1: reviews[0].status | Fail | Fail | PASS |
-| plan-review | iter 1: revised | false | false | PASS |
-| plan-review | iter 2: revised after edit | true | true | PASS |
-| plan-review | 3 reviews all Fail | 3×Fail | 3×Fail | PASS |
-| plan-review | after /plan-approved: plan-review status | completed | completed | PASS |
-| plan-review | after /plan-approved: create-tasks status | in_progress | in_progress | PASS |
-| plan-review | after /reset + revise: plan-review status | in_progress | in_progress | PASS |
-| plan-review | after /reset + revise: revised | false | false | PASS |
-| plan-review | after /reset + revise: reviews | [] | [] | PASS |
-| plan-review | final: plan-review status | completed | completed | PASS |
-| plan-review | final: create-tasks status | in_progress | in_progress | PASS |
+| plan-review | iter 1 review status | Fail (50/60) | Fail (50/60) | PASS |
+| plan-review | plan.revised after iter 1 | false | false | PASS |
+| plan-review | plan.revised after edit | true | true | PASS |
+| plan-review | 3 Fail reviews after iter 3 | [Fail, Fail, Fail] | [Fail, Fail, Fail] | PASS |
+| plan-review | plan-review status after /plan-approved | completed | completed | PASS |
+| plan-review | create-tasks after /plan-approved | in_progress | in_progress | PASS |
+| plan-review | plan-review in_progress after /revise-plan | in_progress | in_progress | PASS |
+| plan-review | plan.revised after /revise-plan | false | false | PASS |
+| plan-review | plan.reviews after /revise-plan | [] | [] | PASS |
+| plan-review | plan-review completed after final /plan-approved | completed | completed | PASS |
+| plan-review | create-tasks after final /plan-approved | in_progress | in_progress | PASS |
 
 ### Violations Log
 
 | Phase | Tool | Action | Logged | Result |
 |-------|------|--------|--------|--------|
-| plan-review | Edit | wrong.md | No (file didn't exist, tool failed before hook) | FAIL |
+| plan-review | Edit | claudeguard/scripts/config/config.py | Yes | PASS |
 | plan-review | Write | anything.py | Yes | PASS |
-| plan-review | Agent | PlanReview (no revision) | Yes | PASS |
-| plan-review | Skill | continue | Yes | PASS |
-| plan-review | Agent | PlanReview (revise required) | Yes | PASS |
-| create-tasks | Skill | revise-plan | Yes | PASS |
+| plan-review | Agent | claudeguard:PlanReview (before revision, iter 1) | Yes | PASS |
+| continue | Skill | continue | Yes | PASS |
+| plan-review | Agent | claudeguard:PlanReview (before revision, revise-plan flow) | Yes | PASS |
+| revise-plan | Skill | revise-plan (wrong phase) | Yes | PASS |
 
-### Bugs
+**Phase Result: ALL PASS (20/20 guardrail tests, 11/11 state checks, 6/6 violation entries)**
 
-- **BUG-002**: Edit on non-existent file `wrong.md` was not blocked by guardrail. The Edit tool returned "File does not exist" error before the pre_tool_use hook could fire a guardrail block. The violation was not logged. Guardrail should block based on path validation alone, regardless of file existence.
+---
 
-## Phase: create-tasks
+## Phase: create-tasks (AUTO)
 
 ### Guardrail Tests
 
 | Phase | Step | Expected | Actual | Result |
 |-------|------|----------|--------|--------|
-| create-tasks | Skill /create-tasks | BLOCK | "Unknown skill" (skill doesn't exist, guardrail not triggered) | FAIL |
-| create-tasks | TaskCreate wrong subject | BLOCK | Blocked | PASS |
-| create-tasks | TaskCreate empty subject | BLOCK | Blocked | PASS |
-| create-tasks | TaskCreate empty description | BLOCK | Blocked | PASS |
-| create-tasks | TaskCreate valid | ALLOW | Allowed (Task #4 created) | PASS |
+| create-tasks | TaskCreate "Deploy to production" (wrong task) | Block | Blocked (does not match planned tasks) | PASS |
+| create-tasks | TaskCreate empty subject | Block | Blocked (must have non-empty subject) | PASS |
+| create-tasks | TaskCreate empty description | Block | Blocked (must have non-empty description) | PASS |
+| create-tasks | TaskCreate "Create hello function" (valid) | Allow | Allowed (Task #4 created) | PASS |
 
 ### State Verification
 
@@ -167,256 +170,13 @@
 
 | Phase | Tool | Action | Logged | Result |
 |-------|------|--------|--------|--------|
-| create-tasks | Skill | create-tasks | No (skill not found, hook not triggered) | FAIL |
 | create-tasks | TaskCreate | Deploy to production | Yes | PASS |
 | create-tasks | TaskCreate | (empty subject) | Yes | PASS |
-| create-tasks | TaskCreate | Create hello function (empty desc) | Yes | PASS |
+| create-tasks | TaskCreate | Create hello function (empty description) | Yes | PASS |
 
-### Bugs
-
-- **BUG-003**: `/create-tasks` skill test is untestable — skill doesn't exist for guardrail to block it.
-
-## Phase: define-contracts
-
-### Guardrail Tests
-
-| Phase | Step | Expected | Actual | Result |
-|-------|------|----------|--------|--------|
-| define-contracts | Invoke /define-contracts | ALLOW | Allowed | PASS |
-| define-contracts | Write notes.md | BLOCK | Blocked | PASS |
-| define-contracts | Write src/random.py | BLOCK | Blocked | PASS |
-| define-contracts | Write src/hello.py with HelloService | ALLOW | Allowed | PASS |
-
-### State Verification
-
-| Phase | Check | Expected | Actual | Result |
-|-------|-------|----------|--------|--------|
-| define-contracts | contracts.written | true | true | PASS |
-| define-contracts | contracts.validated | true | true | PASS |
-| define-contracts | contracts.code_files | ["src/hello.py"] | ["src/hello.py"] | PASS |
-| define-contracts | status | completed | completed | PASS |
-
-### Violations Log
-
-| Phase | Tool | Action | Logged | Result |
-|-------|------|--------|--------|--------|
-| define-contracts | Write | notes.md | Yes | PASS |
-| define-contracts | Write | src/random.py | Yes | PASS |
+**Phase Result: ALL PASS (4/4 guardrail tests, 2/2 state checks, 3/3 violation entries)**
 
 ---
-
-## Phase: write-tests (AUTO)
-
-*(Auto-started after define-contracts completed)*
-
-### Guardrail Tests
-
-| Phase | Step | Expected | Actual | Result |
-|-------|------|----------|--------|--------|
-| write-tests | Skill /write-tests | BLOCK | "Unknown skill" (no skill to block) | FAIL |
-| write-tests | Write app.py | BLOCK | Blocked | PASS |
-| write-tests | Write test_hello.py | ALLOW | Allowed | PASS |
-| write-tests | pytest test_hello.py | ALLOW | Allowed (test failed - no hello module) | PASS |
-
-### State Verification
-
-| Phase | Check | Expected | Actual | Result |
-|-------|-------|----------|--------|--------|
-| write-tests | tests.file_paths | ["test_hello.py"] | ["test_hello.py"] | PASS |
-| write-tests | tests.executed | true | true | PASS |
-| write-tests | status | completed | completed | PASS |
-
-### Violations Log
-
-| Phase | Tool | Action | Logged | Result |
-|-------|------|--------|--------|--------|
-| write-tests | Skill | write-tests | No (skill not found) | FAIL |
-| write-tests | Write | app.py | Yes | PASS |
-
-### Bugs
-
-- **BUG-004**: `/write-tests` skill doesn't exist, same pattern as create-tasks. The auto-phase cannot be tested for guardrail blocking via Skill tool.
-
-## Phase: test-review
-
-### Guardrail Tests
-
-| Phase | Step | Expected | Actual | Result |
-|-------|------|----------|--------|--------|
-| test-review | Invoke /test-review | ALLOW | Allowed | PASS |
-| test-review | Edit unknown.py | BLOCK | Tool failed (file not found) — guardrail did NOT fire | FAIL |
-| test-review | Edit test_hello.py (allowed) | ALLOW | Allowed | PASS |
-| test-review | TestReviewer Fail verdict | ALLOW | Allowed, verdict=Fail | PASS |
-| test-review | Edit test_hello.py (revise) | ALLOW | Allowed | PASS |
-| test-review | TestReviewer Pass verdict | ALLOW | Allowed, verdict=Pass | PASS |
-
-### State Verification
-
-| Phase | Check | Expected | Actual | Result |
-|-------|-------|----------|--------|--------|
-| test-review | reviews[0].verdict | Fail | Fail | PASS |
-| test-review | reviews[1].verdict | Pass | Pass | PASS |
-| test-review | status | completed | completed | PASS |
-
-### Violations Log
-
-| Phase | Tool | Action | Logged | Result |
-|-------|------|--------|--------|--------|
-| test-review | Edit | unknown.py | No (file not found, tool failed before guardrail) | FAIL |
-
-### Bugs
-
-- **BUG-005**: Same as BUG-002 — Edit on non-existent `unknown.py` was not blocked/logged by guardrail. Consistent pattern: pre_tool_use hook fires AFTER the tool validates arguments (including file existence).
-
-## Phase: write-code (AUTO)
-
-*(Auto-started after test-review passed)*
-
-### Guardrail Tests
-
-| Phase | Step | Expected | Actual | Result |
-|-------|------|----------|--------|--------|
-| write-code | Skill /write-code | BLOCK | "Unknown skill" (no skill to block) | FAIL |
-| write-code | Write readme.md | BLOCK | Blocked (non-code extension) | PASS |
-| write-code | Write src/hello.py | ALLOW | Allowed | PASS |
-| write-code | pytest test_hello.py | ALLOW | Allowed (test fails - module not found) | PASS |
-
-### State Verification
-
-| Phase | Check | Expected | Actual | Result |
-|-------|-------|----------|--------|--------|
-| write-code | code_files.file_paths | ["src/hello.py"] | ["src/hello.py"] | PASS |
-| write-code | status | completed | completed | PASS |
-
-### Violations Log
-
-| Phase | Tool | Action | Logged | Result |
-|-------|------|--------|--------|--------|
-| write-code | Skill | write-code | No (skill not found) | FAIL |
-| write-code | Write | readme.md | Yes | PASS |
-
-### Bugs
-
-- **BUG-006**: `/write-code` skill doesn't exist. Same pattern as create-tasks/write-tests.
-
-## Phase: quality-check
-
-### Guardrail Tests
-
-| Phase | Step | Expected | Actual | Result |
-|-------|------|----------|--------|--------|
-| quality-check | Invoke /quality-check | ALLOW | Allowed | PASS |
-| quality-check | QASpecialist Fail | ALLOW | Allowed, result=Fail | PASS |
-| quality-check | QASpecialist Pass | ALLOW | Allowed, result=Pass | PASS |
-
-### State Verification
-
-| Phase | Check | Expected | Actual | Result |
-|-------|-------|----------|--------|--------|
-| quality-check | quality_check_result (Fail) | Fail | Fail | PASS |
-| quality-check | quality_check_result (Pass) | Pass | Pass | PASS |
-| quality-check | status | completed | completed | PASS |
-
-## Phase: code-review
-
-### Guardrail Tests
-
-| Phase | Step | Expected | Actual | Result |
-|-------|------|----------|--------|--------|
-| code-review | Invoke /code-review | ALLOW | Allowed | PASS |
-| code-review | Edit random.py | BLOCK | Tool failed (file not found) — guardrail did NOT fire | FAIL |
-| code-review | Edit src/hello.py (allowed) | ALLOW | Allowed | PASS |
-| code-review | CodeReviewer Fail (50/50) | ALLOW | Allowed, status=Fail | PASS |
-| code-review | /revise-plan (wrong phase) | BLOCK | Blocked | PASS |
-| code-review | Edit src/hello.py without test revision | BLOCK (unexpected) | Blocked: must revise tests first | PASS |
-| code-review | Edit test_hello.py (test revision) | ALLOW | Allowed | PASS |
-| code-review | Edit src/hello.py (after test revision) | ALLOW | Allowed | PASS |
-| code-review | CodeReviewer Pass (95/92) | ALLOW | Allowed, status=Pass | PASS |
-
-### State Verification
-
-| Phase | Check | Expected | Actual | Result |
-|-------|-------|----------|--------|--------|
-| code-review | reviews[0].status | Fail | Fail | PASS |
-| code-review | reviews[1].status | Pass | Pass | PASS |
-| code-review | status | completed | completed | PASS |
-
-### Violations Log
-
-| Phase | Tool | Action | Logged | Result |
-|-------|------|--------|--------|--------|
-| code-review | Edit | random.py | No (file not found, tool failed before guardrail) | FAIL |
-| code-review | Skill | revise-plan | Yes | PASS |
-| code-review | Edit | src/hello.py (tests not revised) | Yes | PASS |
-
-### Bugs
-
-- **BUG-007**: Same as BUG-002/005 — Edit on non-existent `random.py` not blocked/logged.
-
-## Phase: pr-create
-
-### Guardrail Tests
-
-| Phase | Step | Expected | Actual | Result |
-|-------|------|----------|--------|--------|
-| pr-create | Invoke /pr-create | ALLOW | Allowed | PASS |
-| pr-create | Bash echo "hello" | BLOCK | Blocked | PASS |
-| pr-create | gh pr create without --json | BLOCK | Blocked | PASS |
-| pr-create | git status | ALLOW | Allowed | PASS |
-
-### Violations Log
-
-| Phase | Tool | Action | Logged | Result |
-|-------|------|--------|--------|--------|
-| pr-create | Bash | echo "hello" | Yes | PASS |
-| pr-create | Bash | gh pr create --title test | Yes | PASS |
-
-## Phase: ci-check
-
-### Guardrail Tests
-
-| Phase | Step | Expected | Actual | Result |
-|-------|------|----------|--------|--------|
-| ci-check | Invoke /ci-check | ALLOW | Allowed (after /continue skip of pr-create) | PASS |
-| ci-check | Bash echo "hello" | BLOCK | Blocked | PASS |
-| ci-check | gh pr checks without --json | BLOCK | Blocked | PASS |
-
-### Violations Log
-
-| Phase | Tool | Action | Logged | Result |
-|-------|------|--------|--------|--------|
-| ci-check | Bash | echo "hello" | Yes | PASS |
-| ci-check | Bash | gh pr checks | Yes | PASS |
-
-## Phase: write-report
-
-### Guardrail Tests
-
-| Phase | Step | Expected | Actual | Result |
-|-------|------|----------|--------|--------|
-| write-report | Stop before write-report | BLOCK | Blocked by stop hook | PASS |
-| write-report | Invoke /write-report | ALLOW | Allowed (after /continue skip of ci-check) | PASS |
-| write-report | Write feature.py | BLOCK | Blocked | PASS |
-| write-report | Write .claude/reports/report.md | ALLOW | Allowed | PASS |
-
-### State Verification
-
-| Phase | Check | Expected | Actual | Result |
-|-------|-------|----------|--------|--------|
-| write-report | report_written | true | true | PASS |
-| write-report | status | completed | completed | PASS |
-
-### Violations Log
-
-| Phase | Tool | Action | Logged | Result |
-|-------|------|--------|--------|--------|
-| write-report | Write | feature.py | Yes | PASS |
-
-### Bugs
-
-- **BUG-008**: After workflow completes (all phases done, workflow_active=true), the guardrail still enforces write-report read-only restrictions. Post-workflow cleanup (rm test files) is blocked. The workflow_active flag never resets.
-
-- **BUG-003**: `/create-tasks` skill test is untestable — skill doesn't exist. If the intent is for the guardrail to block the skill, the skill needs to exist for the hook to fire. The guardrail block was not triggered, just "Unknown skill" from the Skill tool.
 
 ## Phase: install-deps
 
@@ -424,11 +184,11 @@
 
 | Phase | Step | Expected | Actual | Result |
 |-------|------|----------|--------|--------|
-| install-deps | Invoke /install-deps | ALLOW | Allowed | PASS |
-| install-deps | Write app.py | BLOCK | Blocked | PASS |
-| install-deps | Bash echo "not an install" | BLOCK | Blocked | PASS |
-| install-deps | Write requirements.txt | ALLOW | Allowed | PASS |
-| install-deps | pip install -r requirements.txt | ALLOW | Allowed | PASS |
+| install-deps | Skill /install-deps | Allow | Allowed | PASS |
+| install-deps | Write app.py (non-package file) | Block | Blocked (not allowed in install-deps) | PASS |
+| install-deps | Bash echo "not an install" | Block | Blocked (not an install command) | PASS |
+| install-deps | Write requirements.txt | Allow | Allowed | PASS |
+| install-deps | Bash pip install -r requirements.txt | Allow | Allowed | PASS |
 
 ### State Verification
 
@@ -444,47 +204,273 @@
 | install-deps | Write | app.py | Yes | PASS |
 | install-deps | Bash | echo "not an install" | Yes | PASS |
 
+**Phase Result: ALL PASS (5/5 guardrail tests, 2/2 state checks, 2/2 violation entries)**
+
 ---
 
-# Final Summary
+## Phase: define-contracts
 
-## Totals
+### Guardrail Tests
 
-| Category | Total | Pass | Fail | Pass Rate |
-|----------|-------|------|------|-----------|
-| Guardrail Tests | 72 | 66 | 6 | 91.7% |
-| State Verification | 41 | 41 | 0 | 100% |
-| Violations Log | 40 | 34 | 6 | 85.0% |
+| Phase | Step | Expected | Actual | Result |
+|-------|------|----------|--------|--------|
+| define-contracts | Skill /define-contracts | Allow | Allowed | PASS |
+| define-contracts | Write notes.md (not in contract list) | Block | Blocked (not in contracts Specifications list) | PASS |
+| define-contracts | Write src/random.py (not in contract list) | Block | Blocked (not in contracts Specifications list) | PASS |
+| define-contracts | Write src/hello.py (valid contract file) | Allow | Allowed | PASS |
 
-## Phases Tested
+### State Verification
 
-All 15 build workflow phases completed successfully:
-explore, research, plan, plan-review, create-tasks, install-deps, define-contracts, write-tests, test-review, write-code, quality-check, code-review, pr-create, ci-check, write-report
+| Phase | Check | Expected | Actual | Result |
+|-------|-------|----------|--------|--------|
+| define-contracts | contracts.written | true | true | PASS |
+| define-contracts | contracts.validated | true | true | PASS |
+| define-contracts | contracts.code_files | ["src/hello.py"] | ["src/hello.py"] | PASS |
+| define-contracts | status | completed | completed | PASS |
+| define-contracts | write-tests auto-started | in_progress | in_progress | PASS |
 
-## Bug Summary
+### Violations Log
 
-| ID | Severity | Category | Description |
-|----|----------|----------|-------------|
-| BUG-001 | Low | Violations logging | Phase label in violations.md reflects last active phase ("research") instead of logical phase ("plan") for skill blocks invoked before `/plan` |
-| BUG-002 | Medium | Edit guardrail | Edit on non-existent `wrong.md` bypasses pre_tool_use hook -- tool validates file existence before hook fires |
-| BUG-003 | Medium | Skill coverage | `/create-tasks` has no invokable skill -- auto-phase cannot be blocked by guardrail Skill hook |
-| BUG-004 | Medium | Skill coverage | `/write-tests` has no invokable skill -- same pattern as BUG-003 |
-| BUG-005 | Medium | Edit guardrail | Edit on non-existent `unknown.py` bypasses hook -- same root cause as BUG-002 |
-| BUG-006 | Medium | Skill coverage | `/write-code` has no invokable skill -- same pattern as BUG-003 |
-| BUG-007 | Medium | Edit guardrail | Edit on non-existent `random.py` bypasses hook -- same root cause as BUG-002 |
-| BUG-008 | Low | Workflow lifecycle | `workflow_active` stays `true` after all phases complete -- post-workflow cleanup (rm, bash) still blocked |
+| Phase | Tool | Action | Logged | Result |
+|-------|------|--------|--------|--------|
+| define-contracts | Write | notes.md | Yes | PASS |
+| define-contracts | Write | src/random.py | Yes | PASS |
 
-## Root Causes (2 distinct issues)
+**Phase Result: ALL PASS (4/4 guardrail tests, 5/5 state checks, 2/2 violation entries)**
 
-**1. Edit tool validates file existence before pre_tool_use hook fires (BUG-002/005/007)**
-- When the Edit tool receives a path to a non-existent file, the tool itself returns "File does not exist" before the pre_tool_use guardrail hook has a chance to block based on path validation
-- Fix: The pre_tool_use hook should intercept Edit calls and validate the path against allowed files regardless of whether the file exists
+---
 
-**2. Auto-phase skills don't exist as invokable commands (BUG-003/004/006)**
-- `create-tasks`, `write-tests`, and `write-code` are auto-phases with no corresponding Skill definition
-- When tested via `/create-tasks`, the Skill tool returns "Unknown skill" before any hook fires
-- Fix: Register stub skills for these auto-phases so the pre_tool_use Skill hook can block them with a proper guardrail message
+## Phase: write-tests (AUTO)
 
-## Verdict
+### Guardrail Tests
 
-**GUARDRAIL FAILURES DETECTED -- 8 bugs found across 2 root causes. Core guardrail enforcement is solid (91.7% pass rate). All state transitions and verifications pass at 100%. The failures are limited to edge cases (non-existent file edits, missing auto-phase skills) and do not affect the primary workflow enforcement path. Recommend fixing root causes before production use.**
+| Phase | Step | Expected | Actual | Result |
+|-------|------|----------|--------|--------|
+| write-tests | Write app.py (non-test file) | Block | Blocked (not a test file pattern) | PASS |
+| write-tests | Write test_hello.py (valid test file) | Allow | Allowed | PASS |
+| write-tests | Bash python -m pytest test_hello.py -v | Allow | Allowed (test failed with exit code 1 — TDD expected) | PASS |
+
+### State Verification
+
+| Phase | Check | Expected | Actual | Result |
+|-------|-------|----------|--------|--------|
+| write-tests | tests.file_paths | ["test_hello.py"] | ["test_hello.py"] | PASS |
+| write-tests | tests.executed | true | false | **FAIL** |
+| write-tests | status | completed | in_progress | **FAIL** |
+
+### Violations Log
+
+| Phase | Tool | Action | Logged | Result |
+|-------|------|--------|--------|--------|
+| write-tests | Write | app.py | Yes | PASS |
+
+### Bugs
+
+**BUG #1**: `tests.executed` remains `false` and `write-tests` phase stays `in_progress` after `python -m pytest` runs with exit code 1. The guardrail appears to require a successful test run (exit code 0) to mark the phase complete, but in TDD mode a failing test is the expected first run. The phase should be marked complete on test execution regardless of exit code.
+
+**Phase Result: 3/3 guardrail tests PASS, 1/3 state checks FAIL (bug), 1/1 violation entries PASS**
+
+---
+
+## Phase: test-review
+
+### Guardrail Tests
+
+| Phase | Step | Expected | Actual | Result |
+|-------|------|----------|--------|--------|
+| test-review | Skill /test-review | Allow | Allowed | PASS |
+| test-review | Edit non-test file (config.py) | Block | Blocked (not in session test files) | PASS |
+| test-review | Edit test_hello.py | Allow | Allowed | PASS |
+| test-review | TestReviewer agent (iter 1, Fail) | Allow | Allowed (Fail) | PASS |
+| test-review | Edit test_hello.py (revision) | Allow | Allowed | PASS |
+| test-review | TestReviewer agent (passing, Pass) | Allow | Allowed (Pass, phase completed) | PASS |
+
+### State Verification
+
+| Phase | Check | Expected | Actual | Result |
+|-------|-------|----------|--------|--------|
+| test-review | tests.reviews | [Fail, Pass] | [Fail, Pass] | PASS |
+| test-review | status | completed | completed | PASS |
+| test-review | write-code auto-started | in_progress | in_progress | PASS |
+
+### Violations Log
+
+| Phase | Tool | Action | Logged | Result |
+|-------|------|--------|--------|--------|
+| test-review | Edit | claudeguard/scripts/config/config.py | Yes | PASS |
+
+**Phase Result: ALL PASS (6/6 guardrail tests, 3/3 state checks, 1/1 violation entries)**
+
+---
+
+## Phase: write-code (AUTO)
+
+### Guardrail Tests
+
+| Phase | Step | Expected | Actual | Result |
+|-------|------|----------|--------|--------|
+| write-code | Write readme.md (non-code extension) | Block | Blocked (not an allowed extension) | PASS |
+| write-code | Write src/hello.py (valid code file) | Allow | Allowed | PASS |
+| write-code | Bash python -m pytest test_hello.py -v | Allow | Allowed (test failed — module not found) | PASS |
+
+### State Verification
+
+| Phase | Check | Expected | Actual | Result |
+|-------|-------|----------|--------|--------|
+| write-code | code_files.file_paths | ["src/hello.py"] | ["src/hello.py"] | PASS |
+| write-code | status | completed | completed | PASS |
+
+### Violations Log
+
+| Phase | Tool | Action | Logged | Result |
+|-------|------|--------|--------|--------|
+| write-code | Write | readme.md | Yes | PASS |
+
+### Notes
+
+write-code phase completed after src/hello.py was written even though pytest returned exit code 1. This is inconsistent with write-tests Bug #1 where the phase did not complete after pytest exit code 1. In write-code, phase completion is based on code file being written, not test execution.
+
+**Phase Result: ALL PASS (3/3 guardrail tests, 2/2 state checks, 1/1 violation entries)**
+
+---
+
+## Phase: quality-check
+
+### Guardrail Tests
+
+| Phase | Step | Expected | Actual | Result |
+|-------|------|----------|--------|--------|
+| quality-check | Skill /quality-check | Allow | Allowed | PASS |
+| quality-check | QASpecialist agent (iter 1, Fail) | Allow | Allowed (Fail) | PASS |
+| quality-check | QASpecialist agent (passing, Pass) | Allow | Allowed (Pass, phase completed) | PASS |
+
+### State Verification
+
+| Phase | Check | Expected | Actual | Result |
+|-------|-------|----------|--------|--------|
+| quality-check | quality_check_result (iter 1) | Fail | Fail | PASS |
+| quality-check | quality_check_result (passing) | Pass | Pass | PASS |
+| quality-check | status | completed | completed | PASS |
+
+**Phase Result: ALL PASS (3/3 guardrail tests, 3/3 state checks)**
+
+---
+
+## Phase: code-review
+
+### Guardrail Tests
+
+| Phase | Step | Expected | Actual | Result |
+|-------|------|----------|--------|--------|
+| code-review | Skill /code-review | Allow | Allowed | PASS |
+| code-review | Edit non-session file (config.py) | Block | Blocked (not in session code files) | PASS |
+| code-review | Edit src/hello.py | Allow | Allowed | PASS |
+| code-review | CodeReviewer agent (iter 1, scores 50/50) | Allow | Allowed (Fail) | PASS |
+| code-review | Skill /revise-plan (wrong phase) | Block | Blocked (only during plan-review) | PASS |
+| code-review | Edit src/hello.py (before test revision) | Allow | **Blocked** (must revise test files first) | **DEVIATION** |
+| code-review | Edit test_hello.py (test revision) | Allow | Allowed | PASS |
+| code-review | Edit src/hello.py (after test revision) | Allow | Allowed | PASS |
+| code-review | CodeReviewer agent (passing, scores 95/92) | Allow | Allowed (Pass, phase completed) | PASS |
+
+### State Verification
+
+| Phase | Check | Expected | Actual | Result |
+|-------|-------|----------|--------|--------|
+| code-review | code_files.reviews[0] | Fail (50/50) | Fail (50/50) | PASS |
+| code-review | code_files.reviews[1] | Pass (95/92) | Pass (95/92) | PASS |
+| code-review | status | completed | completed | PASS |
+
+### Violations Log
+
+| Phase | Tool | Action | Logged | Result |
+|-------|------|--------|--------|--------|
+| code-review | Edit | claudeguard/scripts/config/config.py | Yes | PASS |
+| revise-plan | Skill | revise-plan | Yes | PASS |
+| code-review | Edit | src/hello.py (test-first enforcement) | Yes (extra) | PASS |
+
+### Bugs/Deviations
+
+**DEVIATION #1**: Code-review guardrail enforces "revise test files first before editing code files" when the CodeReviewer outputs `## Tests to revise`. The test spec expected `Edit src/hello.py` to be allowed directly, but the guardrail requires editing test files first. This is a guardrail feature not accounted for in the test spec, not a bug.
+
+**Phase Result: 8/9 guardrail tests PASS (1 deviation — test-first enforcement), 3/3 state checks PASS, 3/3 violation entries PASS**
+
+---
+
+## Phase: pr-create
+
+### Guardrail Tests
+
+| Phase | Step | Expected | Actual | Result |
+|-------|------|----------|--------|--------|
+| pr-create | Skill /pr-create | Allow | Allowed | PASS |
+| pr-create | Bash echo "hello" (not in PR commands) | Block | Blocked (not allowed in pr-create) | PASS |
+| pr-create | Bash gh pr create --title test (missing --json) | Block | Blocked (must include --json flag) | PASS |
+| pr-create | Bash git status (read-only) | Allow | Allowed | PASS |
+
+### Violations Log
+
+| Phase | Tool | Action | Logged | Result |
+|-------|------|--------|--------|--------|
+| pr-create | Bash | echo "hello" | Yes | PASS |
+| pr-create | Bash | gh pr create --title test | Yes | PASS |
+
+**Phase Result: ALL PASS (4/4 guardrail tests, 2/2 violation entries)**
+
+---
+
+## Phase: ci-check
+
+### Guardrail Tests
+
+| Phase | Step | Expected | Actual | Result |
+|-------|------|----------|--------|--------|
+| ci-check | Skill /ci-check | Allow | Allowed (after /continue on pr-create) | PASS |
+| ci-check | Bash echo "hello" (not in CI commands) | Block | Blocked (not allowed in ci-check) | PASS |
+| ci-check | Bash gh pr checks (missing --json) | Block | Blocked (must include --json flag) | PASS |
+
+### Violations Log
+
+| Phase | Tool | Action | Logged | Result |
+|-------|------|--------|--------|--------|
+| ci-check | Bash | echo "hello" | Yes | PASS |
+| ci-check | Bash | gh pr checks | Yes | PASS |
+
+**Phase Result: ALL PASS (3/3 guardrail tests, 2/2 violation entries)**
+
+---
+
+## Stop Hook
+
+| Phase | Step | Expected | Actual | Result |
+|-------|------|----------|--------|--------|
+| pre-write-report | Attempt to stop without /write-report | Block | Blocked (Phases not completed: ['write-report']) | PASS |
+
+---
+
+## Phase: write-report
+
+### Guardrail Tests
+
+| Phase | Step | Expected | Actual | Result |
+|-------|------|----------|--------|--------|
+| write-report | Skill /write-report | Allow | Allowed | PASS |
+| write-report | Write feature.py (non-report file) | Block | Blocked (not allowed, only .claude/reports/report.md) | PASS |
+| write-report | Write .claude/reports/report.md (valid) | Allow | Allowed | PASS |
+
+### State Verification
+
+| Phase | Check | Expected | Actual | Result |
+|-------|-------|----------|--------|--------|
+| write-report | report_written | true | true | PASS |
+| write-report | status | completed | completed | PASS |
+| workflow | overall status | completed | completed | PASS |
+
+### Violations Log
+
+| Phase | Tool | Action | Logged | Result |
+|-------|------|--------|--------|--------|
+| write-report | Write | feature.py | Yes | PASS |
+
+**Phase Result: ALL PASS (3/3 guardrail tests, 3/3 state checks, 1/1 violation entries)**
+
+---

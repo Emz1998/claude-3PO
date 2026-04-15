@@ -1,10 +1,11 @@
-"""PhaseValidator — Validates phase transitions (skill invocations)."""
+"""PhaseGuard — Validates phase transitions (skill invocations)."""
 
 from typing import Literal
 
 from lib.state_store import StateStore
 from lib.extractors import extract_skill_name
 from config import Config
+from utils.resolver import Resolver
 
 
 Decision = tuple[Literal["allow", "block"], str]
@@ -19,7 +20,7 @@ REVIEW_PHASES = {
 }
 
 
-class PhaseValidator:
+class PhaseGuard:
     """Validate phase transition (skill invocation)."""
 
     def __init__(self, hook_input: dict, config: Config, state: StateStore):
@@ -100,16 +101,12 @@ class PhaseValidator:
             )
 
         if self.status == "completed":
-            from utils.resolver import _auto_start_next
-
-            _auto_start_next(self.config, self.state)
+            Resolver(self.config, self.state).auto_start_next()
             return "allow", f"Continuing after completed phase: {self.current}"
 
         if self.status == "in_progress":
             self.state.set_phase_completed(self.current)
-            from utils.resolver import _auto_start_next
-
-            _auto_start_next(self.config, self.state)
+            Resolver(self.config, self.state).auto_start_next()
             return "allow", f"Force-completed phase: {self.current}"
 
         raise ValueError(
@@ -124,16 +121,12 @@ class PhaseValidator:
             )
 
         if self.status == "completed":
-            from utils.resolver import _auto_start_next
-
-            _auto_start_next(self.config, self.state, skip_checkpoint=True)
+            Resolver(self.config, self.state).auto_start_next(skip_checkpoint=True)
             return "allow", "Plan approved. Proceeding to next phase."
 
         if self.status == "in_progress" and self._is_review_exhausted("plan-review"):
             self.state.set_phase_completed("plan-review")
-            from utils.resolver import _auto_start_next
-
-            _auto_start_next(self.config, self.state, skip_checkpoint=True)
+            Resolver(self.config, self.state).auto_start_next(skip_checkpoint=True)
             return (
                 "allow",
                 "Plan approved (after review exhaustion). Proceeding to next phase.",

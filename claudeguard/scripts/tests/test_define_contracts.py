@@ -5,7 +5,7 @@ from pathlib import Path
 from models.state import Agent
 from lib.extractors import extract_contract_names, extract_contract_files
 from guardrails import write_guard
-from utils.resolver import resolve_define_contracts
+from utils.resolver import Resolver
 from helpers import make_hook_input
 
 
@@ -117,7 +117,7 @@ class TestDefineContractsFileGuard:
 
 
 class TestResolveDefineContracts:
-    def test_completes_when_all_contracts_found(self, tmp_path, state):
+    def test_completes_when_all_contracts_found(self, tmp_path, config, state):
         state.set("workflow_type", "build")
         state.add_phase("define-contracts")
         state.set_contracts_names(["UserService"])
@@ -130,11 +130,11 @@ class TestResolveDefineContracts:
         code_file.write_text("class UserService:\n    pass\n")
         state.add_contract_code_file(str(code_file))
 
-        resolve_define_contracts(state)
+        Resolver(config, state)._resolve_define_contracts()
         assert state.contracts.get("validated") is True
         assert state.is_phase_completed("define-contracts")
 
-    def test_does_not_complete_when_contract_missing(self, tmp_path, state):
+    def test_does_not_complete_when_contract_missing(self, tmp_path, config, state):
         state.set("workflow_type", "build")
         state.add_phase("define-contracts")
         state.set_contracts_names(["UserService", "AuthProvider"])
@@ -147,11 +147,11 @@ class TestResolveDefineContracts:
         code_file.write_text("class UserService:\n    pass\n")
         state.add_contract_code_file(str(code_file))
 
-        resolve_define_contracts(state)
+        Resolver(config, state)._resolve_define_contracts()
         assert not state.is_phase_completed("define-contracts")
 
-    def test_does_not_complete_when_not_written(self, state):
+    def test_does_not_complete_when_not_written(self, config, state):
         state.set("workflow_type", "build")
         state.add_phase("define-contracts")
-        resolve_define_contracts(state)
+        Resolver(config, state)._resolve_define_contracts()
         assert not state.is_phase_completed("define-contracts")

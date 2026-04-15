@@ -38,6 +38,14 @@ class Recorder:
     def _basenames(paths: list[str]) -> set:
         return {p.rsplit("/", 1)[-1] for p in paths}
 
+    def _is_session_file(self, file_path: str) -> bool:
+        """Check if file is a code or test file tracked in the current session."""
+        code_files = self.state.code_files.get("file_paths", [])
+        test_files = self.state.tests.get("file_paths", [])
+        all_files = self._basenames(code_files + test_files)
+        basename = file_path.rsplit("/", 1)[-1]
+        return basename in all_files
+
     # ── Phase transition ──────────────────────────────────────────
 
     def record_phase_transition(
@@ -147,7 +155,7 @@ class Recorder:
             to_revise_basenames = self._basenames(self.state.code_tests_to_revise)
             if basename in to_revise_basenames:
                 self.state.add_code_test_revised(file_path)
-            else:
+            elif self._is_session_file(file_path):
                 self.state.add_file_revised(file_path)
 
     # ── Agent report ──────────────────────────────────────────────

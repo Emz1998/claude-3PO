@@ -1,223 +1,182 @@
-import re
-import tomllib
+import json
 from pathlib import Path
 from typing import Any
 
 
 class Config:
     def __init__(self, config_path: Path | None = None):
-        self._path = config_path or Path(__file__).parent / "config.toml"
-        with open(self._path, "rb") as f:
-            self._data: dict[str, Any] = tomllib.load(f)
+        self._path = config_path or Path(__file__).parent / "config.json"
+        with open(self._path, "r") as f:
+            self._data: dict[str, Any] = json.load(f)
+        self._phase_list: list[dict] = self._data.get("phases", [])
+        self._phase_map: dict[str, dict] = {p["name"]: p for p in self._phase_list}
 
-    # ── Raw accessors ──────────────────────────────────────────────
+    # ── Phase queries (derived from phases array) ─────────────────
+
+    def _phases_with(self, flag: str) -> list[str]:
+        return [p["name"] for p in self._phase_list if p.get(flag)]
+
+    def get_phases(self, workflow_type: str) -> list[str]:
+        return [p["name"] for p in self._phase_list if workflow_type in p.get("workflows", [])]
+
+    @property
+    def build_phases(self) -> list[str]:
+        return self.get_phases("build")
+
+    @property
+    def implement_phases(self) -> list[str]:
+        return self.get_phases("implement")
+
+    @property
+    def main_phases(self) -> list[str]:
+        return self.build_phases
+
+    @property
+    def auto_phases(self) -> list[str]:
+        return self._phases_with("auto")
 
     @property
     def read_only_phases(self) -> list[str]:
-        return self._data.get("READ_ONLY_PHASES", [])
+        return self._phases_with("read_only")
 
     @property
     def code_write_phases(self) -> list[str]:
-        return self._data.get("CODE_WRITE_PHASES", [])
+        return self._phases_with("code_write")
 
     @property
     def code_edit_phases(self) -> list[str]:
-        return self._data.get("CODE_EDIT_PHASES", [])
+        return self._phases_with("code_edit")
 
     @property
     def docs_write_phases(self) -> list[str]:
-        return self._data.get("DOCS_WRITE_PHASES", [])
+        return self._phases_with("docs_write")
 
     @property
     def docs_edit_phases(self) -> list[str]:
-        return self._data.get("DOCS_EDIT_PHASES", [])
+        return self._phases_with("docs_edit")
 
     @property
     def checkpoint_phase(self) -> list[str]:
-        return self._data.get("CHECKPOINT_PHASE", [])
+        return self._phases_with("checkpoint")
 
-    @property
-    def safe_domains(self) -> list[str]:
-        return self._data.get("SAFE_DOMAINS", [])
+    def is_auto_phase(self, phase: str) -> bool:
+        return self._phase_map.get(phase, {}).get("auto", False)
 
-    @property
-    def required_agents(self) -> dict[str, str]:
-        return self._data.get("REQUIRED_AGENTS", {})
+    def is_main_phase(self, phase: str) -> bool:
+        return phase in self.main_phases
 
-    @property
-    def score_thresholds(self) -> dict[str, dict[str, int]]:
-        return self._data.get("SCORE_THRESHOLDS", {})
+    def is_read_only_phase(self, phase: str) -> bool:
+        return self._phase_map.get(phase, {}).get("read_only", False)
 
-    # ── Agent limits ───────────────────────────────────────────────
+    def is_code_write_phase(self, phase: str) -> bool:
+        return self._phase_map.get(phase, {}).get("code_write", False)
 
-    def get_agent_max(self, key: str) -> int:
-        return self._data.get(key, 0)
+    def is_code_edit_phase(self, phase: str) -> bool:
+        return self._phase_map.get(phase, {}).get("code_edit", False)
 
-    @property
-    def explore_max(self) -> int:
-        return self._data.get("EXPLORE_MAX", 3)
+    def is_docs_write_phase(self, phase: str) -> bool:
+        return self._phase_map.get(phase, {}).get("docs_write", False)
 
-    @property
-    def research_max(self) -> int:
-        return self._data.get("RESEARCH_MAX", 2)
+    def is_docs_edit_phase(self, phase: str) -> bool:
+        return self._phase_map.get(phase, {}).get("docs_edit", False)
 
-    @property
-    def plan_max(self) -> int:
-        return self._data.get("PLAN_MAX", 1)
+    def is_checkpoint_phase(self, phase: str) -> bool:
+        return self._phase_map.get(phase, {}).get("checkpoint", False)
 
-    @property
-    def plan_review_max(self) -> int:
-        return self._data.get("PLAN_REVIEW_MAX", 3)
-
-    @property
-    def test_reviewer_max(self) -> int:
-        return self._data.get("TEST_REVIEWER_MAX", 3)
-
-    @property
-    def qa_specialist_max(self) -> int:
-        return self._data.get("QA_SPECIALIST_MAX", 1)
-
-    @property
-    def code_reviewer_max(self) -> int:
-        return self._data.get("CODE_REVIEWER_MAX", 3)
-
-    # ── Required agents ────────────────────────────────────────────
+    # ── Agents (derived from phases + agents map) ─────────────────
 
     def get_required_agent(self, phase: str) -> str:
-        return self.required_agents.get(phase, "")
+        return self._phase_map.get(phase, {}).get("agent", "")
 
     def is_agent_required(self, phase: str, agent_name: str) -> bool:
         return self.get_required_agent(phase) == agent_name
 
     def get_agent_max_count(self, agent_name: str) -> int:
-        """Look up MAX invocation limit for an agent by name.
-
-        Converts PascalCase to UPPER_SNAKE: PlanReview -> PLAN_REVIEW_MAX,
-        QASpecialist -> QA_SPECIALIST_MAX.
-        """
-        snake = re.sub(
-            r"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])", "_", agent_name
-        )
-        key = f"{snake.upper()}_MAX"
-        return self._data.get(key, 1)
-
-    # ── Phases ─────────────────────────────────────────────────────
+        return self._data.get("agents", {}).get(agent_name, 1)
 
     @property
-    def build_phases(self) -> list[str]:
-        return self._data.get("BUILD_PHASES", [])
+    def required_agents(self) -> dict[str, str]:
+        return {p["name"]: p["agent"] for p in self._phase_list if p.get("agent")}
 
-    @property
-    def implement_phases(self) -> list[str]:
-        return self._data.get("IMPLEMENT_PHASES", [])
+    # ── Plan templates ────────────────────────────────────────────
 
-    @property
-    def auto_phases(self) -> list[str]:
-        return self._data.get("AUTO_PHASES", [])
+    def _plan_template(self, workflow_type: str) -> dict[str, Any]:
+        return self._data.get("plan_templates", {}).get(workflow_type, {})
 
-    def get_phases(self, workflow_type: str) -> list[str]:
-        if workflow_type == "build":
-            return self.build_phases
-        if workflow_type == "implement":
-            return self.implement_phases
-        return []
+    def get_plan_required_sections(self, workflow_type: str) -> list[str]:
+        return self._plan_template(workflow_type).get("required_sections", [])
 
-    def is_auto_phase(self, phase: str) -> bool:
-        return phase in self.auto_phases
-
-    @property
-    def main_phases(self) -> list[str]:
-        return self._data.get("MAIN_PHASES", [])
-
-    def is_main_phase(self, phase: str) -> bool:
-        return phase in self.main_phases
-
-    # ── Plan validation ─────────────────────────────────────────────
+    def get_plan_bullet_sections(self, workflow_type: str) -> list[str]:
+        return self._plan_template(workflow_type).get("bullet_sections", [])
 
     @property
     def build_plan_required_sections(self) -> list[str]:
-        return self._data.get("BUILD_PLAN_REQUIRED_SECTIONS", [])
+        return self.get_plan_required_sections("build")
 
     @property
     def build_plan_bullet_sections(self) -> list[str]:
-        return self._data.get("BUILD_PLAN_BULLET_SECTIONS", [])
+        return self.get_plan_bullet_sections("build")
 
     @property
     def implement_plan_required_sections(self) -> list[str]:
-        return self._data.get("IMPLEMENT_PLAN_REQUIRED_SECTIONS", [])
+        return self.get_plan_required_sections("implement")
 
-    def get_plan_required_sections(self, workflow_type: str) -> list[str]:
-        if workflow_type == "implement":
-            return self.implement_plan_required_sections
-        return self.build_plan_required_sections
+    # ── Score thresholds ──────────────────────────────────────────
 
-    # ── Score thresholds ───────────────────────────────────────────
+    @property
+    def score_thresholds(self) -> dict[str, dict[str, int]]:
+        return self._data.get("score_thresholds", {})
 
     def get_score_threshold(self, phase: str, score_type: str) -> int:
         return self.score_thresholds.get(phase, {}).get(score_type, 0)
 
-    # ── File paths ─────────────────────────────────────────────────
+    # ── Safe domains ──────────────────────────────────────────────
 
     @property
-    def file_paths(self) -> dict[str, str]:
-        return self._data.get("FILE_PATHS", {})
+    def safe_domains(self) -> list[str]:
+        return self._data.get("safe_domains", [])
+
+    # ── Paths ─────────────────────────────────────────────────────
+
+    def _paths(self) -> dict[str, str]:
+        return self._data.get("paths", {})
 
     @property
     def plan_file_path(self) -> str:
-        return self.file_paths.get("PLAN_FILE_PATH", "")
+        return self._paths().get("plan_file", "")
 
     @property
     def plan_archive_dir(self) -> str:
-        return self.file_paths.get("PLAN_ARCHIVE_DIR", "")
+        return self._paths().get("plan_archive_dir", "")
 
     @property
     def test_file_path(self) -> str:
-        return self.file_paths.get("TEST_FILE_PATH", "")
+        return self._paths().get("test_file", "")
 
     @property
     def code_file_path(self) -> str:
-        return self.file_paths.get("CODE_FILE_PATH", "")
+        return self._paths().get("code_file", "")
 
     @property
     def report_file_path(self) -> str:
-        return self.file_paths.get("REPORT_FILE_PATH", "")
+        return self._paths().get("report_file", "")
 
     @property
     def contracts_file_path(self) -> str:
-        return self.file_paths.get("CONTRACTS_FILE_PATH", "")
+        return self._paths().get("contracts_file", "")
 
     @property
     def contracts_archive_dir(self) -> str:
-        return self.file_paths.get("CONTRACTS_ARCHIVE_DIR", "")
+        return self._paths().get("contracts_archive_dir", "")
 
     @property
     def log_file(self) -> str:
-        return self.file_paths.get("LOG_FILE", "")
+        return self._paths().get("log_file", "")
 
     @property
     def debug_log_file(self) -> str:
-        return self.file_paths.get("DEBUG_LOG_FILE", "")
+        return self._paths().get("debug_log_file", "")
 
     @property
     def default_state_jsonl(self) -> str:
-        return self.file_paths.get("DEFAULT_STATE_JSONL", "")
-
-    # ── Phase classification helpers ───────────────────────────────
-
-    def is_read_only_phase(self, phase: str) -> bool:
-        return phase in self.read_only_phases
-
-    def is_code_write_phase(self, phase: str) -> bool:
-        return phase in self.code_write_phases
-
-    def is_code_edit_phase(self, phase: str) -> bool:
-        return phase in self.code_edit_phases
-
-    def is_docs_write_phase(self, phase: str) -> bool:
-        return phase in self.docs_write_phases
-
-    def is_docs_edit_phase(self, phase: str) -> bool:
-        return phase in self.docs_edit_phases
-
-    def is_checkpoint_phase(self, phase: str) -> bool:
-        return phase in self.checkpoint_phase
+        return self._paths().get("state_jsonl", "")

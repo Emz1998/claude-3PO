@@ -6,7 +6,7 @@ Phase completes when all planned tasks have a matching entry in state.created_ta
 
 import pytest
 from lib.state_store import StateStore
-from utils.resolver import resolve_create_tasks, resolve
+from utils.resolver import Resolver, resolve
 
 
 class TestBuildCreatedTasks:
@@ -50,7 +50,7 @@ class TestResolveCreateTasksBuild:
         state.set_tasks(["Build login", "Create schema"])
         state.add_created_task("Build login")
         state.add_created_task("Create schema")
-        resolve_create_tasks(state)
+        Resolver(config, state)._resolve_create_tasks()
         assert state.is_phase_completed("create-tasks")
 
     def test_does_not_complete_when_missing(self, config, state):
@@ -58,7 +58,7 @@ class TestResolveCreateTasksBuild:
         state.add_phase("create-tasks")
         state.set_tasks(["Build login", "Create schema"])
         state.add_created_task("Build login")
-        resolve_create_tasks(state)
+        Resolver(config, state)._resolve_create_tasks()
         assert not state.is_phase_completed("create-tasks")
 
     def test_dispatches_via_resolve(self, config, state):

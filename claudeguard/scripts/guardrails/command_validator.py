@@ -1,4 +1,4 @@
-"""CommandValidator — Validates Bash commands against phase restrictions."""
+"""CommandGuard — Validates Bash commands against phase restrictions."""
 
 from constants import (
     COMMANDS_MAP,
@@ -13,7 +13,7 @@ from config import Config
 Decision = tuple[Literal["allow", "block"], str]
 
 
-class CommandValidator:
+class CommandGuard:
     """Validate Bash commands against phase restrictions."""
 
     def __init__(self, hook_input: dict, config: Config, state: StateStore):

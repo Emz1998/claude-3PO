@@ -5,32 +5,32 @@ subtask recording, and auto-advance when all project tasks have subtasks.
 """
 
 import pytest
-from utils.resolver import resolve_create_tasks, resolve
+from utils.resolver import Resolver, resolve
 from lib.state_store import StateStore
 
 
 class TestResolveCreateTasks:
-    def test_completes_when_all_tasks_have_subtasks(self, state):
+    def test_completes_when_all_tasks_have_subtasks(self, config, state):
         state.add_phase("create-tasks")
         state.set_project_tasks([
             {"id": "T-001", "title": "Build login", "subtasks": ["Sub 1"]},
             {"id": "T-002", "title": "Create schema", "subtasks": ["Sub 2"]},
         ])
-        resolve_create_tasks(state)
+        Resolver(config, state)._resolve_create_tasks()
         assert state.is_phase_completed("create-tasks")
 
-    def test_does_not_complete_when_missing_subtasks(self, state):
+    def test_does_not_complete_when_missing_subtasks(self, config, state):
         state.add_phase("create-tasks")
         state.set_project_tasks([
             {"id": "T-001", "title": "Build login", "subtasks": ["Sub 1"]},
             {"id": "T-002", "title": "Create schema", "subtasks": []},
         ])
-        resolve_create_tasks(state)
+        Resolver(config, state)._resolve_create_tasks()
         assert not state.is_phase_completed("create-tasks")
 
-    def test_does_not_complete_when_no_project_tasks(self, state):
+    def test_does_not_complete_when_no_project_tasks(self, config, state):
         state.add_phase("create-tasks")
-        resolve_create_tasks(state)
+        Resolver(config, state)._resolve_create_tasks()
         assert not state.is_phase_completed("create-tasks")
 
     def test_dispatches_via_resolve(self, config, state):

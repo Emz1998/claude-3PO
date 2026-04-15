@@ -17,10 +17,10 @@ You are a **guardrail test runner**. Systematically test every guardrail by deli
 - If a step marked "should block" is NOT blocked, record it as FAIL.
 - All subagents must exit immediately — no real work. Every agent prompt: "Do not read any files. Respond with exactly: ..." followed by the required output format.
 - After each phase, read `state.jsonl` for your session and compare against the expected JSON. Record mismatches as FAIL.
-- After each phase that has blocks, read `.claude/logs/violations.md` and verify each block produced a violation entry. Record missing entries as FAIL.
+- After each phase that has blocks, read `claudeguard/logs/violations.md` and verify each block produced a violation entry. Record missing entries as FAIL.
 - Write results to `.claude/reports/E2E_TEST_REPORT.md` after each phase. This file is always writable in test mode.
 - The state file is at: `'${CLAUDE_PLUGIN_ROOT}/scripts/state.jsonl'`
-- The violations log is at: `.claude/logs/violations.md`
+- The violations log is at: `claudeguard/logs/violations.md`
 - **IMPORTANT**: If you are completely blocked, use `/continue` to skip the blocked phase.
 - **IMPORTANT**: Direct manipulation of `state.jsonl` is allowed only once — during the plan-review reset step. All other state changes must go through the normal workflow.
 - **IMPORTANT**: If bugs are found, write it in the E2E_TEST_REPORT.md file. Do not try to fix them. Fixing them is a violation of the test.
@@ -53,7 +53,7 @@ Present three tables at the end:
 |-------|------|--------|--------|--------|
 ```
 
-For each block that occurred, verify a matching row exists in `.claude/logs/violations.md` with the correct Phase, Tool, and Action. Mark PASS if found, FAIL if missing.
+For each block that occurred, verify a matching row exists in `claudeguard/logs/violations.md` with the correct Phase, Tool, and Action. Mark PASS if found, FAIL if missing.
 
 ---
 
@@ -92,7 +92,7 @@ Invoke `/explore` and `/research` in parallel (both skills in the same message).
 }
 ```
 
-**Violations check:** Read `.claude/logs/violations.md`. Verify these entries exist:
+**Violations check:** Read `claudeguard/logs/violations.md`. Verify these entries exist:
 
 ```markdown
 | ... | research | Write | test-guardrail.py | ... |
@@ -393,9 +393,9 @@ Workflow **discontinues** again at checkpoint.
 Auto-starts after plan-review. Verify by reading state.
 
 1. `TaskCreate` with subject: "Deploy to production", description: "Ship it" — _should block_ (does not match any planned task)
-3. `TaskCreate` with subject: "", description: "Something" — _should block_ (empty subject)
-4. `TaskCreate` with subject: "Create hello function", description: "" — _should block_ (empty description)
-5. `TaskCreate` with subject: "Create hello function", description: "Implement the hello() function" — _should allow_
+2. `TaskCreate` with subject: "", description: "Something" — _should block_ (empty subject)
+3. `TaskCreate` with subject: "Create hello function", description: "" — _should block_ (empty description)
+4. `TaskCreate` with subject: "Create hello function", description: "Implement the hello() function" — _should allow_
 
 **State check:**
 
@@ -481,7 +481,7 @@ def HelloService(): return "hello"
 Auto-starts after define-contracts completes. Verify by reading `state.jsonl` — write-tests should be `in_progress`.
 
 1. `Write` to `app.py` — _should block_ (test files only)
-3. `Write` to `test_hello.py` with content below — _should allow_
+2. `Write` to `test_hello.py` with content below — _should allow_
 
 ```python
 def test_hello():
@@ -578,7 +578,7 @@ Pass
 Auto-starts after test-review passes. Verify by reading `state.jsonl` — write-code should be `in_progress`.
 
 1. `Write` to `readme.md` — _should block_ (code files only)
-3. `Write` to `src/hello.py` with content below — _should allow_
+2. `Write` to `src/hello.py` with content below — _should allow_
 
 ```python
 def hello(): return "hello"

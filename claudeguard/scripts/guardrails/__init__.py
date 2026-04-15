@@ -5,41 +5,45 @@ from typing import Literal
 from lib.state_store import StateStore
 from config import Config
 
-from .phase_guard import PhaseValidator
-from .command_validator import CommandValidator
-from .write_guard import FileWriteValidator
-from .edit_guard import FileEditValidator
-from .agent_guard import AgentValidator
-from .webfetch_guard import WebFetchValidator
+from .phase_guard import PhaseGuard
+from .command_validator import CommandGuard
+from .write_guard import FileWriteGuard
+from .edit_guard import FileEditGuard
+from .agent_guard import AgentGuard
+from .webfetch_guard import WebFetchGuard
 from .agent_report_guard import AgentReportGuard
-from .task_create_guard import handle as task_create_handle
+from .task_create_tool_guard import TaskCreateToolGuard
 
 
 Decision = tuple[Literal["allow", "block"], str]
 
 
 def phase_guard(hook_input: dict, config: Config, state: StateStore) -> Decision:
-    return PhaseValidator(hook_input, config, state).validate()
+    return PhaseGuard(hook_input, config, state).validate()
 
 
 def command_guard(hook_input: dict, config: Config, state: StateStore) -> Decision:
-    return CommandValidator(hook_input, config, state).validate()
+    return CommandGuard(hook_input, config, state).validate()
 
 
 def write_guard(hook_input: dict, config: Config, state: StateStore) -> Decision:
-    return FileWriteValidator(hook_input, config, state).validate()
+    return FileWriteGuard(hook_input, config, state).validate()
 
 
 def edit_guard(hook_input: dict, config: Config, state: StateStore) -> Decision:
-    return FileEditValidator(hook_input, config, state).validate()
+    return FileEditGuard(hook_input, config, state).validate()
 
 
 def agent_guard(hook_input: dict, config: Config, state: StateStore) -> Decision:
-    return AgentValidator(hook_input, config, state).validate()
+    return AgentGuard(hook_input, config, state).validate()
 
 
 def webfetch_guard(hook_input: dict, config: Config, state: StateStore) -> Decision:
-    return WebFetchValidator(hook_input, config).validate()
+    return WebFetchGuard(hook_input, config).validate()
+
+
+def task_create_guard(hook_input: dict, config: Config, state: StateStore) -> Decision:
+    return TaskCreateToolGuard(hook_input, config, state).validate()
 
 
 TOOL_GUARDS: dict[str, callable] = {
@@ -49,7 +53,7 @@ TOOL_GUARDS: dict[str, callable] = {
     "Edit": edit_guard,
     "Agent": agent_guard,
     "WebFetch": webfetch_guard,
-    "TaskCreate": task_create_handle,
+    "TaskCreate": task_create_guard,
 }
 
 def agent_report_guard(hook_input: dict, config: Config, state: StateStore) -> Decision:

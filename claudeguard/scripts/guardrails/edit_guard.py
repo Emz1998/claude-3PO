@@ -1,4 +1,4 @@
-"""FileEditValidator — Validates file edits against phase and path restrictions."""
+"""FileEditGuard — Validates file edits against phase and path restrictions."""
 
 from typing import Literal
 
@@ -11,7 +11,7 @@ Decision = tuple[Literal["allow", "block"], str]
 E2E_TEST_REPORT = ".claude/reports/E2E_TEST_REPORT.md"
 
 
-class FileEditValidator:
+class FileEditGuard:
     """Validate file edit against phase and path restrictions."""
 
     def __init__(self, hook_input: dict, config: Config, state: StateStore):
