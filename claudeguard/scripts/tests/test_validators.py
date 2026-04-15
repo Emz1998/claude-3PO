@@ -35,7 +35,7 @@ class TestIsPhaseAllowed:
 
     def test_valid_transition(self, config, state):
         state.add_phase("explore")
-        state.complete_phase("explore")
+        state.set_phase_completed("explore")
         hook = make_hook_input("Skill", {"skill": "research"})
         ok, msg = is_phase_allowed(hook, config, state)
         assert ok is True

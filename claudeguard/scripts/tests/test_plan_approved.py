@@ -14,7 +14,7 @@ class TestPlanApprovedAfterCheckpoint:
         state.add_phase("plan-review")
         state.add_plan_review({"confidence_score": 95, "quality_score": 95})
         state.set_last_plan_review_status("Pass")
-        state.complete_phase("plan-review")
+        state.set_phase_completed("plan-review")
 
         hook = make_hook_input("Skill", {"skill": "plan-approved"})
         ok, msg = is_phase_allowed(hook, config, state)
@@ -27,7 +27,7 @@ class TestPlanApprovedAfterCheckpoint:
         state.add_phase("plan-review")
         state.add_plan_review({"confidence_score": 95, "quality_score": 95})
         state.set_last_plan_review_status("Pass")
-        state.complete_phase("plan-review")
+        state.set_phase_completed("plan-review")
 
         hook = make_hook_input("Skill", {"skill": "plan-approved"})
         is_phase_allowed(hook, config, state)

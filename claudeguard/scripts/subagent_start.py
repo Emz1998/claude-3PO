@@ -6,9 +6,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from models.state import Agent
 from utils.hook import Hook
 from utils.state_store import StateStore
-from utils.recorder import record_agent_start
 from utils.extractors import extract_agent_name
 
 
@@ -27,7 +27,7 @@ def main() -> None:
     agent_id = hook_input.get("agent_id", "")
 
     if agent_type and agent_id:
-        record_agent_start(agent_type, agent_id, state)
+        state.add_agent(Agent(name=agent_type, status="in_progress", tool_use_id=agent_id))
 
     sys.exit(0)
 

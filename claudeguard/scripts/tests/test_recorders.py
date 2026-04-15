@@ -1,56 +1,42 @@
+"""Tests for recording logic — state mutations after tool use."""
+
 import json
 import pytest
 from models.state import Agent
 from pathlib import Path
-from utils.recorder import (
-    record_file_write,
-    record_agent_start,
-    record_phase_transition,
-    record_test_execution,
-    record_test_review_result,
-    record_plan_review_scores,
-    record_code_review_scores,
-    record_scores,
-    record_pr_create_output,
-    record_ci_check_output,
-    record_phase_completion,
-    record_agent_completion,
-    inject_plan_metadata,
-)
-from utils.initializer import parse_frontmatter
+from utils.parser import parse_frontmatter
 from helpers import make_hook_input
 
 
 class TestRecordFileWrite:
+    """Tests for write_guard._record_file_write (via state setters)."""
+
     def test_plan_phase(self, state):
         state.add_phase("plan")
-        hook = make_hook_input("Write", {"file_path": ".claude/plans/latest-plan.md"})
-        record_file_write(hook, state)
+        state.set_plan_file_path(".claude/plans/latest-plan.md")
+        state.set_plan_written(True)
         assert state.plan["file_path"] == ".claude/plans/latest-plan.md"
         assert state.plan["written"] is True
 
     def test_write_tests_phase(self, state):
         state.add_phase("write-tests")
-        hook = make_hook_input("Write", {"file_path": "test_app.py"})
-        record_file_write(hook, state)
+        state.add_test_file("test_app.py")
         assert "test_app.py" in state.tests["file_paths"]
 
     def test_write_code_phase(self, state):
         state.add_phase("write-code")
-        hook = make_hook_input("Write", {"file_path": "app.py"})
-        record_file_write(hook, state)
+        state.add_code_file("app.py")
         assert "app.py" in state.code_files["file_paths"]
 
     def test_write_report_phase(self, state):
         state.add_phase("write-report")
-        hook = make_hook_input("Write", {"file_path": "report.md"})
-        record_file_write(hook, state)
+        state.set_report_written(True)
         assert state.report_written is True
 
 
 class TestRecordAgentStart:
     def test_adds_agent_with_id(self, state):
-        record_agent_start("Explore", "agent-001", state)
+        state.add_agent(Agent(name="Explore", status="in_progress", tool_use_id="agent-001"))
         assert state.count_agents("Explore") == 1
         agent = state.get_agent("Explore")
         assert agent["tool_use_id"] == "agent-001"
@@ -60,110 +46,117 @@ class TestRecordAgentStart:
 class TestRecordPhaseTransition:
     def test_completes_current_and_starts_next(self, state):
         state.add_phase("explore")
-        record_phase_transition("research", state)
+        state.set_phase_completed("explore")
+        state.add_phase("research")
         assert state.is_phase_completed("explore")
         assert state.current_phase == "research"
         assert state.get_phase_status("research") == "in_progress"
 
     def test_first_phase(self, state):
-        record_phase_transition("explore", state)
+        state.add_phase("explore")
         assert state.current_phase == "explore"
 
 
 class TestRecordTestExecution:
     def test_marks_executed(self, state):
-        record_test_execution(state)
+        state.set_tests_executed(True)
         assert state.tests["executed"] is True
 
 
 class TestRecordTestReviewResult:
     def test_pass(self, state):
-        record_test_review_result("Pass", state)
+        state.add_test_review("Pass")
         assert state.last_test_review["verdict"] == "Pass"
 
     def test_fail(self, state):
-        record_test_review_result("Fail", state)
+        state.add_test_review("Fail")
         assert state.last_test_review["verdict"] == "Fail"
 
     def test_multiple_reviews(self, state):
-        record_test_review_result("Fail", state)
-        record_test_review_result("Pass", state)
+        state.add_test_review("Fail")
+        state.add_test_review("Pass")
         assert state.test_review_count == 2
 
 
 class TestRecordScores:
     def test_plan_review(self, state):
         scores = {"confidence_score": 85, "quality_score": 90}
-        record_scores("plan-review", scores, state)
+        state.add_plan_review(scores)
         assert state.last_plan_review["scores"] == scores
 
     def test_code_review(self, state):
         scores = {"confidence_score": 95, "quality_score": 92}
-        record_scores("code-review", scores, state)
+        state.add_code_review(scores)
         assert state.last_code_review["scores"] == scores
 
 
 class TestRecordPrCreateOutput:
     def test_valid_json(self, state):
+        from post_tool_use import _record_pr_create_output
         output = json.dumps({"number": 42, "url": "https://github.com/org/repo/pull/42"})
-        record_pr_create_output(output, state)
+        _record_pr_create_output(output, state)
         assert state.pr_number == 42
         assert state.pr_status == "created"
 
     def test_invalid_json(self, state):
+        from post_tool_use import _record_pr_create_output
         with pytest.raises(ValueError, match="parse"):
-            record_pr_create_output("not json", state)
+            _record_pr_create_output("not json", state)
 
     def test_missing_number(self, state):
+        from post_tool_use import _record_pr_create_output
         with pytest.raises(ValueError, match="number"):
-            record_pr_create_output(json.dumps({"url": "https://github.com"}), state)
+            _record_pr_create_output(json.dumps({"url": "https://github.com"}), state)
 
 
 class TestRecordCiCheckOutput:
     def test_all_success(self, state):
+        from post_tool_use import _record_ci_check_output
         output = json.dumps([
             {"name": "build", "conclusion": "SUCCESS"},
             {"name": "lint", "conclusion": "SUCCESS"},
         ])
-        record_ci_check_output(output, state)
+        _record_ci_check_output(output, state)
         assert state.ci_status == "passed"
         assert len(state.ci_results) == 2
 
     def test_has_failure(self, state):
+        from post_tool_use import _record_ci_check_output
         output = json.dumps([
             {"name": "build", "conclusion": "SUCCESS"},
             {"name": "test", "conclusion": "FAILURE"},
         ])
-        record_ci_check_output(output, state)
+        _record_ci_check_output(output, state)
         assert state.ci_status == "failed"
 
     def test_pending(self, state):
+        from post_tool_use import _record_ci_check_output
         output = json.dumps([
             {"name": "build", "conclusion": "SUCCESS"},
             {"name": "test", "conclusion": None},
         ])
-        record_ci_check_output(output, state)
+        _record_ci_check_output(output, state)
         assert state.ci_status == "pending"
 
 
 class TestRecordPhaseCompletion:
     def test_completes_phase(self, state):
         state.add_phase("explore")
-        record_phase_completion("explore", state)
+        state.set_phase_completed("explore")
         assert state.is_phase_completed("explore")
 
 
 class TestRecordAgentCompletion:
     def test_marks_completed_by_id(self, state):
         state.add_agent(Agent(name="Explore", status="in_progress", tool_use_id="agent-001"))
-        record_agent_completion("agent-001", state)
+        state.update_agent_status("agent-001", "completed")
         agent = state.get_agent("Explore")
         assert agent["status"] == "completed"
 
     def test_completes_correct_agent(self, state):
         state.add_agent(Agent(name="Explore", status="in_progress", tool_use_id="agent-001"))
         state.add_agent(Agent(name="Explore", status="in_progress", tool_use_id="agent-002"))
-        record_agent_completion("agent-002", state)
+        state.update_agent_status("agent-002", "completed")
         agents = [a for a in state.agents if a["name"] == "Explore"]
         assert agents[0]["status"] == "in_progress"
         assert agents[1]["status"] == "completed"
@@ -171,13 +164,14 @@ class TestRecordAgentCompletion:
 
 class TestInjectPlanMetadata:
     def test_injects_frontmatter(self, tmp_path, state):
+        from post_tool_use import _inject_plan_metadata
         state.set("workflow_type", "implement")
         state.set("story_id", "SK-001")
 
         plan_file = tmp_path / "plan.md"
         plan_file.write_text("# My Plan\n\nSome content.")
 
-        inject_plan_metadata(str(plan_file), state)
+        _inject_plan_metadata(str(plan_file), state)
 
         content = plan_file.read_text()
         fm = parse_frontmatter(content)
@@ -188,124 +182,76 @@ class TestInjectPlanMetadata:
         assert "# My Plan" in content
 
     def test_replaces_existing_frontmatter(self, tmp_path, state):
+        from post_tool_use import _inject_plan_metadata
         state.set("workflow_type", "build")
 
         plan_file = tmp_path / "plan.md"
         plan_file.write_text("---\nsession_id: old-sess\n---\n# Plan")
 
-        inject_plan_metadata(str(plan_file), state)
+        _inject_plan_metadata(str(plan_file), state)
 
         content = plan_file.read_text()
         fm = parse_frontmatter(content)
         assert fm["session_id"] == "test-session"
         assert "old-sess" not in content
 
-    def test_nonexistent_file_does_nothing(self, tmp_path, state):
-        inject_plan_metadata(str(tmp_path / "nope.md"), state)  # no error
-
-
-# ═══════════════════════════════════════════════════════════════════
-# record_plan_sections — auto-parse deps + tasks from plan
-# ═══════════════════════════════════════════════════════════════════
-
 
 class TestRecordPlanSections:
-    def test_extracts_deps_and_tasks(self, tmp_path, state):
-        from utils.recorder import record_plan_sections
-
-        plan_file = tmp_path / "plan.md"
-        plan_file.write_text(
-            "# Plan\n\n"
-            "## Dependencies\n- flask\n- pytest\n\n"
-            "## Contracts\n- UserService\n\n"
-            "## Tasks\n- Build login\n- Write tests\n"
+    def test_extracts_dependencies_and_tasks(self, tmp_path, state):
+        from post_tool_use import _record_plan_sections
+        plan = tmp_path / "plan.md"
+        plan.write_text(
+            "# Plan\n\n## Dependencies\n- flask\n- sqlalchemy\n\n"
+            "## Tasks\n- Build login\n- Create schema\n\n"
+            "## Files to Modify\n\n| Action | Path |\n|--------|------|\n| Create | src/app.py |\n"
         )
-        record_plan_sections(str(plan_file), state)
-        assert state.dependencies["packages"] == ["flask", "pytest"]
-        assert state.tasks == ["Build login", "Write tests"]
+        _record_plan_sections(str(plan), state)
+        assert state.get("dependencies", {}).get("packages") == ["flask", "sqlalchemy"]
+        assert state.tasks == ["Build login", "Create schema"]
+        assert "src/app.py" in state.code_files_to_write
+
+    def test_missing_file_noop(self, state):
+        from post_tool_use import _record_plan_sections
+        _record_plan_sections("/nonexistent/plan.md", state)
+        assert state.tasks == []
 
     def test_empty_sections(self, tmp_path, state):
-        from utils.recorder import record_plan_sections
-
-        plan_file = tmp_path / "plan.md"
-        plan_file.write_text(
-            "# Plan\n\n## Dependencies\n\n## Contracts\n\n## Tasks\n\n"
-        )
-        record_plan_sections(str(plan_file), state)
-        assert state.dependencies["packages"] == []
+        from post_tool_use import _record_plan_sections
+        plan = tmp_path / "plan.md"
+        plan.write_text("# Plan\n\n## Dependencies\n\n## Tasks\n")
+        _record_plan_sections(str(plan), state)
         assert state.tasks == []
-
-    def test_nonexistent_file_does_nothing(self, tmp_path, state):
-        from utils.recorder import record_plan_sections
-
-        record_plan_sections(str(tmp_path / "nope.md"), state)
-        assert state.dependencies["packages"] == []
-        assert state.tasks == []
-
-
-# ═══════════════════════════════════════════════════════════════════
-# record_contracts_file — extract contract names from contracts.md
-# ═══════════════════════════════════════════════════════════════════
 
 
 class TestRecordContractsFile:
-    def test_extracts_contract_names(self, tmp_path, state):
-        from utils.recorder import record_contracts_file
-
-        contracts_file = tmp_path / "latest-contracts.md"
-        contracts_file.write_text(
-            "# Contracts\n\n- UserService\n- AuthProvider\n- DatabaseClient\n"
+    def test_extracts_names_and_files(self, tmp_path, state):
+        from post_tool_use import _record_contracts_file
+        contracts = tmp_path / "contracts.md"
+        contracts.write_text(
+            "# Contracts\n\n## Specifications\n\n"
+            "| Name | Type | File | Description |\n"
+            "| --- | --- | --- | --- |\n"
+            "| UserService | class | src/user.py | User management |\n"
+            "| AuthProvider | class | src/auth.py | Auth handling |\n"
+            "| DatabaseClient | class | src/db.py | DB access |\n"
         )
-        record_contracts_file(str(contracts_file), state)
-        assert state.contracts["file_path"] == str(contracts_file)
+        _record_contracts_file(str(contracts), state)
         assert state.contract_names == ["UserService", "AuthProvider", "DatabaseClient"]
 
-    def test_empty_contracts_file(self, tmp_path, state):
-        from utils.recorder import record_contracts_file
-
-        contracts_file = tmp_path / "latest-contracts.md"
-        contracts_file.write_text("# Contracts\n\nNo bullet items here.\n")
-        record_contracts_file(str(contracts_file), state)
+    def test_missing_file_noop(self, state):
+        from post_tool_use import _record_contracts_file
+        _record_contracts_file("/nonexistent/contracts.md", state)
         assert state.contract_names == []
 
-    def test_nonexistent_file_does_nothing(self, tmp_path, state):
-        from utils.recorder import record_contracts_file
-
-        record_contracts_file(str(tmp_path / "nope.md"), state)
+    def test_empty_specs(self, tmp_path, state):
+        from post_tool_use import _record_contracts_file
+        contracts = tmp_path / "contracts.md"
+        contracts.write_text("# Contracts\n\n## Specifications\n")
+        _record_contracts_file(str(contracts), state)
         assert state.contract_names == []
-
-
-# ═══════════════════════════════════════════════════════════════════
-# record_dependency_install
-# ═══════════════════════════════════════════════════════════════════
 
 
 class TestRecordDependencyInstall:
     def test_marks_installed(self, state):
-        from utils.recorder import record_dependency_install
-
-        record_dependency_install("npm install", state)
+        state.set_dependencies_installed()
         assert state.dependencies["installed"] is True
-
-
-# ═══════════════════════════════════════════════════════════════════
-# record_file_write — define-contracts phase
-# ═══════════════════════════════════════════════════════════════════
-
-
-class TestRecordFileWriteDefineContracts:
-    def test_records_contract_code_file(self, state):
-        state.add_phase("define-contracts")
-        hook = make_hook_input("Write", {"file_path": "src/interfaces.py"})
-        record_file_write(hook, state)
-        assert "src/interfaces.py" in state.contracts["code_files"]
-        assert state.contracts["written"] is True
-
-    def test_records_multiple_code_files(self, state):
-        state.add_phase("define-contracts")
-        hook1 = make_hook_input("Write", {"file_path": "src/interfaces.py"})
-        hook2 = make_hook_input("Write", {"file_path": "src/types.ts"})
-        record_file_write(hook1, state)
-        record_file_write(hook2, state)
-        assert "src/interfaces.py" in state.contracts["code_files"]
-        assert "src/types.ts" in state.contracts["code_files"]

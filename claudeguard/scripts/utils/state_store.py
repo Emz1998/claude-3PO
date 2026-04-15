@@ -14,7 +14,12 @@ from filelock import FileLock
 
 
 class StateStore:
-    def __init__(self, state_path: Path, session_id: str, default_state: dict[str, Any] | None = None):
+    def __init__(
+        self,
+        state_path: Path,
+        session_id: str,
+        default_state: dict[str, Any] | None = None,
+    ):
         self._path = state_path
         self._session_id = session_id
         self._default_state = default_state or {}
@@ -47,7 +52,9 @@ class StateStore:
         """Write all session entries back to the JSONL file."""
         self._path.parent.mkdir(parents=True, exist_ok=True)
         lines = [json.dumps(e, separators=(",", ":")) for e in entries]
-        self._path.write_text("\n".join(lines) + "\n" if lines else "", encoding="utf-8")
+        self._path.write_text(
+            "\n".join(lines) + "\n" if lines else "", encoding="utf-8"
+        )
 
     def _find_session(self, entries: list[dict[str, Any]]) -> int:
         """Return index of the entry matching this session_id, or -1."""
@@ -96,16 +103,6 @@ class StateStore:
     def set(self, key: str, value: Any) -> None:
         self.update(lambda d: d.update({key: value}))
 
-    def reset(self, default_state: dict[str, Any] | None = None) -> None:
-        """Remove this session's entry and optionally write a new default."""
-        with self._lock:
-            entries = self._read_all_lines()
-            entries = [e for e in entries if e.get("session_id") != self._session_id]
-            if default_state:
-                default_state["session_id"] = self._session_id
-                entries.append(default_state)
-            self._write_all_lines(entries)
-
     def reinitialize(self, initial_state: dict[str, Any]) -> None:
         initial_state["session_id"] = self._session_id
         self.save(initial_state)
@@ -117,125 +114,46 @@ class StateStore:
             entries = [e for e in entries if e.get("session_id") != self._session_id]
             self._write_all_lines(entries)
 
-    def archive(self, history_path: Path) -> None:
-        """Append current state as a JSONL entry to history_path."""
-        entry = json.dumps(self.load()) + "\n"
-        with open(history_path, "a") as f:
-            f.write(entry)
-
     @staticmethod
-    def latest_from_history(history_path: Path) -> dict[str, Any] | None:
-        """Return the last archived entry or None."""
-        if not history_path.exists():
-            return None
-        content = history_path.read_text(encoding="utf-8").strip()
-        if not content:
-            return None
-        lines = content.splitlines()
-        for line in reversed(lines):
-            line = line.strip()
-            if line:
-                try:
-                    return json.loads(line)
-                except json.JSONDecodeError:
-                    continue
-        return None
+    def _is_active_for_story(entry: dict, story_id: str) -> bool:
+        return (
+            entry.get("story_id") == story_id and entry.get("workflow_active") is True
+        )
 
-    @staticmethod
-    def find_active_by_story(state_path: Path, story_id: str) -> list[dict[str, Any]]:
+    def find_active_by_story(self, story_id: str) -> list[dict[str, Any]]:
         """Return all active sessions with the given story_id."""
-        lock = FileLock(state_path.with_suffix(".lock"))
-        with lock:
-            if not state_path.exists():
-                return []
-            content = state_path.read_text(encoding="utf-8").strip()
-            if not content:
-                return []
-            results = []
-            for line in content.splitlines():
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    entry = json.loads(line)
-                except json.JSONDecodeError:
-                    continue
-                if (
-                    entry.get("story_id") == story_id
-                    and entry.get("workflow_active") is True
-                ):
-                    results.append(entry)
-            return results
+        with self._lock:
+            entries = self._read_all_lines()
+            return [e for e in entries if self._is_active_for_story(e, story_id)]
 
-    @staticmethod
-    def deactivate_by_story(state_path: Path, story_id: str) -> int:
+    def deactivate_by_story(self, story_id: str) -> int:
         """Deactivate all active sessions for a story_id. Returns count deactivated."""
-        lock = FileLock(state_path.with_suffix(".lock"))
-        with lock:
-            if not state_path.exists():
-                return 0
-            content = state_path.read_text(encoding="utf-8").strip()
-            if not content:
-                return 0
-            entries = []
+        with self._lock:
+            entries = self._read_all_lines()
             count = 0
-            for line in content.splitlines():
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    entry = json.loads(line)
-                except json.JSONDecodeError:
-                    continue
-                if (
-                    entry.get("story_id") == story_id
-                    and entry.get("workflow_active") is True
-                ):
+            for entry in entries:
+                if self._is_active_for_story(entry, story_id):
                     entry["workflow_active"] = False
                     count += 1
-                entries.append(entry)
-            lines = [json.dumps(e, separators=(",", ":")) for e in entries]
-            state_path.write_text("\n".join(lines) + "\n" if lines else "", encoding="utf-8")
+            self._write_all_lines(entries)
             return count
 
-    @classmethod
-    def cleanup_inactive(cls, state_path: Path, max_age_hours: int = 24) -> int:
-        """Remove sessions inactive for more than max_age_hours.
+    def cleanup_inactive(self, max_age_hours: int = 24) -> int:
+        """Remove sessions inactive for more than max_age_hours."""
+        with self._lock:
+            entries = self._read_all_lines()
+            cutoff = time.time() - (max_age_hours * 3600)
 
-        Called during initialize() to keep the JSONL file clean.
-        Returns the number of sessions removed.
-        """
-        lock = FileLock(state_path.with_suffix(".lock"))
-        with lock:
-            if not state_path.exists():
-                return 0
-            content = state_path.read_text(encoding="utf-8").strip()
-            if not content:
-                return 0
-
-            now = time.time()
-            cutoff = now - (max_age_hours * 3600)
             kept = []
             removed = 0
-
-            for line in content.splitlines():
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    entry = json.loads(line)
-                except json.JSONDecodeError:
-                    continue
-
-                # Keep if no timestamp or if recent enough
+            for entry in entries:
                 ts = entry.get("_last_updated", 0)
                 if ts and ts < cutoff:
                     removed += 1
                 else:
                     kept.append(entry)
 
-            lines = [json.dumps(e, separators=(",", ":")) for e in kept]
-            state_path.write_text("\n".join(lines) + "\n" if lines else "", encoding="utf-8")
+            self._write_all_lines(kept)
             return removed
 
     # ── Phases ─────────────────────────────────────────────────────
@@ -258,7 +176,7 @@ class StateStore:
 
         self.update(_add)
 
-    def complete_phase(self, name: str) -> None:
+    def set_phase_completed(self, name: str) -> None:
         def _complete(d: dict) -> None:
             phases = d.get("phases", [])
             for p in phases:
@@ -318,17 +236,6 @@ class StateStore:
 
         self.update(_add)
 
-    @staticmethod
-    def _basenames(paths: list[str]) -> set:
-        """Extract basenames for path-agnostic comparison."""
-        return {p.rsplit("/", 1)[-1] for p in paths}
-
-    @property
-    def all_files_revised(self) -> bool:
-        to_revise = self._basenames(self.files_to_revise)
-        revised = self._basenames(self.files_revised)
-        return bool(to_revise) and not (to_revise - revised)
-
     # ── Code review: test revision tracking (TDD) ─────────────────
 
     @property
@@ -355,12 +262,6 @@ class StateStore:
                 revised.append(file_path)
 
         self.update(_add)
-
-    @property
-    def all_code_tests_revised(self) -> bool:
-        to_revise = self._basenames(self.code_tests_to_revise)
-        revised = self._basenames(self.code_tests_revised)
-        return bool(to_revise) and not (to_revise - revised)
 
     # ── Agents ─────────────────────────────────────────────────────
 
@@ -516,12 +417,6 @@ class StateStore:
 
         self.update(_add)
 
-    @property
-    def all_test_files_revised(self) -> bool:
-        to_revise = self._basenames(self.test_files_to_revise)
-        revised = self._basenames(self.test_files_revised)
-        return bool(to_revise) and not (to_revise - revised)
-
     # ── Code files to write ──────────────────────────────────────────
 
     @property
@@ -614,11 +509,13 @@ class StateStore:
     def set_pr_status(self, status: Literal["pending", "created", "merged"]) -> None:
         def _set(d: dict) -> None:
             d.setdefault("pr", {})["status"] = status
+
         self.update(_set)
 
     def set_pr_number(self, number: int) -> None:
         def _set(d: dict) -> None:
             d.setdefault("pr", {})["number"] = number
+
         self.update(_set)
 
     # ── CI ─────────────────────────────────────────────────────────
@@ -638,11 +535,13 @@ class StateStore:
     def set_ci_status(self, status: Literal["pending", "passed", "failed"]) -> None:
         def _set(d: dict) -> None:
             d.setdefault("ci", {})["status"] = status
+
         self.update(_set)
 
     def set_ci_results(self, results: list[dict]) -> None:
         def _set(d: dict) -> None:
             d.setdefault("ci", {})["results"] = results
+
         self.update(_set)
 
     # ── Report ─────────────────────────────────────────────────────
@@ -659,15 +558,6 @@ class StateStore:
     @property
     def tasks(self) -> list[str]:
         return self.load().get("tasks", [])
-
-    def add_task(self, task: str) -> None:
-        def _add(d: dict) -> None:
-            tasks = d.get("tasks", [])
-            if task not in tasks:
-                tasks.append(task)
-            d["tasks"] = tasks
-
-        self.update(_add)
 
     def set_tasks(self, tasks: list[str]) -> None:
         self.set("tasks", tasks)
@@ -686,12 +576,6 @@ class StateStore:
             d["created_tasks"] = ct
 
         self.update(_add)
-
-    @property
-    def all_tasks_created(self) -> bool:
-        planned = set(self.tasks)
-        created = set(self.created_tasks)
-        return bool(planned) and not (planned - created)
 
     # ── Dependencies ──────────────────────────────────────────────
 
@@ -715,10 +599,16 @@ class StateStore:
 
     @property
     def contracts(self) -> dict[str, Any]:
-        return self.load().get("contracts", {
-            "file_path": None, "names": [], "code_files": [],
-            "written": False, "validated": False,
-        })
+        return self.load().get(
+            "contracts",
+            {
+                "file_path": None,
+                "names": [],
+                "code_files": [],
+                "written": False,
+                "validated": False,
+            },
+        )
 
     @property
     def contract_names(self) -> list[str]:
@@ -774,7 +664,11 @@ class StateStore:
                     subs = pt.setdefault("subtasks", [])
                     # Dedup by task_id if dict, by value if string
                     if isinstance(subtask, dict):
-                        if not any(s.get("task_id") == subtask.get("task_id") for s in subs if isinstance(s, dict)):
+                        if not any(
+                            s.get("task_id") == subtask.get("task_id")
+                            for s in subs
+                            if isinstance(s, dict)
+                        ):
                             subs.append(subtask)
                     else:
                         if subtask not in subs:
@@ -783,7 +677,7 @@ class StateStore:
 
         self.update(_add)
 
-    def complete_subtask(self, parent_task_id: str, task_id: str) -> None:
+    def set_subtask_completed(self, parent_task_id: str, task_id: str) -> None:
         def _complete(d: dict) -> None:
             ptasks = d.get("project_tasks", [])
             for pt in ptasks:
@@ -796,7 +690,7 @@ class StateStore:
 
         self.update(_complete)
 
-    def complete_project_task(self, parent_task_id: str) -> None:
+    def set_project_task_completed(self, parent_task_id: str) -> None:
         def _complete(d: dict) -> None:
             ptasks = d.get("project_tasks", [])
             for pt in ptasks:
@@ -806,31 +700,12 @@ class StateStore:
 
         self.update(_complete)
 
-    def is_parent_task_complete(self, parent_task_id: str) -> bool:
-        for pt in self.project_tasks:
-            if pt.get("id") == parent_task_id:
-                subs = pt.get("subtasks", [])
-                if not subs:
-                    return False
-                return all(
-                    (s.get("status") == "completed" if isinstance(s, dict) else False)
-                    for s in subs
-                )
-        return False
-
     def get_parent_for_subtask(self, task_id: str) -> str | None:
         for pt in self.project_tasks:
             for sub in pt.get("subtasks", []):
                 if isinstance(sub, dict) and sub.get("task_id") == task_id:
                     return pt.get("id")
         return None
-
-    @property
-    def all_project_tasks_have_subtasks(self) -> bool:
-        ptasks = self.project_tasks
-        if not ptasks:
-            return False
-        return all(len(pt.get("subtasks", [])) >= 1 for pt in ptasks)
 
     # ── Plan files to modify (implement workflow) ──────────────────
 

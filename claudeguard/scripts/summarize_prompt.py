@@ -25,7 +25,14 @@ STATE_PATH = Path(__file__).resolve().parent / "state.jsonl"
 BUILD_PATTERN = re.compile(r"^/(?:\w+:)?build\s+(.*)", re.DOTALL)
 
 # Flags to strip from instructions
-FLAGS = ["--skip-explore", "--skip-research", "--skip-all", "--tdd", "--reset", "--takeover"]
+FLAGS = [
+    "--skip-explore",
+    "--skip-research",
+    "--skip-all",
+    "--tdd",
+    "--reset",
+    "--takeover",
+]
 STORY_ID_PATTERN = r"\b([A-Z]{2,}-\d+)\b"
 
 
@@ -53,7 +60,14 @@ def summarize(instructions: str) -> str:
 
     try:
         result = subprocess.run(
-            ["claude", "-p", prompt, "--output-format", "text"],
+            [
+                "claude",
+                "-p",
+                prompt,
+                "--output-format",
+                "text",
+                "--tools" "Read, Grep, Glob",
+            ],
             capture_output=True,
             text=True,
             timeout=30,

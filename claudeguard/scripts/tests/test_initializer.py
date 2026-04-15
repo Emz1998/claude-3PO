@@ -4,20 +4,12 @@ import json
 import pytest
 from pathlib import Path
 
+from utils.parser import parse_skip, parse_story_id, parse_instructions, parse_frontmatter
+from utils.archiver import archive_plan, archive_contracts
 from utils.initializer import (
-    parse_skip,
-    parse_story_id,
-    parse_instructions,
-    parse_frontmatter,
-    archive_plan,
     build_initial_state,
     initialize,
 )
-
-try:
-    from utils.initializer import archive_contracts
-except ImportError:
-    archive_contracts = None
 from config import Config
 
 
@@ -305,7 +297,6 @@ class TestBuildInitialStateDepsContracts:
 # ═══════════════════════════════════════════════════════════════════
 
 
-@pytest.mark.skipif(archive_contracts is None, reason="Not yet implemented")
 class TestArchiveContracts:
     def test_archives_existing_contracts(self, tmp_path: Path, monkeypatch):
         contracts_dir = tmp_path / ".claude" / "contracts"

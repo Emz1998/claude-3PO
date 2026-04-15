@@ -13,7 +13,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from guardrails import STOP_GUARDS
 from utils.hook import Hook
 from utils.state_store import StateStore
-from utils.recorder import record_agent_completion
 from utils.resolvers import resolve
 from config import Config
 
@@ -34,7 +33,7 @@ def main() -> None:
 
     # Record agent completion by agent_id
     if agent_id:
-        record_agent_completion(agent_id, state)
+        state.update_agent_status(agent_id, "completed")
         try:
             resolve(config, state)
         except ValueError as e:

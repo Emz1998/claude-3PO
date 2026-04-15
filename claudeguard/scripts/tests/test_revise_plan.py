@@ -59,7 +59,7 @@ class TestRevisePlan:
         state.add_phase("plan-review")
         state.add_plan_review({"confidence_score": 95, "quality_score": 95})
         state.set_last_plan_review_status("Pass")
-        state.complete_phase("plan-review")
+        state.set_phase_completed("plan-review")
 
         hook = make_hook_input("Skill", {"skill": "revise-plan"})
         ok, msg = is_phase_allowed(hook, config, state)
@@ -116,9 +116,9 @@ class TestRevisePlan:
         """Can't revise-plan if we've already moved past plan-review."""
         state.set("workflow_type", "build")
         state.add_phase("plan-review")
-        state.complete_phase("plan-review")
+        state.set_phase_completed("plan-review")
         state.add_phase("create-tasks")
-        state.complete_phase("create-tasks")
+        state.set_phase_completed("create-tasks")
         state.add_phase("install-deps")
 
         hook = make_hook_input("Skill", {"skill": "revise-plan"})
@@ -131,7 +131,7 @@ class TestRevisePlan:
         state.add_phase("plan-review")
         state.add_plan_review({"confidence_score": 95, "quality_score": 95})
         state.set_last_plan_review_status("Pass")
-        state.complete_phase("plan-review")
+        state.set_phase_completed("plan-review")
 
         # /revise-plan
         hook = make_hook_input("Skill", {"skill": "revise-plan"})

@@ -51,7 +51,7 @@ class TestContinueAfterCompleted:
         state.add_phase("code-review")
         state.add_code_review({"confidence_score": 95, "quality_score": 95})
         state.set_last_code_review_status("Pass")
-        state.complete_phase("code-review")
+        state.set_phase_completed("code-review")
 
         hook = make_hook_input("Skill", {"skill": "continue"})
         ok, _ = is_phase_allowed(hook, config, state)
@@ -67,7 +67,7 @@ class TestContinueBlocked:
         state.add_phase("plan-review")
         state.add_plan_review({"confidence_score": 95, "quality_score": 95})
         state.set_last_plan_review_status("Pass")
-        state.complete_phase("plan-review")
+        state.set_phase_completed("plan-review")
 
         hook = make_hook_input("Skill", {"skill": "continue"})
         with pytest.raises(ValueError, match="plan-approved"):

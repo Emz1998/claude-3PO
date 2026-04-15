@@ -24,17 +24,18 @@ class TestBuildCreatedTasks:
         state.add_created_task("Build login")
         assert state.created_tasks.count("Build login") == 1
 
-    def test_all_tasks_created(self, state):
+    def test_task_tracking_lists(self, state):
         state.set("workflow_type", "build")
         state.set_tasks(["Build login", "Create schema"])
         state.add_created_task("Build login")
-        assert not state.all_tasks_created
+        assert set(state.created_tasks) == {"Build login"}
         state.add_created_task("Create schema")
-        assert state.all_tasks_created
+        assert set(state.created_tasks) == {"Build login", "Create schema"}
 
-    def test_no_tasks_means_not_created(self, state):
+    def test_no_tasks_default(self, state):
         state.set("workflow_type", "build")
-        assert not state.all_tasks_created
+        assert state.tasks == []
+        assert state.created_tasks == []
 
     def test_default_empty(self, state):
         assert state.created_tasks == []

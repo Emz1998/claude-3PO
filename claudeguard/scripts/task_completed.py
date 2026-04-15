@@ -59,11 +59,16 @@ def main() -> None:
         sys.exit(0)
 
     # Mark child as completed
-    state.complete_subtask(parent_id, task_id)
+    state.set_subtask_completed(parent_id, task_id)
 
     # Check if all siblings are done → complete parent
-    if state.is_parent_task_complete(parent_id):
-        state.complete_project_task(parent_id)
+    parent = next((pt for pt in state.project_tasks if pt.get("id") == parent_id), None)
+    subs = parent.get("subtasks", []) if parent else []
+    all_done = subs and all(
+        (s.get("status") == "completed" if isinstance(s, dict) else False) for s in subs
+    )
+    if all_done:
+        state.set_project_task_completed(parent_id)
         _update_project_task_status(parent_id, "Done")
 
     sys.exit(0)

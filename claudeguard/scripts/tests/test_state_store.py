@@ -13,9 +13,9 @@ class TestPhases:
         assert state.current_phase == "explore"
         assert state.get_phase_status("explore") == "in_progress"
 
-    def test_complete_phase(self, state):
+    def test_set_phase_completed(self, state):
         state.add_phase("explore")
-        state.complete_phase("explore")
+        state.set_phase_completed("explore")
         assert state.is_phase_completed("explore")
         assert state.get_phase_status("explore") == "completed"
 
@@ -58,12 +58,12 @@ class TestCodeRevision:
         state.add_file_revised("src/app.py")
         assert "src/app.py" in state.files_revised
 
-    def test_all_files_revised(self, state):
+    def test_revision_tracking_lists(self, state):
         state.set_files_to_revise(["src/app.py", "src/utils.py"])
         state.add_file_revised("src/app.py")
-        assert not state.all_files_revised
+        assert len(state.files_revised) == 1
         state.add_file_revised("src/utils.py")
-        assert state.all_files_revised
+        assert set(state.files_revised) == {"src/app.py", "src/utils.py"}
 
     def test_reset_revision_tracking(self, state):
         state.set_files_to_revise(["src/app.py"])
@@ -86,12 +86,12 @@ class TestCodeRevision:
         state.add_code_test_revised("test_app.py")
         assert "test_app.py" in state.code_tests_revised
 
-    def test_all_code_tests_revised(self, state):
+    def test_code_test_revision_tracking_lists(self, state):
         state.set_code_tests_to_revise(["test_app.py", "test_utils.py"])
         state.add_code_test_revised("test_app.py")
-        assert not state.all_code_tests_revised
+        assert len(state.code_tests_revised) == 1
         state.add_code_test_revised("test_utils.py")
-        assert state.all_code_tests_revised
+        assert set(state.code_tests_revised) == {"test_app.py", "test_utils.py"}
 
 
 class TestAgents:
@@ -189,12 +189,12 @@ class TestTestRevision:
         state.add_test_file_revised("test_app.py")
         assert "test_app.py" in state.test_files_revised
 
-    def test_all_test_files_revised(self, state):
+    def test_test_file_revision_tracking_lists(self, state):
         state.set_test_files_to_revise(["test_app.py", "test_utils.py"])
         state.add_test_file_revised("test_app.py")
-        assert not state.all_test_files_revised
+        assert len(state.test_files_revised) == 1
         state.add_test_file_revised("test_utils.py")
-        assert state.all_test_files_revised
+        assert set(state.test_files_revised) == {"test_app.py", "test_utils.py"}
 
     def test_reset_test_revision_tracking(self, state):
         state.set_test_files_to_revise(["test_app.py"])
@@ -355,12 +355,12 @@ class TestTasksBulkSetter:
         assert state.tasks == ["Build auth", "Create schema", "Write API"]
 
     def test_set_tasks_overwrites_existing(self, state):
-        state.add_task("Old task")
+        state.set_tasks(["Old task"])
         state.set_tasks(["New task 1", "New task 2"])
         assert state.tasks == ["New task 1", "New task 2"]
 
     def test_set_tasks_empty_list(self, state):
-        state.add_task("Something")
+        state.set_tasks(["Something"])
         state.set_tasks([])
         assert state.tasks == []
 
@@ -434,7 +434,8 @@ class TestCleanupInactive:
         ]
         p.write_text("\n".join(lines) + "\n")
 
-        removed = StateStore.cleanup_inactive(p, max_age_hours=24)
+        store = StateStore(p, session_id="any")
+        removed = store.cleanup_inactive(max_age_hours=24)
         assert removed == 1
 
         s = StateStore(p, session_id="recent")
@@ -450,18 +451,21 @@ class TestCleanupInactive:
         ]
         p.write_text("\n".join(lines) + "\n")
 
-        removed = StateStore.cleanup_inactive(p, max_age_hours=24)
+        store = StateStore(p, session_id="any")
+        removed = store.cleanup_inactive(max_age_hours=24)
         assert removed == 0
 
     def test_empty_file_returns_zero(self, tmp_path):
         p = tmp_path / "state.jsonl"
         p.write_text("")
-        removed = StateStore.cleanup_inactive(p, max_age_hours=24)
+        store = StateStore(p, session_id="any")
+        removed = store.cleanup_inactive(max_age_hours=24)
         assert removed == 0
 
     def test_nonexistent_file_returns_zero(self, tmp_path):
         p = tmp_path / "nonexistent.jsonl"
-        removed = StateStore.cleanup_inactive(p, max_age_hours=24)
+        store = StateStore(p, session_id="any")
+        removed = store.cleanup_inactive(max_age_hours=24)
         assert removed == 0
 
 
@@ -493,22 +497,20 @@ class TestProjectTasks:
         state.add_subtask("T-001", "Implement login form")
         assert state.project_tasks[0]["subtasks"].count("Implement login form") == 1
 
-    def test_all_project_tasks_have_subtasks(self, state):
+    def test_subtask_tracking_lists(self, state):
         tasks = [
             {"id": "T-001", "title": "Build login", "subtasks": []},
             {"id": "T-002", "title": "Create schema", "subtasks": []},
         ]
         state.set_project_tasks(tasks)
-        assert not state.all_project_tasks_have_subtasks
+        assert len(state.project_tasks[0].get("subtasks", [])) == 0
 
         state.add_subtask("T-001", "Sub 1")
-        assert not state.all_project_tasks_have_subtasks
+        assert len(state.project_tasks[0].get("subtasks", [])) == 1
+        assert len(state.project_tasks[1].get("subtasks", [])) == 0
 
         state.add_subtask("T-002", "Sub 2")
-        assert state.all_project_tasks_have_subtasks
-
-    def test_no_project_tasks_returns_false(self, state):
-        assert not state.all_project_tasks_have_subtasks
+        assert len(state.project_tasks[1].get("subtasks", [])) == 1
 
 
 # ═══════════════════════════════════════════════════════════════════

@@ -96,7 +96,7 @@ class TestAutoPhaseNotSkillInvoked:
 
         state.set("workflow_type", "implement")
         state.add_phase("plan-review")
-        state.complete_phase("plan-review")
+        state.set_phase_completed("plan-review")
         hook = make_hook_input("Skill", {"skill": "create-tasks"})
         with pytest.raises(ValueError):
             is_phase_allowed(hook, config, state)
@@ -107,7 +107,7 @@ class TestAutoPhaseNotSkillInvoked:
 
         state.set("workflow_type", "build")
         state.add_phase("define-contracts")
-        state.complete_phase("define-contracts")
+        state.set_phase_completed("define-contracts")
         hook = make_hook_input("Skill", {"skill": "write-tests"})
         with pytest.raises(ValueError):
             is_phase_allowed(hook, config, state)
@@ -118,7 +118,7 @@ class TestAutoPhaseNotSkillInvoked:
 
         state.set("workflow_type", "build")
         state.add_phase("test-review")
-        state.complete_phase("test-review")
+        state.set_phase_completed("test-review")
         hook = make_hook_input("Skill", {"skill": "write-code"})
         with pytest.raises(ValueError):
             is_phase_allowed(hook, config, state)

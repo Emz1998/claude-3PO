@@ -88,7 +88,7 @@ class TestWebfetchGuard:
 class TestPhaseGuard:
     def test_allows_valid_transition(self, config, state):
         state.add_phase("explore")
-        state.complete_phase("explore")
+        state.set_phase_completed("explore")
         hook = make_hook_input("Skill", {"skill": "research"})
         decision, _ = phase_guard(hook, config, state)
         assert decision == "allow"

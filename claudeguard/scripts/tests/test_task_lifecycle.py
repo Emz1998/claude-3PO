@@ -28,15 +28,23 @@ class TestSubtaskDictStructure:
         assert subs[0]["task_id"] == "ct-1"
         assert subs[0]["status"] == "in_progress"
 
-    def test_complete_subtask(self, state):
+    def test_set_subtask_completed(self, state):
         state.set_project_tasks([
             {"id": "T-001", "title": "Build login", "status": "in_progress", "subtasks": [
                 {"task_id": "ct-1", "subject": "Write form", "status": "in_progress"},
             ]},
         ])
-        state.complete_subtask("T-001", "ct-1")
+        state.set_subtask_completed("T-001", "ct-1")
         subs = state.project_tasks[0]["subtasks"]
         assert subs[0]["status"] == "completed"
+
+    @staticmethod
+    def _is_parent_complete(state, parent_id: str) -> bool:
+        parent = next((pt for pt in state.project_tasks if pt.get("id") == parent_id), None)
+        subs = parent.get("subtasks", []) if parent else []
+        return bool(subs) and all(
+            (s.get("status") == "completed" if isinstance(s, dict) else False) for s in subs
+        )
 
     def test_is_parent_complete(self, state):
         state.set_project_tasks([
@@ -45,7 +53,7 @@ class TestSubtaskDictStructure:
                 {"task_id": "ct-2", "subject": "Add validation", "status": "completed"},
             ]},
         ])
-        assert state.is_parent_task_complete("T-001") is True
+        assert self._is_parent_complete(state, "T-001") is True
 
     def test_is_parent_not_complete(self, state):
         state.set_project_tasks([
@@ -54,19 +62,19 @@ class TestSubtaskDictStructure:
                 {"task_id": "ct-2", "subject": "Add validation", "status": "in_progress"},
             ]},
         ])
-        assert state.is_parent_task_complete("T-001") is False
+        assert self._is_parent_complete(state, "T-001") is False
 
     def test_is_parent_no_subtasks_not_complete(self, state):
         state.set_project_tasks([
             {"id": "T-001", "title": "Build login", "status": "in_progress", "subtasks": []},
         ])
-        assert state.is_parent_task_complete("T-001") is False
+        assert self._is_parent_complete(state, "T-001") is False
 
-    def test_complete_project_task(self, state):
+    def test_set_project_task_completed(self, state):
         state.set_project_tasks([
             {"id": "T-001", "title": "Build login", "status": "in_progress", "subtasks": []},
         ])
-        state.complete_project_task("T-001")
+        state.set_project_task_completed("T-001")
         assert state.project_tasks[0]["status"] == "completed"
 
     def test_get_parent_for_subtask(self, state):

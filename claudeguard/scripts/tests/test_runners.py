@@ -9,12 +9,12 @@ class TestCheckPhases:
         phases = config.get_phases(workflow_type) or config.main_phases
         for phase in phases:
             state.add_phase(phase)
-            state.complete_phase(phase)
+            state.set_phase_completed(phase)
         check_phases(config, state)  # should not exit
 
     def test_missing_phase(self, config, state):
         state.add_phase("explore")
-        state.complete_phase("explore")
+        state.set_phase_completed("explore")
         with pytest.raises(SystemExit) as exc:
             check_phases(config, state)
         assert exc.value.code == 1
@@ -25,7 +25,7 @@ class TestCheckPhases:
         state.set("skip", phases)
         check_phases(config, state)  # all skipped, should pass
 
-    def test_incomplete_phase(self, config, state):
+    def test_inset_phase_completed(self, config, state):
         workflow_type = state.get("workflow_type", "build")
         phases = config.get_phases(workflow_type) or config.main_phases
         for phase in phases:
