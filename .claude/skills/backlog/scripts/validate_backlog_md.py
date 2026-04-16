@@ -1,4 +1,9 @@
-"""Validate backlog.md structure and format against the backlog schema."""
+"""Validate backlog.md structure and format against the backlog schema.
+
+Checks metadata fields, section headers, story IDs, priorities,
+acceptance criteria, and per-type blockquote formats (US/TS/SK/BG).
+Returns a list of human-readable error strings.
+"""
 
 import re
 
@@ -17,6 +22,11 @@ VALID_SECTIONS = {"Priority Legend", "ID Conventions", "Stories"}
 
 
 def validate(content: str) -> list[str]:
+    """Validate raw backlog.md content and return a list of error messages.
+
+    An empty list means the markdown is valid. Checks metadata, sections,
+    and every story found under '## Stories'.
+    """
     errors: list[str] = []
     lines = content.split("\n")
 
@@ -34,6 +44,7 @@ def validate(content: str) -> list[str]:
 
 
 def _validate_metadata(lines: list[str], errors: list[str]) -> None:
+    """Verify required metadata fields (Project, Last Updated) are present and non-empty."""
     required = {
         "**Project:**": "Project",
         "**Last Updated:**": "Last Updated",
@@ -50,6 +61,7 @@ def _validate_metadata(lines: list[str], errors: list[str]) -> None:
 
 
 def _validate_sections(lines: list[str], errors: list[str]) -> None:
+    """Flag any '## ' section headers not in the allowed set."""
     for line in lines:
         if line.startswith("## ") and not line.startswith("### "):
             section = line[3:].strip()
@@ -57,79 +69,105 @@ def _validate_sections(lines: list[str], errors: list[str]) -> None:
                 errors.append(f"structure: unknown section '## {section}'")
 
 
-def _parse_stories(lines: list[str]) -> list[dict]:
-    """Parse story sections from ### headers under ## Stories."""
-    stories: list[dict] = []
-    stories_section_idx = -1
-
+def _find_stories_section(lines: list[str]) -> int:
+    """Return the line index of '## Stories', or -1 if absent."""
     for i, line in enumerate(lines):
         if line.strip() == "## Stories":
-            stories_section_idx = i
-            break
+            return i
+    return -1
 
-    if stories_section_idx < 0:
-        return stories
 
-    current_story: dict | None = None
+def _new_story_entry(sid: str, title: str, line_num: int) -> dict:
+    """Create a story dict with default fields for markdown validation."""
+    return {
+        "id": sid,
+        "title": title,
+        "description": "",
+        "priority": "",
+        "milestone": "",
+        "is_blocking": "",
+        "blocked_by": "",
+        "acceptance_criteria": [],
+        "blockquotes": [],
+        "line": line_num,
+    }
 
-    for i in range(stories_section_idx + 1, len(lines)):
-        line = lines[i]
 
-        # New story section
-        match = re.match(r"^### ([\w-]+):\s*(.*)$", line)
+def _parse_story_line(story: dict, stripped: str) -> None:
+    """Parse a single markdown line and update the story dict in place.
+
+    Handles blockquotes, field markers, and acceptance criteria checkboxes.
+    Unrecognized lines are silently ignored.
+    """
+    if stripped.startswith(">"):
+        story["blockquotes"].append(stripped)
+    elif stripped.startswith("**Description:**"):
+        story["description"] = stripped.split("**Description:**")[1].strip().strip("`")
+    elif stripped.startswith("**Priority:**"):
+        story["priority"] = stripped.split("**Priority:**")[1].strip().strip("`")
+    elif stripped.startswith("**Milestone:**"):
+        story["milestone"] = stripped.split("**Milestone:**")[1].strip().strip("`")
+    elif stripped.startswith("**Is Blocking:**"):
+        story["is_blocking"] = stripped.split("**Is Blocking:**")[1].strip().strip("`")
+    elif stripped.startswith("**Blocked By:**"):
+        story["blocked_by"] = stripped.split("**Blocked By:**")[1].strip().strip("`")
+    elif stripped.startswith("- [ ]") or stripped.startswith("- [x]"):
+        story["acceptance_criteria"].append(stripped)
+
+
+def _parse_stories(lines: list[str]) -> list[dict]:
+    """Parse all story sections below the '## Stories' header.
+
+    Each story starts at a '### ID: Title' header. Lines between headers
+    are parsed as story fields via _parse_story_line.
+    """
+    start = _find_stories_section(lines)
+    if start < 0:
+        return []
+
+    stories: list[dict] = []
+    current: dict | None = None
+
+    for i in range(start + 1, len(lines)):
+        match = re.match(r"^### ([\w-]+):\s*(.*)$", lines[i])
         if match:
-            if current_story:
-                stories.append(current_story)
-            current_story = {
-                "id": match.group(1),
-                "title": match.group(2).strip().strip("`"),
-                "description": "",
-                "priority": "",
-                "milestone": "",
-                "is_blocking": "",
-                "blocked_by": "",
-                "acceptance_criteria": [],
-                "blockquotes": [],
-                "line": i + 1,
-            }
+            if current:
+                stories.append(current)
+            current = _new_story_entry(match.group(1), match.group(2).strip().strip("`"), i + 1)
             continue
+        if current:
+            _parse_story_line(current, lines[i].strip())
 
-        if not current_story:
-            continue
-
-        stripped = line.strip()
-
-        if stripped.startswith(">"):
-            current_story["blockquotes"].append(stripped)
-        elif stripped.startswith("**Description:**"):
-            current_story["description"] = stripped.split("**Description:**")[1].strip().strip("`")
-        elif stripped.startswith("**Priority:**"):
-            current_story["priority"] = stripped.split("**Priority:**")[1].strip().strip("`")
-        elif stripped.startswith("**Milestone:**"):
-            current_story["milestone"] = stripped.split("**Milestone:**")[1].strip().strip("`")
-        elif stripped.startswith("**Is Blocking:**"):
-            current_story["is_blocking"] = stripped.split("**Is Blocking:**")[1].strip().strip("`")
-        elif stripped.startswith("**Blocked By:**"):
-            current_story["blocked_by"] = stripped.split("**Blocked By:**")[1].strip().strip("`")
-        elif stripped.startswith("- [ ]") or stripped.startswith("- [x]"):
-            current_story["acceptance_criteria"].append(stripped)
-
-    if current_story:
-        stories.append(current_story)
-
+    if current:
+        stories.append(current)
     return stories
 
 
 def _validate_story(story: dict, errors: list[str]) -> None:
+    """Run all validations on a single parsed story."""
     sid = story["id"]
     prefix = sid.split("-")[0] if "-" in sid else ""
     pfx = f"stories.{sid}"
 
+    _validate_story_id(sid, prefix, pfx, errors)
+    _validate_story_fields(story, pfx, errors)
+    _validate_story_blockquote(story, prefix, pfx, errors)
+
+
+def _validate_story_id(
+    sid: str, prefix: str, pfx: str, errors: list[str]
+) -> None:
+    """Check that the story ID prefix is valid and matches its regex pattern."""
     if prefix not in VALID_ITEM_TYPES:
         errors.append(f"{pfx}.id: prefix '{prefix}' not in {VALID_ITEM_TYPES}")
     elif not re.match(ID_PATTERNS[prefix], sid):
         errors.append(f"{pfx}.id: '{sid}' doesn't match pattern for '{prefix}'")
 
+
+def _validate_story_fields(
+    story: dict, pfx: str, errors: list[str]
+) -> None:
+    """Check required story fields: title, description, priority, and acceptance criteria."""
     if not story["title"]:
         errors.append(f"{pfx}.title: is empty")
 
@@ -145,9 +183,12 @@ def _validate_story(story: dict, errors: list[str]) -> None:
     if not story["acceptance_criteria"]:
         errors.append(f"{pfx}.acceptance_criteria: no criteria listed")
 
-    # Validate blockquote format per story type
-    blockquotes = story.get("blockquotes", [])
-    bq_text = " ".join(blockquotes)
+
+def _validate_story_blockquote(
+    story: dict, prefix: str, pfx: str, errors: list[str]
+) -> None:
+    """Validate blockquote format matches the expected pattern for the story type."""
+    bq_text = " ".join(story.get("blockquotes", []))
 
     if prefix == "US":
         if not re.search(r"\*\*As a\*\*", bq_text):

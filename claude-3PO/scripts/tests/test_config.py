@@ -76,3 +76,62 @@ class TestMainPhasesBackcompat:
 
     def test_main_phases_is_build(self, config):
         assert config.main_phases == config.get_phases("build")
+
+
+class TestAgentMaxCount:
+    """get_agent_max_count reads agent_count from phase entries."""
+
+    def test_explore_agent_count(self, config):
+        assert config.get_agent_max_count("Explore") == 3
+
+    def test_research_agent_count(self, config):
+        assert config.get_agent_max_count("Research") == 3
+
+    def test_plan_agent_count(self, config):
+        assert config.get_agent_max_count("Plan") == 1
+
+    def test_plan_review_agent_count(self, config):
+        assert config.get_agent_max_count("PlanReview") == 3
+
+    def test_architect_agent_count(self, config):
+        assert config.get_agent_max_count("Architect") == 1
+
+    def test_product_owner_agent_count(self, config):
+        assert config.get_agent_max_count("ProductOwner") == 1
+
+    def test_unknown_agent_defaults_to_1(self, config):
+        assert config.get_agent_max_count("UnknownAgent") == 1
+
+
+class TestSpecsPhases:
+    """Specs workflow should have its own phase set."""
+
+    def test_specs_phases(self, config):
+        phases = config.get_phases("specs")
+        assert phases == ["vision", "strategy", "decision", "architect", "backlog"]
+
+    def test_specs_phases_order(self, config):
+        phases = config.get_phases("specs")
+        assert phases.index("vision") < phases.index("strategy")
+        assert phases.index("strategy") < phases.index("decision")
+        assert phases.index("decision") < phases.index("architect")
+        assert phases.index("architect") < phases.index("backlog")
+
+
+class TestSpecsPaths:
+    """Config should expose specs doc paths."""
+
+    def test_product_vision_path(self, config):
+        assert config.product_vision_file_path == "projects/docs/product-vision.md"
+
+    def test_decisions_path(self, config):
+        assert config.decisions_file_path == "projects/docs/decisions.md"
+
+    def test_architecture_path(self, config):
+        assert config.architecture_file_path == "projects/docs/architecture.md"
+
+    def test_backlog_md_path(self, config):
+        assert config.backlog_md_file_path == "projects/docs/backlog.md"
+
+    def test_backlog_json_path(self, config):
+        assert config.backlog_json_file_path == "projects/docs/backlog.json"

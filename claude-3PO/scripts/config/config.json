@@ -4,19 +4,22 @@
       "name": "explore",
       "workflows": ["build", "implement"],
       "read_only": true,
-      "agent": "Explore"
+      "agent": "Explore",
+      "agent_count": 3
     },
     {
       "name": "research",
       "workflows": ["build", "implement"],
       "read_only": true,
-      "agent": "Research"
+      "agent": "Research",
+      "agent_count": 2
     },
     {
       "name": "plan",
       "workflows": ["build", "implement"],
       "docs_write": true,
-      "agent": "Plan"
+      "agent": "Plan",
+      "agent_count": 1
     },
     {
       "name": "plan-review",
@@ -24,6 +27,7 @@
       "read_only": true,
       "docs_edit": true,
       "agent": "PlanReview",
+      "agent_count": 3,
       "checkpoint": true
     },
     {
@@ -44,14 +48,16 @@
       "workflows": ["build"],
       "read_only": true,
       "code_edit": true,
-      "agent": "TestReviewer"
+      "agent": "TestReviewer",
+      "agent_count": 3
     },
     {
       "name": "tests-review",
       "workflows": ["implement"],
       "read_only": true,
       "code_edit": true,
-      "agent": "TestReviewer"
+      "agent": "TestReviewer",
+      "agent_count": 3
     },
     {
       "name": "write-code",
@@ -63,20 +69,23 @@
       "name": "quality-check",
       "workflows": ["build"],
       "read_only": true,
-      "agent": "QASpecialist"
+      "agent": "QASpecialist",
+      "agent_count": 3
     },
     {
       "name": "validate",
       "workflows": ["implement"],
       "read_only": true,
-      "agent": "QASpecialist"
+      "agent": "QASpecialist",
+      "agent_count": 3
     },
     {
       "name": "code-review",
       "workflows": ["build", "implement"],
       "read_only": true,
       "code_edit": true,
-      "agent": "CodeReviewer"
+      "agent": "CodeReviewer",
+      "agent_count": 3
     },
     { "name": "pr-create", "workflows": ["build", "implement"] },
     { "name": "ci-check", "workflows": ["build", "implement"] },
@@ -91,7 +100,38 @@
       "code_write": true,
       "code_edit": true
     },
-    { "name": "plan-revision", "workflows": [], "code_edit": true }
+    { "name": "plan-revision", "workflows": [], "code_edit": true },
+    {
+      "name": "vision",
+      "workflows": ["specs"],
+      "docs_write": true
+    },
+    {
+      "name": "strategy",
+      "workflows": ["specs"],
+      "read_only": true,
+      "agent": "Research",
+      "agent_count": 3
+    },
+    {
+      "name": "decision",
+      "workflows": ["specs"],
+      "docs_write": true
+    },
+    {
+      "name": "architect",
+      "workflows": ["specs"],
+      "read_only": true,
+      "agent": "Architect",
+      "agent_count": 1
+    },
+    {
+      "name": "backlog",
+      "workflows": ["specs"],
+      "read_only": true,
+      "agent": "ProductOwner",
+      "agent_count": 1
+    }
   ],
 
   "plan_templates": {
@@ -111,16 +151,6 @@
         "## Verification"
       ]
     }
-  },
-
-  "agents": {
-    "Explore": 3,
-    "Research": 2,
-    "Plan": 1,
-    "PlanReview": 3,
-    "TestReviewer": 3,
-    "QASpecialist": 3,
-    "CodeReviewer": 3
   },
 
   "score_thresholds": {
@@ -165,6 +195,11 @@
     "code_file": ".claude/code/code.md",
     "report_file": ".claude/reports/report.md",
     "contracts_file": ".claude/contracts/latest-contracts.md",
-    "contracts_archive_dir": ".claude/contracts/archive"
+    "contracts_archive_dir": ".claude/contracts/archive",
+    "product_vision_file": "projects/docs/product-vision.md",
+    "decisions_file": "projects/docs/decisions.md",
+    "architecture_file": "projects/docs/architecture.md",
+    "backlog_md_file": "projects/docs/backlog.md",
+    "backlog_json_file": "projects/docs/backlog.json"
   }
 }

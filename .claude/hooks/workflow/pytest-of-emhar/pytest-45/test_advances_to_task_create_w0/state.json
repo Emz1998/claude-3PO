@@ -1,7 +1,0 @@
-{
-  "workflow_active": true,
-  "workflow_type": "implement",
-  "phase": "task-create",
-  "tdd": false,
-  "story_id": "SK-001"
-}

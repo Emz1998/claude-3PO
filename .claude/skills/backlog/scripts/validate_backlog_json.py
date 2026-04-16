@@ -1,4 +1,8 @@
-"""Validate backlog JSON against the sample_structure.json schema."""
+"""Validate backlog JSON against the sample_structure.json schema.
+
+Checks field presence, types, enum values, ID-pattern consistency,
+and date formats. Returns a list of human-readable error strings.
+"""
 
 import re
 
@@ -16,6 +20,11 @@ DATE_PATTERN = r"^\d{4}-\d{2}-\d{2}$"
 
 
 def validate(data: dict) -> list[str]:
+    """Validate a backlog JSON dict and return a list of error messages.
+
+    An empty list means the data is valid. Each error string includes
+    a dotted path prefix (e.g. 'stories[0].status') for easy location.
+    """
     errors: list[str] = []
     _validate_root(data, errors)
 
@@ -33,9 +42,26 @@ def validate(data: dict) -> list[str]:
 
 
 def _validate_root(data: dict, errors: list[str]) -> None:
+    """Check root-level fields: project, goal, dates, totalPoints, stories."""
     _require_field(data, "project", str, "root", errors)
     _require_field(data, "goal", str, "root", errors)
+    _validate_dates(data, errors)
 
+    if "totalPoints" not in data:
+        errors.append("root: missing required field 'totalPoints'")
+    elif not isinstance(data["totalPoints"], int):
+        errors.append(
+            f"root.totalPoints: expected int, got {type(data['totalPoints']).__name__}"
+        )
+
+    if "stories" not in data:
+        errors.append("root: missing required field 'stories'")
+    elif not isinstance(data["stories"], list):
+        errors.append("root.stories: expected array")
+
+
+def _validate_dates(data: dict, errors: list[str]) -> None:
+    """Validate the root 'dates' object and its start/end YYYY-MM-DD fields."""
     if "dates" not in data:
         errors.append("root: missing required field 'dates'")
     elif not isinstance(data["dates"], dict):
@@ -54,20 +80,19 @@ def _validate_root(data: dict, errors: list[str]) -> None:
                     f"root.dates.{date_field}: must be YYYY-MM-DD, got '{val}'"
                 )
 
-    if "totalPoints" not in data:
-        errors.append("root: missing required field 'totalPoints'")
-    elif not isinstance(data["totalPoints"], int):
-        errors.append(
-            f"root.totalPoints: expected int, got {type(data['totalPoints']).__name__}"
-        )
-
-    if "stories" not in data:
-        errors.append("root: missing required field 'stories'")
-    elif not isinstance(data["stories"], list):
-        errors.append("root.stories: expected array")
-
 
 def _validate_story(story: dict, prefix: str, errors: list[str]) -> None:
+    """Run all story-level validations: fields, item_type, type/id, values."""
+    _validate_story_required_fields(story, prefix, errors)
+    _validate_story_item_type(story, prefix, errors)
+    _validate_story_type_and_id(story, prefix, errors)
+    _validate_story_values(story, prefix, errors)
+
+
+def _validate_story_required_fields(
+    story: dict, prefix: str, errors: list[str]
+) -> None:
+    """Verify all required story fields exist with the correct types."""
     _require_field(story, "id", str, prefix, errors)
     _require_field(story, "type", str, prefix, errors)
     _require_field(story, "title", str, prefix, errors)
@@ -81,6 +106,11 @@ def _validate_story(story: dict, prefix: str, errors: list[str]) -> None:
     _require_field(story, "start_date", str, prefix, errors)
     _require_field(story, "target_date", str, prefix, errors)
 
+
+def _validate_story_item_type(
+    story: dict, prefix: str, errors: list[str]
+) -> None:
+    """Ensure item_type is present and equals 'story'."""
     if "item_type" in story and story["item_type"] != "story":
         errors.append(
             f"{prefix}.item_type: must be 'story', got '{story['item_type']}'"
@@ -88,6 +118,11 @@ def _validate_story(story: dict, prefix: str, errors: list[str]) -> None:
     elif "item_type" not in story:
         errors.append(f"{prefix}: missing required field 'item_type'")
 
+
+def _validate_story_type_and_id(
+    story: dict, prefix: str, errors: list[str]
+) -> None:
+    """Check that type is a known item type and id matches its regex pattern."""
     story_type = story.get("type")
     story_id = story.get("id", "")
 
@@ -104,6 +139,11 @@ def _validate_story(story: dict, prefix: str, errors: list[str]) -> None:
                 f"{prefix}.id: '{story_id}' does not match pattern for '{story_type}'"
             )
 
+
+def _validate_story_values(
+    story: dict, prefix: str, errors: list[str]
+) -> None:
+    """Validate enum values for status, priority, and date formats."""
     status = story.get("status")
     if isinstance(status, str) and status not in VALID_STATUSES:
         errors.append(f"{prefix}.status: '{status}' not in {VALID_STATUSES}")
@@ -121,6 +161,7 @@ def _validate_story(story: dict, prefix: str, errors: list[str]) -> None:
 def _require_field(
     obj: dict, field: str, expected_type: type, prefix: str, errors: list[str]
 ) -> None:
+    """Append an error if the field is missing or has the wrong type."""
     if field not in obj:
         errors.append(f"{prefix}: missing required field '{field}'")
     elif not isinstance(obj[field], expected_type):
@@ -132,6 +173,7 @@ def _require_field(
 def _require_list_field(
     obj: dict, field: str, item_type: type, prefix: str, errors: list[str]
 ) -> None:
+    """Append an error if the field is missing, not a list, or has wrong item types."""
     if field not in obj:
         errors.append(f"{prefix}: missing required field '{field}'")
     elif not isinstance(obj[field], list):

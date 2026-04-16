@@ -130,6 +130,27 @@ class Resolver:
     def _resolve_research(self) -> None:
         self._resolve_agent_phase("research")
 
+    # ── Specs doc-based phases ───────────────────────────────────
+
+    def _resolve_doc_phase(self, phase_name: str, doc_key: str) -> None:
+        if self.state.is_doc_written(doc_key):
+            self.state.set_phase_completed(phase_name)
+
+    def _resolve_vision(self) -> None:
+        self._resolve_doc_phase("vision", "product_vision")
+
+    def _resolve_decision(self) -> None:
+        self._resolve_doc_phase("decision", "decisions")
+
+    def _resolve_architect(self) -> None:
+        self._resolve_doc_phase("architect", "architecture")
+
+    def _resolve_backlog(self) -> None:
+        self._resolve_doc_phase("backlog", "backlog")
+
+    def _resolve_strategy(self) -> None:
+        self._resolve_agent_phase("strategy")
+
     # ══════════════════════════════════════════════════════════════
     # Tool resolvers (file writes, bash, tasks)
     # ══════════════════════════════════════════════════════════════
@@ -345,6 +366,11 @@ class Resolver:
         "code-review": "_resolve_code_review",
         "quality-check": "_resolve_quality_check",
         "validate": "_resolve_validate",
+        "vision": "_resolve_vision",
+        "strategy": "_resolve_strategy",
+        "decision": "_resolve_decision",
+        "architect": "_resolve_architect",
+        "backlog": "_resolve_backlog",
     }
 
     _TOOL_RESOLVER_MAP: dict[str, str] = {

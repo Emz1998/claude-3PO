@@ -1,7 +1,0 @@
-{
-  "workflow_active": true,
-  "workflow_type": "implement",
-  "phase": "write-tests",
-  "tdd": true,
-  "story_id": null
-}

@@ -1,10 +1,17 @@
-"""Convert sprint.md to sprint.json matching sample_structure.json format."""
+"""Convert sprint.md markdown into a sprint.json dict.
+
+Parses sprint metadata, stories (User Story, Technical Story, Bug, Spike),
+and tasks from markdown format into a structured dict matching
+sample_structure.json. Handles blocked-by/is-blocking dependency graphs
+and spike-to-task conversion for stories without explicit tasks.
+"""
 
 import re
 from typing import Any
 
 
 def _safe_int(value: str, default: int = 0) -> int:
+    """Convert a string to int, returning default on failure."""
     try:
         return int(value)
     except (ValueError, TypeError):
@@ -31,186 +38,206 @@ def _parse_field(block: str, label: str) -> str:
     return match.group(1).strip() if match else ""
 
 
-def parse_sprint_md(content: str) -> dict[str, Any]:
-    lines = content.split("\n")
+def _parse_header_line(line: str, prefix: str) -> str:
+    """Extract the value after a bold markdown prefix."""
+    return line.split(prefix)[1].strip()
 
-    sprint: int = 0
-    milestone: str = ""
-    description: str = ""
-    due_date: str = ""
 
-    for line in lines:
-        if line.startswith("**Sprint #:**"):
-            sprint = _safe_int(line.split("**Sprint #:**")[1].strip())
-        elif line.startswith("**Goal:**"):
-            description = line.split("**Goal:**")[1].strip()
-        elif line.startswith("**Milestone:**"):
-            milestone = line.split("**Milestone:**")[1].strip()
-        elif line.startswith("**Due Date:**"):
-            due_date = line.split("**Due Date:**")[1].strip()
-        elif line.startswith("**Dates:**"):
-            dates_raw = line.split("**Dates:**")[1].strip()
-            parts = [d.strip() for d in re.split(r"→|->|to", dates_raw)]
-            due_date = parts[1] if len(parts) > 1 else parts[0] if parts else ""
+def _parse_due_date(line: str) -> str:
+    """Extract due date from a Dates line with arrow/to separator."""
+    dates_raw = _parse_header_line(line, "**Dates:**")
+    parts = [d.strip() for d in re.split(r"→|->|to", dates_raw)]
+    return parts[1] if len(parts) > 1 else parts[0] if parts else ""
 
-    # Parse story sections
+
+_METADATA_FIELDS: dict[str, str] = {
+    "**Sprint #:**": "sprint",
+    "**Goal:**": "description",
+    "**Milestone:**": "milestone",
+    "**Due Date:**": "due_date",
+}
+
+
+def _parse_sprint_metadata(content: str) -> dict[str, Any]:
+    """Extract sprint number, milestone, goal, and due date from header lines."""
+    result: dict[str, Any] = {"sprint": 0, "milestone": "", "description": "", "due_date": ""}
+
+    for line in content.split("\n"):
+        for prefix, key in _METADATA_FIELDS.items():
+            if line.startswith(prefix):
+                value = _parse_header_line(line, prefix)
+                result[key] = _safe_int(value) if key == "sprint" else value
+                break
+        else:
+            if line.startswith("**Dates:**"):
+                result["due_date"] = _parse_due_date(line)
+
+    return result
+
+
+def _parse_story_description(block: str) -> str:
+    """Extract story description from blockquote lines."""
+    desc_match = re.search(r">\s*(.+?)(?:\n(?!>)|$)", block, re.DOTALL)
+    if not desc_match:
+        return ""
+    raw_desc = desc_match.group(0)
+    return re.sub(r"\n>\s*", " ", raw_desc).strip().lstrip("> ").strip()
+
+
+def _parse_story_fields(block: str) -> dict[str, Any]:
+    """Extract status, priority, labels, points, TDD, blocking, and dates from a story block."""
+    return {
+        "status": _parse_field(block, "Status") or "Ready",
+        "priority": _parse_field(block, "Priority"),
+        "labels": _parse_csv(_parse_field(block, "Labels")),
+        "points": _safe_int(_parse_field(block, "Points")),
+        "tdd": _parse_field(block, "TDD").lower() == "true",
+        "is_blocking": _parse_csv(_parse_field(block, "Is Blocking")),
+        "blocked_by": _parse_csv(_parse_field(block, "Blocked By")),
+        "start_date": _parse_field(block, "Start Date"),
+        "target_date": _parse_field(block, "Target Date"),
+    }
+
+
+def _parse_story_acceptance_criteria(block: str) -> list[str]:
+    """Extract acceptance criteria before the tasks section."""
+    tasks_marker = block.find("**Tasks:**")
+    ac_block = block[:tasks_marker] if tasks_marker != -1 else block
+    return re.findall(r"- \[[ x]\] (.+)", ac_block)
+
+
+def _parse_story_tasks(block: str, prefix: str, story_id: str, milestone: str) -> list[dict[str, Any]]:
+    """Parse tasks for a story, falling back to spike deliverables."""
+    tasks = _parse_tasks(block, milestone)
+    if _story_type(prefix) == "Spike" and not tasks:
+        tasks = _parse_spike_as_tasks(block, story_id, milestone)
+    _compute_is_blocking(tasks)
+    return tasks
+
+
+def _parse_story(prefix: str, story_num: str, story_title: str, block: str, milestone: str) -> dict[str, Any]:
+    """Assemble a complete story dict from its markdown block and header match groups."""
+    story_id = f"{prefix}-{story_num}"
+    fields = _parse_story_fields(block)
+    tasks = _parse_story_tasks(block, prefix, story_id, milestone)
+
+    return {
+        "id": story_id,
+        "type": _story_type(prefix),
+        "title": story_title,
+        "description": _parse_story_description(block),
+        "acceptance_criteria": _parse_story_acceptance_criteria(block),
+        "item_type": "story",
+        "milestone": milestone,
+        "tasks": tasks,
+        **fields,
+    }
+
+
+def _parse_stories(content: str, milestone: str) -> list[dict[str, Any]]:
+    """Split content by #### headers and parse each story section."""
     story_pattern = r"#### ([A-Z]{2})-(\d+):\s*(.+?)(?:\n|$)"
     story_matches = list(re.finditer(story_pattern, content))
 
     stories: list[dict[str, Any]] = []
-
     for idx, smatch in enumerate(story_matches):
-        prefix = smatch.group(1)
-        story_num = smatch.group(2)
-        story_id = f"{prefix}-{story_num}"
-        story_title = smatch.group(3).strip()
-
-        # Extract story block (until next story or end)
         start = smatch.end()
         end = story_matches[idx + 1].start() if idx + 1 < len(story_matches) else len(content)
         block = content[start:end]
 
-        # Story description from blockquote
-        desc_match = re.search(r">\s*(.+?)(?:\n(?!>)|$)", block, re.DOTALL)
-        story_desc = ""
-        if desc_match:
-            raw_desc = desc_match.group(0)
-            story_desc = re.sub(r"\n>\s*", " ", raw_desc).strip().lstrip("> ").strip()
-
-        # Story-level fields
-        status = _parse_field(block, "Status") or "Ready"
-        priority = _parse_field(block, "Priority")
-        labels = _parse_csv(_parse_field(block, "Labels"))
-        points = _safe_int(_parse_field(block, "Points"))
-        tdd_raw = _parse_field(block, "TDD").lower()
-        tdd = tdd_raw == "true"
-        is_blocking = _parse_csv(_parse_field(block, "Is Blocking"))
-        blocked_by = _parse_csv(_parse_field(block, "Blocked By"))
-        start_date = _parse_field(block, "Start Date")
-        target_date = _parse_field(block, "Target Date")
-
-        # Story-level acceptance criteria (before tasks section)
-        tasks_marker = block.find("**Tasks:**")
-        ac_block = block[:tasks_marker] if tasks_marker != -1 else block
-        acceptance_criteria = re.findall(r"- \[[ x]\] (.+)", ac_block)
-
-        # Parse tasks
-        tasks = _parse_tasks(block, milestone)
-
-        # For spikes without tasks, build from deliverables
-        if _story_type(prefix) == "Spike" and not tasks:
-            tasks = _parse_spike_as_tasks(block, story_id, milestone)
-
-        # Compute is_blocking across tasks
-        _compute_is_blocking(tasks)
-
-        story: dict[str, Any] = {
-            "id": story_id,
-            "type": _story_type(prefix),
-            "labels": labels,
-            "title": story_title,
-            "description": story_desc,
-            "points": points,
-            "status": status,
-            "tdd": tdd,
-            "priority": priority,
-            "is_blocking": is_blocking,
-            "blocked_by": blocked_by,
-            "acceptance_criteria": acceptance_criteria,
-            "item_type": "story",
-            "milestone": milestone,
-            "start_date": start_date,
-            "target_date": target_date,
-            "tasks": tasks,
-        }
+        story = _parse_story(smatch.group(1), smatch.group(2), smatch.group(3).strip(), block, milestone)
         stories.append(story)
 
+    return stories
+
+
+def parse_sprint_md(content: str) -> dict[str, Any]:
+    """Parse full sprint markdown into a dict with metadata and stories."""
+    metadata = _parse_sprint_metadata(content)
+    stories = _parse_stories(content, metadata["milestone"])
+    return {**metadata, "stories": stories}
+
+
+def _parse_task_title(task_body: str) -> str:
+    """Extract the task title from the first line of the body."""
+    title_match = re.match(r"\s*(.+?)(?:\n|$)", task_body)
+    return title_match.group(1).strip() if title_match else ""
+
+
+def _parse_task_blocked_by(task_body: str) -> list[str]:
+    """Extract blocked-by dependencies, checking both field name variants."""
+    raw = _parse_field(task_body, "Blocked by")
+    if not raw:
+        raw = _parse_field(task_body, "Depends on")
+    return _parse_csv(raw)
+
+
+def _parse_task_fields(task_body: str) -> dict[str, Any]:
+    """Extract labels, description, status, priority, complexity, AC, and dates from a task body."""
     return {
-        "sprint": sprint,
+        "labels": _parse_csv(_parse_field(task_body, "Labels")),
+        "description": _parse_field(task_body, "Description"),
+        "status": _parse_field(task_body, "Status") or "Backlog",
+        "priority": _parse_field(task_body, "Priority"),
+        "complexity": _parse_field(task_body, "Complexity"),
+        "acceptance_criteria": re.findall(r"- \[[ x]\] (.+)", task_body),
+        "start_date": _parse_field(task_body, "Start date"),
+        "target_date": _parse_field(task_body, "Target date"),
+    }
+
+
+def _parse_single_task(task_id: str, task_body: str, milestone: str) -> dict[str, Any]:
+    """Assemble a complete task dict from its ID, body text, and milestone."""
+    return {
+        "id": task_id,
+        "type": "task",
+        "title": _parse_task_title(task_body),
+        "is_blocking": [],
+        "blocked_by": _parse_task_blocked_by(task_body),
+        "item_type": "task",
         "milestone": milestone,
-        "description": description,
-        "due_date": due_date,
-        "stories": stories,
+        **_parse_task_fields(task_body),
     }
 
 
 def _parse_tasks(block: str, milestone: str) -> list[dict[str, Any]]:
-    """Parse task entries from a story block."""
-    tasks: list[dict[str, Any]] = []
+    """Split a story block by T-NNN markers and parse each task."""
     task_splits = re.split(r"- \*\*T-(\d+):\*\*", block)
+    return [
+        _parse_single_task(f"T-{task_splits[i]}", task_splits[i + 1], milestone)
+        for i in range(1, len(task_splits), 2)
+    ]
 
-    for i in range(1, len(task_splits), 2):
-        task_id = f"T-{task_splits[i]}"
-        task_body = task_splits[i + 1]
 
-        title_match = re.match(r"\s*(.+?)(?:\n|$)", task_body)
-        title = title_match.group(1).strip() if title_match else ""
-
-        status = _parse_field(task_body, "Status") or "Backlog"
-        complexity = _parse_field(task_body, "Complexity")
-        priority = _parse_field(task_body, "Priority")
-        labels = _parse_csv(_parse_field(task_body, "Labels"))
-        desc = _parse_field(task_body, "Description")
-
-        blocked_by_raw = _parse_field(task_body, "Blocked by")
-        if not blocked_by_raw:
-            blocked_by_raw = _parse_field(task_body, "Depends on")
-        blocked_by = _parse_csv(blocked_by_raw)
-
-        ac_items = re.findall(r"- \[[ x]\] (.+)", task_body)
-
-        start_date = _parse_field(task_body, "Start date")
-        target_date = _parse_field(task_body, "Target date")
-
-        tasks.append({
-            "id": task_id,
-            "type": "task",
-            "labels": labels,
-            "title": title,
-            "description": desc,
-            "status": status,
-            "priority": priority,
-            "complexity": complexity,
-            "is_blocking": [],
-            "blocked_by": blocked_by,
-            "acceptance_criteria": ac_items,
-            "item_type": "task",
-            "milestone": milestone,
-            "start_date": start_date,
-            "target_date": target_date,
-        })
-
-    return tasks
+def _build_spike_task(task_id: str, deliverable: str, milestone: str) -> dict[str, Any]:
+    """Build a single task dict from a spike deliverable."""
+    return {
+        "id": task_id,
+        "type": "task",
+        "labels": ["analysis", "documentation"],
+        "title": deliverable,
+        "description": "",
+        "status": "Backlog",
+        "priority": "P1",
+        "complexity": "M",
+        "is_blocking": [],
+        "blocked_by": [],
+        "acceptance_criteria": [deliverable],
+        "item_type": "task",
+        "milestone": milestone,
+        "start_date": "",
+        "target_date": "",
+    }
 
 
 def _parse_spike_as_tasks(block: str, spike_id: str, milestone: str) -> list[dict[str, Any]]:
     """For spikes without explicit tasks, create tasks from deliverables."""
     deliverables = re.findall(r"- \[[ x]\] (.+)", block)
-    if not deliverables:
-        return []
-
-    tasks: list[dict[str, Any]] = []
-    for idx, deliverable in enumerate(deliverables, start=1):
-        task_num = f"T-{spike_id.split('-')[1]}{idx:02d}"
-        tasks.append({
-            "id": task_num,
-            "type": "task",
-            "labels": ["analysis", "documentation"],
-            "title": deliverable,
-            "description": "",
-            "status": "Backlog",
-            "priority": "P1",
-            "complexity": "M",
-            "is_blocking": [],
-            "blocked_by": [],
-            "acceptance_criteria": [deliverable],
-            "item_type": "task",
-            "milestone": milestone,
-            "start_date": "",
-            "target_date": "",
-        })
-
-    return tasks
+    spike_num = spike_id.split("-")[1]
+    return [
+        _build_spike_task(f"T-{spike_num}{idx:02d}", d, milestone)
+        for idx, d in enumerate(deliverables, start=1)
+    ]
 
 
 def _compute_is_blocking(tasks: list[dict[str, Any]]) -> None:

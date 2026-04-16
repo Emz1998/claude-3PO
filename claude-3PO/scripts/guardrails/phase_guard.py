@@ -59,6 +59,10 @@ class PhaseGuard:
         prev_idx = order.index(prev)
         next_idx = order.index(next_item)
 
+        if next_idx == prev_idx:
+            raise ValueError(
+                f"Already in '{prev}' phase. Do not re-invoke the skill."
+            )
         if next_idx < prev_idx:
             raise ValueError(f"Cannot go backwards from '{prev}' to '{next_item}'")
         if next_idx > prev_idx + 1:

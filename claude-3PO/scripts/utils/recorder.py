@@ -111,6 +111,14 @@ class Recorder:
             self.state.add_code_file(file_path)
         elif phase == "write-report":
             self.state.set_report_written(True)
+        elif phase == "vision":
+            self._record_specs_doc("product_vision", file_path)
+        elif phase == "decision":
+            self._record_specs_doc("decisions", file_path)
+
+    def _record_specs_doc(self, doc_key: str, file_path: str) -> None:
+        self.state.set_doc_written(doc_key, True)
+        self.state.set_doc_path(doc_key, file_path)
 
     def record_plan_metadata(self, file_path: str) -> None:
         from lib.injector import inject_plan_metadata
@@ -217,6 +225,9 @@ class Recorder:
         file_path = tool_input.get("file_path", "")
         is_plan = bool(file_path and file_path.endswith(config.plan_file_path))
 
+        if self._is_specs_phase_mismatch(phase, file_path, config):
+            return
+
         self.record_write(phase, file_path, is_plan)
 
         if is_plan:
@@ -228,6 +239,17 @@ class Recorder:
             and file_path.endswith(config.contracts_file_path)
         ):
             self.record_contracts_file(file_path)
+
+    @staticmethod
+    def _is_specs_phase_mismatch(phase: str, file_path: str, config: Config) -> bool:
+        """True when the write path doesn't match the specs phase's canonical doc path."""
+        expected = {
+            "vision": config.product_vision_file_path,
+            "decision": config.decisions_file_path,
+        }.get(phase)
+        if not expected:
+            return False
+        return not (file_path and file_path.endswith(expected))
 
     def _record_bash(self, tool_input: dict, tool_output: str, phase: str) -> None:
         command = tool_input.get("command", "")

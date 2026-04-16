@@ -92,7 +92,12 @@ class Config:
         return self.get_required_agent(phase) == agent_name
 
     def get_agent_max_count(self, agent_name: str) -> int:
-        return self._data.get("agents", {}).get(agent_name, 1)
+        counts = [
+            p["agent_count"]
+            for p in self._phase_list
+            if p.get("agent") == agent_name and "agent_count" in p
+        ]
+        return max(counts) if counts else 1
 
     @property
     def required_agents(self) -> dict[str, str]:
@@ -180,3 +185,25 @@ class Config:
     @property
     def default_state_jsonl(self) -> str:
         return self._paths().get("state_jsonl", "")
+
+    # ── Specs paths ───────────────────────────────────────────────
+
+    @property
+    def product_vision_file_path(self) -> str:
+        return self._paths().get("product_vision_file", "")
+
+    @property
+    def decisions_file_path(self) -> str:
+        return self._paths().get("decisions_file", "")
+
+    @property
+    def architecture_file_path(self) -> str:
+        return self._paths().get("architecture_file", "")
+
+    @property
+    def backlog_md_file_path(self) -> str:
+        return self._paths().get("backlog_md_file", "")
+
+    @property
+    def backlog_json_file_path(self) -> str:
+        return self._paths().get("backlog_json_file", "")

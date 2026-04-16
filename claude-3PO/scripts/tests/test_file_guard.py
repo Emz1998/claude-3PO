@@ -2,7 +2,7 @@
 
 import pytest
 from models.state import Agent
-from guardrails import write_guard
+from guardrails import write_guard, edit_guard
 from helpers import make_hook_input
 
 
@@ -53,3 +53,33 @@ class TestWriteCodeFileGuardBuild:
         decision, msg = write_guard(hook, config, state)
         assert decision == "block"
         assert "not allowed" in msg
+
+
+class TestE2EReportWritableInTestMode:
+    """Bug #4: E2E report files must be writable/editable in every phase under --test."""
+
+    @pytest.mark.parametrize("phase", ["strategy", "architect", "backlog", "write-code"])
+    def test_e2e_specs_report_write_allowed(self, config, state, phase):
+        state.set("workflow_type", "specs")
+        state.set("test_mode", True)
+        state.add_phase(phase)
+        hook = make_hook_input("Write", {"file_path": "E2E_SPECS_TEST_REPORT.md"})
+        decision, _ = write_guard(hook, config, state)
+        assert decision == "allow"
+
+    @pytest.mark.parametrize("phase", ["strategy", "architect", "backlog"])
+    def test_e2e_specs_report_edit_allowed(self, config, state, phase):
+        state.set("workflow_type", "specs")
+        state.set("test_mode", True)
+        state.add_phase(phase)
+        hook = make_hook_input("Edit", {"file_path": "E2E_SPECS_TEST_REPORT.md"})
+        decision, _ = edit_guard(hook, config, state)
+        assert decision == "allow"
+
+    def test_e2e_legacy_report_still_allowed(self, config, state):
+        state.set("workflow_type", "specs")
+        state.set("test_mode", True)
+        state.add_phase("strategy")
+        hook = make_hook_input("Write", {"file_path": ".claude/reports/E2E_TEST_REPORT.md"})
+        decision, _ = write_guard(hook, config, state)
+        assert decision == "allow"

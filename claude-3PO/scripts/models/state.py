@@ -41,7 +41,7 @@ class PhaseEntry(BaseModel):
 
 class Agent(BaseModel):
     name: str
-    status: Literal["in_progress", "completed"] | None = None
+    status: Literal["in_progress", "completed", "failed"] | None = None
     tool_use_id: str | None = None
 
 

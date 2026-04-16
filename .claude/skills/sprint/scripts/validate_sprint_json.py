@@ -1,4 +1,9 @@
-"""Validate sprint JSON against the sample_structure.json schema."""
+"""Validate sprint JSON dicts against the sample_structure.json schema.
+
+Checks field presence, types, allowed values (statuses, priorities,
+complexities, story types), ID patterns, date formats, and cross-task
+reference integrity. Returns a list of human-readable error strings.
+"""
 
 import re
 
@@ -30,21 +35,31 @@ def validate(data: dict) -> list[str]:
     _validate_root(data, errors)
 
     if "stories" in data and isinstance(data["stories"], list):
-        all_task_ids: set[str] = set()
-        for story in data["stories"]:
-            if isinstance(story, dict) and isinstance(story.get("tasks"), list):
-                for task in story["tasks"]:
-                    if isinstance(task, dict) and isinstance(task.get("id"), str):
-                        all_task_ids.add(task["id"])
-
-        for i, story in enumerate(data["stories"]):
-            prefix = f"stories[{i}]"
-            if not isinstance(story, dict):
-                errors.append(f"{prefix}: expected object, got {type(story).__name__}")
-                continue
-            _validate_story(story, prefix, errors, all_task_ids)
+        all_task_ids = _collect_task_ids(data["stories"])
+        _validate_stories(data["stories"], errors, all_task_ids)
 
     return errors
+
+
+def _collect_task_ids(stories: list) -> set[str]:
+    """Gather all task IDs across stories for cross-reference validation."""
+    ids: set[str] = set()
+    for story in stories:
+        if isinstance(story, dict) and isinstance(story.get("tasks"), list):
+            for task in story["tasks"]:
+                if isinstance(task, dict) and isinstance(task.get("id"), str):
+                    ids.add(task["id"])
+    return ids
+
+
+def _validate_stories(stories: list, errors: list[str], all_task_ids: set[str]) -> None:
+    """Validate each story in the stories array."""
+    for i, story in enumerate(stories):
+        prefix = f"stories[{i}]"
+        if not isinstance(story, dict):
+            errors.append(f"{prefix}: expected object, got {type(story).__name__}")
+            continue
+        _validate_story(story, prefix, errors, all_task_ids)
 
 
 def _validate_root(data: dict, errors: list[str]) -> None:
@@ -52,10 +67,7 @@ def _validate_root(data: dict, errors: list[str]) -> None:
     _require_field(data, "milestone", str, "root", errors)
     _require_field(data, "description", str, "root", errors)
     _require_field(data, "due_date", str, "root", errors)
-
-    due = data.get("due_date")
-    if isinstance(due, str) and due and not re.match(DATE_PATTERN, due):
-        errors.append(f"root.due_date: must be YYYY-MM-DD, got '{due}'")
+    _validate_date_field(data, "due_date", "root", errors)
 
     if "stories" not in data:
         errors.append("root: missing required field 'stories'")
@@ -64,69 +76,58 @@ def _validate_root(data: dict, errors: list[str]) -> None:
 
 
 def _validate_story(
-    story: dict,
-    prefix: str,
-    errors: list[str],
-    all_task_ids: set[str],
+    story: dict, prefix: str, errors: list[str], all_task_ids: set[str],
 ) -> None:
-    _require_field(story, "id", str, prefix, errors)
-    _require_field(story, "type", str, prefix, errors)
-    _require_field(story, "title", str, prefix, errors)
-    _require_field(story, "description", str, prefix, errors)
-    _require_field(story, "points", int, prefix, errors)
-    _require_field(story, "status", str, prefix, errors)
-    _require_field(story, "tdd", bool, prefix, errors)
-    _require_field(story, "priority", str, prefix, errors)
-    _require_field(story, "milestone", str, prefix, errors)
-    _require_list_field(story, "labels", str, prefix, errors)
-    _require_list_field(story, "is_blocking", str, prefix, errors)
-    _require_list_field(story, "blocked_by", str, prefix, errors)
-    _require_list_field(story, "acceptance_criteria", str, prefix, errors)
-    _require_field(story, "start_date", str, prefix, errors)
-    _require_field(story, "target_date", str, prefix, errors)
+    _validate_story_required_fields(story, prefix, errors)
+    _validate_story_item_type(story, prefix, errors)
+    _validate_story_values(story, prefix, errors)
+    _validate_story_tasks(story, prefix, errors, all_task_ids)
 
-    # item_type must be "story"
-    if "item_type" in story and story["item_type"] != "story":
-        errors.append(
-            f"{prefix}.item_type: must be 'story', got '{story['item_type']}'"
-        )
-    elif "item_type" not in story:
+
+def _validate_story_required_fields(story: dict, prefix: str, errors: list[str]) -> None:
+    """Check all required fields exist with correct types."""
+    for field, typ in (
+        ("id", str), ("type", str), ("title", str), ("description", str),
+        ("points", int), ("status", str), ("tdd", bool), ("priority", str),
+        ("milestone", str), ("start_date", str), ("target_date", str),
+    ):
+        _require_field(story, field, typ, prefix, errors)
+
+    for field in ("labels", "is_blocking", "blocked_by", "acceptance_criteria"):
+        _require_list_field(story, field, str, prefix, errors)
+
+
+def _validate_story_item_type(story: dict, prefix: str, errors: list[str]) -> None:
+    """Validate item_type is present and equals 'story'."""
+    if "item_type" not in story:
         errors.append(f"{prefix}: missing required field 'item_type'")
+    elif story["item_type"] != "story":
+        errors.append(f"{prefix}.item_type: must be 'story', got '{story['item_type']}'")
 
+
+def _validate_story_values(story: dict, prefix: str, errors: list[str]) -> None:
+    """Validate story field values against allowed sets."""
+    _validate_enum(story, "type", VALID_STORY_TYPES, prefix, errors)
+    _validate_enum(story, "status", VALID_STORY_STATUSES, prefix, errors)
+    _validate_enum(story, "priority", VALID_PRIORITIES, prefix, errors)
+    _validate_story_id_pattern(story, prefix, errors)
+    _validate_date_field(story, "start_date", prefix, errors)
+    _validate_date_field(story, "target_date", prefix, errors)
+
+
+def _validate_story_id_pattern(story: dict, prefix: str, errors: list[str]) -> None:
+    """Check story ID matches the expected pattern for its type."""
     story_type = story.get("type")
     story_id = story.get("id", "")
-
-    if isinstance(story_type, str) and story_type not in VALID_STORY_TYPES:
-        errors.append(f"{prefix}.type: '{story_type}' not in {VALID_STORY_TYPES}")
-
-    if (
-        isinstance(story_type, str)
-        and story_type in ID_PATTERNS
-        and isinstance(story_id, str)
-    ):
+    if isinstance(story_type, str) and story_type in ID_PATTERNS and isinstance(story_id, str):
         if not re.match(ID_PATTERNS[story_type], story_id):
-            errors.append(
-                f"{prefix}.id: '{story_id}' does not match pattern for '{story_type}'"
-            )
+            errors.append(f"{prefix}.id: '{story_id}' does not match pattern for '{story_type}'")
 
-    status = story.get("status")
-    if isinstance(status, str) and status not in VALID_STORY_STATUSES:
-        errors.append(f"{prefix}.status: '{status}' not in {VALID_STORY_STATUSES}")
 
-    priority = story.get("priority")
-    if isinstance(priority, str) and priority not in VALID_PRIORITIES:
-        errors.append(f"{prefix}.priority: '{priority}' not in {VALID_PRIORITIES}")
-
-    # Validate date fields
-    for date_field in ("start_date", "target_date"):
-        val = story.get(date_field)
-        if isinstance(val, str) and val and not re.match(DATE_PATTERN, val):
-            errors.append(f"{prefix}.{date_field}: must be YYYY-MM-DD, got '{val}'")
-
-    # Story-level is_blocking/blocked_by can reference stories outside this sprint,
-    # so we only validate that entries are strings (already done by _require_list_field)
-
-    # Tasks
+def _validate_story_tasks(
+    story: dict, prefix: str, errors: list[str], all_task_ids: set[str],
+) -> None:
+    """Validate the tasks array within a story."""
     if "tasks" not in story:
         errors.append(f"{prefix}: missing required field 'tasks'")
     elif not isinstance(story["tasks"], list):
@@ -141,63 +142,85 @@ def _validate_story(
 
 
 def _validate_task(
-    task: dict, prefix: str, errors: list[str], all_task_ids: set[str]
+    task: dict, prefix: str, errors: list[str], all_task_ids: set[str],
 ) -> None:
-    _require_field(task, "id", str, prefix, errors)
-    _require_field(task, "type", str, prefix, errors)
-    _require_field(task, "title", str, prefix, errors)
-    _require_field(task, "description", str, prefix, errors)
-    _require_field(task, "status", str, prefix, errors)
-    _require_field(task, "priority", str, prefix, errors)
-    _require_field(task, "complexity", str, prefix, errors)
-    _require_field(task, "milestone", str, prefix, errors)
-    _require_list_field(task, "labels", str, prefix, errors)
-    _require_list_field(task, "is_blocking", str, prefix, errors)
-    _require_list_field(task, "blocked_by", str, prefix, errors)
-    _require_list_field(task, "acceptance_criteria", str, prefix, errors)
-    _require_field(task, "start_date", str, prefix, errors)
-    _require_field(task, "target_date", str, prefix, errors)
-
-    # item_type must be "task"
-    if "item_type" in task and task["item_type"] != "task":
-        errors.append(f"{prefix}.item_type: must be 'task', got '{task['item_type']}'")
-    elif "item_type" not in task:
-        errors.append(f"{prefix}: missing required field 'item_type'")
-
-    # type must be "task"
-    if "type" in task and task["type"] != "task":
-        errors.append(f"{prefix}.type: must be 'task', got '{task['type']}'")
-
-    task_id = task.get("id", "")
-    if isinstance(task_id, str) and not re.match(TASK_ID_PATTERN, task_id):
-        errors.append(f"{prefix}.id: '{task_id}' does not match pattern T-NNN")
-
-    status = task.get("status")
-    if isinstance(status, str) and status not in VALID_TASK_STATUSES:
-        errors.append(f"{prefix}.status: '{status}' not in {VALID_TASK_STATUSES}")
-
-    priority = task.get("priority")
-    if isinstance(priority, str) and priority not in VALID_PRIORITIES:
-        errors.append(f"{prefix}.priority: '{priority}' not in {VALID_PRIORITIES}")
-
-    complexity = task.get("complexity")
-    if isinstance(complexity, str) and complexity not in VALID_COMPLEXITIES:
-        errors.append(
-            f"{prefix}.complexity: '{complexity}' not in {VALID_COMPLEXITIES}"
-        )
-
-    for date_field in ("start_date", "target_date"):
-        val = task.get(date_field)
-        if isinstance(val, str) and val and not re.match(DATE_PATTERN, val):
-            errors.append(f"{prefix}.{date_field}: must be YYYY-MM-DD, got '{val}'")
-
+    _validate_task_required_fields(task, prefix, errors)
+    _validate_task_item_type(task, prefix, errors)
+    _validate_task_type_field(task, prefix, errors)
+    _validate_task_values(task, prefix, errors)
     _validate_id_refs(task, "is_blocking", prefix, errors, all_task_ids)
     _validate_id_refs(task, "blocked_by", prefix, errors, all_task_ids)
 
 
-def _validate_id_refs(
-    obj: dict, field: str, prefix: str, errors: list[str], valid_ids: set[str]
+def _validate_task_required_fields(task: dict, prefix: str, errors: list[str]) -> None:
+    """Check all required task fields exist with correct types."""
+    for field, typ in (
+        ("id", str), ("type", str), ("title", str), ("description", str),
+        ("status", str), ("priority", str), ("complexity", str),
+        ("milestone", str), ("start_date", str), ("target_date", str),
+    ):
+        _require_field(task, field, typ, prefix, errors)
+
+    for field in ("labels", "is_blocking", "blocked_by", "acceptance_criteria"):
+        _require_list_field(task, field, str, prefix, errors)
+
+
+def _validate_task_item_type(task: dict, prefix: str, errors: list[str]) -> None:
+    """Validate item_type is present and equals 'task'."""
+    if "item_type" not in task:
+        errors.append(f"{prefix}: missing required field 'item_type'")
+    elif task["item_type"] != "task":
+        errors.append(f"{prefix}.item_type: must be 'task', got '{task['item_type']}'")
+
+
+def _validate_task_type_field(task: dict, prefix: str, errors: list[str]) -> None:
+    """Validate type field equals 'task'."""
+    if "type" in task and task["type"] != "task":
+        errors.append(f"{prefix}.type: must be 'task', got '{task['type']}'")
+
+
+def _validate_task_values(task: dict, prefix: str, errors: list[str]) -> None:
+    """Validate task field values against allowed sets."""
+    _validate_task_id_pattern(task, prefix, errors)
+    _validate_enum(task, "status", VALID_TASK_STATUSES, prefix, errors)
+    _validate_enum(task, "priority", VALID_PRIORITIES, prefix, errors)
+    _validate_enum(task, "complexity", VALID_COMPLEXITIES, prefix, errors)
+    _validate_date_field(task, "start_date", prefix, errors)
+    _validate_date_field(task, "target_date", prefix, errors)
+
+
+def _validate_task_id_pattern(task: dict, prefix: str, errors: list[str]) -> None:
+    """Check task ID matches T-NNN pattern."""
+    task_id = task.get("id", "")
+    if isinstance(task_id, str) and not re.match(TASK_ID_PATTERN, task_id):
+        errors.append(f"{prefix}.id: '{task_id}' does not match pattern T-NNN")
+
+
+# ── Shared helpers ───────────────────────────────────────────────────────────
+
+
+def _validate_enum(
+    obj: dict, field: str, valid: set[str], prefix: str, errors: list[str],
 ) -> None:
+    """Check a string field is in the allowed set."""
+    val = obj.get(field)
+    if isinstance(val, str) and val not in valid:
+        errors.append(f"{prefix}.{field}: '{val}' not in {valid}")
+
+
+def _validate_date_field(
+    obj: dict, field: str, prefix: str, errors: list[str],
+) -> None:
+    """Check a date field matches YYYY-MM-DD if non-empty."""
+    val = obj.get(field)
+    if isinstance(val, str) and val and not re.match(DATE_PATTERN, val):
+        errors.append(f"{prefix}.{field}: must be YYYY-MM-DD, got '{val}'")
+
+
+def _validate_id_refs(
+    obj: dict, field: str, prefix: str, errors: list[str], valid_ids: set[str],
+) -> None:
+    """Check that ID references point to known task IDs."""
     val = obj.get(field)
     if val is None or not isinstance(val, list):
         return
@@ -210,7 +233,7 @@ def _validate_id_refs(
 
 
 def _require_field(
-    obj: dict, field: str, expected_type: type, prefix: str, errors: list[str]
+    obj: dict, field: str, expected_type: type, prefix: str, errors: list[str],
 ) -> None:
     if field not in obj:
         errors.append(f"{prefix}: missing required field '{field}'")
@@ -221,7 +244,7 @@ def _require_field(
 
 
 def _require_list_field(
-    obj: dict, field: str, item_type: type, prefix: str, errors: list[str]
+    obj: dict, field: str, item_type: type, prefix: str, errors: list[str],
 ) -> None:
     if field not in obj:
         errors.append(f"{prefix}: missing required field '{field}'")

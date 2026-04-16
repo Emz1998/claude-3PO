@@ -1,111 +1,198 @@
 # Scripts — Workflow Hook System
 
-Guardrail system that enforces phase-based rules for Claude Code hooks.
+Guardrail engine that enforces phase-based rules for the `claude-3PO` Claude Code plugin. Every Claude Code lifecycle event is routed through a dispatcher, validated against the current phase, recorded to a session-scoped state file, and resolved to decide whether the workflow advances.
 
 ## Architecture
 
 ```
-stdin (JSON) --> Entry Points --> Guardrails --> Validators (check)
-                                            --> Recorders  (write state)
-                                            --> Resolvers  (advance state)
-                                            --> stdout (JSON decision)
+Claude Code event (stdin JSON)
+        │
+        ▼
+  dispatchers/*.py        ── entry points (one per hook event)
+        │
+        ├─► guardrails/*.py   ── validate ("allow" | "block")
+        ├─► utils/recorder.py ── write raw data into state
+        └─► utils/resolver.py ── evaluate state, complete phases,
+                                  auto-start next phase,
+                                  mark workflow complete
+        │
+        ▼
+  stdout JSON (permissionDecision, continue:false, systemMessage, …)
 ```
 
-### Entry Points
+All modules import from a shared `lib/` (I/O, extractors, parsers, state, violations), `config/` (declarative phase/agent/path config), `constants/` (command whitelists & file patterns), and `models/` (Pydantic schema for state).
 
-| File | Hook Event | Purpose |
-|---|---|---|
-| `pre_tool_use.py` | PreToolUse | Blocks disallowed tool calls before execution |
-| `post_tool_use.py` | PostToolUse | Records results after Bash commands (PR, CI, tests), auto-parses plan sections |
-| `subagent_stop.py` | SubagentStop | Validates agent reports (scores/verdicts), checkpoints on plan-review pass |
-| `task_created.py` | TaskCreated | Validates task subjects match planned tasks from `## Tasks` |
-| `stop.py` | Stop | Blocks stop until all phases are completed |
+## Workflow types
 
-### Guardrails (`guardrails/`)
+Three workflows are wired in `config/config.json`. A phase belongs to a workflow when its `workflows` array contains the workflow name.
 
-Handlers that wire validators to recorders. Each returns `("allow", msg)` or `("block", msg)`.
+| Workflow    | Purpose                                | Phase track                                                                                                                                                    |
+| ----------- | -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `build`     | End-to-end feature build from scratch  | explore → research → plan → plan-review → create-tasks → install-deps → define-contracts → write-tests → test-review → write-code → quality-check → code-review → pr-create → ci-check → write-report |
+| `implement` | Execute an existing story from a backlog | explore → research → plan → plan-review → create-tasks → write-tests → tests-review → write-code → validate → code-review → pr-create → ci-check → write-report |
+| `specs`     | Produce product/architecture artifacts   | vision → strategy → decision → architect → backlog                                                                                                             |
 
-| Guard | Tool | What it checks |
-|---|---|---|
-| `write_guard` | Write | Phase allows writes, file path is valid, plan content follows template |
-| `edit_guard` | Edit | Phase allows edits, file was written this session, plan edits preserve required sections |
-| `command_guard` | Bash | Command is whitelisted for current phase |
-| `agent_guard` | Agent | Agent matches phase requirement, under max count |
-| `webfetch_guard` | WebFetch | URL domain is in safe list |
-| `phase_guard` | Skill | Phase transition follows ordering rules |
-| `agent_report_guard` | (Stop) | Agent response has valid scores or verdict |
+Each phase entry carries capability flags (`read_only`, `code_write`, `code_edit`, `docs_write`, `docs_edit`, `auto`, `checkpoint`) and an optional `agent` + `agent_count`. The `Config` class derives phase lists from those flags — no separate enum is maintained.
 
-### Validators (`utils/validators.py`)
+## Entry points (`dispatchers/`)
 
-Pure validation — check conditions, return `tuple[bool, str]` or raise `ValueError`. Never mutate state.
+Wired in `hooks/hooks.json`. Each reads Claude's JSON from stdin, short-circuits when the session has no active workflow, then delegates.
 
-Key validations:
-- **Plan content**: required `## Dependencies`, `## Contracts`, `## Tasks` sections with bullet format (no `###` subsections)
-- **Plan edit**: edits must not remove required sections
-- **Install-deps**: only package manager files (`package.json`, `requirements.txt`, etc.)
-- **Define-contracts**: only code extension files
+| File                            | Hook event           | Role                                                                                                                  |
+| ------------------------------- | -------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `pre_tool_use.py`               | `PreToolUse`         | Looks up `TOOL_GUARDS[tool_name]` and emits `permissionDecision: "deny"` on block. Logs every block to `violations.md`. |
+| `post_tool_use.py`              | `PostToolUse`        | `Recorder.record(...)` then `resolve(...)` to auto-complete phases and auto-start the next.                            |
+| `post_tool_use_failure.py`      | `PostToolUseFailure` | Bash-only. Records test execution even when the command exits non-zero (TDD-style failing tests still progress phase). |
+| `subagent_start.py`             | `SubagentStart`      | Registers `Agent(name, status="in_progress", tool_use_id=agent_id)` so agent counts and completion are tracked.        |
+| `subagent_stop.py`              | `SubagentStop`       | Marks the agent `completed`. For review/specs phases, validates the report (`AgentReportGuard`) and logs a `SubagentStop` violation when rejected. On specs-phase rejection the failing agent is marked `status="failed"` so the phase can be retried. Triggers checkpoint on plan-review pass via `Hook.discontinue`. |
+| `task_created.py`               | `TaskCreated`        | Validates task subject against `state.tasks` (build) or project tasks (implement) and records the link.                |
+| `task_completed.py`             | `TaskCompleted`      | Implement workflow only: marks the child subtask done; when all siblings finish, marks the parent and syncs status to `project_manager`. |
+| `stop.py`                       | `Stop`               | Blocks session end until every required phase is complete, tests passed, CI green (see `StopGuard`).                   |
+| `async/user_prompt_submit.py`   | `UserPromptSubmit`   | Async. Invokes headless Claude to summarize `/build` instructions and resolves any `Pending...` rows in `violations.md`. |
+| `async/task_completed.py`       | `TaskCompleted`      | Async. Runs `utils/auto_commit.py` to generate a commit message (headless Claude) and commit task output.              |
 
-### Recorders (`utils/recorder.py`)
+The dispatchers for `PreToolUse` and `TaskCreated` write `violations.md` (`lib/violations.py`) on every block for later audit.
 
-Write raw data to `state.json`. Called by guardrails after validation passes.
+## Guardrails (`guardrails/`)
 
-Key recorders:
-- `record_plan_sections()` — auto-extracts dependencies and tasks from plan on write
-- `record_contracts_file()` — auto-extracts contract names from contracts.md on write
-- `record_dependency_install()` — marks deps as installed when install command runs
+Each guard is a class exposing `validate() → ("allow" | "block", message)`. `guardrails/__init__.py` wires them into `TOOL_GUARDS` (used by `PreToolUse`) and `STOP_GUARDS` (used by `SubagentStop`).
 
-### Resolvers (`utils/resolvers.py`)
+| Guard                      | Invoked on                           | What it checks                                                                                                                                                         |
+| -------------------------- | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PhaseGuard`               | `Skill` (PreToolUse)                 | Phase transition follows the workflow ordering. Handles `/continue`, `/plan-approved`, `/revise-plan`, `/reset-plan-review`. Skips auto-phases. Allows parallel `explore`+`research`. |
+| `CommandGuard`             | `Bash` (PreToolUse)                  | Command is read-only, or matches the phase whitelist in `constants.COMMANDS_MAP`. Requires `--json` on `gh pr create` / `gh pr checks`.                                |
+| `FileWriteGuard`           | `Write` (PreToolUse)                 | Phase permits writes; path matches the phase's target (`plan_file`, `contracts_file`, plan-declared code files, test patterns, package manager files, report path). Plan writes must include the required sections and use bullet format for `Dependencies`/`Tasks`; contracts must have a populated `## Specifications` table. |
+| `FileEditGuard`            | `Edit` (PreToolUse)                  | Phase permits edits; file is plan/test/code in the current session. Edits to the plan must preserve required sections.                                                  |
+| `AgentGuard`               | `Agent` (PreToolUse)                 | Agent type matches the phase's required agent, under `agent_count`. In review phases, blocks re-invocation until revisions (plan/tests/code) are done.                  |
+| `WebFetchGuard`            | `WebFetch` (PreToolUse)              | URL host is in `config.safe_domains`.                                                                                                                                   |
+| `TaskCreateToolGuard`      | `TaskCreate` (PreToolUse)            | Implement workflow: requires `metadata.parent_task_id` + `parent_task_title` matching a known project task.                                                             |
+| `TaskCreatedGuard`         | `TaskCreated`                        | Build: task subject matches a plan bullet in `state.tasks`. Implement: subject matches a project task title; records child under parent.                                |
+| `AgentReportGuard`         | `SubagentStop` (review/specs phases) | Validates that plan/code reviews have scores (1–100), tests/QA reports have a `Pass`/`Fail` verdict, and review reports list files to revise. Architect/backlog reports are structure-validated then auto-written to disk. |
+| `StopGuard`                | `Stop`                               | All non-skipped phases completed, tests executed with `Pass` verdict, CI status `passed`. Skips test/CI checks in test mode.                                            |
 
-Evaluate state after recording and advance the workflow:
-- Complete phases when conditions are met
-- Start sub-phases (revisions) when review scores are below threshold
-- Increment review iterations
+## Recorder (`utils/recorder.py`)
 
-### State (`state.json`)
+Called by `post_tool_use.py` after a guard allows a tool. Dispatches on `tool_name`:
 
-Single JSON file tracking workflow progress: phases, agents, plan, tasks, dependencies, contracts, tests, code files, PR, CI status.
+- **Skill** — records a phase transition (except for no-op skills `continue`, `revise-plan`, `plan-approved`, `reset-plan-review`). Handles the explore↔research parallel case.
+- **Write** — marks plan/contracts/test/code/report files written, tracks specs docs, injects frontmatter metadata into the plan, and auto-extracts `## Dependencies`, `## Tasks`, `## Files to Create/Modify`, and contract names from the written markdown.
+- **Edit** — records plan revision, test-file revision, code/test revisions.
+- **Bash** — detects test execution (`TEST_RUN_PATTERNS`), dependency installation (`INSTALL_COMMANDS`), PR creation (parses `gh pr create --json`), and CI status (parses `gh pr checks --json`).
 
-### Config (`config/config.toml`)
+Score/verdict/revision-file recorders are owned by `AgentReportGuard` but delegate to the same `Recorder`.
 
-Phase classifications, agent limits, score thresholds, safe domains, file paths (including contracts paths).
+## Resolver (`utils/resolver.py`)
 
-### Constants (`constants/constants.py`)
+After every record, `Resolver.resolve()` runs two maps on the current phase:
 
-Command whitelists (PR, CI, install, test, read-only), file patterns, code extensions, package manager files.
+- `_PHASE_RESOLVER_MAP` — review phases, agent phases, specs doc phases.
+- `_TOOL_RESOLVER_MAP` — file-write phases (`plan`, `install-deps`, `define-contracts`, `write-tests`, `write-code`, `write-report`) and delivery phases (`pr-create`, `ci-check`).
 
-### Models (`models/state.py`)
+Score-based reviews compare against `config.score_thresholds` (plan/tests `confidence_score ≥ 80 & quality ≥ 80`; code `confidence_score ≥ 90 & quality ≥ 80`). Below threshold → review `Fail`. Three failed reviews → "exhausted," unlocking `/plan-approved` override. Verdict-based reviews (test-review, quality-check/validate) check for a `Pass` string.
 
-Pydantic models mirroring the `state.json` schema, including `Dependencies` and `Contracts` models.
+After resolution, `auto_start_next()` advances through any `auto: true` phases, skipping TDD phases (`write-tests`, `test-review`, `tests-review`) when `--tdd` wasn't passed. `_check_workflow_complete()` sets `workflow_active=false` once every non-skipped phase is completed.
 
-### Templates (`templates/`)
+A checkpoint on `plan-review` is honored: the resolver refuses to advance until `/plan-approved` is invoked (or review is exhausted), matching the `Hook.discontinue(...)` emitted by `subagent_stop.py`.
 
-| File | Purpose |
-|---|---|
-| `plan.md` | Plan template enforcing bullet format for Dependencies, Contracts, Tasks sections |
+## State (`lib/state_store.py`, `state.jsonl`)
 
-The plan template is enforced by `_validate_plan_content()` in the Write guardrail. Plans that use `###` subsections instead of `- bullet` items are rejected.
+`StateStore` is session-scoped. Each line in `state.jsonl` is a complete state snapshot for one `session_id`; reads and writes filter by that id and use `filelock` to serialize concurrent hooks. Operations: `load`, `save`, `update(fn)`, `get/set`, and dozens of domain helpers (`add_phase`, `set_phase_completed`, `add_plan_review`, `add_subtask`, …).
 
-## Data Flow
+Schema lives in `models/state.py` as Pydantic models: `State`, `PhaseEntry`, `Agent`, `Plan`, `PlanReview`, `Tests`, `CodeFiles`, `CodeReview`, `Dependencies`, `Contracts`, `PR`, `CI`. `utils/initializer.py` builds the initial state for `build`, `implement`, or `specs` from CLI args (`--tdd`, `--test`, `--skip-*`, story id, free-form instructions) and handles duplicate-story guard, `--reset`, and `--takeover`.
+
+## Config (`config/config.json`)
+
+Single source of truth, loaded by `config/config.py`. Declares:
+
+- **`phases`** — array of phase objects. Each may carry `workflows`, capability flags, `agent`, `agent_count`, `auto`, `checkpoint`.
+- **`plan_templates`** — required sections and bullet sections per workflow type.
+- **`score_thresholds`** — plan / tests / code confidence & quality thresholds.
+- **`safe_domains`** — whitelist for `WebFetchGuard`.
+- **`paths`** — `state_jsonl`, plan/contracts/tests/code/report paths, specs doc paths, archive directories, log files.
+
+The `Config` class never hard-codes phase lists; they are derived from flags (`code_write_phases`, `read_only_phases`, `checkpoint_phase`, etc.).
+
+## Constants (`constants/constants.py`)
+
+Regex patterns (`TEST_RUN_PATTERNS`, `SCORE_PATTERNS`, `STORY_ID_PATTERN`, `TABLE_PATTERN`), command lists (`READ_ONLY_COMMANDS`, `INSTALL_COMMANDS`, `TEST_COMMANDS`, `PR_COMMANDS`, `CI_COMMANDS`), the `COMMANDS_MAP` phase→whitelist, `PACKAGE_MANAGER_FILES`, `TEST_FILE_PATTERNS`, and `CODE_EXTENSIONS`.
+
+## Library (`lib/`)
+
+| Module           | Role                                                                                                                  |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `hook.py`        | `Hook` — stdin reader and stdout emitters (`block`, `advanced_block`, `system_message`, `discontinue`, `send_context`). |
+| `state_store.py` | Session-scoped JSONL state with filelock (see above).                                                                   |
+| `extractors.py`  | Pure parsers: skill name, agent name, scores, verdicts, markdown sections/tables/bullets, plan sections, contract names, build instructions. |
+| `parser.py`      | CLI-arg parsers for `initializer.py` and frontmatter reader.                                                            |
+| `archiver.py`    | Moves `latest-plan.md` / `latest-contracts.md` to `archive/` at workflow start.                                          |
+| `injector.py`    | Writes YAML frontmatter (session_id, workflow_type, story_id, date) into the plan after `Write`.                        |
+| `file_manager.py`| Locked JSON/JSONL helpers used by GitHub-project and tests.                                                             |
+| `violations.py`  | Append-only markdown log of every block (`logs/violations.md`). Fills in prompt summaries async.                        |
+
+## Utilities (`utils/`)
+
+| Module                | Role                                                                                                          |
+| --------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `initializer.py`      | Called from skill frontmatter bash to build initial state and archive prior plan/contracts.                    |
+| `recorder.py`         | Records state after allowed tool uses (see above).                                                             |
+| `resolver.py`         | Evaluates state and advances phases (see above).                                                               |
+| `specs_writer.py`     | Validates architect/backlog agent reports and writes them to `projects/docs/architecture.md` + `backlog.{md,json}`. |
+| `auto_commit.py`      | Async. Claims dirty files per task-batch via `commit_batch.json`, invokes headless Claude for a message, commits. |
+| `summarize_prompt.py` | Async. Summarizes `/build` instructions via headless Claude and writes `prompt_summary` to state.              |
+
+## Adjacent packages
+
+- **`github_project/`** — local-first project manager (`project_manager.py`) backed by `issues/{sprint,stories,backlog,metadata}.json`. Used by the implement workflow to load project tasks, record child subtasks, and mark tasks `Done` on completion. CLI subcommands: `list`, `view`, `summary`, `progress`, `update`, `add-task`, `add-story`, `create-sprint`, `sync`.
+- **`headless_claude/claude.py`** — thin wrapper around `subprocess.run(["claude", "-p", …])` used by the async dispatchers to generate summaries and commit messages without blocking the live session.
+- **`tests/`** — pytest suite covering dispatchers, guardrails, recorder, resolver, extractors, state store, initializer, auto-commit, specs flow, task lifecycle, and more.
+
+## Data flow summary
 
 ```
-PreToolUse:   validate --> record --> respond (allow/block)
-PostToolUse:  record output --> auto-parse plan sections --> resolve state
-SubagentStop: validate report --> record scores/verdict --> resolve state --> checkpoint
-TaskCreated:  match task subject against planned tasks --> allow/block
+PreToolUse          stdin → TOOL_GUARDS[tool_name].validate()
+                    block → permissionDecision:"deny" + log_violation
+                    allow → systemMessage(reason)
+
+PostToolUse         Recorder.record(hook_input, config)
+                    resolve(config, state)            # auto-complete phase, auto-start next
+
+PostToolUseFailure  Bash only: record_test_execution → resolve
+
+SubagentStart       state.add_agent(Agent(name, "in_progress", agent_id))
+
+SubagentStop        state.update_agent_status(agent_id, "completed") → resolve
+                    review/specs phase → AgentReportGuard.validate()
+                    plan-review passed → Hook.discontinue("Plan approved.")
+
+TaskCreated         TaskCreatedGuard.validate()
+                    build → subject must match a plan ## Tasks bullet
+                    implement → subject must match a project task; record child
+
+TaskCompleted       sync: mark child + possibly parent completed
+                    async: auto_commit (headless Claude + git commit)
+
+UserPromptSubmit    async: summarize_prompt (headless Claude)
+
+Stop                StopGuard.validate()
+                    missing phases/tests/CI → decision:"block" with reasons
 ```
 
-## Phase Lifecycle
+## Phase lifecycle highlights
 
-```
-explore --> research --> plan --> plan-review --> install-deps --> define-contracts
---> write-tests --> test-review --> write-code --> quality-check --> code-review
---> pr-create --> ci-check --> write-report
-```
+- **Checkpoint** — `plan-review` completion emits `{continue:false, stopReason:"Plan approved. Review the plan before proceeding."}` so the user confirms before automation continues. `/plan-approved` bypasses the checkpoint.
+- **Sub-phases / revisions** — failed reviews (`plan-review`, `test-review`/`tests-review`, `code-review`) keep the phase `in_progress`; the next agent invocation is blocked until the revision files listed by the reviewer have been edited. After 3 failures the review is "exhausted" and `/plan-approved` is allowed.
+- **TDD toggle** — `--tdd` on `/build` or `/implement` opts into `write-tests` and `test-review`/`tests-review`; without it, those phases are skipped in both the resolver and `StopGuard`.
+- **Test mode** — `--test` bypasses live-test / CI checks in `StopGuard`, allows writes to `state.jsonl` and `.claude/reports/E2E_TEST_REPORT.md`, and unlocks `/reset-plan-review`.
+- **Parallel explore+research** — while `explore` is `in_progress`, `Research` agents and the `research` skill are allowed; recorder tracks the parallel transition.
 
-### Checkpoints
+## State file
 
-- **plan-review pass**: `Hook.discontinue()` stops the workflow so the user can review the plan before proceeding to `install-deps`.
+Default: `scripts/state.jsonl`. One JSON object per line per session. Lock file: `scripts/state.lock`. Violations: `logs/violations.md` + `logs/violations.lock`.
 
-### Sub-phases
+### Environment overrides (tests)
 
-Review phases (`plan-review`, `test-review`, `code-review`) can trigger sub-phases (`plan-revision`, `refactor`) when scores are below threshold.
+| Variable                     | Overrides                                     |
+| ---------------------------- | --------------------------------------------- |
+| `TASK_CREATED_STATE_PATH`    | state path used by `task_created.py`          |
+| `SUBAGENT_STOP_STATE_PATH`   | state path used by `subagent_stop.py`         |
+| `VIOLATIONS_PATH`            | target file for `lib/violations.log_violation`|

@@ -14,6 +14,22 @@ from lib.violations import log_violation, extract_action
 from config import Config
 
 
+def resolve_violation_phase(
+    state: StateStore, config: Config, tool_name: str, hook_input: dict
+) -> str:
+    """Pick the best phase label for a violation: skill name, current phase, or first workflow phase."""
+    if tool_name == "Skill":
+        from lib.extractors import extract_skill_name
+        skill = extract_skill_name(hook_input)
+        if skill:
+            return skill
+    if state.current_phase:
+        return state.current_phase
+    workflow = state.get("workflow_type", "build")
+    phases = config.get_phases(workflow) or config.main_phases
+    return phases[0] if phases else ""
+
+
 def main() -> None:
     hook_input = Hook.read_stdin()
 
@@ -36,19 +52,12 @@ def main() -> None:
     decision, message = guard(hook_input, config, state)
 
     if decision == "block":
-        # For Skill blocks, use the attempted skill as phase context
-        # (e.g. /install-deps blocked before /plan → log as "install-deps", not "research")
-        phase = state.current_phase
-        if tool_name == "Skill":
-            from lib.extractors import extract_skill_name
-            phase = extract_skill_name(hook_input) or phase
-
         log_violation(
             session_id=session_id,
             workflow_type=state.get("workflow_type", "build"),
             story_id=state.get("story_id"),
             prompt_summary=state.get("prompt_summary"),
-            phase=phase,
+            phase=resolve_violation_phase(state, config, tool_name, hook_input),
             tool=tool_name,
             action=extract_action(tool_name, hook_input),
             reason=message,

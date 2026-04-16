@@ -8,7 +8,7 @@ from config import Config
 
 Decision = tuple[Literal["allow", "block"], str]
 
-E2E_TEST_REPORT = ".claude/reports/E2E_TEST_REPORT.md"
+from .write_guard import _is_e2e_report_path
 
 
 class FileEditGuard:
@@ -24,10 +24,10 @@ class FileEditGuard:
     # ── Checks ────────────────────────────────────────────────────
 
     def _is_test_report(self) -> bool:
-        return self.state.get("test_mode") and (
-            self.file_path == E2E_TEST_REPORT
-            or self.file_path.endswith(E2E_TEST_REPORT)
-        )
+        return bool(self.state.get("test_mode")) and _is_e2e_report_path(self.file_path)
+
+    def _is_state_file(self) -> bool:
+        return self.state.get("test_mode") and self.file_path.endswith("state.jsonl")
 
     def _check_editable_phase(self) -> None:
         editable = self.config.code_edit_phases + self.config.docs_edit_phases
@@ -129,6 +129,9 @@ class FileEditGuard:
         try:
             if self._is_test_report():
                 return "allow", "E2E test report edit allowed (test mode)"
+
+            if self._is_state_file():
+                return "allow", "State file edit allowed (test mode)"
 
             self._check_editable_phase()
 

@@ -5,7 +5,7 @@ hooks:
   PreToolUse:
     - hooks:
         - type: command
-          command: "./.claude/skills/sprint/hooks/pre_tool_use.py"
+          command: '${CLAUDE_PLUGIN_ROOT}/sprint/hooks/pre_tool_use.py'
 ---
 
 **Goal**: Create and maintain a structured sprint backlog at `.claude/projects/sprint.md` using the template at [template/sprint.md](template/sprint.md).

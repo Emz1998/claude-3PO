@@ -99,6 +99,27 @@ class TestPhaseGuard:
         decision, _ = phase_guard(hook, config, state)
         assert decision == "block"
 
+    def test_blocks_reinvoking_completed_phase(self, config, state):
+        """Bug #2: re-invoking a completed phase must be blocked."""
+        state.set("workflow_type", "specs")
+        state.add_phase("vision")
+        state.set_phase_completed("vision")
+        hook = make_hook_input("Skill", {"skill": "vision"})
+        decision, message = phase_guard(hook, config, state)
+        assert decision == "block"
+        assert "vision" in message.lower()
+
+    def test_blocks_backward_navigation_from_next_phase(self, config, state):
+        """Bug #2: /vision from a later phase must stay blocked."""
+        state.set("workflow_type", "specs")
+        state.add_phase("vision")
+        state.set_phase_completed("vision")
+        state.add_phase("strategy")
+        state.set_phase_completed("strategy")
+        hook = make_hook_input("Skill", {"skill": "vision"})
+        decision, _ = phase_guard(hook, config, state)
+        assert decision == "block"
+
 
 class TestAgentReportGuard:
     # --- Block: invalid content, nothing recorded ---
@@ -188,3 +209,31 @@ class TestAgentReportGuard:
         decision, _ = agent_report_guard(hook, config, state)
         assert decision == "allow"
         assert state.last_code_review["status"] == "Pass"
+
+
+class TestStateFileEditInTestMode:
+    def test_allows_state_edit_in_test_mode(self, config, state):
+        state.set("test_mode", True)
+        state.add_phase("vision")
+        hook = make_hook_input("Edit", {"file_path": "scripts/state.jsonl"})
+        decision, _ = edit_guard(hook, config, state)
+        assert decision == "allow"
+
+    def test_blocks_state_edit_outside_test_mode(self, config, state):
+        state.add_phase("vision")
+        hook = make_hook_input("Edit", {"file_path": "scripts/state.jsonl"})
+        decision, _ = edit_guard(hook, config, state)
+        assert decision == "block"
+
+    def test_allows_state_write_in_test_mode(self, config, state):
+        state.set("test_mode", True)
+        state.add_phase("strategy")
+        hook = make_hook_input("Write", {"file_path": "scripts/state.jsonl"})
+        decision, _ = write_guard(hook, config, state)
+        assert decision == "allow"
+
+    def test_blocks_state_write_outside_test_mode(self, config, state):
+        state.add_phase("strategy")
+        hook = make_hook_input("Write", {"file_path": "scripts/state.jsonl"})
+        decision, _ = write_guard(hook, config, state)
+        assert decision == "block"

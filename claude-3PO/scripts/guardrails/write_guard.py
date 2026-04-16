@@ -19,6 +19,16 @@ Decision = tuple[Literal["allow", "block"], str]
 E2E_TEST_REPORT = ".claude/reports/E2E_TEST_REPORT.md"
 
 
+def _is_e2e_report_path(file_path: str) -> bool:
+    """Match any top-level E2E*_TEST_REPORT.md or the legacy .claude/reports path."""
+    if not file_path:
+        return False
+    basename = file_path.rsplit("/", 1)[-1]
+    if basename.startswith("E2E") and basename.endswith("_TEST_REPORT.md"):
+        return True
+    return file_path == E2E_TEST_REPORT or file_path.endswith(E2E_TEST_REPORT)
+
+
 class FileWriteGuard:
     """Validate file write against phase and path restrictions."""
 
@@ -33,10 +43,10 @@ class FileWriteGuard:
     # ── Test mode ─────────────────────────────────────────────────
 
     def _is_test_report(self) -> bool:
-        return self.state.get("test_mode") and (
-            self.file_path == E2E_TEST_REPORT
-            or self.file_path.endswith(E2E_TEST_REPORT)
-        )
+        return bool(self.state.get("test_mode")) and _is_e2e_report_path(self.file_path)
+
+    def _is_state_file(self) -> bool:
+        return self.state.get("test_mode") and self.file_path.endswith("state.jsonl")
 
     # ── Phase check ───────────────────────────────────────────────
 
@@ -206,6 +216,9 @@ class FileWriteGuard:
         try:
             if self._is_test_report():
                 return "allow", "E2E test report write allowed (test mode)"
+
+            if self._is_state_file():
+                return "allow", "State file write allowed (test mode)"
 
             self._check_writable_phase()
 

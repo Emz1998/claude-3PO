@@ -28,7 +28,30 @@ STATE_PATH = Path(__file__).resolve().parent.parent / "state.jsonl"
 # ---------------------------------------------------------------------------
 
 
-def build_initial_state(workflow_type: str, session_id: str, args: str) -> dict:
+def _build_specs_state(session_id: str, args: str) -> dict:
+    skip = parse_skip(args)
+    test_mode = "--test" in args
+    instructions = parse_instructions(args)
+    return {
+        "session_id": session_id,
+        "workflow_active": True,
+        "status": "in_progress",
+        "workflow_type": "specs",
+        "test_mode": test_mode,
+        "phases": [],
+        "agents": [],
+        "skip": skip,
+        "instructions": instructions,
+        "docs": {
+            "product_vision": {"written": False, "path": ""},
+            "decisions": {"written": False, "path": ""},
+            "architecture": {"written": False, "path": ""},
+            "backlog": {"written": False, "md_path": "", "json_path": ""},
+        },
+    }
+
+
+def _build_build_state(workflow_type: str, session_id: str, args: str) -> dict:
     skip = parse_skip(args)
     tdd = "--tdd" in args
     test_mode = "--test" in args
@@ -85,6 +108,12 @@ def build_initial_state(workflow_type: str, session_id: str, args: str) -> dict:
     }
 
 
+def build_initial_state(workflow_type: str, session_id: str, args: str) -> dict:
+    if workflow_type == "specs":
+        return _build_specs_state(session_id, args)
+    return _build_build_state(workflow_type, session_id, args)
+
+
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
@@ -96,14 +125,17 @@ def initialize(
     args: str,
     state_path: Path = STATE_PATH,
 ) -> None:
+    store = StateStore(state_path, session_id=session_id)
+    store.cleanup_inactive()
+
+    if workflow_type == "specs":
+        state = build_initial_state(workflow_type, session_id, args)
+        store.reinitialize(state)
+        return
+
     config = Config()
     archive_plan(config)
     archive_contracts(config)
-
-    store = StateStore(state_path, session_id=session_id)
-
-    # Clean up stale sessions
-    store.cleanup_inactive()
 
     story_id = parse_story_id(args)
     reset = "--reset" in args

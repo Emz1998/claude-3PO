@@ -26,6 +26,8 @@ def parse_skip(args: str) -> list[str]:
         skip.append("explore")
     if "--skip-research" in args or "--skip-all" in args:
         skip.append("research")
+    if "--skip-vision" in args:
+        skip.append("vision")
     return skip
 
 
@@ -36,8 +38,8 @@ def parse_story_id(args: str) -> str | None:
 
 def parse_instructions(args: str) -> str:
     flags = [
-        "--skip-explore", "--skip-research", "--skip-all", "--tdd",
-        "--reset", "--takeover", "--test",
+        "--skip-explore", "--skip-research", "--skip-vision", "--skip-all",
+        "--tdd", "--reset", "--takeover", "--test",
     ]
     text = re.sub(STORY_ID_PATTERN, "", args)
     for flag in flags:

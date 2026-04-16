@@ -1,14 +1,18 @@
 """violations.py — Append-only markdown violation logger.
 
 Logs every guardrail block to ${CLAUDE_PLUGIN_ROOT}/logs/violations.md.
+Override the target path with the VIOLATIONS_PATH env variable (tests).
 """
 
+import os
 from datetime import datetime
 from pathlib import Path
 from filelock import FileLock
 
 _PLUGIN_ROOT = Path(__file__).resolve().parent.parent.parent
-VIOLATIONS_PATH = _PLUGIN_ROOT / "logs" / "violations.md"
+VIOLATIONS_PATH = Path(
+    os.environ.get("VIOLATIONS_PATH", str(_PLUGIN_ROOT / "logs" / "violations.md"))
+)
 
 HEADER = "| Timestamp | Session | Workflow | Story ID | Prompt Summary | Phase | Tool | Action | Reason |"
 SEPARATOR = "|-----------|---------|----------|----------|----------------|-------|------|--------|--------|"

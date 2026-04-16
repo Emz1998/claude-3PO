@@ -282,10 +282,14 @@ class StateStore:
         return next((a for a in agents if a.get("name") == name), None)
 
     def count_agents(self, name: str) -> int:
-        return sum(1 for a in self.agents if a.get("name") == name)
+        return sum(
+            1
+            for a in self.agents
+            if a.get("name") == name and a.get("status") != "failed"
+        )
 
     def update_agent_status(
-        self, agent_id: str, status: Literal["in_progress", "completed"]
+        self, agent_id: str, status: Literal["in_progress", "completed", "failed"]
     ) -> None:
         def _update(d: dict) -> None:
             agents = d.get("agents", [])
@@ -297,6 +301,17 @@ class StateStore:
                 agent["status"] = status
 
         self.update(_update)
+
+    def mark_last_agent_failed(self, name: str) -> None:
+        """Mark the most recently added agent of `name` as failed (enables retry)."""
+        def _mark(d: dict) -> None:
+            agents = d.get("agents", [])
+            for a in reversed(agents):
+                if a.get("name") == name:
+                    a["status"] = "failed"
+                    return
+
+        self.update(_mark)
 
     # ── Plan ───────────────────────────────────────────────────────
 
@@ -715,3 +730,40 @@ class StateStore:
 
     def set_plan_files_to_modify(self, files: list[str]) -> None:
         self.set("plan_files_to_modify", files)
+
+    # ── Docs (specs workflow) ─────────────────────────────────────
+
+    @property
+    def docs(self) -> dict[str, Any]:
+        return self.load().get("docs", {})
+
+    def set_doc_written(self, doc_key: str, written: bool) -> None:
+        def _set(d: dict) -> None:
+            docs = d.setdefault("docs", {})
+            docs.setdefault(doc_key, {})["written"] = written
+
+        self.update(_set)
+
+    def set_doc_path(self, doc_key: str, path: str) -> None:
+        def _set(d: dict) -> None:
+            docs = d.setdefault("docs", {})
+            docs.setdefault(doc_key, {})["path"] = path
+
+        self.update(_set)
+
+    def set_doc_md_path(self, doc_key: str, path: str) -> None:
+        def _set(d: dict) -> None:
+            docs = d.setdefault("docs", {})
+            docs.setdefault(doc_key, {})["md_path"] = path
+
+        self.update(_set)
+
+    def set_doc_json_path(self, doc_key: str, path: str) -> None:
+        def _set(d: dict) -> None:
+            docs = d.setdefault("docs", {})
+            docs.setdefault(doc_key, {})["json_path"] = path
+
+        self.update(_set)
+
+    def is_doc_written(self, doc_key: str) -> bool:
+        return self.docs.get(doc_key, {}).get("written", False)
