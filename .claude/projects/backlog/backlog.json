@@ -13,7 +13,7 @@
       "title": "Login feature",
       "description": "User login",
       "status": "Backlog",
-      "priority": "P0",
+      "priority": "P1",
       "is_blocking": [],
       "blocked_by": [],
       "acceptance_criteria": [

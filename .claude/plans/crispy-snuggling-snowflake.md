@@ -1,42 +1,69 @@
-# Plan: Fix stop hook test_mode bypass (BUG-002)
+# Plan: Fix test execution not recorded on non-zero exit (BUG-001)
 
 ## Context
 
-Third E2E test run found 2 bugs. BUG-001 (`/revise-plan` args parsing) is a Claude Code platform behavior — `$1` substitution is handled by the runtime, not our code. BUG-002 is fixable.
+E2E test run found a bug: in `write-tests` phase, running `python -m pytest` with exit code 1 (expected in TDD) does not set `tests.executed = true`, so the phase never completes.
 
-**BUG-002 (High)**: Stop hook doesn't block before write-report because `test_mode` bypass exits 0 immediately, skipping ALL checks including `check_phases`. The stop hook should still verify phase completion in test mode — only `check_tests` and `check_ci` need skipping (those require real test execution and CI runs that don't happen in E2E tests).
+**Root cause**: Claude Code fires `PostToolUse` only for **successful** tool calls. When Bash exits non-zero, it fires `PostToolUseFailure` instead. The guardrail system has no `PostToolUseFailure` handler, so the recorder never runs for failed Bash commands.
+
+The recorder's `record_test_execution()` only needs the command string (not exit code), so it works correctly — it just never gets called.
 
 ## Fix
 
-**File:** `claudeguard/scripts/stop.py`
+### 1. Add `PostToolUseFailure` hook for Bash
 
-Replace the blanket test_mode bypass with a selective one. In test_mode, run `check_phases` but skip `check_tests` and `check_ci`:
+**File:** `claudeguard/hooks/hooks.json`
 
-```python
-# Current (broken):
-if state.get("test_mode"):
-    sys.exit(0)
+Add a `PostToolUseFailure` entry with `Bash` matcher pointing to a new dispatcher:
 
-# Fixed:
-checks = [
-    lambda: check_phases(config, state),
-]
-if not state.get("test_mode"):
-    checks += [
-        lambda: check_tests(state),
-        lambda: check_ci(state),
+```json
+"PostToolUseFailure": [
+  {
+    "matcher": "Bash",
+    "hooks": [
+      {
+        "type": "command",
+        "command": "${CLAUDE_PLUGIN_ROOT}/scripts/dispatchers/post_tool_use_failure.py",
+        "timeout": 10
+      }
     ]
+  }
+]
 ```
 
-This means `config = Config()` must move above the test_mode check.
+### 2. Create `post_tool_use_failure.py` dispatcher
+
+**File:** `claudeguard/scripts/dispatchers/post_tool_use_failure.py`
+
+Thin dispatcher that only records safe operations from failed Bash commands (test execution, deps). Unlike `post_tool_use.py`, it does NOT:
+- Parse `tool_result` (PostToolUseFailure has `error` field instead, no `tool_result`)
+- Call `Hook.block()` on errors (tool already failed)
+- Record PR create or CI check (those require successful JSON output)
+
+```python
+def main():
+    hook_input = Hook.read_stdin()
+    # ... session/workflow guards ...
+    config = Config()
+    state = StateStore(...)
+    recorder = Recorder(state)
+    
+    tool_input = hook_input.get("tool_input", {})
+    command = tool_input.get("command", "")
+    phase = state.current_phase
+    
+    recorder.record_test_execution(phase, command)
+    resolve(config, state)
+```
 
 ## Files to Modify
 
 | Action | Path |
 |--------|------|
-| Modify | `claudeguard/scripts/stop.py` |
+| Create | `claudeguard/scripts/dispatchers/post_tool_use_failure.py` |
+| Modify | `claudeguard/hooks/hooks.json` |
 
 ## Verification
 
-- `python -m pytest claudeguard/scripts/tests/ -p no:randomly` — all tests pass
-- `python claudeguard/scripts/tests/dry_run.py` — build dry run passes
+- `python3 -m pytest claudeguard/scripts/tests/ -p no:randomly` — all tests pass
+- Run `/test-build` E2E — `write-tests` phase should complete after `pytest` with exit code 1

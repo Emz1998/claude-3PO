@@ -1,27 +1,14 @@
 {
   "sprint": 1,
-  "milestone": "v0.1.0",
+  "milestone": "v0.2.0",
   "description": "Establish core project infrastructure and validate data pipeline workflow",
   "due_date": "2026-04-20",
   "stories": [
     {
       "id": "US-001",
       "type": "User Story",
-      "labels": [
-        "backend",
-        "auth",
-        "security"
-      ],
       "title": "User authentication flow",
       "description": "**As a** developer, **I want** to implement user authentication **so that** users can securely access the application.",
-      "points": 5,
-      "status": "Ready",
-      "tdd": true,
-      "priority": "P0",
-      "is_blocking": [],
-      "blocked_by": [
-        "SK-001"
-      ],
       "acceptance_criteria": [
         "Users can register with email and password",
         "Users can log in and receive a session token",
@@ -29,421 +16,434 @@
         "Passwords are securely hashed using bcrypt"
       ],
       "item_type": "story",
-      "milestone": "v0.1.0",
-      "start_date": "2026-04-07",
-      "target_date": "2026-04-18",
+      "milestone": "v0.2.0",
       "tasks": [
         {
           "id": "T-001",
           "type": "task",
-          "labels": [
-            "backend",
-            "auth"
-          ],
           "title": "Implement user registration endpoint",
-          "description": "Create POST /auth/register endpoint that validates input, hashes password, and stores user in database",
-          "status": "Backlog",
-          "priority": "P0",
-          "complexity": "M",
           "is_blocking": [
             "T-002"
           ],
           "blocked_by": [],
+          "item_type": "task",
+          "milestone": "v0.2.0",
+          "labels": [
+            "backend",
+            "auth"
+          ],
+          "description": "Create POST /auth/register endpoint that validates input, hashes password, and stores user in database",
+          "status": "Backlog",
+          "priority": "P0",
+          "complexity": "M",
           "acceptance_criteria": [
             "Endpoint validates email format and password strength",
             "Passwords are hashed with bcrypt before storage",
             "Returns 201 with user object on success",
             "Returns 400 with error message on invalid input"
           ],
-          "item_type": "task",
-          "milestone": "v0.1.0",
           "start_date": "2026-04-07",
           "target_date": "2026-04-10"
         },
         {
           "id": "T-002",
           "type": "task",
-          "labels": [
-            "backend",
-            "auth"
-          ],
           "title": "Implement user login endpoint",
-          "description": "Create POST /auth/login endpoint that authenticates user and returns session token",
-          "status": "Backlog",
-          "priority": "P0",
-          "complexity": "M",
           "is_blocking": [
             "T-003"
           ],
           "blocked_by": [
             "T-001"
           ],
+          "item_type": "task",
+          "milestone": "v0.2.0",
+          "labels": [
+            "backend",
+            "auth"
+          ],
+          "description": "Create POST /auth/login endpoint that authenticates user and returns session token",
+          "status": "Backlog",
+          "priority": "P0",
+          "complexity": "M",
           "acceptance_criteria": [
             "Endpoint accepts email and password",
             "Returns 401 if credentials are invalid",
             "Returns 200 with JWT token on success",
             "Token includes user ID and expires in 24 hours"
           ],
-          "item_type": "task",
-          "milestone": "v0.1.0",
           "start_date": "2026-04-10",
           "target_date": "2026-04-13"
         },
         {
           "id": "T-003",
           "type": "task",
-          "labels": [
-            "backend",
-            "auth"
-          ],
           "title": "Add auth middleware for protected routes",
-          "description": "Create middleware that validates JWT tokens and attaches user to request",
-          "status": "Backlog",
-          "priority": "P0",
-          "complexity": "S",
           "is_blocking": [],
           "blocked_by": [
             "T-002"
           ],
+          "item_type": "task",
+          "milestone": "v0.2.0",
+          "labels": [
+            "backend",
+            "auth"
+          ],
+          "description": "Create middleware that validates JWT tokens and attaches user to request",
+          "status": "Backlog",
+          "priority": "P0",
+          "complexity": "S",
           "acceptance_criteria": [
             "Middleware validates token signature",
             "Returns 401 if token is missing or invalid",
             "Attaches decoded user data to request object"
           ],
-          "item_type": "task",
-          "milestone": "v0.1.0",
           "start_date": "2026-04-13",
           "target_date": "2026-04-18"
         }
-      ]
+      ],
+      "status": "Ready",
+      "priority": "P0",
+      "labels": [
+        "backend",
+        "auth",
+        "security"
+      ],
+      "points": 5,
+      "tdd": true,
+      "is_blocking": [],
+      "blocked_by": [
+        "SK-001"
+      ],
+      "start_date": "2026-04-07",
+      "target_date": "2026-04-18"
     },
     {
       "id": "US-002",
       "type": "User Story",
-      "labels": [
-        "frontend",
-        "ui",
-        "charts"
-      ],
       "title": "Dashboard data visualization",
       "description": "**As a** user, **I want** to see my data displayed in interactive charts **so that** I can understand trends and patterns.",
-      "points": 3,
-      "status": "Ready",
-      "tdd": false,
-      "priority": "P1",
-      "is_blocking": [],
-      "blocked_by": [],
       "acceptance_criteria": [
         "Dashboard displays at least 3 different chart types (line, bar, pie)",
         "Charts are responsive and work on mobile devices",
         "Users can filter data by date range"
       ],
       "item_type": "story",
-      "milestone": "v0.1.0",
-      "start_date": "2026-04-07",
-      "target_date": "2026-04-19",
+      "milestone": "v0.2.0",
       "tasks": [
         {
           "id": "T-004",
           "type": "task",
+          "title": "Build dashboard layout and chart components",
+          "is_blocking": [
+            "T-005"
+          ],
+          "blocked_by": [],
+          "item_type": "task",
+          "milestone": "v0.2.0",
           "labels": [
             "frontend",
             "react",
             "charts"
           ],
-          "title": "Build dashboard layout and chart components",
           "description": "Create React components for dashboard with Chart.js integration",
           "status": "Backlog",
           "priority": "P1",
           "complexity": "M",
-          "is_blocking": [
-            "T-005"
-          ],
-          "blocked_by": [],
           "acceptance_criteria": [
             "Dashboard component renders 3 chart areas",
             "Charts use Chart.js library",
             "Layout is responsive using CSS Grid/Flexbox",
             "Charts accept data prop and update when it changes"
           ],
-          "item_type": "task",
-          "milestone": "v0.1.0",
           "start_date": "2026-04-07",
           "target_date": "2026-04-13"
         },
         {
           "id": "T-005",
           "type": "task",
-          "labels": [
-            "frontend",
-            "api"
-          ],
           "title": "Integrate dashboard with API",
-          "description": "Fetch user data from API and populate charts",
-          "status": "Backlog",
-          "priority": "P1",
-          "complexity": "S",
           "is_blocking": [],
           "blocked_by": [
             "T-004"
           ],
+          "item_type": "task",
+          "milestone": "v0.2.0",
+          "labels": [
+            "frontend",
+            "api"
+          ],
+          "description": "Fetch user data from API and populate charts",
+          "status": "Backlog",
+          "priority": "P1",
+          "complexity": "S",
           "acceptance_criteria": [
             "Dashboard fetches data from /api/user/data endpoint",
             "Loading state is displayed while fetching",
             "Error message shown if API fails",
             "Charts update when user filters by date"
           ],
-          "item_type": "task",
-          "milestone": "v0.1.0",
           "start_date": "2026-04-13",
           "target_date": "2026-04-19"
         }
-      ]
+      ],
+      "status": "Ready",
+      "priority": "P1",
+      "labels": [
+        "frontend",
+        "ui",
+        "charts"
+      ],
+      "points": 3,
+      "tdd": false,
+      "is_blocking": [],
+      "blocked_by": [],
+      "start_date": "2026-04-07",
+      "target_date": "2026-04-19"
     },
     {
       "id": "TS-001",
       "type": "Technical Story",
-      "labels": [
-        "infra",
-        "devops",
-        "ci-cd"
-      ],
       "title": "Setup CI/CD pipeline",
       "description": "**As a** development team, **I need** automated testing and deployment **so that** code changes are validated before production.",
-      "points": 5,
-      "status": "Ready",
-      "tdd": false,
-      "priority": "P0",
-      "is_blocking": [],
-      "blocked_by": [],
       "acceptance_criteria": [
         "GitHub Actions workflow runs tests on every pull request",
         "Tests must pass before merging to main",
         "Successful merges to main trigger automatic deployment"
       ],
       "item_type": "story",
-      "milestone": "v0.1.0",
-      "start_date": "2026-04-07",
-      "target_date": "2026-04-17",
+      "milestone": "v0.2.0",
       "tasks": [
         {
           "id": "T-006",
           "type": "task",
-          "labels": [
-            "devops",
-            "github-actions"
-          ],
           "title": "Create GitHub Actions workflow file",
-          "description": "Set up .github/workflows/ci.yml with test and build jobs",
-          "status": "Backlog",
-          "priority": "P0",
-          "complexity": "M",
           "is_blocking": [
             "T-007"
           ],
           "blocked_by": [],
+          "item_type": "task",
+          "milestone": "v0.2.0",
+          "labels": [
+            "devops",
+            "github-actions"
+          ],
+          "description": "Set up .github/workflows/ci.yml with test and build jobs",
+          "status": "Backlog",
+          "priority": "P0",
+          "complexity": "M",
           "acceptance_criteria": [
             "Workflow triggers on push to PR and main",
             "Runs npm install and npm test",
             "Runs npm build and checks for errors",
             "Reports results in GitHub UI"
           ],
-          "item_type": "task",
-          "milestone": "v0.1.0",
           "start_date": "2026-04-07",
           "target_date": "2026-04-10"
         },
         {
           "id": "T-007",
           "type": "task",
-          "labels": [
-            "devops",
-            "deployment"
-          ],
           "title": "Configure deployment workflow",
-          "description": "Add deployment job that deploys to staging/production on main merge",
-          "status": "Backlog",
-          "priority": "P0",
-          "complexity": "M",
           "is_blocking": [
             "T-008"
           ],
           "blocked_by": [
             "T-006"
           ],
+          "item_type": "task",
+          "milestone": "v0.2.0",
+          "labels": [
+            "devops",
+            "deployment"
+          ],
+          "description": "Add deployment job that deploys to staging/production on main merge",
+          "status": "Backlog",
+          "priority": "P0",
+          "complexity": "M",
           "acceptance_criteria": [
             "Deployment only runs after all tests pass",
             "Staging environment updated on every main merge",
             "Production deployment requires manual approval",
             "Rollback procedure documented"
           ],
-          "item_type": "task",
-          "milestone": "v0.1.0",
           "start_date": "2026-04-10",
           "target_date": "2026-04-14"
         },
         {
           "id": "T-008",
           "type": "task",
-          "labels": [
-            "documentation",
-            "devops"
-          ],
           "title": "Document CI/CD process",
-          "description": "Create documentation for developers on how CI/CD pipeline works",
-          "status": "Backlog",
-          "priority": "P1",
-          "complexity": "S",
           "is_blocking": [],
           "blocked_by": [
             "T-007"
           ],
+          "item_type": "task",
+          "milestone": "v0.2.0",
+          "labels": [
+            "documentation",
+            "devops"
+          ],
+          "description": "Create documentation for developers on how CI/CD pipeline works",
+          "status": "Backlog",
+          "priority": "P1",
+          "complexity": "S",
           "acceptance_criteria": [
             "Documentation includes workflow diagram",
             "Includes troubleshooting guide for common failures",
             "Explains approval process for production deployments"
           ],
-          "item_type": "task",
-          "milestone": "v0.1.0",
           "start_date": "2026-04-14",
           "target_date": "2026-04-17"
         }
-      ]
+      ],
+      "status": "Ready",
+      "priority": "P0",
+      "labels": [
+        "infra",
+        "devops",
+        "ci-cd"
+      ],
+      "points": 5,
+      "tdd": false,
+      "is_blocking": [],
+      "blocked_by": [],
+      "start_date": "2026-04-07",
+      "target_date": "2026-04-17"
     },
     {
       "id": "BG-001",
       "type": "Bug",
-      "labels": [
-        "bugfix",
-        "frontend",
-        "console-error"
-      ],
       "title": "Console error on page reload",
       "description": "**What's broken:** Users see JavaScript errors in the browser console when refreshing the page **Expected:** Page should load without errors **Actual:** \"Cannot read property 'id' of undefined\" appears in console **Reproduce:** Open app, go to profile page, refresh page, check browser console",
-      "points": 2,
-      "status": "Ready",
-      "tdd": true,
-      "priority": "P0",
-      "is_blocking": [],
-      "blocked_by": [],
       "acceptance_criteria": [
         "Console error no longer appears on page refresh",
         "Profile page data loads correctly from API",
         "Unit test added to verify fix"
       ],
       "item_type": "story",
-      "milestone": "v0.1.0",
-      "start_date": "2026-04-06",
-      "target_date": "2026-04-16",
+      "milestone": "v0.2.0",
       "tasks": [
         {
           "id": "T-009",
           "type": "task",
-          "labels": [
-            "debugging",
-            "frontend"
-          ],
           "title": "Debug and fix undefined reference",
-          "description": "Investigate root cause of the 'id' undefined error and fix it",
-          "status": "Backlog",
-          "priority": "P0",
-          "complexity": "S",
           "is_blocking": [
             "T-010"
           ],
           "blocked_by": [],
+          "item_type": "task",
+          "milestone": "v0.2.0",
+          "labels": [
+            "debugging",
+            "frontend"
+          ],
+          "description": "Investigate root cause of the 'id' undefined error and fix it",
+          "status": "Backlog",
+          "priority": "P0",
+          "complexity": "S",
           "acceptance_criteria": [
             "Root cause identified and documented",
             "Fix applied to prevent undefined access",
             "No similar patterns found in codebase"
           ],
-          "item_type": "task",
-          "milestone": "v0.1.0",
           "start_date": "2026-04-06",
           "target_date": "2026-04-10"
         },
         {
           "id": "T-010",
           "type": "task",
-          "labels": [
-            "testing",
-            "frontend"
-          ],
           "title": "Add regression test",
-          "description": "Write unit test that would catch this bug in the future",
-          "status": "Backlog",
-          "priority": "P0",
-          "complexity": "S",
           "is_blocking": [],
           "blocked_by": [
             "T-009"
           ],
+          "item_type": "task",
+          "milestone": "v0.2.0",
+          "labels": [
+            "testing",
+            "frontend"
+          ],
+          "description": "Write unit test that would catch this bug in the future",
+          "status": "Backlog",
+          "priority": "P0",
+          "complexity": "S",
           "acceptance_criteria": [
             "Test verifies profile data loading",
             "Test would fail with original code",
             "Test passes with the fix applied"
           ],
-          "item_type": "task",
-          "milestone": "v0.1.0",
           "start_date": "2026-04-10",
           "target_date": "2026-04-16"
         }
-      ]
+      ],
+      "status": "Ready",
+      "priority": "P0",
+      "labels": [
+        "bugfix",
+        "frontend",
+        "console-error"
+      ],
+      "points": 2,
+      "tdd": true,
+      "is_blocking": [],
+      "blocked_by": [],
+      "start_date": "2026-04-06",
+      "target_date": "2026-04-16"
     },
     {
       "id": "SK-001",
       "type": "Spike",
-      "labels": [
-        "spike",
-        "research",
-        "architecture"
-      ],
       "title": "Evaluate auth provider options",
       "description": "**Investigate:** Comparison of authentication providers (JWT vs OAuth vs Session-based) **To decide:** Which authentication approach to implement for user authentication **Timebox:** 8 hours",
-      "points": 0,
-      "status": "Ready",
-      "tdd": false,
-      "priority": "P0",
-      "is_blocking": [
-        "US-001"
-      ],
-      "blocked_by": [],
       "acceptance_criteria": [
         "Comparison document created with pros/cons for each approach",
         "Recommendation provided based on project requirements",
         "Decision documented with rationale"
       ],
       "item_type": "story",
-      "milestone": "v0.1.0",
-      "start_date": "2026-04-06",
-      "target_date": "2026-04-15",
+      "milestone": "v0.2.0",
       "tasks": [
         {
           "id": "T-011",
           "type": "task",
+          "title": "Research authentication approaches",
+          "is_blocking": [],
+          "blocked_by": [],
+          "item_type": "task",
+          "milestone": "v0.2.0",
           "labels": [
             "research",
             "architecture"
           ],
-          "title": "Research authentication approaches",
           "description": "Investigate JWT, OAuth, and session-based authentication implementations",
           "status": "Backlog",
           "priority": "P0",
           "complexity": "M",
-          "is_blocking": [],
-          "blocked_by": [],
           "acceptance_criteria": [
             "Document created with implementation complexity for each",
             "Security considerations outlined",
             "Performance implications analyzed",
             "Comparison includes team expertise alignment"
           ],
-          "item_type": "task",
-          "milestone": "v0.1.0",
           "start_date": "2026-04-06",
           "target_date": "2026-04-15"
         }
-      ]
+      ],
+      "status": "Ready",
+      "priority": "P0",
+      "labels": [
+        "spike",
+        "research",
+        "architecture"
+      ],
+      "points": 0,
+      "tdd": false,
+      "is_blocking": [
+        "US-001"
+      ],
+      "blocked_by": [],
+      "start_date": "2026-04-06",
+      "target_date": "2026-04-15"
     }
   ]
 }
