@@ -1,23 +1,17 @@
-"""PhaseGuard — Validates phase transitions (skill invocations)."""
+"""PhaseGuard — Validates phase transitions (skill invocations).
+
+Pure validator: never mutates state and never calls the resolver.
+Dispatchers apply state effects after Allow.
+"""
 
 from typing import Literal
 
 from lib.state_store import StateStore
 from lib.extractors import extract_skill_name
 from config import Config
-from utils.resolver import Resolver
 
 
 Decision = tuple[Literal["allow", "block"], str]
-
-REVIEW_PHASES = {
-    "plan-review",
-    "test-review",
-    "tests-review",
-    "code-review",
-    "quality-check",
-    "validate",
-}
 
 
 class PhaseGuard:
@@ -104,16 +98,10 @@ class PhaseGuard:
             raise ValueError(
                 "Use '/plan-approved' to approve the plan, or '/revise-plan' to revise it."
             )
-
         if self.status == "completed":
-            Resolver(self.config, self.state).auto_start_next()
             return "allow", f"Continuing after completed phase: {self.current}"
-
         if self.status == "in_progress":
-            self.state.set_phase_completed(self.current)
-            Resolver(self.config, self.state).auto_start_next()
             return "allow", f"Force-completed phase: {self.current}"
-
         raise ValueError(
             f"'/continue' cannot continue — current phase '{self.current}' has status '{self.status}'."
         )
@@ -124,19 +112,13 @@ class PhaseGuard:
                 "'/plan-approved' can only be used during plan-review. "
                 f"Current phase: '{self.current}'"
             )
-
         if self.status == "completed":
-            Resolver(self.config, self.state).auto_start_next(skip_checkpoint=True)
             return "allow", "Plan approved. Proceeding to next phase."
-
         if self.status == "in_progress" and self._is_review_exhausted("plan-review"):
-            self.state.set_phase_completed("plan-review")
-            Resolver(self.config, self.state).auto_start_next(skip_checkpoint=True)
             return (
                 "allow",
                 "Plan approved (after review exhaustion). Proceeding to next phase.",
             )
-
         raise ValueError(
             "'/plan-approved' requires plan-review to be at checkpoint (passed) or exhausted (3 fails). "
             f"Current status: {self.status}, review count: {self.state.plan_review_count}"
@@ -148,28 +130,15 @@ class PhaseGuard:
                 "'/revise-plan' can only be used during plan-review. "
                 f"Current phase: '{self.current}'"
             )
-
         is_checkpoint = self.status == "completed"
         is_exhausted = self.status == "in_progress" and self._is_review_exhausted(
             "plan-review"
         )
-
         if not is_checkpoint and not is_exhausted:
             raise ValueError(
                 "'/revise-plan' requires plan-review to be at checkpoint (passed) or exhausted (3 fails). "
                 f"Current status: {self.status}, review count: {self.state.plan_review_count}"
             )
-
-        def _reopen(d: dict) -> None:
-            for p in d.get("phases", []):
-                if p["name"] == "plan-review":
-                    p["status"] = "in_progress"
-                    break
-            plan = d.setdefault("plan", {})
-            plan["revised"] = False
-            plan["reviews"] = []
-
-        self.state.update(_reopen)
         return (
             "allow",
             "Plan-review reopened for revision. Edit the plan, then re-invoke PlanReview.",

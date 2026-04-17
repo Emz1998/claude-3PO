@@ -7,6 +7,7 @@ conditions for the current phase and auto-starts the next phase if needed.
 from typing import Literal
 
 from lib.state_store import StateStore
+from lib.paths import basenames
 from config import Config
 
 
@@ -167,17 +168,11 @@ class Resolver:
         if plan.get("written") and plan.get("file_path"):
             self.state.set_phase_completed("plan")
 
-    # ── Helpers ───────────────────────────────────────────────────
-
-    @staticmethod
-    def _basenames(paths: list[str]) -> set:
-        return {p.rsplit("/", 1)[-1] for p in paths}
-
     # ── Write phases ──────────────────────────────────────────────
 
     def _resolve_write_code(self) -> None:
-        to_write = self._basenames(self.state.code_files_to_write)
-        written = self._basenames(self.state.code_files.get("file_paths", []))
+        to_write = basenames(self.state.code_files_to_write)
+        written = basenames(self.state.code_files.get("file_paths", []))
         if to_write and not (to_write - written):
             self.state.set_phase_completed("write-code")
 
@@ -387,25 +382,23 @@ class Resolver:
 
     def resolve(self) -> None:
         """Main resolver — dispatch phase + tool resolvers, then auto-advance."""
-        # Phase-specific (reviews, agents)
-        method_name = self._PHASE_RESOLVER_MAP.get(self.phase)
+        self._dispatch_resolver(self._PHASE_RESOLVER_MAP)
+        self._dispatch_resolver(self._TOOL_RESOLVER_MAP)
+        self._maybe_resolve_parallel_explore()
+        self.auto_start_next()
+        self._check_workflow_complete()
+
+    def _dispatch_resolver(self, mapping: dict[str, str]) -> None:
+        method_name = mapping.get(self.phase)
         if method_name:
             getattr(self, method_name)()
 
-        # Tool-specific (file writes, bash output, tasks)
-        method_name = self._TOOL_RESOLVER_MAP.get(self.phase)
-        if method_name:
-            getattr(self, method_name)()
-
-        # Parallel case: resolve explore if it's still in_progress while research is current
+    def _maybe_resolve_parallel_explore(self) -> None:
         if (
             self.phase == "research"
             and self.state.get_phase_status("explore") == "in_progress"
         ):
             self._resolve_explore()
-
-        self.auto_start_next()
-        self._check_workflow_complete()
 
 
 # ══════════════════════════════════════════════════════════════════

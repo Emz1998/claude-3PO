@@ -12,11 +12,13 @@ from pathlib import Path
 SCRIPTS_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(SCRIPTS_DIR))
 
+from constants.phases import REVIEW_PHASES
 from guardrails import STOP_GUARDS
 from guardrails.agent_report_guard import AgentReportGuard
 from lib.hook import Hook
 from lib.state_store import StateStore
 from lib.violations import log_violation
+from utils.recorder import Recorder
 from utils.resolver import resolve
 from config import Config
 
@@ -24,12 +26,6 @@ STATE_PATH = Path(os.environ.get(
     "SUBAGENT_STOP_STATE_PATH",
     str(SCRIPTS_DIR / "state.jsonl"),
 ))
-
-REVIEW_PHASES = (
-    "plan-review", "test-review", "tests-review",
-    "code-review", "quality-check", "validate",
-    "architect", "backlog",
-)
 
 
 def _record_agent_completion(state: StateStore, config: Config, agent_id: str) -> None:
@@ -56,17 +52,13 @@ def _log_report_block(state: StateStore, hook_input: dict, reason: str) -> None:
     )
 
 
-_SPECS_AGENT_BY_PHASE = {"architect": "Architect", "backlog": "ProductOwner"}
-
-
 def _fail_agent_and_release(
     state: StateStore, config: Config, hook_input: dict,
     phase: str, errors: list[str], attempts: int, max_attempts: int,
 ) -> None:
     """Cap reached: mark the specs agent failed, log once, let the subagent stop."""
-    agent_name = _SPECS_AGENT_BY_PHASE.get(phase)
-    if agent_name:
-        state.mark_last_agent_failed(agent_name)
+    Recorder(state).mark_specs_agent_failed(phase)
+    agent_name = AgentReportGuard.SPECS_AGENT_BY_PHASE.get(phase)
     message = AgentReportGuard.format_rejection_message(
         phase, errors or ["validation failed"], attempts, max_attempts
     )
@@ -93,8 +85,30 @@ def _validate_agent_report(state: StateStore, config: Config, hook_input: dict) 
         return
     guard = AgentReportGuard(hook_input, config, state)
     decision, _ = guard.validate()
-    if decision != "block":
+    if decision == "block":
+        _handle_report_block(state, config, hook_input, guard)
         return
+    _apply_report_allow(state, config, guard)
+
+
+def _apply_report_allow(state: StateStore, config: Config, guard: AgentReportGuard) -> None:
+    """After Allow: write specs docs / record review data, then resolve."""
+    recorder = Recorder(state)
+    if guard.phase in AgentReportGuard.SPECS_PHASES:
+        recorder.write_specs_doc(guard.phase, guard.content, config)
+    else:
+        recorder.record_scores(guard.phase, guard.content)
+        recorder.record_verdict(guard.phase, guard.content)
+        recorder.record_revision_files(guard.phase, guard.review_files, guard.review_tests)
+    try:
+        resolve(config, state)
+    except ValueError as e:
+        Hook.discontinue(str(e))
+
+
+def _handle_report_block(
+    state: StateStore, config: Config, hook_input: dict, guard: AgentReportGuard
+) -> None:
     agent_id = hook_input.get("agent_id", "") or "unknown"
     attempts = state.bump_agent_rejection_count(agent_id)
     max_attempts = config.specs_max_report_retries

@@ -20,7 +20,9 @@ Claude Code event (stdin JSON)
   stdout JSON (permissionDecision, continue:false, systemMessage, …)
 ```
 
-All modules import from a shared `lib/` (I/O, extractors, parsers, state, violations), `config/` (declarative phase/agent/path config), `constants/` (command whitelists & file patterns), and `models/` (Pydantic schema for state).
+All modules import from a shared `lib/` (I/O, extractors, parsers, state, violations, scoring, paths, shell, parallel-check, specs validation), `config/` (declarative phase/agent/path config — `get_config()` returns a process-wide cached `Config()`), `constants/` (command whitelists, file patterns, phase sets, markers, paths), and `models/` (Pydantic schema for state, batch entries, and story items).
+
+**Layering rule:** `guardrails/*` never imports from `utils/*`, and `utils/recorder.py` never imports from `guardrails/*`. Pure helpers live in `lib/`; orchestration lives in `dispatchers/`.
 
 ## Workflow types
 
@@ -115,7 +117,18 @@ Specs validation schemas are **not** stored here. They are derived at runtime fr
 
 The `Config` class never hard-codes phase lists; they are derived from flags (`code_write_phases`, `read_only_phases`, `checkpoint_phase`, etc.).
 
-## Constants (`constants/constants.py`)
+## Constants (`constants/`)
+
+The `constants/` package now spans several modules so each kind of constant lives next to its peers:
+
+| File              | Contents                                                                                              |
+| ----------------- | ----------------------------------------------------------------------------------------------------- |
+| `constants.py`    | Tool/command whitelists, regex patterns, file/extension lists (everything that was here before).      |
+| `phases.py`       | `REVIEW_PHASES` — the single set of phases where SubagentStop validates an agent report.              |
+| `markers.py`      | `SPECIFICATIONS_MARKER` (`"## Specifications"`) and other markdown marker strings.                    |
+| `paths.py`        | `COMMIT_BATCH_PATH`, `E2E_TEST_REPORT`, `STALE_THRESHOLD_MINUTES` — filesystem path constants.        |
+
+### `constants/constants.py`
 
 Regex patterns (`TEST_RUN_PATTERNS`, `SCORE_PATTERNS`, `STORY_ID_PATTERN`, `TABLE_PATTERN`), command lists (`READ_ONLY_COMMANDS`, `INSTALL_COMMANDS`, `TEST_COMMANDS`, `PR_COMMANDS`, `CI_COMMANDS`), the `COMMANDS_MAP` phase→whitelist, `PACKAGE_MANAGER_FILES`, `TEST_FILE_PATTERNS`, and `CODE_EXTENSIONS`.
 
@@ -131,8 +144,13 @@ Specs grammar (shared by `utils/validator.py` — these are invariants of the ma
 | `parser.py`      | CLI-arg parsers for `initializer.py` and frontmatter reader.                                                            |
 | `archiver.py`    | Moves `latest-plan.md` / `latest-contracts.md` to `archive/` at workflow start.                                          |
 | `injector.py`    | Writes YAML frontmatter (session_id, workflow_type, story_id, date) into the plan after `Write`.                        |
-| `file_manager.py`| Locked JSON/JSONL helpers used by GitHub-project and tests.                                                             |
+| `file_manager.py`| Locked JSON/JSONL helpers used by GitHub-project and tests. Also backs the `auto_commit` ledger.                        |
 | `violations.py`  | Append-only markdown log of every block (`logs/violations.md`). Fills in prompt summaries async.                        |
+| `paths.py`       | Pure path helpers (`basenames`, `path_matches`) shared by guards, recorder, and resolver.                                |
+| `shell.py`       | `run_git()` and `invoke_claude()` subprocess wrappers; one place to mock for tests.                                      |
+| `scoring.py`     | `scores_valid()` and `verdict_valid()` — pure validators reused by `AgentReportGuard` and `Recorder`.                    |
+| `parallel_check.py` | `is_parallel_explore_research()` predicate shared by the recorder, resolver, and guard.                              |
+| `specs_validation.py` | `validate_architecture_content` / `validate_backlog_content` — pure validators used by `AgentReportGuard`.          |
 
 ### Violation `Phase` column — how it's derived
 
@@ -152,8 +170,8 @@ Specs grammar (shared by `utils/validator.py` — these are invariants of the ma
 | `validator.py`        | `SpecsValidator` — validates architecture / constitution / product-vision / backlog (md+json) and converts backlog markdown to JSON. Schemas come from `utils/template_schema.TemplateSchema` (parsed directly from `../templates/*.md`); grammar constants live in `constants.SPECS_*`. |
 | `template_schema.py`  | `TemplateSchema` — parses a spec template markdown file into a structural schema (metadata fields, enums, required sections/subsections/tables, backlog priorities + item types). The template file is the single source of truth; `SpecsValidator` caches one schema per doc type. |
 | `specs_writer.py`     | Thin wrapper over `SpecsValidator` that writes validated architect/backlog agent reports to `projects/docs/`. |
-| `auto_commit.py`      | Async. Claims dirty files per task-batch via `commit_batch.json`, invokes headless Claude for a message, commits. |
-| `summarize_prompt.py` | Async. Summarizes `/build` instructions via headless Claude and writes `prompt_summary` to state.              |
+| `auto_commit.py`      | Async. Claims dirty files per task-batch via `commit_batch.json`, invokes headless Claude for a message, commits. Ledger I/O routes through `lib/file_manager.py`; subprocess via `lib/shell.py`. |
+| `summarize_prompt.py` | Async. Summarizes `/build` instructions via headless Claude (`lib/shell.invoke_claude`) and writes `prompt_summary` to state.              |
 
 ## Specs templates (`../templates/`)
 

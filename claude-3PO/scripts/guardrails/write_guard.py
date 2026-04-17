@@ -7,16 +7,17 @@ from constants import (
     CODE_EXTENSIONS,
     PACKAGE_MANAGER_FILES,
 )
+from constants.markers import SPECIFICATIONS_MARKER
+from constants.paths import E2E_TEST_REPORT
 from typing import Literal
 
 from lib.state_store import StateStore
 from lib.extractors import extract_md_sections
+from lib.paths import path_matches
 from config import Config
 
 
 Decision = tuple[Literal["allow", "block"], str]
-
-E2E_TEST_REPORT = ".claude/reports/E2E_TEST_REPORT.md"
 
 
 def _is_e2e_report_path(file_path: str) -> bool:
@@ -78,15 +79,10 @@ class FileWriteGuard:
             )
 
     def _is_plan_file(self) -> bool:
-        return self.file_path == self.config.plan_file_path or self.file_path.endswith(
-            self.config.plan_file_path
-        )
+        return path_matches(self.file_path, self.config.plan_file_path)
 
     def _is_contracts_file(self) -> bool:
-        return self.config.contracts_file_path and (
-            self.file_path == self.config.contracts_file_path
-            or self.file_path.endswith(self.config.contracts_file_path)
-        )
+        return path_matches(self.file_path, self.config.contracts_file_path)
 
     def _check_plan_content(self) -> None:
         workflow_type = self.state.get("workflow_type", "build")
@@ -100,22 +96,24 @@ class FileWriteGuard:
         missing = [s for s in required if s not in self.content]
         if missing:
             raise ValueError(f"Plan missing required sections: {missing}")
-
-        sections = extract_md_sections(self.content, 2)
-        section_map = {name.strip(): body for name, body in sections}
-
+        section_map = {
+            name.strip(): body for name, body in extract_md_sections(self.content, 2)
+        }
         for section_name in self.config.build_plan_bullet_sections:
-            body = section_map.get(section_name, "")
-            if "### " in body:
-                raise ValueError(
-                    f"'{section_name}' must use bullet items (- item), not ### subsections. "
-                    f"See the plan template for the correct format."
-                )
-            if not any(line.strip().startswith("- ") for line in body.splitlines()):
-                raise ValueError(
-                    f"'{section_name}' must have at least one bullet item (- item). "
-                    f"See the plan template for the correct format."
-                )
+            self._check_bullet_section(section_name, section_map.get(section_name, ""))
+
+    @staticmethod
+    def _check_bullet_section(section_name: str, body: str) -> None:
+        if "### " in body:
+            raise ValueError(
+                f"'{section_name}' must use bullet items (- item), not ### subsections. "
+                f"See the plan template for the correct format."
+            )
+        if not any(line.strip().startswith("- ") for line in body.splitlines()):
+            raise ValueError(
+                f"'{section_name}' must have at least one bullet item (- item). "
+                f"See the plan template for the correct format."
+            )
 
     def _check_implement_plan_sections(self) -> None:
         required = self.config.implement_plan_required_sections
@@ -124,24 +122,26 @@ class FileWriteGuard:
             raise ValueError(f"Plan missing required sections: {missing}")
 
     def _check_contracts_content(self) -> None:
-        if "## Specifications" not in self.content:
+        if SPECIFICATIONS_MARKER not in self.content:
             raise ValueError(
-                "Contracts file missing required section: ## Specifications. "
+                f"Contracts file missing required section: {SPECIFICATIONS_MARKER}. "
                 "See the contracts template for the correct format."
             )
+        for name, body in extract_md_sections(self.content, 2):
+            if name.strip() == "Specifications":
+                self._check_specifications_table(body)
+                return
+        raise ValueError(f"{SPECIFICATIONS_MARKER} section is empty.")
+
+    @staticmethod
+    def _check_specifications_table(body: str) -> None:
         from lib.extractors import extract_table
 
-        sections = extract_md_sections(self.content, 2)
-        for name, body in sections:
-            if name.strip() == "Specifications":
-                table = extract_table(body)
-                if len(table) < 2:
-                    raise ValueError(
-                        "## Specifications must have at least one contract in the table. "
-                        "See the contracts template for the correct format."
-                    )
-                return
-        raise ValueError("## Specifications section is empty.")
+        if len(extract_table(body)) < 2:
+            raise ValueError(
+                f"{SPECIFICATIONS_MARKER} must have at least one contract in the table. "
+                "See the contracts template for the correct format."
+            )
 
     def _validate_plan(self) -> None:
         self._check_agent_completed("Plan")
@@ -170,7 +170,7 @@ class FileWriteGuard:
                 self.file_path.endswith(f) for f in contract_files
             ):
                 raise ValueError(
-                    f"Writing '{self.file_path}' not in contracts ## Specifications file list"
+                    f"Writing '{self.file_path}' not in contracts {SPECIFICATIONS_MARKER} file list"
                     f"\nAllowed: {contract_files}"
                 )
         else:
@@ -201,7 +201,7 @@ class FileWriteGuard:
 
     def _check_report_path(self) -> None:
         expected = self.config.report_file_path
-        if self.file_path != expected and not self.file_path.endswith(expected):
+        if not path_matches(self.file_path, expected):
             raise ValueError(
                 f"Writing '{self.file_path}' not allowed\nAllowed: {expected}"
             )

@@ -8,10 +8,13 @@ SCRIPTS_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(SCRIPTS_DIR))
 
 from guardrails import TOOL_GUARDS
+from lib.extractors import extract_skill_name
 from lib.hook import Hook
 from lib.state_store import StateStore
 from lib.violations import log_violation, extract_action
 from config import Config
+from utils.recorder import Recorder
+from utils.resolver import Resolver
 
 
 PRE_WORKFLOW_PHASE = "pre-workflow"
@@ -59,7 +62,6 @@ def main() -> None:
         sys.exit(0)
 
     config = Config()
-
     decision, message = guard(hook_input, config, state)
 
     if decision == "block":
@@ -75,7 +77,24 @@ def main() -> None:
         )
         Hook.advanced_block("PreToolUse", message)
     else:
+        if tool_name == "Skill":
+            _apply_phase_skill_effects(hook_input, config, state)
         Hook.system_message(message)
+
+
+def _apply_phase_skill_effects(hook_input: dict, config: Config, state: StateStore) -> None:
+    """For meta-skills (/continue, /plan-approved, /revise-plan), apply state mutations
+    and run auto-advance — work that previously lived inside PhaseGuard."""
+    skill = extract_skill_name(hook_input)
+    if skill not in ("continue", "plan-approved", "revise-plan"):
+        return
+    current = state.current_phase
+    status = state.get_phase_status(current) if current else ""
+    Recorder(state).apply_phase_skill(skill, current or "", status or "")
+    if skill == "plan-approved":
+        Resolver(config, state).auto_start_next(skip_checkpoint=True)
+    elif skill == "continue":
+        Resolver(config, state).auto_start_next()
 
 
 if __name__ == "__main__":

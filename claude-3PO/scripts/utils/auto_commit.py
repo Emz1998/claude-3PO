@@ -6,19 +6,18 @@ via a batch ledger to prevent cross-batch contamination, invokes headless Claude
 to generate a commit message, then commits — all without blocking the main session.
 """
 
-import json
 import os
 import re
-import subprocess
 import uuid
 from datetime import datetime, timedelta
 from pathlib import Path
 
 SCRIPTS_DIR = Path(__file__).resolve().parent.parent
 
+from constants.paths import COMMIT_BATCH_PATH, STALE_THRESHOLD_MINUTES
 from lib.hook import Hook
-
-COMMIT_BATCH_PATH = SCRIPTS_DIR / "commit_batch.json"
+from lib.file_manager import load_file, save_file
+from lib.shell import run_git, invoke_claude
 
 # Patterns to exclude from auto-commits
 EXCLUDE_PATTERNS = [
@@ -32,34 +31,27 @@ EXCLUDE_PATTERNS = [
     re.compile(r"\.lock$"),
 ]
 
-STALE_THRESHOLD_MINUTES = 10
-
-
 # ---------------------------------------------------------------------------
 # Ledger I/O
 # ---------------------------------------------------------------------------
 
 
 def load_ledger(ledger_path: Path) -> dict:
-    """Load the batch ledger from disk."""
-    if not ledger_path.exists():
-        return {"batches": []}
+    """Load the batch ledger via lib.file_manager; tolerate corrupt/empty files."""
     try:
-        content = ledger_path.read_text(encoding="utf-8").strip()
-        if not content:
-            return {"batches": []}
-        data = json.loads(content)
-        if "batches" not in data:
-            data["batches"] = []
-        return data
-    except (json.JSONDecodeError, OSError):
+        data = load_file(ledger_path) or {}
+    except ValueError:
         return {"batches": []}
+    if not isinstance(data, dict):
+        return {"batches": []}
+    data.setdefault("batches", [])
+    return data
 
 
 def save_ledger(ledger: dict, ledger_path: Path) -> None:
-    """Save the batch ledger to disk."""
+    """Save the batch ledger via lib.file_manager."""
     ledger_path.parent.mkdir(parents=True, exist_ok=True)
-    ledger_path.write_text(json.dumps(ledger, indent=2), encoding="utf-8")
+    save_file(ledger, "w", ledger_path)
 
 
 def cleanup_old_batches(ledger: dict, keep: int = 10) -> dict:
@@ -103,12 +95,7 @@ def _parse_porcelain_line(line: str) -> str | None:
 
 def _git_status(project_dir: Path) -> str | None:
     """Run git status --porcelain. Returns stdout or None on failure."""
-    result = subprocess.run(
-        ["git", "status", "--porcelain", "-uall"],
-        cwd=project_dir,
-        capture_output=True,
-        text=True,
-    )
+    result = run_git(["status", "--porcelain", "-uall"], cwd=project_dir)
     return result.stdout if result.returncode == 0 else None
 
 
@@ -123,19 +110,11 @@ def get_dirty_files(project_dir: Path) -> list[str]:
 
 
 def _git_add(files: list[str], project_dir: Path) -> bool:
-    result = subprocess.run(
-        ["git", "add"] + files,
-        cwd=project_dir, capture_output=True, text=True,
-    )
-    return result.returncode == 0
+    return run_git(["add", *files], cwd=project_dir).returncode == 0
 
 
 def _git_commit(message: str, project_dir: Path) -> bool:
-    result = subprocess.run(
-        ["git", "commit", "-m", message],
-        cwd=project_dir, capture_output=True, text=True,
-    )
-    return result.returncode == 0
+    return run_git(["commit", "-m", message], cwd=project_dir).returncode == 0
 
 
 def commit_files(files: list[str], message: str, project_dir: Path) -> bool:
@@ -197,29 +176,13 @@ def _build_commit_prompt(files: list[str], task_subject: str, task_description: 
     )
 
 
-def _invoke_claude(prompt: str, project_dir: Path) -> str | None:
-    """Run headless Claude to generate text. Returns output or None on failure."""
-    try:
-        result = subprocess.run(
-            ["claude", "-p", prompt,
-             "--tools", "Read,Grep,Glob",
-             "--allowedTools", "Read,Grep,Glob",
-             "--output-format", "text"],
-            capture_output=True, text=True, timeout=120, cwd=project_dir,
-        )
-        if result.returncode == 0 and result.stdout.strip():
-            return result.stdout.strip()
-    except (subprocess.TimeoutExpired, FileNotFoundError):
-        pass
-    return None
-
-
 def generate_commit_message(
     files: list[str], task_subject: str, task_description: str, project_dir: Path,
 ) -> str:
     """Use headless Claude to generate a conventional commit message."""
     prompt = _build_commit_prompt(files, task_subject, task_description)
-    return _invoke_claude(prompt, project_dir) or f"chore: auto-commit after task ({task_subject})"
+    output = invoke_claude(prompt, timeout=120, cwd=project_dir)
+    return output or f"chore: auto-commit after task ({task_subject})"
 
 
 # ---------------------------------------------------------------------------
@@ -244,14 +207,13 @@ def _add_pending_batch(
     ledger: dict, batch_id: str, task_id: str, task_subject: str, files: list[str],
 ) -> None:
     """Write a pending batch entry to the ledger."""
-    ledger["batches"].append({
-        "batch_id": batch_id,
-        "task_id": task_id,
-        "task_subject": task_subject,
-        "files": files,
-        "status": "pending",
-        "created_at": datetime.now().isoformat(),
-    })
+    from models.batch import BatchEntry
+
+    entry = BatchEntry(
+        batch_id=batch_id, task_id=task_id, task_subject=task_subject,
+        files=files, status="pending",
+    )
+    ledger["batches"].append(entry.model_dump(exclude_none=True))
 
 
 def _claim_phase(
@@ -261,16 +223,24 @@ def _claim_phase(
     """Phase 1: Claim dirty files under a ledger lock. Returns claimed files or None."""
     try:
         with lock:
-            ledger = load_ledger(ledger_path)
-            claimed = _get_unclaimed_files(project_dir, ledger)
-            if not claimed:
-                return None
-
-            _add_pending_batch(ledger, batch_id, task_id, task_subject, claimed)
-            save_ledger(ledger, ledger_path)
-            return claimed
+            return _claim_under_lock(
+                batch_id, task_id, task_subject, project_dir, ledger_path
+            )
     except Exception:
         return None
+
+
+def _claim_under_lock(
+    batch_id: str, task_id: str, task_subject: str,
+    project_dir: Path, ledger_path: Path,
+) -> list[str] | None:
+    ledger = load_ledger(ledger_path)
+    claimed = _get_unclaimed_files(project_dir, ledger)
+    if not claimed:
+        return None
+    _add_pending_batch(ledger, batch_id, task_id, task_subject, claimed)
+    save_ledger(ledger, ledger_path)
+    return claimed
 
 
 def _update_batch_status(ledger: dict, batch_id: str, success: bool, message: str) -> None:
@@ -300,31 +270,29 @@ def _commit_phase(
         return False
 
 
+def _read_task_inputs() -> tuple[str, str, str, Path]:
+    raw = Hook.read_stdin()
+    return (
+        raw.get("task_subject", "unknown task"),
+        raw.get("task_id", "unknown"),
+        raw.get("task_description", ""),
+        Path(raw.get("cwd", os.getcwd())),
+    )
+
+
 def main() -> None:
     """Entry point — reads TaskCompleted hook input from stdin, runs auto-commit."""
     from filelock import FileLock
 
-    raw_input = Hook.read_stdin()
-    task_subject = raw_input.get("task_subject", "unknown task")
-    task_id = raw_input.get("task_id", "unknown")
-    task_description = raw_input.get("task_description", "")
-    project_dir = Path(raw_input.get("cwd", os.getcwd()))
+    task_subject, task_id, task_description, project_dir = _read_task_inputs()
     ledger_path = COMMIT_BATCH_PATH
     lock = FileLock(ledger_path.with_suffix(".lock"), timeout=30)
     batch_id = _make_batch_id()
-
-    # Phase 1: Claim files
     claimed = _claim_phase(batch_id, task_id, task_subject, project_dir, ledger_path, lock)
     if not claimed:
         return
-
-    # Phase 2: Generate commit message (no lock held)
     message = generate_commit_message(claimed, task_subject, task_description, project_dir)
-
-    # Phase 3: Commit
-    success = _commit_phase(batch_id, claimed, message, project_dir, ledger_path, lock)
-
-    if success:
+    if _commit_phase(batch_id, claimed, message, project_dir, ledger_path, lock):
         Hook.system_message(f"Auto-committed {len(claimed)} file(s): {message}")
 
 

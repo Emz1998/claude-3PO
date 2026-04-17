@@ -9,7 +9,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from lib.state_store import StateStore
-from config import Config
+from config import Config, get_config
 
 
 DEFAULT_STATE: dict = {
@@ -81,4 +81,7 @@ def state(state_path: Path) -> StateStore:
 
 @pytest.fixture
 def config() -> Config:
-    return Config()
+    get_config.cache_clear()
+    cfg = get_config()
+    yield cfg
+    get_config.cache_clear()

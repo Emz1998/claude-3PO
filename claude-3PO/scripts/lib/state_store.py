@@ -9,7 +9,7 @@ import time
 from pathlib import Path
 from typing import Any, Callable, Literal
 
-from models.state import Agent, ReviewResult
+from models.state import Agent, ReviewResult, State
 from filelock import FileLock
 
 
@@ -95,6 +95,21 @@ class StateStore:
             else:
                 fn(entries[idx])
             self._write_all_lines(entries)
+
+    # ── Pydantic boundary ─────────────────────────────────────────
+
+    def load_model(self) -> State:
+        """Load and validate the snapshot as a Pydantic ``State`` model.
+
+        Raises ValidationError for malformed snapshots — callers that need
+        forgiving dict reads should keep using ``load()``.
+        """
+        return State.model_validate(self.load())
+
+    def save_model(self, model: State) -> None:
+        """Persist a ``State`` model. Calls ``model_dump(exclude_unset=False)``
+        so optional defaults are written explicitly."""
+        self.save(model.model_dump(exclude_unset=False))
 
     def get(self, key: str, default: Any = None) -> Any:
         data = self.load()

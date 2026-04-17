@@ -8,10 +8,7 @@ from guardrails import (
     webfetch_guard,
     phase_guard,
 )
-from guardrails import STOP_GUARDS
-from helpers import make_hook_input
-
-agent_report_guard = STOP_GUARDS["agent_report"]
+from helpers import make_hook_input, invoke_agent_report_guard as agent_report_guard
 
 
 class TestWriteGuard:

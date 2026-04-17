@@ -416,25 +416,28 @@ class SpecsValidator:
         return errors
 
     def _check_required_subsections(
-        self,
-        content: str,
-        required: dict[str, list[str]],
-        *,
-        parent_level: int = 2,
-        child_level: int = 3,
+        self, content: str, required: dict[str, list[str]],
+        *, parent_level: int = 2, child_level: int = 3,
     ) -> list[str]:
         """Check each parent section contains its required child-level subsections."""
         found = self._collect_subsections(content, parent_level, child_level)
         errors: list[str] = []
         for parent, subs in required.items():
-            present = found.get(parent, set())
-            for sub in subs:
-                if sub not in present:
-                    errors.append(
-                        f"structure.{parent}: missing subsection "
-                        f"'{'#' * child_level} {sub}'"
-                    )
+            errors.extend(
+                self._missing_subsection_errors(parent, subs, found.get(parent, set()), child_level)
+            )
         return errors
+
+    @staticmethod
+    def _missing_subsection_errors(
+        parent: str, required_subs: list[str], present: set[str], child_level: int
+    ) -> list[str]:
+        marker = "#" * child_level
+        return [
+            f"structure.{parent}: missing subsection '{marker} {sub}'"
+            for sub in required_subs
+            if sub not in present
+        ]
 
     @staticmethod
     def _collect_subsections(
@@ -475,21 +478,26 @@ class SpecsValidator:
         items: list[dict[str, Any]] = []
         current: dict[str, Any] | None = None
         for i in range(start + 1, len(lines)):
-            match = re.match(r"^### ([\w-]+):\s*(.*)$", lines[i])
-            if match:
-                if current:
-                    items.append(current)
-                current = SpecsValidator._new_item(
-                    match.group(1),
-                    match.group(2).strip().strip("`"),
-                    i + 1,
-                )
-                continue
-            if current:
-                SpecsValidator._parse_item_line(current, lines[i].strip())
+            current = SpecsValidator._consume_story_line(lines[i], i, current, items)
         if current:
             items.append(current)
         return items
+
+    @staticmethod
+    def _consume_story_line(
+        line: str, line_idx: int, current: dict | None, items: list[dict]
+    ) -> dict | None:
+        """Process one line; return the active item (new, current, or None)."""
+        match = re.match(r"^### ([\w-]+):\s*(.*)$", line)
+        if match:
+            if current:
+                items.append(current)
+            return SpecsValidator._new_item(
+                match.group(1), match.group(2).strip().strip("`"), line_idx + 1
+            )
+        if current:
+            SpecsValidator._parse_item_line(current, line.strip())
+        return current
 
     @staticmethod
     def _find_stories_section(lines: list[str]) -> int:
@@ -501,18 +509,9 @@ class SpecsValidator:
 
     @staticmethod
     def _new_item(sid: str, title: str, line_num: int) -> dict[str, Any]:
-        return {
-            "id": sid,
-            "title": title,
-            "line": line_num,
-            "description": "",
-            "priority": "",
-            "milestone": "",
-            "is_blocking": "",
-            "blocked_by": "",
-            "acceptance_criteria": [],
-            "blockquotes": [],
-        }
+        from models.story import StoryItem
+
+        return StoryItem.empty(sid, title, line_num)
 
     @staticmethod
     def _parse_item_line(item: dict[str, Any], stripped: str) -> None:

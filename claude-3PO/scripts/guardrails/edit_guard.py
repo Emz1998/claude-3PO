@@ -3,6 +3,7 @@
 from typing import Literal
 
 from lib.state_store import StateStore
+from lib.paths import basenames, path_matches
 from config import Config
 
 
@@ -46,8 +47,7 @@ class FileEditGuard:
             )
 
     def _is_plan_file(self) -> bool:
-        plan_path = self.config.plan_file_path
-        return self.file_path == plan_path or self.file_path.endswith(plan_path)
+        return path_matches(self.file_path, self.config.plan_file_path)
 
     def _apply_edit_patch(self) -> str | None:
         """Return patched content after applying the edit, or None if file missing."""
@@ -85,15 +85,11 @@ class FileEditGuard:
                 f"Editing '{self.file_path}' not allowed\nTest files in session: {allowed}"
             )
 
-    @staticmethod
-    def _basenames(paths: list[str]) -> set:
-        return {p.rsplit("/", 1)[-1] for p in paths}
-
     def _all_code_tests_revised(self) -> bool:
         to_revise = self.state.code_tests_to_revise
         revised = self.state.code_tests_revised
         return bool(to_revise) and not (
-            self._basenames(to_revise) - self._basenames(revised)
+            basenames(to_revise) - basenames(revised)
         )
 
     def _check_code_edit_path(self) -> None:

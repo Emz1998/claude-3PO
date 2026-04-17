@@ -13,6 +13,7 @@ from lib.state_store import StateStore
 from lib.violations import log_violation
 from config import Config
 from guardrails.task_created_guard import TaskCreatedGuard
+from utils.recorder import Recorder
 
 STATE_PATH = Path(os.environ.get(
     "TASK_CREATED_STATE_PATH",
@@ -32,7 +33,8 @@ def main() -> None:
         sys.exit(0)
 
     config = Config()
-    decision, message = TaskCreatedGuard(hook_input, config, state).validate()
+    guard = TaskCreatedGuard(hook_input, config, state)
+    decision, message = guard.validate()
 
     if decision == "block":
         log_violation(
@@ -46,8 +48,20 @@ def main() -> None:
             reason=message,
         )
         Hook.block(message)
+    else:
+        _apply_task_effects(guard, state)
 
     sys.exit(0)
+
+
+def _apply_task_effects(guard: TaskCreatedGuard, state: StateStore) -> None:
+    recorder = Recorder(state)
+    if guard.matched_build_subject:
+        recorder.record_created_task(guard.matched_build_subject)
+    if guard.matched_implement_parent_id and guard.matched_implement_payload:
+        recorder.record_subtask(
+            guard.matched_implement_parent_id, guard.matched_implement_payload
+        )
 
 
 if __name__ == "__main__":

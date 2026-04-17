@@ -124,7 +124,7 @@ def extract_table(
     return [header] + [_parse_table_row(line, cols) for line in body_lines]
 
 
-def _extract_bullet_items(content: str) -> list[str]:
+def extract_bullet_items(content: str) -> list[str]:
     """Extract bullet list items (- item) from markdown content."""
     return [
         line.lstrip("- ").strip()
@@ -133,13 +133,18 @@ def _extract_bullet_items(content: str) -> list[str]:
     ]
 
 
+def extract_section_map(content: str, level: int) -> dict[str, str]:
+    """Return ``{heading.strip(): body}`` for every section at the given heading level."""
+    return {name.strip(): body for name, body in extract_md_sections(content, level)}
+
+
+# Back-compat alias retained for callers that imported the private name.
+_extract_bullet_items = extract_bullet_items
+
+
 def _extract_section_bullets(content: str, heading: str) -> list[str]:
     """Extract bullet items from a specific ## section in markdown."""
-    sections = extract_md_sections(content, 2)
-    for name, body in sections:
-        if name.strip() == heading:
-            return _extract_bullet_items(body)
-    return []
+    return extract_bullet_items(extract_section_map(content, 2).get(heading, ""))
 
 
 def extract_plan_dependencies(content: str) -> list[str]:

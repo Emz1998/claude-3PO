@@ -2,8 +2,7 @@
 
 import pytest
 from lib.state_store import StateStore
-from guardrails import phase_guard
-from helpers import make_hook_input
+from helpers import make_hook_input, invoke_phase_guard as phase_guard
 
 
 class TestPlanApprovedAfterCheckpoint:

@@ -4,6 +4,7 @@ from typing import Literal
 
 from lib.state_store import StateStore
 from lib.extractors import extract_agent_name
+from lib.paths import basenames
 from config import Config
 
 
@@ -66,13 +67,9 @@ class AgentGuard:
         if self.state.plan_revised is False:
             raise ValueError("Plan must be revised before re-invoking PlanReview")
 
-    @staticmethod
-    def _basenames(paths: list[str]) -> set:
-        return {p.rsplit("/", 1)[-1] for p in paths}
-
     def _all_revised(self, to_revise: list[str], revised: list[str]) -> bool:
         return bool(to_revise) and not (
-            self._basenames(to_revise) - self._basenames(revised)
+            basenames(to_revise) - basenames(revised)
         )
 
     def _check_test_revision_done(self) -> None:

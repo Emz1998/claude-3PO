@@ -2,8 +2,8 @@
 
 import pytest
 from models.state import Agent
-from guardrails import phase_guard, agent_guard
-from helpers import make_hook_input
+from guardrails import agent_guard
+from helpers import make_hook_input, invoke_phase_guard as phase_guard
 
 
 # ===================================================================

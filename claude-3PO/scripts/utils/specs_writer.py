@@ -38,11 +38,7 @@ def write_backlog(content: str, md_path: str, json_path: str) -> None:
     )
 
 
-def validate_architecture_content(content: str) -> list[str]:
-    """Validate architecture content against template. Returns error list."""
-    return _validator().validate_architecture(content)
-
-
-def validate_backlog_content(content: str) -> list[str]:
-    """Validate backlog markdown content. Returns error list."""
-    return _validator().validate_backlog_md(content)
+from lib.specs_validation import (  # noqa: F401  (re-exports for back-compat)
+    validate_architecture_content,
+    validate_backlog_content,
+)
