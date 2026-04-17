@@ -9,6 +9,7 @@
 - **IMPORTANT**:If not in plan mode, present a miniplan first to the user before implementing changes.
 - **IMPORTANT**: Stop and ask the user first for plan approval.
 - **IMPORTANT**: Always do TDD when coding. Write/Revise tests first before implementing changes
+- **IMPORTANT** Plan should always be higher level.
 - Do not proceed on implementing changes without a plan and without user approval
 - Do not implement tasks that are beyond the scope of your plan
 - If you are not sure, stop and say "I'm not sure about this task"

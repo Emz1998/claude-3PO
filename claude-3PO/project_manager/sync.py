@@ -240,49 +240,44 @@ def _fetch_node_ids(repo: str, issue_nums: set[int]) -> dict[int, str]:
     return out
 
 
-def _add_blocked_by(blocked_node: str, blocker_node: str) -> None:
-    mutation = f"""
-    mutation {{
-      addBlockedBy(input: {{
-        issueId: {json.dumps(blocked_node)},
-        blockingIssueId: {json.dumps(blocker_node)}
-      }}) {{
-        issue {{ number }}
-        blockingIssue {{ number }}
-      }}
-    }}
-    """
-    run(["gh", "api", "graphql", "-f", f"query={mutation}"], check=False)
-
-
-def _apply_blocking_pair(
+def _blocking_mutations(
     num_to_node: dict[int, str],
-    blocked_num: int,
-    blocker_num: int,
-    blocked_id: str,
-    blocker_id: str,
-) -> None:
-    blocked_node = num_to_node.get(blocked_num)
-    blocker_node = num_to_node.get(blocker_num)
-    if not blocked_node or not blocker_node:
-        print(f"  ⚠ Missing node ID for #{blocked_num} or #{blocker_num}")
-        return
-    print(f"  #{blocked_num} ({blocked_id}) blocked by #{blocker_num} ({blocker_id})")
-    _add_blocked_by(blocked_node, blocker_node)
+    pairs: list[tuple[int, int, str, str]],
+) -> list[str]:
+    mutations: list[str] = []
+    for bn, kn, bid, kid in pairs:
+        b, k = num_to_node.get(bn), num_to_node.get(kn)
+        if not b or not k:
+            print(f"  ⚠ Missing node ID for #{bn} or #{kn}")
+            continue
+        print(f"  #{bn} ({bid}) blocked by #{kn} ({kid})")
+        mutations.append(
+            f"m{len(mutations)}: addBlockedBy(input: {{"
+            f"issueId: {json.dumps(b)}, blockingIssueId: {json.dumps(k)}"
+            f"}}) {{ issue {{ number }} blockingIssue {{ number }} }}"
+        )
+    return mutations
 
 
 def set_blocking_relationships(
-    repo: str, items: list[dict], id_map: dict[str, int]
+    repo: str,
+    items: list[dict],
+    id_map: dict[str, int],
+    node_ids: dict[int, str] | None = None,
 ) -> None:
-    """Set blocking relationships via GitHub's ``addBlockedBy`` GraphQL mutation."""
+    """Set blocking relationships via batched ``addBlockedBy`` GraphQL mutations.
+
+    If ``node_ids`` is provided, it's reused as the issue-number -> node-id map;
+    otherwise this function fetches it.
+    """
     pairs, involved = _collect_blocking_pairs(items, id_map)
     if not pairs:
         print("  No blocking relationships to set.")
         return
-    print(f"  Fetching node IDs for {len(involved)} issues...")
-    num_to_node = _fetch_node_ids(repo, involved)
-    for blocked_num, blocker_num, blocked_id, blocker_id in pairs:
-        _apply_blocking_pair(num_to_node, blocked_num, blocker_num, blocked_id, blocker_id)
+    if node_ids is None:
+        print(f"  Fetching node IDs for {len(involved)} issues...")
+        node_ids = _fetch_node_ids(repo, involved)
+    execute_batched_mutations(_blocking_mutations(node_ids, pairs))
 
 
 # ---------------------------------------------------------------------------
@@ -347,22 +342,31 @@ def ensure_project_field(
 # ---------------------------------------------------------------------------
 
 
+def _resolve_one(
+    t: dict[str, Any], existing_issues: dict[str, int], live: set[int]
+) -> bool:
+    """True if linked to a live issue; False if creation needed."""
+    num = t.get("issue_number")
+    if num and num in live:
+        print(f"  ↳ Already has issue: #{num}")
+        return True
+    if num:
+        print(f"  ↳ Stale #{num}; re-linking by title or re-creating")
+        t.pop("issue_number", None)
+    title = _item_full_title(t)
+    if title in existing_issues:
+        t["issue_number"] = existing_issues[title]
+        print(f"  ↳ Matched existing #{t['issue_number']}")
+        return True
+    return False
+
+
 def resolve_existing_issues(
     tasks: list[dict[str, Any]], existing_issues: dict[str, int]
 ) -> list[dict[str, Any]]:
     """Return tasks that still need a new issue created."""
-    needs_creation: list[dict[str, Any]] = []
-    for t in tasks:
-        if t.get("issue_number"):
-            print(f"  ↳ Already has issue: #{t['issue_number']}")
-            continue
-        full_title = _item_full_title(t)
-        if full_title in existing_issues:
-            t["issue_number"] = existing_issues[full_title]
-            print(f"  ↳ Found existing issue: #{t['issue_number']} ({full_title})")
-        else:
-            needs_creation.append(t)
-    return needs_creation
+    live = set(existing_issues.values())
+    return [t for t in tasks if not _resolve_one(t, existing_issues, live)]
 
 
 _create_lock = threading.Lock()
@@ -934,27 +938,44 @@ def _delete_branches_parallel(repo: str, branches: list[str]) -> None:
             print(f"  ✗ Deleted branch: {b}")
 
 
+def _remove_item_mutations(project_id: str, item_ids: list[str]) -> list[str]:
+    return [
+        f"m{i}: deleteProjectV2Item(input: {{"
+        f"projectId: {json.dumps(project_id)}, itemId: {json.dumps(iid)}"
+        f"}}) {{ deletedItemId }}"
+        for i, iid in enumerate(item_ids)
+    ]
+
+
 def _remove_issues_from_project(
     project_number: int, owner: str, issues: list[dict[str, Any]]
 ) -> None:
-    print("\nRemoving from project...")
+    print("\nRemoving from project (batched)...")
+    project_id = get_project_id(project_number, owner)
     items = get_project_items(project_number, owner)
-    to_remove = [(iss, find_item_id(items, iss["number"])) for iss in issues]
-    to_remove = [(iss, item_id) for iss, item_id in to_remove if item_id]
-    if not to_remove:
+    item_ids = [find_item_id(items, iss["number"]) for iss in issues]
+    item_ids = [iid for iid in item_ids if iid]
+    if not item_ids:
         return
-    # Serialized: GitHub secondary rate limits penalize concurrent project mutations.
-    for iss, item_id in to_remove:
-        _remove_from_project(project_number, owner, item_id)
-        print(f"  ✗ Removed #{iss['number']} from project")
-
-
-def _delete_issues_parallel(repo: str, issues: list[dict[str, Any]]) -> None:
-    print(f"\nDeleting {len(issues)} issues permanently...")
-    # Serialized: avoid GitHub secondary rate limits on content-deleting mutations.
     for iss in issues:
-        _delete_issue(repo, iss["number"])
-        print(f"  ✗ Deleted #{iss['number']}: {iss['title']}")
+        print(f"  ✗ #{iss['number']}")
+    execute_batched_mutations(_remove_item_mutations(project_id, item_ids))
+
+
+def _delete_issue_mutations(node_ids: dict[int, str]) -> list[str]:
+    return [
+        f"m{i}: deleteIssue(input: {{issueId: {json.dumps(nid)}}}) {{ clientMutationId }}"
+        for i, nid in enumerate(node_ids.values())
+    ]
+
+
+def _delete_issues_batched(repo: str, issues: list[dict[str, Any]]) -> None:
+    nums = {iss["number"] for iss in issues if iss.get("number")}
+    node_ids = _fetch_node_ids(repo, nums)
+    print(f"\nDeleting {len(issues)} issues permanently (batched)...")
+    for iss in issues:
+        print(f"  ✗ #{iss['number']}: {iss['title']}")
+    execute_batched_mutations(_delete_issue_mutations(node_ids))
 
 
 def _clear_issue_numbers(backlog_data: dict[str, Any], backlog_path: Path) -> None:
@@ -1020,14 +1041,35 @@ def _resolve_or_create(
     return False
 
 
-def _add_all_to_project_parallel(
-    all_items: list[dict], project: int, owner: str, repo: str
-) -> None:
-    print("\nAdding issues to project...")
-    # Serialized: GitHub secondary rate limits penalize concurrent project mutations.
-    for t in all_items:
-        add_to_project(project, owner, issue_url(repo, t["issue_number"]))
-    print(f"  ✓ {len(all_items)} items added/verified")
+def _add_to_project_mutations(
+    project_id: str, node_ids: dict[int, str], items: list[dict]
+) -> list[str]:
+    mutations: list[str] = []
+    idx = 0
+    for t in items:
+        cid = node_ids.get(t.get("issue_number"))
+        if not cid:
+            continue
+        mutations.append(
+            f"m{idx}: addProjectV2ItemById(input: {{"
+            f"projectId: {json.dumps(project_id)}, contentId: {json.dumps(cid)}"
+            f"}}) {{ item {{ id }} }}"
+        )
+        idx += 1
+    return mutations
+
+
+def _add_all_to_project_batched(
+    all_items: list[dict], project_id: str, repo: str
+) -> dict[int, str]:
+    """Batched addProjectV2ItemById. Returns node_id map for reuse downstream."""
+    print("\nAdding issues to project (batched)...")
+    nums = {t["issue_number"] for t in all_items if t.get("issue_number")}
+    node_ids = _fetch_node_ids(repo, nums)
+    mutations = _add_to_project_mutations(project_id, node_ids, all_items)
+    execute_batched_mutations(mutations)
+    print(f"  ✓ {len(mutations)} items added/verified")
+    return node_ids
 
 
 def _fetch_rest_ids_parallel(repo: str, issue_nums: list[int]) -> dict[int, int]:
@@ -1055,6 +1097,9 @@ def _post_sub_issue(repo: str, parent_num: int | str, child_rest_id: int) -> Non
     )
 
 
+_SUB_ISSUE_WORKERS = 3
+
+
 def _apply_parent_child(
     tasks: list[dict], id_map: dict[str, int], repo: str
 ) -> None:
@@ -1066,8 +1111,11 @@ def _apply_parent_child(
         and id_map.get(t.get("parent_story_id"))
     ]
     rest_ids = _fetch_rest_ids_parallel(repo, [t["issue_number"] for t, _ in pending])
-    for task, parent_num in pending:
-        _commit_sub_issue(repo, task, parent_num, rest_ids)
+    # 3-way parallel stays under GitHub's secondary rate limits for REST POSTs.
+    with ThreadPoolExecutor(max_workers=_SUB_ISSUE_WORKERS) as pool:
+        futs = [pool.submit(_commit_sub_issue, repo, t, p, rest_ids) for t, p in pending]
+        for fut in as_completed(futs):
+            fut.result()
 
 
 def _commit_sub_issue(
@@ -1177,7 +1225,7 @@ class Syncer:
     ) -> None:
         _delete_branches_parallel(self.repo, branches)
         _remove_issues_from_project(self.project, self.owner, issues)
-        _delete_issues_parallel(self.repo, issues)
+        _delete_issues_batched(self.repo, issues)
         _clear_issue_numbers(backlog_data, self.backlog_path)
 
     def _fetch_project_metadata(self) -> tuple[str, dict[str, dict]]:
@@ -1220,7 +1268,7 @@ class Syncer:
         field_map: dict[str, dict],
         backlog_data: dict,
     ) -> None:
-        _add_all_to_project_parallel(all_items, self.project, self.owner, self.repo)
+        node_ids = _add_all_to_project_batched(all_items, project_id, self.repo)
         print("\nFetching project items...")
         items = get_project_items(self.project, self.owner)
         print(f"  Found {len(items)} items in project")
@@ -1232,4 +1280,4 @@ class Syncer:
         full_id_map = build_id_to_issue_number_map(stories, tasks)
         _apply_parent_child(tasks, full_id_map, self.repo)
         print("\nPass 4: Setting blocking relationships...")
-        set_blocking_relationships(self.repo, all_items, full_id_map)
+        set_blocking_relationships(self.repo, all_items, full_id_map, node_ids=node_ids)

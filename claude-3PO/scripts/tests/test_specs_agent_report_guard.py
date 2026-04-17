@@ -266,7 +266,9 @@ def _valid_architecture_md() -> str:
         "**Version:** 1.0\n"
         "**Date:** 2026-04-16\n"
         "**Author(s):** Test\n"
-        "**Status:** Draft\n\n"
+        "**Status:** Draft\n"
+        "**Last Reviewed:** 2026-04-16\n"
+        "**Approved By:** Test\n\n"
     )
     return metadata + "\n".join(sections)
 

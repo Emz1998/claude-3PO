@@ -109,8 +109,9 @@ Single source of truth, loaded by `config/config.py`. Declares:
 - **`score_thresholds`** — plan / tests / code confidence & quality thresholds.
 - **`safe_domains`** — whitelist for `WebFetchGuard`.
 - **`paths`** — `state_jsonl`, plan/contracts/tests/code/report paths, specs doc paths, archive directories, log files.
-- **`specs_schemas`** — per-doc-type schema for `SpecsValidator` (architecture, constitution, product_vision, backlog, sprint). Each block declares `metadata_fields`, `required_sections` / `required_subsections`, `required_tables`, enum sets (`valid_statuses`, `valid_priorities`, `valid_item_types`), and story-type name maps. Tunable per project without touching Python.
 - **`specs_phases.max_report_retries`** — how many times the SubagentStop retry loop rejects an agent report before giving up. Defaults to 3. `config.specs_max_report_retries` is the accessor.
+
+Specs validation schemas are **not** stored here. They are derived at runtime from the canonical template markdown files in `../templates/` via `utils/template_schema.TemplateSchema`, so editing a template is the only change needed to adjust the contract.
 
 The `Config` class never hard-codes phase lists; they are derived from flags (`code_write_phases`, `read_only_phases`, `checkpoint_phase`, etc.).
 
@@ -148,7 +149,8 @@ Specs grammar (shared by `utils/validator.py` — these are invariants of the ma
 | `initializer.py`      | Called from skill frontmatter bash to build initial state and archive prior plan/contracts.                    |
 | `recorder.py`         | Records state after allowed tool uses (see above).                                                             |
 | `resolver.py`         | Evaluates state and advances phases (see above).                                                               |
-| `validator.py`        | `SpecsValidator` — validates architecture / constitution / product-vision / backlog (md+json) / sprint (md+json) and converts backlog/sprint markdown to JSON. Schemas live in `config.specs_schemas`; grammar constants live in `constants.SPECS_*`. |
+| `validator.py`        | `SpecsValidator` — validates architecture / constitution / product-vision / backlog (md+json) and converts backlog markdown to JSON. Schemas come from `utils/template_schema.TemplateSchema` (parsed directly from `../templates/*.md`); grammar constants live in `constants.SPECS_*`. |
+| `template_schema.py`  | `TemplateSchema` — parses a spec template markdown file into a structural schema (metadata fields, enums, required sections/subsections/tables, backlog priorities + item types). The template file is the single source of truth; `SpecsValidator` caches one schema per doc type. |
 | `specs_writer.py`     | Thin wrapper over `SpecsValidator` that writes validated architect/backlog agent reports to `projects/docs/`. |
 | `auto_commit.py`      | Async. Claims dirty files per task-batch via `commit_batch.json`, invokes headless Claude for a message, commits. |
 | `summarize_prompt.py` | Async. Summarizes `/build` instructions via headless Claude and writes `prompt_summary` to state.              |
@@ -163,9 +165,7 @@ Plain markdown + sample JSON consumed by the specs workflow commands. All specs 
 | `constitution.md`          | `commands/specs.md`                        |
 | `product-vision.md`        | `commands/vision.md`, `commands/test-specs.md`, `commands/specs.md` |
 | `backlog.md`               | `commands/backlog.md`, `commands/specs.md` |
-| `sprint.md`                | (reserved — sprint workflow)               |
 | `backlog-sample.json`      | reference schema for `SpecsValidator.validate_backlog_json` |
-| `sprint-sample.json`       | reference schema for `SpecsValidator.validate_sprint_json`  |
 | `visionize-questions.md`   | `commands/vision.md` discovery questions   |
 | `plan.md`                  | build workflow plan template                |
 | `implement-plan.md`        | implement workflow plan template            |
@@ -173,7 +173,7 @@ Plain markdown + sample JSON consumed by the specs workflow commands. All specs 
 
 ## Adjacent packages
 
-- **`github_project/`** — local-first project manager (`project_manager.py`) backed by `issues/{sprint,stories,backlog,metadata}.json`. Used by the implement workflow to load project tasks, record child subtasks, and mark tasks `Done` on completion. CLI subcommands: `list`, `view`, `summary`, `progress`, `update`, `add-task`, `add-story`, `create-sprint`, `sync`.
+- **`../project_manager/`** — local-first project manager (`cli.py` → `ProjectManager`) backed by `issues/{stories,backlog,metadata}.json`. Used by the implement workflow to load project tasks, record child subtasks, and mark tasks `Done` on completion. CLI subcommands: `list`, `view`, `summary`, `progress`, `update`, `add-task`, `add-story`, `sync`, `unblocked`.
 - **`headless_claude/claude.py`** — thin wrapper around `subprocess.run(["claude", "-p", …])` used by the async dispatchers to generate summaries and commit messages without blocking the live session.
 - **`tests/`** — pytest suite covering dispatchers, guardrails, recorder, resolver, extractors, state store, initializer, auto-commit, specs flow, task lifecycle, and more.
 

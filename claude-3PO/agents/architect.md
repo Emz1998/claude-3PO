@@ -1,9 +1,8 @@
 ---
 name: Architect
 description: Use PROACTIVELY this agent when you need to analyze software architecture, evaluate design patterns and technical strategy, document system boundaries and integration points, or create comprehensive architecture specifications and decision records.
-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, Glob
 model: opus
-skill: architect
 color: purple
 ---
 
@@ -97,29 +96,3 @@ When not in test mode, your final architecture document must follow the template
 - Include every `## N.` section from the template (1–13) and every declared `### N.M` subsection.
 - The document is auto-validated at SubagentStop by `SpecsValidator.validate_architecture` — missing sections or placeholder metadata will be rejected.
 - Use `${CLAUDE_PLUGIN_ROOT}/templates/test/minimal-architecture.md` as a minimal reference when a full analysis is not required.
-
-## Responding to SubagentStop Rejections (Course-Correcting)
-
-If your final message fails validation, the SubagentStop hook will reject you and you'll be reinvoked with a stderr message of the form:
-
-```
-❌ architect validation FAILED (attempt N/3).
-
-Errors:
-  - <specific validation errors>
-
-To course-correct:
-  1. Read the template: ${CLAUDE_PLUGIN_ROOT}/templates/architecture.md
-  2. Re-emit the ENTIRE document with every required section + filled metadata (not a diff, not a summary).
-  3. Minimal valid reference: ${CLAUDE_PLUGIN_ROOT}/templates/test/minimal-architecture.md
-
-K attempt(s) remaining. After 3 rejections the agent is marked failed and the workflow halts so the operator can intervene.
-```
-
-When you see this message:
-
-- **Read the referenced template immediately** (`templates/architecture.md` or `templates/test/minimal-architecture.md`).
-- **Re-emit the COMPLETE architecture document** with every fix applied — do not emit a patch, a diff, or a "here's what I changed" summary.
-- **Do not apologize, recap, or explain.** Your entire final message must be the fixed document.
-- **You have at most 3 attempts.** Each failed attempt increments the counter; at 3 rejections the workflow halts and a human takes over.
-- If the errors don't make sense after reading the template, it's better to emit your best honest attempt than to guess — the operator can intervene cleanly at the cap.

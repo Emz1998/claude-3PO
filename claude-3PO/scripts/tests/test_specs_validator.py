@@ -26,7 +26,9 @@ _ARCH_METADATA = (
     "**Version:** 1.0\n"
     "**Date:** 2026-04-16\n"
     "**Author(s):** Alice\n"
-    "**Status:** Draft\n\n"
+    "**Status:** Draft\n"
+    "**Last Reviewed:** 2026-04-16\n"
+    "**Approved By:** Alice\n\n"
 )
 
 _ARCH_STRUCTURE_SECTIONS = [
@@ -188,6 +190,10 @@ _CONST_CODING_STANDARDS = (
     "### Directory Structure\ncontent\n\n"
     "## Comments & Documentation\ncontent\n\n"
     "## Error Handling\ncontent\n\n"
+    "## AI-Specific Standards\n"
+    "### Prompt Management\ncontent\n\n"
+    "### Response Handling\ncontent\n\n"
+    "### Performance & Cost\ncontent\n\n"
 )
 
 _CONST_TESTING = (
@@ -207,8 +213,10 @@ _CONST_DOD = (
 
 _CONST_TOOLING = (
     "# Tooling\n\n"
-    "| Tool | Purpose |\n|------|---------|\n| pytest | testing |\n"
+    "| Tool | Purpose |\n|------|---------|\n| pytest | testing |\n\n"
 )
+
+_CONST_APPENDIX = "# Appendix — Agent Reference\n\ncontent\n"
 
 
 def _valid_constitution() -> str:
@@ -220,6 +228,7 @@ def _valid_constitution() -> str:
         + _CONST_TESTING
         + _CONST_DOD
         + _CONST_TOOLING
+        + _CONST_APPENDIX
     )
 
 
@@ -305,14 +314,17 @@ _PV_SECTIONS = (
     "## Strategy\n"
     "### MVP Scope\n"
     "| Feature | Priority |\n|---|---|\n| Auth | P0 |\n\n"
-    "### What's Explicitly NOT in MVP\ncontent\n\n"
-    "### Product Roadmap (High Level)\ncontent\n\n"
+    "### What's Explicitly NOT in MVP\n"
+    "| Excluded Feature | Why Not Yet |\n|---|---|\n| Widget | Later |\n\n"
+    "### Product Roadmap (High Level)\n"
+    "| Phase | Timeframe |\n|---|---|\n| MVP | Q1 |\n\n"
     "## Business Model\n"
     "### Revenue Model\n"
     "| Model | Description |\n|---|---|\n| SaaS | monthly |\n\n"
     "### Key Metrics\n"
     "| Metric | Definition | MVP Target |\n|---|---|---|\n| MAU | users | 1k |\n\n"
-    "### Unit Economics (If Known)\ncontent\n\n"
+    "### Unit Economics (If Known)\n"
+    "| Metric | Value |\n|---|---|\n| CAC | $10 |\n\n"
     "## Risks & Mitigations\n"
     "| Risk | Impact | Likelihood | Mitigation |\n|---|---|---|---|\n| Churn | High | Med | Focus on CX |\n\n"
     "## Team & Resources\n"
@@ -323,7 +335,8 @@ _PV_SECTIONS = (
     "### 6-Month Vision\ncontent\n\n"
     "### 12-Month Vision\ncontent\n\n"
     "## Appendix\n"
-    "### Glossary\ncontent\n\n"
+    "### Glossary\n"
+    "| Term | Definition |\n|---|---|\n| API | Interface |\n\n"
     "### References\ncontent\n\n"
     "## Document History\n"
     "| Version | Date | Author | Changes |\n|---|---|---|---|\n| 1.0 | 2026-04-16 | Alice | initial |\n"
@@ -553,143 +566,6 @@ class TestValidateBacklogJson:
         data["stories"][0]["item_type"] = "task"
         errors = validator.validate_backlog_json(data)
         assert any("item_type" in e for e in errors)
-
-
-# ═══════════════════════════════════════════════════════════════════
-# Sprint
-# ═══════════════════════════════════════════════════════════════════
-
-
-def _valid_sprint_md() -> str:
-    return (
-        "# Sprint 1\n\n"
-        "**Sprint #:** 1\n"
-        "**Milestone:** MVP\n"
-        "**Goal:** Ship auth\n"
-        "**Due Date:** 2026-04-30\n\n"
-        "| ID | Type | Title | Points | Status | Blocked By |\n"
-        "|----|------|-------|--------|--------|------------|\n"
-        "| US-001 | Story | Login | 3 | Ready | - |\n\n"
-        "---\n\n"
-        "#### US-001: Login\n\n"
-        "**Labels:** auth\n"
-        "**Points:** 3\n"
-        "**Status:** Ready\n"
-        "**TDD:** true\n"
-        "**Priority:** P0\n"
-        "**Is Blocking:** None\n"
-        "**Blocked By:** None\n"
-        "**Start Date:** 2026-04-01\n"
-        "**Target Date:** 2026-04-10\n"
-        "**Acceptance Criteria:**\n"
-        "- [ ] user can log in\n\n"
-        "- **T-001:** Implement form\n"
-        "  **Description:** login form UI\n"
-        "  **Status:** Backlog\n"
-        "  **Priority:** P0\n"
-        "  **Complexity:** M\n"
-        "  **Labels:** frontend\n"
-        "  **Blocked by:** None\n"
-        "  **Start date:** 2026-04-01\n"
-        "  **Target date:** 2026-04-05\n"
-        "  **Acceptance Criteria:**\n"
-        "  - [ ] form renders\n"
-    )
-
-
-class TestValidateSprintMd:
-    def test_valid_sprint_has_no_errors(self, validator):
-        assert validator.validate_sprint_md(_valid_sprint_md()) == []
-
-    def test_missing_metadata_flagged(self, validator):
-        content = _valid_sprint_md().replace("**Sprint #:** 1\n", "")
-        errors = validator.validate_sprint_md(content)
-        assert any("Sprint #" in e for e in errors)
-
-    def test_bad_due_date_flagged(self, validator):
-        content = _valid_sprint_md().replace("**Due Date:** 2026-04-30", "**Due Date:** 04/30/2026")
-        errors = validator.validate_sprint_md(content)
-        assert any("Due Date" in e for e in errors)
-
-
-def _valid_sprint_json() -> dict:
-    return {
-        "sprint": 1,
-        "milestone": "MVP",
-        "description": "Ship auth",
-        "due_date": "2026-04-30",
-        "stories": [{
-            "id": "US-001",
-            "type": "User Story",
-            "title": "Login",
-            "description": "",
-            "points": 3,
-            "status": "Ready",
-            "tdd": True,
-            "priority": "P0",
-            "milestone": "MVP",
-            "start_date": "2026-04-01",
-            "target_date": "2026-04-10",
-            "labels": ["auth"],
-            "is_blocking": [],
-            "blocked_by": [],
-            "acceptance_criteria": ["user can log in"],
-            "item_type": "story",
-            "tasks": [{
-                "id": "T-001",
-                "type": "task",
-                "title": "Form",
-                "description": "",
-                "status": "Backlog",
-                "priority": "P0",
-                "complexity": "M",
-                "milestone": "MVP",
-                "start_date": "2026-04-01",
-                "target_date": "2026-04-05",
-                "labels": [],
-                "is_blocking": [],
-                "blocked_by": [],
-                "acceptance_criteria": ["form renders"],
-                "item_type": "task",
-            }],
-        }],
-    }
-
-
-class TestValidateSprintJson:
-    def test_valid_sprint_json(self, validator):
-        assert validator.validate_sprint_json(_valid_sprint_json()) == []
-
-    def test_unknown_story_type_flagged(self, validator):
-        data = _valid_sprint_json()
-        data["stories"][0]["type"] = "Saga"
-        errors = validator.validate_sprint_json(data)
-        assert any("Saga" in e for e in errors)
-
-    def test_bad_task_id_flagged(self, validator):
-        data = _valid_sprint_json()
-        data["stories"][0]["tasks"][0]["id"] = "TASK-1"
-        errors = validator.validate_sprint_json(data)
-        assert any("TASK-1" in e for e in errors)
-
-    def test_unknown_task_ref_flagged(self, validator):
-        data = _valid_sprint_json()
-        data["stories"][0]["tasks"][0]["blocked_by"] = ["T-999"]
-        errors = validator.validate_sprint_json(data)
-        assert any("T-999" in e for e in errors)
-
-
-class TestConvertSprintMdToJson:
-    def test_extracts_sprint_metadata(self, validator):
-        data = validator.convert_sprint_md_to_json(_valid_sprint_md())
-        assert data["sprint"] == 1
-        assert data["milestone"] == "MVP"
-        assert data["due_date"] == "2026-04-30"
-
-    def test_extracts_stories_and_tasks(self, validator):
-        data = validator.convert_sprint_md_to_json(_valid_sprint_md())
-        assert data["stories"][0]["id"] == "US-001"
-        assert data["stories"][0]["tasks"][0]["id"] == "T-001"
 
 
 # ═══════════════════════════════════════════════════════════════════

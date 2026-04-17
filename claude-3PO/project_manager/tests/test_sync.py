@@ -276,38 +276,49 @@ class TestSaveFlatData:
 
 class TestSetBlockingRelationship:
     @patch.object(sp, "_fetch_node_ids", return_value={100: "NODE-100", 200: "NODE-200"})
-    @patch.object(sp, "run")
-    def test_calls_addBlockedBy(self, mock_run, mock_fetch):
+    @patch.object(sp, "execute_batched_mutations")
+    def test_calls_addBlockedBy(self, mock_exec, mock_fetch):
         items = [{"id": "T-001", "issue_number": 100, "blocked_by": ["SK-001"]}]
         id_map = {"SK-001": 200}
         sp.set_blocking_relationships("org/repo", items, id_map)
-        assert any(
-            "graphql" in str(c) and "addBlockedBy" in str(c)
-            for c in mock_run.call_args_list
-        )
+        mutations = mock_exec.call_args[0][0]
+        assert any("addBlockedBy" in m for m in mutations)
+        assert len(mutations) == 1
 
     @patch.object(sp, "_fetch_node_ids", return_value={})
-    @patch.object(sp, "run")
-    def test_skips_empty(self, mock_run, mock_fetch, capsys):
+    @patch.object(sp, "execute_batched_mutations")
+    def test_skips_empty(self, mock_exec, mock_fetch, capsys):
         sp.set_blocking_relationships("org/repo", [], {})
         assert "No blocking" in capsys.readouterr().out
-        assert not any("graphql" in str(c) for c in mock_run.call_args_list)
+        mock_exec.assert_not_called()
 
     @patch.object(sp, "_fetch_node_ids", return_value={})
-    @patch.object(sp, "run")
-    def test_skips_when_node_id_missing(self, mock_run, mock_fetch, capsys):
+    @patch.object(sp, "execute_batched_mutations")
+    def test_skips_when_node_id_missing(self, mock_exec, mock_fetch, capsys):
         items = [{"id": "T-001", "issue_number": 100, "blocked_by": ["SK-001"]}]
         sp.set_blocking_relationships("org/repo", items, {"SK-001": 200})
-        err = capsys.readouterr().out
-        assert "Missing node ID" in err
+        out = capsys.readouterr().out
+        assert "Missing node ID" in out
+        # Called but with zero mutations (all pairs skipped)
+        mutations = mock_exec.call_args[0][0]
+        assert mutations == []
 
     @patch.object(sp, "_fetch_node_ids", return_value={100: "NODE-100"})
-    @patch.object(sp, "run")
-    def test_skips_unresolved_ids(self, mock_run, mock_fetch):
+    @patch.object(sp, "execute_batched_mutations")
+    def test_skips_unresolved_ids(self, mock_exec, mock_fetch):
         items = [{"id": "T-001", "issue_number": 100, "blocked_by": ["MISSING"]}]
         sp.set_blocking_relationships("org/repo", items, {})
-        # No mutation run because unresolved id filtered out
-        assert not any("addBlockedBy" in str(c) for c in mock_run.call_args_list)
+        # No pairs collected → no mutations produced → exec not called
+        mock_exec.assert_not_called()
+
+    @patch.object(sp, "execute_batched_mutations")
+    def test_reuses_node_ids_when_provided(self, mock_exec):
+        items = [{"id": "T-001", "issue_number": 100, "blocked_by": ["SK-001"]}]
+        id_map = {"SK-001": 200}
+        node_ids = {100: "NODE-100", 200: "NODE-200"}
+        sp.set_blocking_relationships("org/repo", items, id_map, node_ids=node_ids)
+        mutations = mock_exec.call_args[0][0]
+        assert any("addBlockedBy" in m for m in mutations)
 
 
 # ---------------------------------------------------------------------------
@@ -316,9 +327,24 @@ class TestSetBlockingRelationship:
 
 
 class TestResolveExistingIssues:
-    def test_already_has_issue_number(self):
+    def test_live_issue_number_kept(self):
         tasks = [{"id": "T-001", "title": "X", "issue_number": 42}]
-        assert sp.resolve_existing_issues(tasks, {}) == []
+        # #42 is in the live cache → keep it, no re-creation
+        assert sp.resolve_existing_issues(tasks, {"T-001: X": 42}) == []
+        assert tasks[0]["issue_number"] == 42
+
+    def test_stale_issue_number_dropped(self):
+        tasks = [{"id": "T-001", "title": "X", "issue_number": 999}]
+        # #999 not in live cache → dropped, treated as needs-creation
+        needs = sp.resolve_existing_issues(tasks, {})
+        assert needs == tasks
+        assert "issue_number" not in tasks[0]
+
+    def test_stale_number_relinks_by_title_if_possible(self):
+        tasks = [{"id": "T-001", "title": "X", "issue_number": 999}]
+        # Stale #999 dropped; title lookup finds live #42
+        assert sp.resolve_existing_issues(tasks, {"T-001: X": 42}) == []
+        assert tasks[0]["issue_number"] == 42
 
     def test_matches_existing_by_title(self):
         tasks = [{"id": "T-001", "title": "X"}]
@@ -337,7 +363,8 @@ class TestResolveExistingIssues:
             {"id": "T-002", "title": "Needs"},
             {"id": "T-003", "title": "Found"},
         ]
-        needs = sp.resolve_existing_issues(tasks, {"T-003: Found": 5})
+        # #1 is live (T-001 stays linked); T-003 matches by title; T-002 needs creation
+        needs = sp.resolve_existing_issues(tasks, {"T-001: Has": 1, "T-003: Found": 5})
         assert [t["id"] for t in needs] == ["T-002"]
 
 

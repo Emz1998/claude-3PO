@@ -22,11 +22,15 @@ _E2E_ID_PREFIXES = ("SK-E2E-", "TS-E2E-", "T-E2E-")
 
 
 def _cleanup_orphan_e2e_issues(repo: str) -> None:
-    """Delete any [E2E]-prefixed issues that escaped project-scoped cleanup."""
-    for issue in sp._fetch_all_issues(repo, "all"):
-        title = issue.get("title", "")
-        if any(pref in title for pref in _E2E_ID_PREFIXES):
-            sp._delete_issue(repo, issue["number"])
+    """Batched delete of any [E2E]-prefixed issues outside the project."""
+    orphans = [
+        i for i in sp._fetch_all_issues(repo, "all")
+        if any(pref in i.get("title", "") for pref in _E2E_ID_PREFIXES)
+    ]
+    if not orphans:
+        return
+    node_ids = sp._fetch_node_ids(repo, [i["number"] for i in orphans])
+    sp.execute_batched_mutations(sp._delete_issue_mutations(node_ids))
 
 
 def _gh_authenticated() -> bool:

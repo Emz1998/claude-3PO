@@ -16,7 +16,7 @@ Implement story "$0" by following the phased workflow below. Each phase is enfor
 
 ## Story Context
 
-!`python3 '${CLAUDE_PLUGIN_ROOT}/scripts/github_project/project_manager.py' view $0`
+!`cd '${CLAUDE_PLUGIN_ROOT}' && python3 -m project_manager.cli view $0`
 
 ## Instructions
 

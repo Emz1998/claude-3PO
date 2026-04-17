@@ -210,5 +210,5 @@ SPECS_AC_MARKERS = ("- [ ]", "- [x]")
 # Prefixes used to detect unfilled template placeholders in metadata values.
 SPECS_PLACEHOLDER_PREFIXES = ("[", "<")
 
-# Heading that introduces the story/task list block in backlog.md and sprint.md.
+# Heading that introduces the story/task list block in backlog.md.
 SPECS_STORIES_HEADING = "Stories"

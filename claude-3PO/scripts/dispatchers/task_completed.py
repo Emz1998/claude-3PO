@@ -19,14 +19,15 @@ from lib.hook import Hook
 from lib.state_store import StateStore
 
 STATE_PATH = SCRIPTS_DIR / "state.jsonl"
-PROJECT_MANAGER = SCRIPTS_DIR / "github_project" / "project_manager.py"
+PLUGIN_ROOT = SCRIPTS_DIR.parent
 
 
 def _update_project_task_status(task_id: str, status: str) -> None:
     """Call project_manager to update task status. Fire-and-forget."""
     try:
         subprocess.run(
-            [sys.executable, str(PROJECT_MANAGER), "update", task_id, "--status", status],
+            [sys.executable, "-m", "project_manager.cli", "update", task_id, "--status", status],
+            cwd=str(PLUGIN_ROOT),
             capture_output=True,
             text=True,
             timeout=15,
