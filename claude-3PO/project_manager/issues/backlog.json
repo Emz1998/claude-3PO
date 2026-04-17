@@ -10,6 +10,7 @@
     {
       "id": "SK-001",
       "type": "Spike",
+      "milestone": "v0.1.0",
       "labels": [
         "spike",
         "research",
@@ -21,8 +22,6 @@
       "points": 2,
       "status": "In progress",
       "tdd": true,
-      "startDate": "2026-02-17",
-      "targetDate": "2026-02-21",
       "priority": "P0",
       "is_blocking": [
         "TS-002"
@@ -34,15 +33,67 @@
         "Feature set recommendations provided with pros/cons",
         "Expected accuracy impact assessed for each feature"
       ],
-      "item_type": "story",
-      "milestone": "v.0.1.0",
-      "issue_number": 258,
       "start_date": "2026-02-17",
-      "target_date": "2026-02-21"
+      "target_date": "2026-02-21",
+      "tasks": [
+        {
+          "id": "T-001",
+          "type": "task",
+          "labels": [
+            "analysis",
+            "ml-features"
+          ],
+          "title": "Run feature importance analysis on historical NBA data",
+          "description": "Compute feature importances via XGBoost on prior seasons; rank top 10",
+          "status": "In progress",
+          "priority": "P0",
+          "complexity": "M",
+          "is_blocking": [
+            "T-002"
+          ],
+          "blocked_by": [],
+          "acceptance_criteria": [
+            "Feature importance scores computed",
+            "Top 10 features ranked and logged"
+          ],
+          "item_type": "task",
+          "parent_story_id": "SK-001",
+          "milestone": "v0.1.0",
+          "issue_number": 388
+        },
+        {
+          "id": "T-002",
+          "type": "task",
+          "labels": [
+            "research",
+            "analysis"
+          ],
+          "title": "Draft feature recommendation memo with expected accuracy impact",
+          "description": "Write decisions.md entry summarizing trade-offs and expected deltas",
+          "status": "Backlog",
+          "priority": "P1",
+          "complexity": "S",
+          "is_blocking": [],
+          "blocked_by": [
+            "T-001"
+          ],
+          "acceptance_criteria": [
+            "decisions.md updated with feature recommendations",
+            "Each feature's pros/cons listed"
+          ],
+          "item_type": "task",
+          "parent_story_id": "SK-001",
+          "milestone": "v0.1.0",
+          "issue_number": 391
+        }
+      ],
+      "item_type": "story",
+      "issue_number": 379
     },
     {
       "id": "SK-002",
       "type": "Spike",
+      "milestone": "v0.1.0",
       "labels": [
         "spike",
         "timing",
@@ -54,8 +105,6 @@
       "points": 1,
       "status": "In progress",
       "tdd": false,
-      "startDate": "2026-02-17",
-      "targetDate": "2026-02-21",
       "priority": "P1",
       "is_blocking": [],
       "blocked_by": [
@@ -67,15 +116,66 @@
         "Cron schedule recommended for daily pipeline execution",
         "Team alignment achieved on timing strategy"
       ],
-      "item_type": "story",
-      "milestone": "v.0.1.0",
-      "issue_number": 262,
       "start_date": "2026-02-17",
-      "target_date": "2026-02-21"
+      "target_date": "2026-02-21",
+      "tasks": [
+        {
+          "id": "T-003",
+          "type": "task",
+          "labels": [
+            "timing",
+            "analysis"
+          ],
+          "title": "Compare data availability windows for pre-market vs post-release",
+          "description": "Measure freshness/completeness of stats in each window",
+          "status": "Backlog",
+          "priority": "P1",
+          "complexity": "S",
+          "is_blocking": [
+            "T-004"
+          ],
+          "blocked_by": [],
+          "acceptance_criteria": [
+            "Latency and completeness metrics captured for both windows"
+          ],
+          "item_type": "task",
+          "parent_story_id": "SK-002",
+          "milestone": "v0.1.0",
+          "issue_number": 387
+        },
+        {
+          "id": "T-004",
+          "type": "task",
+          "labels": [
+            "decision",
+            "documentation"
+          ],
+          "title": "Record timing decision and propose cron schedule",
+          "description": "Summarize rationale in decisions.md and propose daily cron",
+          "status": "Backlog",
+          "priority": "P1",
+          "complexity": "S",
+          "is_blocking": [],
+          "blocked_by": [
+            "T-003"
+          ],
+          "acceptance_criteria": [
+            "decisions.md updated with chosen timing",
+            "Cron expression proposed"
+          ],
+          "item_type": "task",
+          "parent_story_id": "SK-002",
+          "milestone": "v0.1.0",
+          "issue_number": 390
+        }
+      ],
+      "item_type": "story",
+      "issue_number": 380
     },
     {
       "id": "TS-012",
       "type": "Tech",
+      "milestone": "v0.1.0",
       "labels": [
         "setup",
         "frontend",
@@ -87,8 +187,6 @@
       "points": 3,
       "status": "In progress",
       "tdd": false,
-      "startDate": "2026-02-17",
-      "targetDate": "2026-02-24",
       "priority": "P0",
       "is_blocking": [],
       "blocked_by": [],
@@ -98,15 +196,68 @@
         "App Router setup complete",
         "ESLint and Prettier configured"
       ],
-      "item_type": "story",
-      "milestone": "v.0.1.0",
-      "issue_number": 264,
       "start_date": "2026-02-17",
-      "target_date": "2026-02-24"
+      "target_date": "2026-02-24",
+      "tasks": [
+        {
+          "id": "T-005",
+          "type": "task",
+          "labels": [
+            "nextjs",
+            "setup"
+          ],
+          "title": "Initialize Next.js 15 project with App Router",
+          "description": "create-next-app with TS, App Router, and base folder layout",
+          "status": "Done",
+          "priority": "P0",
+          "complexity": "S",
+          "is_blocking": [
+            "T-006"
+          ],
+          "blocked_by": [],
+          "acceptance_criteria": [
+            "Project boots via `npm run dev`",
+            "App Router routes render"
+          ],
+          "item_type": "task",
+          "parent_story_id": "TS-012",
+          "milestone": "v0.1.0",
+          "issue_number": 392
+        },
+        {
+          "id": "T-006",
+          "type": "task",
+          "labels": [
+            "linting",
+            "code-quality"
+          ],
+          "title": "Configure ESLint, Prettier, and tsconfig for strict mode",
+          "description": "Strict TS, ESLint with shared config, Prettier format-on-save",
+          "status": "In progress",
+          "priority": "P1",
+          "complexity": "S",
+          "is_blocking": [],
+          "blocked_by": [
+            "T-005"
+          ],
+          "acceptance_criteria": [
+            "eslint runs clean",
+            "prettier formats on save",
+            "tsc --noEmit passes under strict"
+          ],
+          "item_type": "task",
+          "parent_story_id": "TS-012",
+          "milestone": "v0.1.0",
+          "issue_number": 389
+        }
+      ],
+      "item_type": "story",
+      "issue_number": 383
     },
     {
       "id": "TS-013",
       "type": "Tech",
+      "milestone": "v0.1.0",
       "labels": [
         "setup",
         "database",
@@ -118,8 +269,6 @@
       "points": 2,
       "status": "In review",
       "tdd": false,
-      "startDate": "2026-02-17",
-      "targetDate": "2026-02-24",
       "priority": "P0",
       "is_blocking": [],
       "blocked_by": [],
@@ -129,15 +278,67 @@
         "Collection schemas defined",
         "Security rules configured and tested"
       ],
-      "item_type": "story",
-      "milestone": "v.0.1.0",
-      "issue_number": 263,
       "start_date": "2026-02-17",
-      "target_date": "2026-02-24"
+      "target_date": "2026-02-24",
+      "tasks": [
+        {
+          "id": "T-007",
+          "type": "task",
+          "labels": [
+            "firebase",
+            "setup"
+          ],
+          "title": "Create Firebase project and load credentials via env",
+          "description": "Create project, service account, load credentials locally via .env",
+          "status": "Done",
+          "priority": "P0",
+          "complexity": "S",
+          "is_blocking": [
+            "T-008"
+          ],
+          "blocked_by": [],
+          "acceptance_criteria": [
+            "Firebase app initialized at startup",
+            "Credentials never committed"
+          ],
+          "item_type": "task",
+          "parent_story_id": "TS-013",
+          "milestone": "v0.1.0",
+          "issue_number": 393
+        },
+        {
+          "id": "T-008",
+          "type": "task",
+          "labels": [
+            "firestore",
+            "security"
+          ],
+          "title": "Write Firestore security rules for predictions collection",
+          "description": "Allow server writes, deny anon writes, allow signed-in reads",
+          "status": "In review",
+          "priority": "P1",
+          "complexity": "M",
+          "is_blocking": [],
+          "blocked_by": [
+            "T-007"
+          ],
+          "acceptance_criteria": [
+            "Rules pass emulator tests",
+            "Deployed to live project"
+          ],
+          "item_type": "task",
+          "parent_story_id": "TS-013",
+          "milestone": "v0.1.0",
+          "issue_number": 386
+        }
+      ],
+      "item_type": "story",
+      "issue_number": 381
     },
     {
       "id": "TS-016",
       "type": "Tech",
+      "milestone": "v0.1.0",
       "labels": [
         "setup",
         "ml-pipeline",
@@ -149,8 +350,6 @@
       "points": 2,
       "status": "Done",
       "tdd": false,
-      "startDate": "2026-02-17",
-      "targetDate": "2026-02-24",
       "priority": "P0",
       "is_blocking": [
         "TS-001"
@@ -162,15 +361,66 @@
         "Pytest and mypy configured",
         "Pipeline folder structure created"
       ],
-      "item_type": "story",
-      "milestone": "v.0.1.0",
-      "issue_number": 261,
       "start_date": "2026-02-17",
-      "target_date": "2026-02-24"
+      "target_date": "2026-02-24",
+      "tasks": [
+        {
+          "id": "T-009",
+          "type": "task",
+          "labels": [
+            "python",
+            "setup"
+          ],
+          "title": "Bootstrap virtualenv and install ML pipeline dependencies",
+          "description": "Create .venv, pin deps in requirements.txt, install",
+          "status": "Done",
+          "priority": "P0",
+          "complexity": "S",
+          "is_blocking": [
+            "T-010"
+          ],
+          "blocked_by": [],
+          "acceptance_criteria": [
+            "Fresh clone can `pip install -r requirements.txt` cleanly"
+          ],
+          "item_type": "task",
+          "parent_story_id": "TS-016",
+          "milestone": "v0.1.0",
+          "issue_number": 394
+        },
+        {
+          "id": "T-010",
+          "type": "task",
+          "labels": [
+            "testing",
+            "linting"
+          ],
+          "title": "Configure pytest and mypy with repo-wide defaults",
+          "description": "pyproject.toml with pytest/mypy config, pre-commit hooks",
+          "status": "Done",
+          "priority": "P1",
+          "complexity": "S",
+          "is_blocking": [],
+          "blocked_by": [
+            "T-009"
+          ],
+          "acceptance_criteria": [
+            "pytest runs green",
+            "mypy passes on pipeline source"
+          ],
+          "item_type": "task",
+          "parent_story_id": "TS-016",
+          "milestone": "v0.1.0",
+          "issue_number": 395
+        }
+      ],
+      "item_type": "story",
+      "issue_number": 382
     },
     {
       "id": "TS-001",
       "type": "Tech",
+      "milestone": "v0.1.0",
       "labels": [
         "api",
         "data-ingestion",
@@ -182,8 +432,6 @@
       "points": 5,
       "status": "In progress",
       "tdd": false,
-      "startDate": "2026-02-24",
-      "targetDate": "2026-02-28",
       "priority": "P0",
       "is_blocking": [
         "TS-002"
@@ -197,15 +445,67 @@
         "Data stored in Parquet format",
         "API integration tested and documented"
       ],
-      "item_type": "story",
-      "milestone": "v.0.1.0",
-      "issue_number": 260,
       "start_date": "2026-02-24",
-      "target_date": "2026-02-28"
+      "target_date": "2026-02-28",
+      "tasks": [
+        {
+          "id": "T-011",
+          "type": "task",
+          "labels": [
+            "api",
+            "nba-stats"
+          ],
+          "title": "Build NBA Stats API client with rate limiting",
+          "description": "Wrap stats.nba.com endpoints with retries + backoff",
+          "status": "In progress",
+          "priority": "P0",
+          "complexity": "M",
+          "is_blocking": [
+            "T-012"
+          ],
+          "blocked_by": [],
+          "acceptance_criteria": [
+            "Client honours rate limits",
+            "Retries on transient failures"
+          ],
+          "item_type": "task",
+          "parent_story_id": "TS-001",
+          "milestone": "v0.1.0",
+          "issue_number": 399
+        },
+        {
+          "id": "T-012",
+          "type": "task",
+          "labels": [
+            "data-ingestion",
+            "storage"
+          ],
+          "title": "Persist fetched team stats to Parquet files",
+          "description": "Normalize API response and write partitioned Parquet",
+          "status": "Backlog",
+          "priority": "P1",
+          "complexity": "M",
+          "is_blocking": [],
+          "blocked_by": [
+            "T-011"
+          ],
+          "acceptance_criteria": [
+            "Parquet files round-trip via pyarrow",
+            "Partitioned by season + team"
+          ],
+          "item_type": "task",
+          "parent_story_id": "TS-001",
+          "milestone": "v0.1.0",
+          "issue_number": 398
+        }
+      ],
+      "item_type": "story",
+      "issue_number": 385
     },
     {
       "id": "TS-002",
       "type": "Tech",
+      "milestone": "v0.1.0",
       "labels": [
         "ml-model",
         "xgboost",
@@ -217,8 +517,6 @@
       "points": 8,
       "status": "Backlog",
       "tdd": false,
-      "startDate": "2026-02-28",
-      "targetDate": "2026-03-02",
       "priority": "P0",
       "is_blocking": [],
       "blocked_by": [
@@ -231,11 +529,62 @@
         "Predictions generated for test data",
         "Predictions successfully written to Firestore"
       ],
-      "item_type": "story",
-      "milestone": "v.0.1.0",
-      "issue_number": 259,
       "start_date": "2026-02-28",
-      "target_date": "2026-03-02"
+      "target_date": "2026-03-02",
+      "tasks": [
+        {
+          "id": "T-013",
+          "type": "task",
+          "labels": [
+            "xgboost",
+            "training"
+          ],
+          "title": "Implement XGBoost training loop with cross-validation",
+          "description": "Train/eval loop with k-fold CV and hyperparameter grid",
+          "status": "Backlog",
+          "priority": "P0",
+          "complexity": "L",
+          "is_blocking": [
+            "T-014"
+          ],
+          "blocked_by": [],
+          "acceptance_criteria": [
+            "Model trains on prepared data",
+            "CV scores logged"
+          ],
+          "item_type": "task",
+          "parent_story_id": "TS-002",
+          "milestone": "v0.1.0",
+          "issue_number": 396
+        },
+        {
+          "id": "T-014",
+          "type": "task",
+          "labels": [
+            "predictions",
+            "firestore"
+          ],
+          "title": "Generate predictions and persist to Firestore",
+          "description": "Produce per-game predictions; write to Firestore collection",
+          "status": "Backlog",
+          "priority": "P1",
+          "complexity": "M",
+          "is_blocking": [],
+          "blocked_by": [
+            "T-013"
+          ],
+          "acceptance_criteria": [
+            "Predictions written to Firestore predictions/ collection",
+            "Schema validated by security rules"
+          ],
+          "item_type": "task",
+          "parent_story_id": "TS-002",
+          "milestone": "v0.1.0",
+          "issue_number": 397
+        }
+      ],
+      "item_type": "story",
+      "issue_number": 384
     }
   ]
 }

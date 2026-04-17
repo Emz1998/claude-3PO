@@ -43,7 +43,8 @@ def build_issue_body(item: dict[str, Any]) -> str:
     if desc:
         parts.append(desc)
     if criteria:
-        parts.append("\n".join(f"- [ ] {ac}" for ac in criteria))
+        checklist = "\n".join(f"- [ ] {ac}" for ac in criteria)
+        parts.append(f"## Acceptance Criteria\n\n{checklist}")
     return "\n\n".join(parts)
 
 
@@ -223,7 +224,20 @@ def _collect_blocking_pairs(
 
 
 def _fetch_node_ids(repo: str, issue_nums: set[int]) -> dict[int, str]:
-    return {n: _get_issue_node_id(repo, n) for n in issue_nums if _get_issue_node_id(repo, n)}
+    """Batched node-ID lookup via a single GraphQL query (instead of N REST calls)."""
+    nums = sorted(set(issue_nums))
+    if not nums:
+        return {}
+    owner, name = repo.split("/", 1)
+    aliases = " ".join(f"i{n}: issue(number: {n}) {{ id number }}" for n in nums)
+    query = f'{{ repository(owner: "{owner}", name: "{name}") {{ {aliases} }} }}'
+    result = gh_json(["gh", "api", "graphql", "-f", f"query={query}"])
+    repo_data = (result or {}).get("data", {}).get("repository") or {}
+    out: dict[int, str] = {}
+    for val in repo_data.values():
+        if val and val.get("id"):
+            out[val["number"]] = val["id"]
+    return out
 
 
 def _add_blocked_by(blocked_node: str, blocker_node: str) -> None:
@@ -363,8 +377,13 @@ def _claim_title(full_title: str) -> None:
 
 
 def _task_labels(task: dict[str, Any]) -> list[str]:
-    labels = list(task.get("labels") or [])
-    item_type = task.get("type", "")
+    """Return lowercase labels for an item, appending its ``type`` if missing.
+
+    GitHub label uniqueness is case-insensitive; lowercase avoids
+    ``gh issue create --label Spike`` failing when a ``spike`` already exists.
+    """
+    labels = [str(lab).lower() for lab in (task.get("labels") or [])]
+    item_type = str(task.get("type", "")).lower()
     if item_type and item_type not in labels:
         labels.append(item_type)
     return labels
@@ -476,6 +495,18 @@ def get_project_items(project_number: int, owner: str) -> list[dict]:
             "--owner", owner, "--format", "json", "--limit", "200",
         ]
     ).get("items", [])
+
+
+def _project_issues(project_number: int, owner: str) -> list[dict[str, Any]]:
+    """Return ``[{title, number}]`` for every issue attached to the project."""
+    items = get_project_items(project_number, owner)
+    result: list[dict[str, Any]] = []
+    for it in items:
+        content = it.get("content") or {}
+        number = content.get("number")
+        if number:
+            result.append({"title": content.get("title", ""), "number": number})
+    return result
 
 
 def build_field_map(fields: list[dict]) -> dict[str, dict]:
@@ -912,24 +943,18 @@ def _remove_issues_from_project(
     to_remove = [(iss, item_id) for iss, item_id in to_remove if item_id]
     if not to_remove:
         return
-    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as pool:
-        futures = {
-            pool.submit(_remove_from_project, project_number, owner, item_id): iss
-            for iss, item_id in to_remove
-        }
-        for fut in as_completed(futures):
-            fut.result()
-            print(f"  ✗ Removed #{futures[fut]['number']} from project")
+    # Serialized: GitHub secondary rate limits penalize concurrent project mutations.
+    for iss, item_id in to_remove:
+        _remove_from_project(project_number, owner, item_id)
+        print(f"  ✗ Removed #{iss['number']} from project")
 
 
 def _delete_issues_parallel(repo: str, issues: list[dict[str, Any]]) -> None:
-    print(f"\nDeleting {len(issues)} issues permanently (parallel)...")
-    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as pool:
-        futures = {pool.submit(_delete_issue, repo, iss["number"]): iss for iss in issues}
-        for fut in as_completed(futures):
-            iss = futures[fut]
-            fut.result()
-            print(f"  ✗ Deleted #{iss['number']}: {iss['title']}")
+    print(f"\nDeleting {len(issues)} issues permanently...")
+    # Serialized: avoid GitHub secondary rate limits on content-deleting mutations.
+    for iss in issues:
+        _delete_issue(repo, iss["number"])
+        print(f"  ✗ Deleted #{iss['number']}: {iss['title']}")
 
 
 def _clear_issue_numbers(backlog_data: dict[str, Any], backlog_path: Path) -> None:
@@ -962,8 +987,18 @@ def _ensure_titles_present(items: list[dict], label: str) -> None:
             raise ValueError(f"Item missing 'title': {t}")
 
 
+def _pre_create_labels(items: list[dict], repo: str) -> None:
+    """Ensure all labels exist before we fan out parallel issue creates."""
+    unique: set[str] = set()
+    for t in items:
+        unique.update(_task_labels(t))
+    for lab in sorted(unique):
+        ensure_label(lab, repo)
+
+
 def _create_missing_in_parallel(items: list[dict], repo: str, label: str) -> None:
     print(f"\nPass 1b: Creating {len(items)} new {label} (parallel)...")
+    _pre_create_labels(items, repo)
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as pool:
         futures = {pool.submit(_create_issue, t, repo): t for t in items}
         for fut in as_completed(futures):
@@ -988,34 +1023,66 @@ def _resolve_or_create(
 def _add_all_to_project_parallel(
     all_items: list[dict], project: int, owner: str, repo: str
 ) -> None:
-    print("\nAdding issues to project (parallel)...")
-    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as pool:
-        futures = {
-            pool.submit(
-                add_to_project, project, owner, issue_url(repo, t["issue_number"])
-            ): t
-            for t in all_items
-        }
-        for fut in as_completed(futures):
-            fut.result()
+    print("\nAdding issues to project...")
+    # Serialized: GitHub secondary rate limits penalize concurrent project mutations.
+    for t in all_items:
+        add_to_project(project, owner, issue_url(repo, t["issue_number"]))
     print(f"  ✓ {len(all_items)} items added/verified")
+
+
+def _fetch_rest_ids_parallel(repo: str, issue_nums: list[int]) -> dict[int, int]:
+    """Parallel REST-ID lookups (reads only — safe to fan out)."""
+    nums = list({n for n in issue_nums if n})
+    if not nums:
+        return {}
+    result: dict[int, int] = {}
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as pool:
+        futures = {pool.submit(_get_issue_rest_id, repo, n): n for n in nums}
+        for fut in as_completed(futures):
+            rid = fut.result()
+            if rid:
+                result[futures[fut]] = rid
+    return result
+
+
+def _post_sub_issue(repo: str, parent_num: int | str, child_rest_id: int) -> None:
+    run(
+        [
+            "gh", "api", f"repos/{repo}/issues/{parent_num}/sub_issues",
+            "-F", f"sub_issue_id={child_rest_id}", "--method", "POST",
+        ],
+        check=False,
+    )
 
 
 def _apply_parent_child(
     tasks: list[dict], id_map: dict[str, int], repo: str
 ) -> None:
     print("\nPass 3: Setting parent-child relationships...")
-    for t in tasks:
-        story_id = t.get("parent_story_id")
-        if not story_id:
-            continue
-        story_num = id_map.get(story_id)
-        if story_num and t.get("issue_number"):
-            print(
-                f"  Setting #{t['issue_number']} ({t['id']}) as sub-issue of "
-                f"#{story_num} ({story_id})"
-            )
-            set_parent_issue(repo, t["issue_number"], story_num)
+    pending = [
+        (t, id_map[t["parent_story_id"]])
+        for t in tasks
+        if t.get("parent_story_id") and t.get("issue_number")
+        and id_map.get(t.get("parent_story_id"))
+    ]
+    rest_ids = _fetch_rest_ids_parallel(repo, [t["issue_number"] for t, _ in pending])
+    for task, parent_num in pending:
+        _commit_sub_issue(repo, task, parent_num, rest_ids)
+
+
+def _commit_sub_issue(
+    repo: str, task: dict, parent_num: int, rest_ids: dict[int, int]
+) -> None:
+    child_num = task["issue_number"]
+    rid = rest_ids.get(child_num)
+    if rid is None:
+        print(f"  ⚠ Could not get REST ID for #{child_num}", file=sys.stderr)
+        return
+    print(
+        f"  Setting #{child_num} ({task['id']}) as sub-issue of "
+        f"#{parent_num} ({task['parent_story_id']})"
+    )
+    _post_sub_issue(repo, parent_num, rid)
 
 
 def _writeback_numbers(
@@ -1092,12 +1159,12 @@ class Syncer:
 
     def delete_all(self, *, dry_run: bool = False) -> int:
         stories, tasks, _, backlog_data = load_flat_data(self.backlog_path)
-        print("Fetching all issues (open + closed) from GitHub...")
-        issues = _fetch_all_issues(self.repo, "all")
+        print(f"Fetching issues currently in project {self.project}...")
+        issues = _project_issues(self.project, self.owner)
         if not issues:
-            print("No issues found in the repo.")
+            print("No issues found in the project.")
             return 0
-        print(f"Found {len(issues)} issues to delete.")
+        print(f"Found {len(issues)} project issue(s) to delete.")
         branches = _branches_for_issues(issues, stories + tasks)
         if dry_run:
             _print_delete_dry_run(issues, branches)
@@ -1159,8 +1226,10 @@ class Syncer:
         print(f"  Found {len(items)} items in project")
         print("\nPass 2: Setting project fields (batched GraphQL)...")
         run_pass2_batched(all_items, items, project_id, field_map, self.repo)
-        full_stories, full_tasks, _, _ = load_flat_data(self.backlog_path)
-        full_id_map = build_id_to_issue_number_map(full_stories, full_tasks)
+        # Build the id->issue_number map from in-memory items (disk isn't
+        # written back until the end of sync, so reading the file here
+        # would miss newly created numbers).
+        full_id_map = build_id_to_issue_number_map(stories, tasks)
         _apply_parent_child(tasks, full_id_map, self.repo)
         print("\nPass 4: Setting blocking relationships...")
         set_blocking_relationships(self.repo, all_items, full_id_map)

@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-PROJECT = "Avaris AI"
+PROJECT = "Claude-3PO"
 REPO = "Emz1998/claude-3PO"
 OWNER = "Emz1998"
 PROJECT_NUMBER = 4

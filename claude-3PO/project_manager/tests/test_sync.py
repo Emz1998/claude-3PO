@@ -144,14 +144,20 @@ class TestBuildIssueBody:
         item = {"description": "Desc", "acceptance_criteria": ["AC1", "AC2"]}
         result = sp.build_issue_body(item)
         assert "Desc" in result
+        assert "## Acceptance Criteria" in result
         assert "- [ ] AC1" in result
         assert "- [ ] AC2" in result
 
     def test_no_criteria(self):
-        assert sp.build_issue_body({"description": "Just a desc"}) == "Just a desc"
+        # No criteria → no header, just the description
+        result = sp.build_issue_body({"description": "Just a desc"})
+        assert result == "Just a desc"
+        assert "Acceptance Criteria" not in result
 
     def test_empty_description_with_criteria(self):
-        assert sp.build_issue_body({"acceptance_criteria": ["AC1"]}) == "- [ ] AC1"
+        result = sp.build_issue_body({"acceptance_criteria": ["AC1"]})
+        assert "## Acceptance Criteria" in result
+        assert "- [ ] AC1" in result
 
     def test_both_empty(self):
         assert sp.build_issue_body({"description": "", "acceptance_criteria": []}) == ""
@@ -269,9 +275,9 @@ class TestSaveFlatData:
 
 
 class TestSetBlockingRelationship:
-    @patch.object(sp, "_get_issue_node_id", return_value="NODE")
+    @patch.object(sp, "_fetch_node_ids", return_value={100: "NODE-100", 200: "NODE-200"})
     @patch.object(sp, "run")
-    def test_calls_addBlockedBy(self, mock_run, mock_node_id):
+    def test_calls_addBlockedBy(self, mock_run, mock_fetch):
         items = [{"id": "T-001", "issue_number": 100, "blocked_by": ["SK-001"]}]
         id_map = {"SK-001": 200}
         sp.set_blocking_relationships("org/repo", items, id_map)
@@ -280,24 +286,24 @@ class TestSetBlockingRelationship:
             for c in mock_run.call_args_list
         )
 
-    @patch.object(sp, "_get_issue_node_id", return_value="NODE")
+    @patch.object(sp, "_fetch_node_ids", return_value={})
     @patch.object(sp, "run")
-    def test_skips_empty(self, mock_run, mock_node_id, capsys):
+    def test_skips_empty(self, mock_run, mock_fetch, capsys):
         sp.set_blocking_relationships("org/repo", [], {})
         assert "No blocking" in capsys.readouterr().out
         assert not any("graphql" in str(c) for c in mock_run.call_args_list)
 
-    @patch.object(sp, "_get_issue_node_id", return_value=None)
+    @patch.object(sp, "_fetch_node_ids", return_value={})
     @patch.object(sp, "run")
-    def test_skips_when_node_id_missing(self, mock_run, mock_node_id, capsys):
+    def test_skips_when_node_id_missing(self, mock_run, mock_fetch, capsys):
         items = [{"id": "T-001", "issue_number": 100, "blocked_by": ["SK-001"]}]
         sp.set_blocking_relationships("org/repo", items, {"SK-001": 200})
         err = capsys.readouterr().out
         assert "Missing node ID" in err
 
-    @patch.object(sp, "_get_issue_node_id", return_value="NODE")
+    @patch.object(sp, "_fetch_node_ids", return_value={100: "NODE-100"})
     @patch.object(sp, "run")
-    def test_skips_unresolved_ids(self, mock_run, mock_node_id):
+    def test_skips_unresolved_ids(self, mock_run, mock_fetch):
         items = [{"id": "T-001", "issue_number": 100, "blocked_by": ["MISSING"]}]
         sp.set_blocking_relationships("org/repo", items, {})
         # No mutation run because unresolved id filtered out
@@ -504,15 +510,27 @@ class TestCreateIssue:
         task = {"id": "T-001", "title": "X", "type": "Spike", "labels": []}
         sp._create_issue(task, "org/repo")
         cmd = mock_run.call_args[0][0]
-        assert "Spike" in cmd
+        assert "spike" in cmd
+        assert "Spike" not in cmd
+
+    @patch.object(sp, "run", return_value="https://github.com/org/repo/issues/1")
+    @patch.object(sp, "ensure_label")
+    def test_lowercases_labels_and_type(self, mock_label, mock_run):
+        task = {"id": "T-002", "title": "X", "type": "Spike", "labels": ["Infra"]}
+        sp._create_issue(task, "org/repo")
+        cmd = mock_run.call_args[0][0]
+        assert "spike" in cmd
+        assert "infra" in cmd
+        assert "Spike" not in cmd
+        assert "Infra" not in cmd
 
     @patch.object(sp, "run", return_value="https://github.com/org/repo/issues/1")
     @patch.object(sp, "ensure_label")
     def test_does_not_duplicate_label(self, mock_label, mock_run):
-        task = {"id": "T-001", "title": "X", "type": "Spike", "labels": ["Spike"]}
+        task = {"id": "T-003", "title": "X", "type": "Spike", "labels": ["spike"]}
         sp._create_issue(task, "org/repo")
         cmd = mock_run.call_args[0][0]
-        assert cmd.count("Spike") == 1
+        assert cmd.count("spike") == 1
 
     @patch.object(sp, "run", return_value="")
     @patch.object(sp, "ensure_label")
