@@ -50,10 +50,14 @@ class FileWriteGuard:
 
     # ── Phase check ───────────────────────────────────────────────
 
+    @property
+    def _phase_label(self) -> str:
+        return self.phase or "(no phase active — workflow not started)"
+
     def _check_writable_phase(self) -> None:
         writable = self.config.code_write_phases + self.config.docs_write_phases
         if self.phase not in writable:
-            raise ValueError(f"File write not allowed in phase: {self.phase}")
+            raise ValueError(f"File write not allowed in phase: {self._phase_label}")
 
     # ── Plan phase ────────────────────────────────────────────────
 

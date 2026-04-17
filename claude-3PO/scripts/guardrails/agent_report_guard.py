@@ -29,6 +29,7 @@ class AgentReportGuard:
         self.state = state
         self.phase = state.current_phase
         self.content = hook_input.get("last_assistant_message", "")
+        self.errors: list[str] = []
 
     # ── Score validation ──────────────────────────────────────────
 
@@ -139,11 +140,13 @@ class AgentReportGuard:
         if self.phase == "architect":
             errors = validate_architecture_content(self.content)
             if errors:
+                self.errors = errors
                 raise ValueError(f"Architecture validation: {errors[0]}")
             return "Agent report valid for architect: structure verified"
 
         errors = validate_backlog_content(self.content)
         if errors:
+            self.errors = errors
             raise ValueError(f"Backlog validation: {errors[0]}")
         return "Agent report valid for backlog: structure verified"
 
@@ -168,6 +171,41 @@ class AgentReportGuard:
         return self.validate_review_sections(self.content, self.phase)
 
     _SPECS_AGENT_BY_PHASE = {"architect": "Architect", "backlog": "ProductOwner"}
+
+    _TEMPLATE_HINTS = {
+        "architect": (
+            "${CLAUDE_PLUGIN_ROOT}/templates/architecture.md",
+            "${CLAUDE_PLUGIN_ROOT}/templates/test/minimal-architecture.md",
+        ),
+        "backlog": (
+            "${CLAUDE_PLUGIN_ROOT}/templates/backlog.md",
+            "${CLAUDE_PLUGIN_ROOT}/templates/test/minimal-backlog.md",
+        ),
+    }
+
+    @staticmethod
+    def format_rejection_message(
+        phase: str,
+        errors: list[str],
+        attempt: int,
+        max_attempts: int,
+    ) -> str:
+        """Build actionable stderr payload so the agent can actually course-correct."""
+        template, minimal = AgentReportGuard._TEMPLATE_HINTS.get(
+            phase, ("(no template)", "(no minimal reference)")
+        )
+        bullets = "\n".join(f"  - {e}" for e in errors)
+        remaining = max(0, max_attempts - attempt)
+        return (
+            f"❌ {phase} validation FAILED (attempt {attempt}/{max_attempts}).\n\n"
+            f"Errors:\n{bullets}\n\n"
+            f"To course-correct:\n"
+            f"  1. Read the template: {template}\n"
+            f"  2. Re-emit the ENTIRE document with every required section + filled metadata (not a diff, not a summary).\n"
+            f"  3. Minimal valid reference: {minimal}\n\n"
+            f"{remaining} attempt(s) remaining. After {max_attempts} rejections the agent is marked failed "
+            "and the workflow halts so the operator can intervene."
+        )
 
     def _mark_specs_agent_failed(self) -> None:
         agent_name = self._SPECS_AGENT_BY_PHASE.get(self.phase)
@@ -199,6 +237,6 @@ class AgentReportGuard:
 
             return "allow", message
         except ValueError as e:
-            if self.phase in self.SPECS_PHASES:
-                self._mark_specs_agent_failed()
+            if not self.errors:
+                self.errors = [str(e)]
             return "block", str(e)

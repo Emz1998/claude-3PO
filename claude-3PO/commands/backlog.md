@@ -12,7 +12,7 @@ Launch 1 `ProductOwner` agent to produce the product backlog.
 ## Instructions
 
 1. Read all previous docs: `projects/docs/product-vision.md`, `projects/docs/decisions.md`, `projects/docs/architecture.md`
-2. Read the backlog template at `${CLAUDE_PLUGIN_ROOT}/skills/backlog/template/backlog.md`
+2. Read the backlog template at `${CLAUDE_PLUGIN_ROOT}/templates/backlog.md`
 3. Launch the **ProductOwner** agent with a prompt to:
    - Read the vision, decisions, and architecture docs
    - Follow the backlog template exactly

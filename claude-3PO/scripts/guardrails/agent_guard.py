@@ -40,13 +40,17 @@ class AgentGuard:
 
     # ── Checks ────────────────────────────────────────────────────
 
+    @property
+    def _phase_label(self) -> str:
+        return self.phase or "(no phase active — workflow not started)"
+
     def _check_expected_agent(self) -> None:
         expected = self.config.get_required_agent(self.phase)
         if not expected:
-            raise ValueError(f"No agent allowed in phase: {self.phase}")
+            raise ValueError(f"No agent allowed in phase: {self._phase_label}")
         if self.next_agent != expected:
             raise ValueError(
-                f"Agent '{self.next_agent}' not allowed in phase: {self.phase}"
+                f"Agent '{self.next_agent}' not allowed in phase: {self._phase_label}"
                 f"\nExpected: {expected}"
             )
 

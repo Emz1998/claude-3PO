@@ -30,6 +30,14 @@ class TestWriteGuard:
         decision, _ = write_guard(hook, config, state)
         assert decision == "block"
 
+    def test_blank_phase_shows_readable_fallback(self, config, state):
+        """Bug: pre-phase writes produced 'in phase: ' with a blank suffix."""
+        hook = make_hook_input("Write", {"file_path": "random.py"})
+        decision, message = write_guard(hook, config, state)
+        assert decision == "block"
+        assert "in phase:" in message
+        assert "in phase: " not in message or "(no phase" in message
+
 
 class TestEditGuard:
     def test_allows_valid_edit(self, config, state):
@@ -43,6 +51,12 @@ class TestEditGuard:
         hook = make_hook_input("Edit", {"file_path": "anything.py"})
         decision, _ = edit_guard(hook, config, state)
         assert decision == "block"
+
+    def test_blank_phase_shows_readable_fallback(self, config, state):
+        hook = make_hook_input("Edit", {"file_path": "CLAUDE.md"})
+        decision, message = edit_guard(hook, config, state)
+        assert decision == "block"
+        assert "(no phase" in message
 
 
 class TestCommandGuard:
@@ -72,6 +86,12 @@ class TestAgentGuard:
         decision, _ = agent_guard(hook, config, state)
         assert decision == "block"
 
+    def test_blank_phase_shows_readable_fallback(self, config, state):
+        hook = make_hook_input("Agent", {"subagent_type": "Research"})
+        decision, message = agent_guard(hook, config, state)
+        assert decision == "block"
+        assert "(no phase" in message
+
 
 class TestWebfetchGuard:
     def test_allows_safe_domain(self, config, state):
@@ -100,7 +120,7 @@ class TestPhaseGuard:
         assert decision == "block"
 
     def test_blocks_reinvoking_completed_phase(self, config, state):
-        """Bug #2: re-invoking a completed phase must be blocked."""
+        """Bug #2: re-invoking a completed phase must be blocked with a clear message."""
         state.set("workflow_type", "specs")
         state.add_phase("vision")
         state.set_phase_completed("vision")
@@ -108,6 +128,10 @@ class TestPhaseGuard:
         decision, message = phase_guard(hook, config, state)
         assert decision == "block"
         assert "vision" in message.lower()
+        # Message should not read just "Already in 'vision' phase" when the phase
+        # is actually already completed — that's misleading. It should mention the
+        # re-invocation is not allowed in either state.
+        assert "re-invoke" in message.lower() or "already" in message.lower()
 
     def test_blocks_backward_navigation_from_next_phase(self, config, state):
         """Bug #2: /vision from a later phase must stay blocked."""

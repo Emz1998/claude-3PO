@@ -77,9 +77,31 @@ class TestBacklogPhaseValidation:
 
 
 class TestAgentRetryAfterInvalidOutput:
-    """Bug #6: failed specs agent must not count toward max, so retry is allowed."""
+    """Failed specs agent must not count toward max, so retry is allowed.
 
-    def test_architect_failure_marks_agent_failed(self, config, state):
+    NOTE: The mark-as-failed decision now lives in the SubagentStop dispatcher
+    (it waits until the retry cap is hit). The guard only exposes the errors list.
+    """
+
+    def test_architect_invalid_output_exposes_errors(self, config, state):
+        state.add_phase("architect")
+        hook = {"last_assistant_message": "# Broken\n\nNo structure."}
+        guard = AgentReportGuard(hook, config, state)
+        decision, _ = guard.validate()
+        assert decision == "block"
+        assert guard.errors  # non-empty
+        assert any("Project Name" in e or "structure" in e for e in guard.errors)
+
+    def test_backlog_invalid_output_exposes_errors(self, config, state):
+        state.add_phase("backlog")
+        hook = {"last_assistant_message": "# Bad Backlog\n\nNo stories."}
+        guard = AgentReportGuard(hook, config, state)
+        decision, _ = guard.validate()
+        assert decision == "block"
+        assert guard.errors
+
+    def test_guard_does_not_mark_agent_failed_directly(self, config, state):
+        """The dispatcher now owns the retry cap — the guard stays side-effect-free here."""
         from models.state import Agent
 
         state.add_phase("architect")
@@ -89,27 +111,10 @@ class TestAgentRetryAfterInvalidOutput:
         decision, _ = agent_report_guard(hook, config, state)
 
         assert decision == "block"
+        # Agent status stays "completed" — dispatcher decides when to flip to "failed".
         agents = state.agents
-        assert any(
-            a.get("name") == "Architect" and a.get("status") == "failed"
-            for a in agents
-        )
-
-    def test_backlog_failure_marks_agent_failed(self, config, state):
-        from models.state import Agent
-
-        state.add_phase("backlog")
-        state.add_agent(Agent(name="ProductOwner", status="completed", tool_use_id="po-1"))
-        hook = {"last_assistant_message": "# Bad Backlog\n\nNo stories."}
-
-        decision, _ = agent_report_guard(hook, config, state)
-
-        assert decision == "block"
-        agents = state.agents
-        assert any(
-            a.get("name") == "ProductOwner" and a.get("status") == "failed"
-            for a in agents
-        )
+        arch = next(a for a in agents if a.get("name") == "Architect")
+        assert arch.get("status") == "completed"
 
     def test_failed_agent_excluded_from_count(self, state):
         from models.state import Agent
@@ -123,6 +128,63 @@ class TestAgentRetryAfterInvalidOutput:
         state.add_agent(Agent(name="Architect", status="in_progress", tool_use_id="a-1"))
         state.add_agent(Agent(name="Architect", status="completed", tool_use_id="a-2"))
         assert state.count_agents("Architect") == 2
+
+
+class TestFormatRejectionMessage:
+    """Rejection stderr must be actionable: phase, attempt count, template path, errors."""
+
+    def test_message_includes_phase_and_attempt(self):
+        msg = AgentReportGuard.format_rejection_message(
+            phase="architect",
+            errors=["metadata: missing required field 'Project Name'"],
+            attempt=1,
+            max_attempts=3,
+        )
+        assert "architect" in msg.lower()
+        assert "1/3" in msg
+        assert "Project Name" in msg
+
+    def test_message_points_at_architect_template(self):
+        msg = AgentReportGuard.format_rejection_message(
+            phase="architect",
+            errors=["metadata: missing required field 'Project Name'"],
+            attempt=2,
+            max_attempts=3,
+        )
+        assert "templates/architecture.md" in msg
+        assert "templates/test/minimal-architecture.md" in msg
+
+    def test_message_points_at_backlog_template(self):
+        msg = AgentReportGuard.format_rejection_message(
+            phase="backlog",
+            errors=["stories: no story sections found"],
+            attempt=1,
+            max_attempts=3,
+        )
+        assert "templates/backlog.md" in msg
+        assert "templates/test/minimal-backlog.md" in msg
+
+    def test_message_lists_all_errors(self):
+        msg = AgentReportGuard.format_rejection_message(
+            phase="architect",
+            errors=["err one", "err two", "err three"],
+            attempt=1,
+            max_attempts=3,
+        )
+        assert "err one" in msg
+        assert "err two" in msg
+        assert "err three" in msg
+
+    def test_message_includes_course_correct_hint(self):
+        msg = AgentReportGuard.format_rejection_message(
+            phase="architect",
+            errors=["foo"],
+            attempt=1,
+            max_attempts=3,
+        )
+        lower = msg.lower()
+        assert "re-emit" in lower or "re-output" in lower
+        assert "template" in lower
 
 
 class TestNonSpecsPhases:

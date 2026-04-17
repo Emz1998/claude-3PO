@@ -61,7 +61,8 @@ class PhaseGuard:
 
         if next_idx == prev_idx:
             raise ValueError(
-                f"Already in '{prev}' phase. Do not re-invoke the skill."
+                f"Cannot re-invoke '{prev}'. The phase has already been entered — "
+                f"advance to the next phase, or complete its tasks instead of restarting it."
             )
         if next_idx < prev_idx:
             raise ValueError(f"Cannot go backwards from '{prev}' to '{next_item}'")

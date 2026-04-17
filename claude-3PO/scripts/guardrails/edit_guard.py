@@ -29,10 +29,14 @@ class FileEditGuard:
     def _is_state_file(self) -> bool:
         return self.state.get("test_mode") and self.file_path.endswith("state.jsonl")
 
+    @property
+    def _phase_label(self) -> str:
+        return self.phase or "(no phase active — workflow not started)"
+
     def _check_editable_phase(self) -> None:
         editable = self.config.code_edit_phases + self.config.docs_edit_phases
         if self.phase not in editable:
-            raise ValueError(f"File edit not allowed in phase: {self.phase}")
+            raise ValueError(f"File edit not allowed in phase: {self._phase_label}")
 
     def _check_plan_edit_path(self) -> None:
         expected = self.config.plan_file_path

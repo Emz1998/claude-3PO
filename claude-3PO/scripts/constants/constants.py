@@ -175,3 +175,40 @@ WRITE_COMMANDS = [
     "mv",
     "rm",
 ]
+
+
+# ---------------------------------------------------------------------------
+# Specs document grammar (shared across all specs validators)
+# ---------------------------------------------------------------------------
+
+# Markdown bold-label markers for story/task fields.
+SPECS_FIELD_MARKERS = {
+    "description": "**Description:**",
+    "priority": "**Priority:**",
+    "milestone": "**Milestone:**",
+    "is_blocking": "**Is Blocking:**",
+    "blocked_by": "**Blocked By:**",
+    "status": "**Status:**",
+    "complexity": "**Complexity:**",
+    "depends_on": "**Depends on:**",
+}
+
+# Story/task ID regex; the prefix list lives in config.specs_valid_item_types.
+SPECS_ID_REGEX_TEMPLATE = r"^{prefix}-\d+$"
+
+# Blockquote format regexes keyed by backlog item type.
+SPECS_BLOCKQUOTE_PATTERNS = {
+    "US": r"\*\*As a\*\*",
+    "TS": r"\*\*As a\*\*",
+    "SK": r"\*\*Investigate:\*\*",
+    "BG": r"\*\*What['\u2019]s broken:\*\*",
+}
+
+# Acceptance-criteria checkbox markers.
+SPECS_AC_MARKERS = ("- [ ]", "- [x]")
+
+# Prefixes used to detect unfilled template placeholders in metadata values.
+SPECS_PLACEHOLDER_PREFIXES = ("[", "<")
+
+# Heading that introduces the story/task list block in backlog.md and sprint.md.
+SPECS_STORIES_HEADING = "Stories"

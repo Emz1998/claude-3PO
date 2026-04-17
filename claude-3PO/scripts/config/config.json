@@ -185,6 +185,112 @@
     "css-tricks.com"
   ],
 
+  "specs_phases": {
+    "max_report_retries": 3
+  },
+
+  "specs_schemas": {
+    "architecture": {
+      "metadata_fields": ["Project Name", "Version", "Date", "Author(s)", "Status"],
+      "valid_statuses": ["Draft", "In Review", "Approved"],
+      "required_sections": [
+        "1. Project Overview",
+        "2. Architectural Decisions",
+        "3. System Context & High-Level Architecture",
+        "4. System Components",
+        "5. Data Flow & Integration Patterns",
+        "6. Security Architecture",
+        "7. Testing Strategy",
+        "8. Observability",
+        "9. DevOps & Deployment",
+        "10. Reliability & Disaster Recovery",
+        "11. Cost & Operational Considerations",
+        "12. Risks, Assumptions & Constraints",
+        "13. Appendix"
+      ],
+      "required_subsections": {
+        "1. Project Overview": ["1.1 Purpose & Business Context", "1.2 Scope", "1.3 Definitions & Acronyms"],
+        "2. Architectural Decisions": ["2.1 Architecture Style", "2.2 Key Architecture Decision Records (ADRs)"],
+        "3. System Context & High-Level Architecture": ["3.1 System Context", "3.2 Architecture Diagram"],
+        "4. System Components": ["4.1 Project Structure Contract", "4.2 Frontend Layer", "4.3 API Layer", "4.4 Database Layer", "4.5 Database Client Pattern", "4.6 Migration Strategy", "4.7 Caching Strategy", "4.8 Service Communication"],
+        "5. Data Flow & Integration Patterns": ["5.1 Primary Request Flow", "5.2 Asynchronous Flows", "5.3 Third-Party Integrations", "5.4 Webhook Strategy"],
+        "6. Security Architecture": ["6.1 Authorization Model", "6.2 Authentication & Session Handling", "6.3 API & Network Protection", "6.4 Data Protection & Secrets", "6.5 Data Lifecycle"],
+        "8. Observability": ["8.1 Error Tracking", "8.2 Logging", "8.3 Request Correlation", "8.4 Uptime & Alerting"],
+        "9. DevOps & Deployment": ["9.1 Source Control & Branching", "9.2 Deployment", "9.3 Environments"],
+        "11. Cost & Operational Considerations": ["11.1 Monthly Cost Estimate", "11.2 Scaling Cost Triggers", "11.3 Vendor Lock-in Assessment"],
+        "12. Risks, Assumptions & Constraints": ["12.1 Assumptions", "12.2 Constraints", "12.3 Risks"]
+      },
+      "allowed_extra_sections": ["Table of Contents"]
+    },
+    "constitution": {
+      "metadata_fields": ["Project", "Version", "Last Updated", "Maintained by"],
+      "doc_title": "Project Constitution",
+      "required_h1_sections": ["Governing Principles", "Development Guidelines", "Coding Standards", "Testing Policy", "Definition of Done", "Tooling"],
+      "required_h2_sections": {
+        "Development Guidelines": ["Workflow", "Decision-Making", "Dependencies", "Version Control", "Security"],
+        "Coding Standards": ["Language & Type Safety", "Naming Conventions", "Formatting", "Code Structure", "Comments & Documentation", "Error Handling"],
+        "Testing Policy": ["Required Tests", "Exempt from Tests", "Test Standards"],
+        "Definition of Done": ["Task Done", "Story Done", "Sprint Done", "Out of Scope"]
+      },
+      "required_h3_subsections": {
+        "Version Control": ["Branch Naming", "Commit Messages"],
+        "Code Structure": ["Directory Structure"]
+      },
+      "optional_h2_sections": ["How to Use This Document", "AI-Specific Standards"]
+    },
+    "product_vision": {
+      "metadata_fields": ["Project", "Version", "Author", "Last Updated"],
+      "required_sections": [
+        "Vision Statement", "The Problem", "The Solution", "Market Landscape",
+        "Strategy", "Business Model", "Risks & Mitigations", "Team & Resources",
+        "Success Criteria", "Appendix", "Document History"
+      ],
+      "required_subsections": {
+        "The Problem": ["Who Has This Problem?", "What's Broken Today?", "Why Now?"],
+        "The Solution": ["Product in One Paragraph", "Core Value Propositions", "How It Works (High Level)"],
+        "Market Landscape": ["Competitive Positioning", "Defensibility"],
+        "Strategy": ["MVP Scope", "What's Explicitly NOT in MVP", "Product Roadmap (High Level)"],
+        "Business Model": ["Revenue Model", "Key Metrics", "Unit Economics (If Known)"],
+        "Team & Resources": ["Current Runway / Budget"],
+        "Success Criteria": ["MVP Launch (Go / No-Go)", "6-Month Vision", "12-Month Vision"],
+        "Appendix": ["Glossary", "References"]
+      },
+      "required_tables": [
+        {"section": "Who Has This Problem?", "required_header": "Segment"},
+        {"section": "Core Value Propositions", "required_header": "Value Proposition"},
+        {"section": "Competitive Positioning", "required_header": "Competitor / Alternative"},
+        {"section": "MVP Scope", "required_header": "Feature"},
+        {"section": "Revenue Model", "required_header": "Model"},
+        {"section": "Key Metrics", "required_header": "Metric"},
+        {"section": "Risks & Mitigations", "required_header": "Risk"},
+        {"section": "Team & Resources", "required_header": "Role"},
+        {"section": "Document History", "required_header": "Version"}
+      ]
+    },
+    "backlog": {
+      "metadata_fields": ["Project", "Last Updated"],
+      "valid_sections": ["Priority Legend", "ID Conventions", "Stories"],
+      "valid_priorities": ["P0", "P1", "P2"],
+      "valid_item_types": ["US", "TS", "BG", "SK"],
+      "story_type_names": {"US": "User Story", "TS": "Technical Story", "BG": "Bug", "SK": "Spike"},
+      "json_item_statuses": ["Backlog", "In Progress", "Done", "Blocked"]
+    },
+    "sprint": {
+      "metadata_fields": ["Sprint #", "Milestone", "Goal", "Due Date"],
+      "overview_table_headers": ["ID", "Type", "Title", "Points", "Status", "Blocked By"],
+      "valid_story_statuses": ["Ready", "In Progress", "Done", "Blocked"],
+      "valid_task_statuses": ["Backlog", "In Progress", "In Review", "Done", "Blocked"],
+      "valid_json_task_statuses": ["Backlog", "Ready", "In Progress", "In Review", "Done", "Blocked"],
+      "valid_priorities": ["P0", "P1", "P2"],
+      "valid_complexities": ["S", "M", "L"],
+      "valid_story_types": ["Story", "Tech", "Bug", "Spike"],
+      "valid_json_story_types": ["User Story", "Technical Story", "Bug", "Spike"],
+      "story_id_prefixes": {"Story": "US", "Tech": "TS", "Bug": "BG", "Spike": "SK"},
+      "json_story_id_prefixes": {"User Story": "US", "Technical Story": "TS", "Bug": "BG", "Spike": "SK"},
+      "task_id_prefix": "T"
+    }
+  },
+
   "paths": {
     "state_jsonl": ".claude/state.jsonl",
     "log_file": "build.log",

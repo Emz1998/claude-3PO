@@ -286,3 +286,22 @@ def extract_md_body(content: str) -> str:
         if len(parts) >= 3:
             return parts[2].lstrip("\n")
     return content
+
+
+_BOLD_METADATA_PATTERN = re.compile(r"^\*\*([^*:]+?):\*\*\s*(.*)$")
+
+
+def extract_bold_metadata(content: str) -> dict[str, str]:
+    """Parse bold-label metadata rows (`**Key:** value`) into {key: value}.
+
+    Values are stripped of surrounding whitespace and backticks; placeholders
+    like `[your project]` or `<TBD>` are returned as-is so callers can flag them.
+    """
+    meta: dict[str, str] = {}
+    for line in content.splitlines():
+        match = _BOLD_METADATA_PATTERN.match(line.strip())
+        if match:
+            key = match.group(1).strip()
+            value = match.group(2).strip().strip("`")
+            meta[key] = value
+    return meta

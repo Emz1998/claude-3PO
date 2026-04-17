@@ -27,7 +27,7 @@ Ask these questions **one at a time** via `AskUserQuestion`:
 ## Instructions
 
 1. Ask all 10 questions sequentially using `AskUserQuestion`
-2. After collecting all answers, read the product vision template at `${CLAUDE_PLUGIN_ROOT}/skills/visionize/templates/product-vision.md`
+2. After collecting all answers, read the product vision template at `${CLAUDE_PLUGIN_ROOT}/templates/product-vision.md`
 3. Populate the template with the user's answers
 4. Write the completed document to `projects/docs/product-vision.md`
 

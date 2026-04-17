@@ -13,6 +13,7 @@ SCRIPTS_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(SCRIPTS_DIR))
 
 from guardrails import STOP_GUARDS
+from guardrails.agent_report_guard import AgentReportGuard
 from lib.hook import Hook
 from lib.state_store import StateStore
 from lib.violations import log_violation
@@ -55,16 +56,53 @@ def _log_report_block(state: StateStore, hook_input: dict, reason: str) -> None:
     )
 
 
+_SPECS_AGENT_BY_PHASE = {"architect": "Architect", "backlog": "ProductOwner"}
+
+
+def _fail_agent_and_release(
+    state: StateStore, config: Config, hook_input: dict,
+    phase: str, errors: list[str], attempts: int, max_attempts: int,
+) -> None:
+    """Cap reached: mark the specs agent failed, log once, let the subagent stop."""
+    agent_name = _SPECS_AGENT_BY_PHASE.get(phase)
+    if agent_name:
+        state.mark_last_agent_failed(agent_name)
+    message = AgentReportGuard.format_rejection_message(
+        phase, errors or ["validation failed"], attempts, max_attempts
+    )
+    _log_report_block(state, hook_input, message.splitlines()[0])
+    Hook.system_message(
+        f"{agent_name or 'agent'} marked failed after {attempts} rejected attempts. "
+        f"Use /continue or re-invoke to proceed.\n\n{message}"
+    )
+
+
+def _block_for_course_correction(
+    errors: list[str], phase: str, attempts: int, max_attempts: int
+) -> None:
+    """Below cap: block the subagent from stopping so it can retry (exit 2)."""
+    Hook.block(
+        AgentReportGuard.format_rejection_message(
+            phase, errors or ["validation failed"], attempts, max_attempts
+        )
+    )
+
+
 def _validate_agent_report(state: StateStore, config: Config, hook_input: dict) -> None:
     if state.current_phase not in REVIEW_PHASES:
         return
-    guard = STOP_GUARDS.get("agent_report")
-    if not guard:
+    guard = AgentReportGuard(hook_input, config, state)
+    decision, _ = guard.validate()
+    if decision != "block":
         return
-    decision, message = guard(hook_input, config, state)
-    if decision == "block":
-        _log_report_block(state, hook_input, message)
-        Hook.block(message)
+    agent_id = hook_input.get("agent_id", "") or "unknown"
+    attempts = state.bump_agent_rejection_count(agent_id)
+    max_attempts = config.specs_max_report_retries
+    if attempts < max_attempts:
+        _block_for_course_correction(guard.errors, guard.phase, attempts, max_attempts)
+    _fail_agent_and_release(
+        state, config, hook_input, guard.phase, guard.errors, attempts, max_attempts
+    )
 
 
 def main() -> None:

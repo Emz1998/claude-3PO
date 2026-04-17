@@ -2,14 +2,14 @@
 
 **Project:** `TestApp`
 **Version:** `v1.0`
-**Author:** `TestTeam`
+**Author:** `Test User`
 **Last Updated:** `2026-04-16`
 
 ---
 
 ## Vision Statement
 
-> **For** `developers` **who** `struggle with project management`, **the** `TestApp` **is a** `productivity tool` **that** `streamlines workflow automation`. **Unlike** `manual tools`, **our product** `uses AI to eliminate repetitive tasks`.
+> **For** `developers` **who** `need workflow automation`, **the** `TestApp` **is a** `SaaS platform` **that** `automates repetitive tasks`. **Unlike** `manual scripts`, **our product** `provides guardrails and consistency`.
 
 ---
 
@@ -17,18 +17,18 @@
 
 ### Who Has This Problem?
 
-| Segment            | Description                    | Size             |
-| ------------------ | ------------------------------ | ---------------- |
-| `Software developers`   | `Engineers spending time on repetitive management tasks` | `10M worldwide` |
-| `Project managers` | `PMs coordinating multiple teams manually` | `5M worldwide` |
+| Segment | Description | Size |
+| --- | --- | --- |
+| `Software Developers` | `Engineers who build and maintain systems` | `10M` |
+| `DevOps Teams` | `Teams managing CI/CD pipelines` | `2M` |
 
 ### What's Broken Today?
 
-Developers spend significant time on repetitive project management tasks. Current tools require manual configuration and provide little intelligence about workflow optimization.
+Current tools lack guardrails and allow drift in automated workflows. Teams waste time debugging inconsistencies.
 
 ### Why Now?
 
-AI capabilities have matured enough to automate complex project management tasks. Remote work has increased the demand for better async coordination tools.
+AI-assisted development has created new opportunities for automated workflow systems with built-in guardrails.
 
 ---
 
@@ -36,43 +36,15 @@ AI capabilities have matured enough to automate complex project management tasks
 
 ### Product in One Paragraph
 
-TestApp is an AI-powered project management platform that automatically handles routine tasks, tracks progress, and provides intelligent suggestions. Users simply describe their goals and the system handles the rest.
+TestApp is a workflow automation platform that prevents AI-assisted development from drifting off course. It provides structured phases with guardrails to keep teams on track.
 
 ### Core Value Propositions
 
-| #   | Value Proposition           | User Benefit            |
-| --- | --------------------------- | ----------------------- |
-| 1   | `AI task automation` | `Save 2+ hours per day` |
-| 2   | `Smart progress tracking` | `Never miss a deadline` |
-| 3   | `Team coordination` | `Eliminate status meetings` |
-
-### How It Works (High Level)
-
-```
-Step 1: User describes their project goals
-    ↓
-Step 2: AI creates and assigns tasks automatically
-    ↓
-Step 3: System tracks progress and alerts on blockers
-    ↓
-Step 4: User receives daily summaries and suggestions
-```
-
----
-
-## Market Landscape
-
-### Competitive Positioning
-
-| Competitor / Alternative | What They Do            | Their Weakness       | Our Advantage             |
-| ------------------------ | ----------------------- | -------------------- | ------------------------- |
-| `Jira`         | `Issue tracking`   | `Complex, manual`          | `AI-driven automation`      |
-| `Asana`         | `Task management`   | `No intelligence`          | `Smart recommendations`      |
-| `Spreadsheets`  | `Manual tracking` | `Error-prone, time-consuming` | `Zero manual entry` |
-
-### Defensibility
-
-AI model training on project data creates a compound advantage over time. Data network effects strengthen predictions.
+| # | Value Proposition | User Benefit |
+| --- | --- | --- |
+| 1 | `Guardrailed workflows` | `No more drifting` |
+| 2 | `Phase-based structure` | `Clear progress tracking` |
+| 3 | `Auto-validation` | `Consistent outputs` |
 
 ---
 
@@ -81,28 +53,13 @@ AI model training on project data creates a compound advantage over time. Data n
 ### MVP Scope
 
 **Target milestone:** `Q2 2026`
-**Target user:** `Software developers`
+**Target user:** `Software Developers`
 
-| Feature       | Why It's in MVP                                    |
-| ------------- | -------------------------------------------------- |
-| `AI task creation` | `Core differentiator` |
-| `Progress tracking` | `Must-have for adoption` |
-| `Team notifications` | `Enables team use` |
-
-### What's Explicitly NOT in MVP
-
-| Excluded Feature | Why Not Yet                        |
-| ---------------- | ---------------------------------- |
-| `Mobile app`      | `Web-first for speed to market` |
-| `Enterprise SSO`  | `SMB focus for MVP` |
-
-### Product Roadmap (High Level)
-
-| Phase       | Timeframe      | Theme                       | Key Outcomes                           |
-| ----------- | -------------- | --------------------------- | -------------------------------------- |
-| **MVP**     | `Q2 2026`    | `Core automation` | `Developers can automate task creation` |
-| **Phase 2** | `Q3 2026`    | `Intelligence`    | `Predictive scheduling and alerts` |
-| **Phase 3** | `Q4 2026` | `Scale`     | `Enterprise features and integrations` |
+| Feature | Why It's in MVP |
+| --- | --- |
+| `Workflow phases` | `Core differentiator` |
+| `Guardrails` | `Key value prop` |
+| `State tracking` | `Required for phases` |
 
 ---
 
@@ -110,41 +67,17 @@ AI model training on project data creates a compound advantage over time. Data n
 
 ### Revenue Model
 
-| Model                  | Description                                |
-| ---------------------- | ------------------------------------------ |
-| `Freemium`      | `Free tier: 3 projects. Paid tier: unlimited at $20/month` |
-| `Team plans` | `$15/seat/month for teams`    |
-
-### Key Metrics
-
-| Metric              | Definition                             | MVP Target |
-| ------------------- | -------------------------------------- | ---------- |
-| `DAU`        | `Daily active users`                 | `1000`      |
-| `Retention`  | `% users returning after 7 days`     | `60%`     |
-| `Activation` | `% signups who complete first automated task` | `70%`     |
-| `NPS`        | `Net Promoter Score`                 | `50`      |
-
----
-
-## Risks & Mitigations
-
-| Risk                           | Impact    | Likelihood | Mitigation                |
-| ------------------------------ | --------- | ---------- | ------------------------- |
-| `Low adoption`          | `H` | `M`  | `Freemium model with low friction` |
-| `AI accuracy issues` | `H` | `L`  | `Human review mode available` |
+| Model | Description |
+| --- | --- |
+| `Freemium` | `Free tier: 3 projects. Paid tier: unlimited at $20/month` |
 
 ---
 
 ## Team & Resources
 
-| Role               | Who            | Status                        |
-| ------------------ | -------------- | ----------------------------- |
-| `Founder / Lead` | `TestTeam Lead`       | `Active`                    |
-| `Engineering`    | `TBD` | `Hiring` |
-
-### Current Runway / Budget
-
-Bootstrapped with $200K runway. Targeting profitability at 500 paying users.
+| Role | Who | Status |
+| --- | --- | --- |
+| `Founder / Lead` | `Test Lead` | `Active` |
 
 ---
 
@@ -154,21 +87,19 @@ Bootstrapped with $200K runway. Targeting profitability at 500 paying users.
 
 - [ ] 100 users complete core workflow in first week
 - [ ] Positive qualitative feedback from 20 target users
-- [ ] Core features functional with <2 second response time
-- [ ] No critical bugs in primary user flow
 
 ### 6-Month Vision
 
-TestApp has 5,000 active users and is growing 20% month-over-month. Teams report saving 5+ hours per week on project management.
+TestApp has 5,000 active users. Teams report saving 5+ hours per week.
 
 ### 12-Month Vision
 
-TestApp is the go-to AI project management tool for development teams. 50,000 users, profitable, with enterprise integrations launched.
+TestApp is the go-to guardrail workflow tool for development teams. 50,000 users, profitable.
 
 ---
 
 ## Document History
 
-| Version | Date     | Author   | Changes       |
-| ------- | -------- | -------- | ------------- |
-| 1.0     | `2026-04-16` | `TestTeam` | Initial draft |
+| Version | Date | Author | Changes |
+| --- | --- | --- | --- |
+| 1.0 | `2026-04-16` | `Test User` | Initial draft (E2E test) |

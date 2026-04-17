@@ -14,20 +14,31 @@ from lib.violations import log_violation, extract_action
 from config import Config
 
 
+PRE_WORKFLOW_PHASE = "pre-workflow"
+
+
 def resolve_violation_phase(
     state: StateStore, config: Config, tool_name: str, hook_input: dict
 ) -> str:
-    """Pick the best phase label for a violation: skill name, current phase, or first workflow phase."""
+    """Pick the phase label for a violation row.
+
+    Priority:
+    1. `state.current_phase` — the phase the user was *in* when the block fired.
+    2. For a Skill tool with no active phase: the attempted skill name, since
+       invoking a skill IS what establishes a phase, so its name is the most
+       meaningful label for the violation.
+    3. Otherwise: the `pre-workflow` sentinel. We deliberately do NOT fall back
+       to the first workflow phase — labelling a pre-`/vision` Write as
+       `vision` misleadingly implies the user had entered that phase.
+    """
+    if state.current_phase:
+        return state.current_phase
     if tool_name == "Skill":
         from lib.extractors import extract_skill_name
         skill = extract_skill_name(hook_input)
         if skill:
             return skill
-    if state.current_phase:
-        return state.current_phase
-    workflow = state.get("workflow_type", "build")
-    phases = config.get_phases(workflow) or config.main_phases
-    return phases[0] if phases else ""
+    return PRE_WORKFLOW_PHASE
 
 
 def main() -> None:

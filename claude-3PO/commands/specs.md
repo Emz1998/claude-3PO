@@ -65,8 +65,8 @@ Launch 1 ProductOwner agent to produce `projects/docs/backlog.md`. The agent's o
 
 ## References
 
-- **Product vision template**: `${CLAUDE_PLUGIN_ROOT}/skills/visionize/templates/product-vision.md`
-- **Architecture template**: `${CLAUDE_PLUGIN_ROOT}/skills/architect/templates/architecture.md`
-- **Backlog template**: `${CLAUDE_PLUGIN_ROOT}/skills/backlog/template/backlog.md`
-- **Vision questions**: `${CLAUDE_PLUGIN_ROOT}/skills/visionize/questions.md`
+- **Product vision template**: `${CLAUDE_PLUGIN_ROOT}/templates/product-vision.md`
+- **Architecture template**: `${CLAUDE_PLUGIN_ROOT}/templates/architecture.md`
+- **Backlog template**: `${CLAUDE_PLUGIN_ROOT}/templates/backlog.md`
+- **Vision questions**: `${CLAUDE_PLUGIN_ROOT}/templates/visionize-questions.md`
 - **Decision questions**: `${CLAUDE_PLUGIN_ROOT}/commands/decision_questions.md`

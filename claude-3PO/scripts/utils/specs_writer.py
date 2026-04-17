@@ -5,17 +5,14 @@ auto-writing architect and backlog outputs.
 """
 
 import json
-import sys
 from pathlib import Path
 
-# Add skills directories to path for validator imports
-_PLUGIN_ROOT = Path(__file__).resolve().parent.parent.parent
-sys.path.insert(0, str(_PLUGIN_ROOT / "skills" / "architect" / "scripts"))
-sys.path.insert(0, str(_PLUGIN_ROOT / "skills" / "backlog" / "scripts"))
+from config import Config
+from utils.validator import SpecsValidator
 
-from validate_architecture import validate as _validate_arch
-from validate_backlog_md import validate as _validate_backlog_md
-from backlog_json_converter import convert as _convert_backlog
+
+def _validator() -> SpecsValidator:
+    return SpecsValidator(Config())
 
 
 def write_doc(content: str, file_path: str) -> None:
@@ -34,7 +31,7 @@ def write_backlog(content: str, md_path: str, json_path: str) -> None:
     if not content.strip():
         raise ValueError("Backlog content is empty")
     write_doc(content, md_path)
-    data = _convert_backlog(content)
+    data = _validator().convert_backlog_md_to_json(content)
     Path(json_path).parent.mkdir(parents=True, exist_ok=True)
     Path(json_path).write_text(
         json.dumps(data, indent=2), encoding="utf-8"
@@ -43,9 +40,9 @@ def write_backlog(content: str, md_path: str, json_path: str) -> None:
 
 def validate_architecture_content(content: str) -> list[str]:
     """Validate architecture content against template. Returns error list."""
-    return _validate_arch(content)
+    return _validator().validate_architecture(content)
 
 
 def validate_backlog_content(content: str) -> list[str]:
     """Validate backlog markdown content. Returns error list."""
-    return _validate_backlog_md(content)
+    return _validator().validate_backlog_md(content)

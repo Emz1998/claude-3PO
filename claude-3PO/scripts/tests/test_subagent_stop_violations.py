@@ -59,24 +59,58 @@ def _payload(session_id: str, message: str, agent_type: str) -> dict:
     }
 
 
-class TestSubagentStopViolationLogging:
-    def test_invalid_backlog_logs_violation(self, tmp_path: Path):
+class TestSubagentStopRetryLoop:
+    """Attempts 1..N-1 block (exit 2, course-correct). Attempt N releases cleanly."""
+
+    BAD = "# Bad Backlog\n\nNo stories."
+
+    def test_first_rejection_blocks_with_actionable_message(self, tmp_path: Path):
         state_path = tmp_path / "state.jsonl"
         violations_path = tmp_path / "violations.md"
-        _write_state(state_path, _specs_state("sess-bad", "backlog", "ProductOwner"))
+        _write_state(state_path, _specs_state("sess-1", "backlog", "ProductOwner"))
 
-        proc = _run(
-            _payload("sess-bad", "# Bad Backlog\n\nNo stories.", "ProductOwner"),
-            state_path,
-            violations_path,
-        )
+        proc = _run(_payload("sess-1", self.BAD, "ProductOwner"), state_path, violations_path)
 
-        assert proc.returncode == 2, proc.stderr
+        assert proc.returncode == 2
+        assert "attempt 1/3" in proc.stderr
+        assert "templates/backlog.md" in proc.stderr
+        # No violation logged mid-retry — avoids the ~80-entry spam we saw in the report.
+        assert not violations_path.exists()
+
+    def test_cap_reached_releases_subagent_and_logs_once(self, tmp_path: Path):
+        state_path = tmp_path / "state.jsonl"
+        violations_path = tmp_path / "violations.md"
+        _write_state(state_path, _specs_state("sess-cap", "backlog", "ProductOwner"))
+
+        # Attempts 1 and 2 must block (exit 2).
+        for expected in (1, 2):
+            proc = _run(_payload("sess-cap", self.BAD, "ProductOwner"), state_path, violations_path)
+            assert proc.returncode == 2, (expected, proc.stderr)
+            assert f"attempt {expected}/3" in proc.stderr
+
+        # Attempt 3 hits the cap: subagent released (exit 0) and violation logged.
+        proc = _run(_payload("sess-cap", self.BAD, "ProductOwner"), state_path, violations_path)
+        assert proc.returncode == 0, proc.stderr
         assert violations_path.exists()
-        content = violations_path.read_text()
-        assert "SubagentStop" in content
-        assert "ProductOwner" in content
-        assert "| backlog" in content
+        log = violations_path.read_text()
+        assert "SubagentStop" in log
+        assert "ProductOwner" in log
+        # Exactly one row logged across 3 attempts.
+        data_rows = [l for l in log.strip().splitlines() if l.startswith("| 2") or "SubagentStop" in l]
+        assert sum(1 for l in log.splitlines() if "SubagentStop" in l) == 1
+
+    def test_cap_marks_agent_failed_for_retry(self, tmp_path: Path):
+        state_path = tmp_path / "state.jsonl"
+        violations_path = tmp_path / "violations.md"
+        _write_state(state_path, _specs_state("sess-fail", "architect", "Architect"))
+
+        for _ in range(3):
+            _run(_payload("sess-fail", "# Bad Architecture\n\nNo structure.", "Architect"),
+                 state_path, violations_path)
+
+        state = json.loads(state_path.read_text().splitlines()[-1])
+        arch = next(a for a in state["agents"] if a["name"] == "Architect")
+        assert arch["status"] == "failed"
 
     def test_valid_backlog_does_not_log_violation(self, tmp_path: Path, monkeypatch):
         state_path = tmp_path / "state.jsonl"

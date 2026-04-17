@@ -128,3 +128,30 @@ class TestSpecsDocPathIsolation:
         docs = state.get("docs", {})
         assert docs["product_vision"]["written"] is True
         assert docs["product_vision"]["path"] == expected
+
+    def test_vision_absolute_write_stored_as_config_relative(self, config, state):
+        """Bug: product_vision.path was stored as absolute, breaking parity with architecture.path."""
+        state.set("workflow_type", "specs")
+        state.add_phase("vision")
+        _init_specs_docs(state)
+
+        recorder = Recorder(state)
+        absolute = "/home/user/project/" + config.product_vision_file_path
+        hook = make_hook_input("Write", {"file_path": absolute, "content": "# vision"})
+        recorder.record(hook, config)
+
+        docs = state.get("docs", {})
+        assert docs["product_vision"]["path"] == config.product_vision_file_path
+
+    def test_decision_absolute_write_stored_as_config_relative(self, config, state):
+        state.set("workflow_type", "specs")
+        state.add_phase("decision")
+        _init_specs_docs(state)
+
+        recorder = Recorder(state)
+        absolute = "/home/user/project/" + config.decisions_file_path
+        hook = make_hook_input("Write", {"file_path": absolute, "content": "# decisions"})
+        recorder.record(hook, config)
+
+        docs = state.get("docs", {})
+        assert docs["decisions"]["path"] == config.decisions_file_path

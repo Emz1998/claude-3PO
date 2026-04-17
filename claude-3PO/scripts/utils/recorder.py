@@ -228,7 +228,8 @@ class Recorder:
         if self._is_specs_phase_mismatch(phase, file_path, config):
             return
 
-        self.record_write(phase, file_path, is_plan)
+        record_path = self._canonicalize_specs_path(phase, file_path, config)
+        self.record_write(phase, record_path, is_plan)
 
         if is_plan:
             self.record_plan_metadata(file_path)
@@ -239,6 +240,16 @@ class Recorder:
             and file_path.endswith(config.contracts_file_path)
         ):
             self.record_contracts_file(file_path)
+
+    @staticmethod
+    def _canonicalize_specs_path(phase: str, file_path: str, config: Config) -> str:
+        """Store vision/decision docs under their config-relative path so all
+        specs doc entries in state.jsonl use the same format (matches architecture/backlog)."""
+        canonical = {
+            "vision": config.product_vision_file_path,
+            "decision": config.decisions_file_path,
+        }.get(phase)
+        return canonical if canonical else file_path
 
     @staticmethod
     def _is_specs_phase_mismatch(phase: str, file_path: str, config: Config) -> bool:

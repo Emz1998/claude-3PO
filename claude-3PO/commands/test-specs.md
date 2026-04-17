@@ -19,7 +19,7 @@ You are a **guardrail test runner**. Systematically test every guardrail by deli
 
 - When you get blocked, that is the **expected** outcome. Record it as PASS.
 - If a step marked "should block" is NOT blocked, record it as FAIL.
-- All subagents must exit immediately — no real work. Every agent prompt: "Do not read any files. Respond with exactly: ..." followed by the required output format.
+- All subagents must exit immediately — no real work. Every agent prompt must begin with `TEST MODE:` and either say `Do not read any files. Respond with exactly: <text>` or `Read <path> and respond with its exact contents. Do not call any other tools.` Architect and ProductOwner agents understand this contract (see their agent definitions) and will exit without performing real work.
 - After each phase, read `state.jsonl` for your session and compare against the expected JSON. Record mismatches as FAIL.
 - After each phase that has blocks, read `${CLAUDE_PLUGIN_ROOT}/logs/violations.md` and verify each block produced a violation entry. Record missing entries as FAIL.
 - Write results to `${CLAUDE_PLUGIN_ROOT}/E2E_SPECS_TEST_REPORT.md` after each phase. This file is always writable in test mode.
@@ -71,7 +71,7 @@ For each block that occurred, verify a matching row exists in `${CLAUDE_PLUGIN_R
 5. Invoke `/vision`
 6. `AskUserQuestion` with question: "What is the name of your project and who is building it?" — _should allow_
 7. **Skip remaining 9 questions**: `Edit` on `${CLAUDE_PLUGIN_ROOT}/scripts/state.jsonl` — _should allow_ (state.jsonl edit allowed in test mode). No actual state change needed — just verify the escape hatch works.
-8. Read the product vision template at `${CLAUDE_PLUGIN_ROOT}/skills/visionize/templates/product-vision.md`
+8. Read the product vision template at `${CLAUDE_PLUGIN_ROOT}/templates/product-vision.md`
 9. `Write` to `projects/docs/product-vision.md` with a valid product vision using dummy answers — _should allow_
 
 **State check:**
@@ -168,8 +168,28 @@ For each block that occurred, verify a matching row exists in `${CLAUDE_PLUGIN_R
 1. Invoke `/architect`
 2. `Write` to anything — _should block_ (read-only phase, auto-write only)
 3. `Agent` with `subagent_type: "ProductOwner"` — _should block_ (wrong agent for architect)
-4. `Agent` with `subagent_type: "Architect"`, prompt with **invalid** architecture (missing sections): "# Bad Architecture\n\nNo structure." — _should block_ at SubagentStop (validation fails)
-5. `Agent` with `subagent_type: "Architect"`, prompt with **valid** architecture matching template — _should allow_ and auto-write to `projects/docs/architecture.md`
+4. `Agent` with `subagent_type: "Architect"`, prompt (tests the retry cap — the agent will re-emit the same bad output each attempt and hit the 3-attempt ceiling):
+
+   ```
+   TEST MODE: Do not read any files. Do not call any tools. Every time you are reinvoked, respond with exactly this and nothing else:
+
+   # Bad Architecture
+
+   No structure.
+   ```
+
+   _Expected:_
+   - First 2 attempts: SubagentStop blocks (exit 2) with stderr `❌ architect validation FAILED (attempt N/3)` + template hint. Agent is reinvoked.
+   - 3rd attempt: SubagentStop releases the subagent cleanly (exit 0). `agents[]` entry for Architect flips to `status: "failed"`. **Exactly one** SubagentStop violation is logged in `violations.md` (not three, not eighty).
+   - `agent_rejections["<agent_id>"]` in `state.jsonl` reaches 3.
+
+5. `Agent` with `subagent_type: "Architect"`, prompt:
+
+   ```
+   TEST MODE: Read ${CLAUDE_PLUGIN_ROOT}/templates/test/minimal-architecture.md and respond with its exact contents. Do not call any other tools. Do not add commentary.
+   ```
+
+   _Expected:_ allowed at SubagentStop; `SpecsValidator.validate_architecture` returns no errors; content auto-written to `projects/docs/architecture.md`. The previous `Architect` entry with `status: "failed"` is ignored by `count_agents` so the retry is not blocked.
 
 **State check:**
 
@@ -198,8 +218,27 @@ For each block that occurred, verify a matching row exists in `${CLAUDE_PLUGIN_R
 1. Invoke `/backlog`
 2. `Write` to anything — _should block_ (read-only phase, auto-write only)
 3. `Agent` with `subagent_type: "Architect"` — _should block_ (wrong agent for backlog)
-4. `Agent` with `subagent_type: "ProductOwner"`, prompt with **invalid** backlog (no stories): "# Bad Backlog\n\nNo stories." — _should block_ at SubagentStop (validation fails)
-5. `Agent` with `subagent_type: "ProductOwner"`, prompt with **valid** backlog matching template — _should allow_ and auto-write to `projects/docs/backlog.md` and `projects/docs/backlog.json`
+4. `Agent` with `subagent_type: "ProductOwner"`, prompt (tests the retry cap):
+
+   ```
+   TEST MODE: Do not read any files. Do not call any tools. Every time you are reinvoked, respond with exactly this and nothing else:
+
+   # Bad Backlog
+
+   No stories.
+   ```
+
+   _Expected:_
+   - First 2 attempts: SubagentStop blocks (exit 2) with stderr `❌ backlog validation FAILED (attempt N/3)` + template hint. Agent is reinvoked.
+   - 3rd attempt: SubagentStop releases the subagent cleanly (exit 0). `agents[]` entry for ProductOwner flips to `status: "failed"`. Exactly one SubagentStop violation is logged.
+
+5. `Agent` with `subagent_type: "ProductOwner"`, prompt:
+
+   ```
+   TEST MODE: Read ${CLAUDE_PLUGIN_ROOT}/templates/test/minimal-backlog.md and respond with its exact contents. Do not call any other tools. Do not add commentary.
+   ```
+
+   _Expected:_ allowed at SubagentStop; `SpecsValidator.validate_backlog_md` returns no errors; content auto-written to `projects/docs/backlog.md` + `backlog.json`.
 
 **State check:**
 

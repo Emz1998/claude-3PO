@@ -135,3 +135,64 @@ class TestSpecsPaths:
 
     def test_backlog_json_path(self, config):
         assert config.backlog_json_file_path == "projects/docs/backlog.json"
+
+
+class TestSpecsSchemas:
+    def test_architecture_schema_exists(self, config):
+        schema = config.specs_schema("architecture")
+        assert "Project Name" in schema["metadata_fields"]
+        assert "Draft" in schema["valid_statuses"]
+
+    def test_architecture_required_sections(self, config):
+        sections = config.specs_required_sections("architecture")
+        assert "1. Project Overview" in sections
+        assert "13. Appendix" in sections
+
+    def test_architecture_required_subsections(self, config):
+        subs = config.specs_required_subsections("architecture")
+        assert "1.1 Purpose & Business Context" in subs["1. Project Overview"]
+
+    def test_architecture_valid_statuses(self, config):
+        statuses = config.specs_valid_statuses("architecture")
+        assert statuses == ["Draft", "In Review", "Approved"]
+
+    def test_architecture_metadata_fields(self, config):
+        assert config.specs_metadata_fields("architecture") == [
+            "Project Name", "Version", "Date", "Author(s)", "Status"
+        ]
+
+    def test_architecture_allowed_extras(self, config):
+        extras = config.specs_allowed_extra_sections("architecture")
+        assert "Table of Contents" in extras
+
+    def test_constitution_schema(self, config):
+        schema = config.specs_schema("constitution")
+        assert "Governing Principles" in schema["required_h1_sections"]
+
+    def test_product_vision_required_tables(self, config):
+        tables = config.specs_required_tables("product_vision")
+        assert any(t["section"] == "Who Has This Problem?" for t in tables)
+
+    def test_backlog_item_types(self, config):
+        assert config.specs_valid_item_types("backlog") == ["US", "TS", "BG", "SK"]
+
+    def test_backlog_priorities(self, config):
+        assert config.specs_valid_priorities("backlog") == ["P0", "P1", "P2"]
+
+    def test_backlog_story_type_names(self, config):
+        names = config.specs_story_type_names("backlog")
+        assert names["US"] == "User Story"
+        assert names["BG"] == "Bug"
+
+    def test_sprint_table_headers(self, config):
+        headers = config.specs_schema("sprint")["overview_table_headers"]
+        assert "ID" in headers and "Blocked By" in headers
+
+    def test_unknown_doc_returns_empty_schema(self, config):
+        assert config.specs_schema("does_not_exist") == {}
+
+    def test_unknown_doc_returns_empty_lists(self, config):
+        assert config.specs_required_sections("does_not_exist") == []
+        assert config.specs_required_subsections("does_not_exist") == {}
+        assert config.specs_required_tables("does_not_exist") == []
+        assert config.specs_valid_priorities("does_not_exist") == []

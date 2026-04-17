@@ -12,7 +12,7 @@ Launch 1 `Architect` agent to produce the architecture document.
 ## Instructions
 
 1. Read `projects/docs/product-vision.md` and `projects/docs/decisions.md` for context
-2. Read the architecture template at `${CLAUDE_PLUGIN_ROOT}/skills/architect/templates/architecture.md`
+2. Read the architecture template at `${CLAUDE_PLUGIN_ROOT}/templates/architecture.md`
 3. Launch the **Architect** agent with a prompt to:
    - Read the product vision and decisions docs
    - Follow the architecture template exactly

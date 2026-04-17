@@ -525,3 +525,24 @@ class TestPlanFilesToModify:
 
     def test_default_empty(self, state):
         assert state.plan_files_to_modify == []
+
+
+class TestAgentRejectionCounter:
+    def test_new_agent_has_zero_count(self, state):
+        assert state.agent_rejection_count("tool-use-1") == 0
+
+    def test_bump_increments_count(self, state):
+        state.bump_agent_rejection_count("tool-use-1")
+        state.bump_agent_rejection_count("tool-use-1")
+        assert state.agent_rejection_count("tool-use-1") == 2
+
+    def test_per_agent_id_isolated(self, state):
+        state.bump_agent_rejection_count("a-1")
+        state.bump_agent_rejection_count("a-2")
+        state.bump_agent_rejection_count("a-1")
+        assert state.agent_rejection_count("a-1") == 2
+        assert state.agent_rejection_count("a-2") == 1
+
+    def test_bump_returns_new_count(self, state):
+        assert state.bump_agent_rejection_count("a-1") == 1
+        assert state.bump_agent_rejection_count("a-1") == 2

@@ -186,6 +186,46 @@ class Config:
     def default_state_jsonl(self) -> str:
         return self._paths().get("state_jsonl", "")
 
+    # ── Specs review cap ──────────────────────────────────────────
+
+    @property
+    def specs_max_report_retries(self) -> int:
+        return int(
+            self._data.get("specs_phases", {}).get("max_report_retries", 3)
+        )
+
+    # ── Specs schemas ─────────────────────────────────────────────
+
+    def specs_schema(self, doc_type: str) -> dict[str, Any]:
+        return self._data.get("specs_schemas", {}).get(doc_type, {})
+
+    def specs_metadata_fields(self, doc_type: str) -> list[str]:
+        return self.specs_schema(doc_type).get("metadata_fields", [])
+
+    def specs_valid_statuses(self, doc_type: str) -> list[str]:
+        return self.specs_schema(doc_type).get("valid_statuses", [])
+
+    def specs_required_sections(self, doc_type: str) -> list[str]:
+        return self.specs_schema(doc_type).get("required_sections", [])
+
+    def specs_required_subsections(self, doc_type: str) -> dict[str, list[str]]:
+        return self.specs_schema(doc_type).get("required_subsections", {})
+
+    def specs_allowed_extra_sections(self, doc_type: str) -> list[str]:
+        return self.specs_schema(doc_type).get("allowed_extra_sections", [])
+
+    def specs_required_tables(self, doc_type: str) -> list[dict[str, str]]:
+        return self.specs_schema(doc_type).get("required_tables", [])
+
+    def specs_valid_priorities(self, doc_type: str) -> list[str]:
+        return self.specs_schema(doc_type).get("valid_priorities", [])
+
+    def specs_valid_item_types(self, doc_type: str) -> list[str]:
+        return self.specs_schema(doc_type).get("valid_item_types", [])
+
+    def specs_story_type_names(self, doc_type: str) -> dict[str, str]:
+        return self.specs_schema(doc_type).get("story_type_names", {})
+
     # ── Specs paths ───────────────────────────────────────────────
 
     @property

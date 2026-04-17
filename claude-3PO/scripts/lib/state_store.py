@@ -313,6 +313,23 @@ class StateStore:
 
         self.update(_mark)
 
+    def agent_rejection_count(self, agent_id: str) -> int:
+        """How many times the report from this agent invocation has been rejected."""
+        counts = self.load().get("agent_rejections", {})
+        return int(counts.get(agent_id, 0))
+
+    def bump_agent_rejection_count(self, agent_id: str) -> int:
+        """Increment and return the rejection count for this agent invocation."""
+        result: dict[str, int] = {"value": 0}
+
+        def _bump(d: dict) -> None:
+            counts = d.setdefault("agent_rejections", {})
+            counts[agent_id] = int(counts.get(agent_id, 0)) + 1
+            result["value"] = counts[agent_id]
+
+        self.update(_bump)
+        return result["value"]
+
     # ── Plan ───────────────────────────────────────────────────────
 
     @property

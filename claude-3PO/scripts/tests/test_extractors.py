@@ -7,11 +7,13 @@ try:
         extract_plan_dependencies,
         extract_plan_tasks,
         extract_contract_names,
+        extract_bold_metadata,
     )
 except ImportError:
     extract_plan_dependencies = None
     extract_plan_tasks = None
     extract_contract_names = None
+    extract_bold_metadata = None
 
 _not_implemented = pytest.mark.skipif(
     extract_plan_dependencies is None,
@@ -156,3 +158,59 @@ class TestExtractContractNames:
         names = extract_contract_names(content)
         assert "UserService" in names
         assert "AuthProvider" in names
+
+
+
+# ═══════════════════════════════════════════════════════════════════
+# extract_bold_metadata
+# ═══════════════════════════════════════════════════════════════════
+
+
+@pytest.mark.skipif(extract_bold_metadata is None, reason="Not yet implemented")
+class TestExtractBoldMetadata:
+    def test_extracts_simple_pairs(self):
+        content = (
+            "# Doc\n\n"
+            "**Project:** Acme\n"
+            "**Version:** 1.0\n"
+            "**Author:** Dev Team\n\n"
+            "## Section\n"
+        )
+        meta = extract_bold_metadata(content)
+        assert meta["Project"] == "Acme"
+        assert meta["Version"] == "1.0"
+        assert meta["Author"] == "Dev Team"
+
+    def test_strips_backticks_around_value(self):
+        content = "**Version:** `1.2.3`\n"
+        assert extract_bold_metadata(content)["Version"] == "1.2.3"
+
+    def test_ignores_placeholder_values(self):
+        content = (
+            "**Project:** [your project]\n"
+            "**Version:** <TBD>\n"
+            "**Status:** Draft\n"
+        )
+        meta = extract_bold_metadata(content)
+        # Placeholders are returned as-is — caller decides how to flag them.
+        assert meta["Project"].startswith("[")
+        assert meta["Version"].startswith("<")
+        assert meta["Status"] == "Draft"
+
+    def test_empty_when_no_metadata(self):
+        assert extract_bold_metadata("# Doc\n\nNo metadata here.\n") == {}
+
+    def test_multiple_colons_kept_in_value(self):
+        content = "**URL:** https://example.com:8080/path\n"
+        assert extract_bold_metadata(content)["URL"] == "https://example.com:8080/path"
+
+    def test_handles_composite_field_names(self):
+        content = (
+            "**Last Updated:** 2026-04-16\n"
+            "**Author(s):** Alice, Bob\n"
+            "**Maintained by:** Platform Team\n"
+        )
+        meta = extract_bold_metadata(content)
+        assert meta["Last Updated"] == "2026-04-16"
+        assert meta["Author(s)"] == "Alice, Bob"
+        assert meta["Maintained by"] == "Platform Team"

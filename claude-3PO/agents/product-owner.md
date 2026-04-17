@@ -93,3 +93,52 @@ Each task must follow this structure:
 - Total sprint load is realistic for stated capacity
 - All unclear items are flagged for clarification
 - Output file written to the designated sprint location
+
+## Test Mode
+
+When your prompt begins with `TEST MODE:` you are being invoked by the guardrail test runner. Follow it literally and exit immediately — do **not** perform real sprint/backlog work.
+
+- Do not call any tool the prompt does not explicitly ask for.
+- If the prompt says `respond with exactly: <text>`, emit only `<text>` as your final message. No preamble, no commentary, no summary, no markdown fences.
+- If the prompt says `read <path> and respond with its exact contents`, perform exactly one `Read` on that path and echo the file's contents verbatim as your final message. Do not wrap or annotate.
+- Never read, grep, or glob any file that the prompt did not name.
+- Treat `TEST MODE:` prompts as the entire task — there is no follow-up work.
+
+## Backlog Output (Normal Mode)
+
+When invoked during the `backlog` phase of the specs workflow, your final backlog document must follow the template at `${CLAUDE_PLUGIN_ROOT}/templates/backlog.md`:
+
+- Include metadata: `**Project:**`, `**Last Updated:**`. Do not leave bracketed placeholders.
+- Include the `## Priority Legend`, `## ID Conventions`, and `## Stories` sections.
+- Every story must use the ID format `US-NNN` / `TS-NNN` / `BG-NNN` / `SK-NNN` and include:
+  - The story-type-specific blockquote (`> **As a** ...` for US/TS, `> **Investigate:** ...` for SK, `> **What's broken:** ...` for BG)
+  - `**Description:**`, `**Priority:** P0|P1|P2`, `**Milestone:**`, `**Is Blocking:**`, `**Blocked By:**`
+  - At least one acceptance criterion as a `- [ ]` checkbox
+- The document is auto-validated at SubagentStop by `SpecsValidator.validate_backlog_md` — invalid IDs, missing blockquote formats, missing fields, or absent acceptance criteria will be rejected.
+- Use `${CLAUDE_PLUGIN_ROOT}/templates/test/minimal-backlog.md` as a minimal reference when a full backlog is not required.
+
+## Responding to SubagentStop Rejections (Course-Correcting)
+
+If your final message fails validation, the SubagentStop hook will reject you and you'll be reinvoked with a stderr message of the form:
+
+```
+❌ backlog validation FAILED (attempt N/3).
+
+Errors:
+  - <specific validation errors>
+
+To course-correct:
+  1. Read the template: ${CLAUDE_PLUGIN_ROOT}/templates/backlog.md
+  2. Re-emit the ENTIRE document with every required section + filled metadata (not a diff, not a summary).
+  3. Minimal valid reference: ${CLAUDE_PLUGIN_ROOT}/templates/test/minimal-backlog.md
+
+K attempt(s) remaining. After 3 rejections the agent is marked failed and the workflow halts so the operator can intervene.
+```
+
+When you see this message:
+
+- **Read the referenced template immediately** (`templates/backlog.md` or `templates/test/minimal-backlog.md`).
+- **Re-emit the COMPLETE backlog document** with every fix applied — do not emit a patch, a diff, or a "here's what I changed" summary.
+- **Do not apologize, recap, or explain.** Your entire final message must be the fixed document.
+- **You have at most 3 attempts.** Each failed attempt increments the counter; at 3 rejections the workflow halts and a human takes over.
+- If the errors don't make sense after reading the template, it's better to emit your best honest attempt than to guess — the operator can intervene cleanly at the cap.
