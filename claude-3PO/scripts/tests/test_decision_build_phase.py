@@ -19,7 +19,7 @@ class TestDecisionPhaseInBuildWorkflow:
     def test_decision_completes_when_decisions_doc_written(self, config, state):
         state.set("workflow_type", "build")
         state.add_phase("decision")
-        state.set_doc_written("decisions", True)
+        state.specs.set_doc_written("decisions", True)
         Resolver(config, state)._resolve_decision()
         assert state.is_phase_completed("decision")
 

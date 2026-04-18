@@ -96,15 +96,15 @@ def _apply_specs_allow(state, phase: str, content: str, config) -> None:
     if phase == "architect":
         path = config.architecture_file_path
         write_doc(content, path)
-        state.set_doc_written("architecture", True)
-        state.set_doc_path("architecture", path)
+        state.specs.set_doc_written("architecture", True)
+        state.specs.set_doc_path("architecture", path)
     elif phase == "backlog":
         md_path = config.backlog_md_file_path
         json_path = config.backlog_json_file_path
         write_backlog(content, md_path, json_path)
-        state.set_doc_written("backlog", True)
-        state.set_doc_md_path("backlog", md_path)
-        state.set_doc_json_path("backlog", json_path)
+        state.specs.set_doc_written("backlog", True)
+        state.specs.set_doc_md_path("backlog", md_path)
+        state.specs.set_doc_json_path("backlog", json_path)
 
 
 def invoke_agent_report_guard(hook: dict, config, state):

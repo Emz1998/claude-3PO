@@ -304,7 +304,7 @@ class Resolver:
         Example:
             >>> Resolver(config, state)._resolve_doc_phase("vision", "product_vision")  # doctest: +SKIP
         """
-        if self.state.is_doc_written(doc_key):
+        if self.state.specs.is_doc_written(doc_key):
             self.state.set_phase_completed(phase_name)
 
     def _resolve_vision(self) -> None:

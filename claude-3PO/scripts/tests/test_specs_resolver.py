@@ -9,8 +9,8 @@ class TestResolveVision:
     def test_completes_when_doc_written(self, config, state):
         state.set("workflow_type", "specs")
         state.add_phase("vision")
-        state.set_doc_written("product_vision", True)
-        state.set_doc_path("product_vision", "projects/docs/product-vision.md")
+        state.specs.set_doc_written("product_vision", True)
+        state.specs.set_doc_path("product_vision", "projects/docs/product-vision.md")
         Resolver(config, state)._resolve_vision()
         assert state.is_phase_completed("vision")
 
@@ -44,8 +44,8 @@ class TestResolveDecision:
     def test_completes_when_doc_written(self, config, state):
         state.set("workflow_type", "specs")
         state.add_phase("decision")
-        state.set_doc_written("decisions", True)
-        state.set_doc_path("decisions", "projects/docs/decisions.md")
+        state.specs.set_doc_written("decisions", True)
+        state.specs.set_doc_path("decisions", "projects/docs/decisions.md")
         Resolver(config, state)._resolve_decision()
         assert state.is_phase_completed("decision")
 
@@ -60,8 +60,8 @@ class TestResolveArchitect:
     def test_completes_when_doc_written(self, config, state):
         state.set("workflow_type", "specs")
         state.add_phase("architect")
-        state.set_doc_written("architecture", True)
-        state.set_doc_path("architecture", "projects/docs/architecture.md")
+        state.specs.set_doc_written("architecture", True)
+        state.specs.set_doc_path("architecture", "projects/docs/architecture.md")
         Resolver(config, state)._resolve_architect()
         assert state.is_phase_completed("architect")
 
@@ -76,8 +76,8 @@ class TestResolveBacklog:
     def test_completes_when_doc_written(self, config, state):
         state.set("workflow_type", "specs")
         state.add_phase("backlog")
-        state.set_doc_written("backlog", True)
-        state.set_doc_path("backlog", "projects/docs/backlog.md")
+        state.specs.set_doc_written("backlog", True)
+        state.specs.set_doc_path("backlog", "projects/docs/backlog.md")
         Resolver(config, state)._resolve_backlog()
         assert state.is_phase_completed("backlog")
 
@@ -92,8 +92,8 @@ class TestSpecsDispatch:
     def test_dispatches_vision_resolver(self, config, state):
         state.set("workflow_type", "specs")
         state.add_phase("vision")
-        state.set_doc_written("product_vision", True)
-        state.set_doc_path("product_vision", "projects/docs/product-vision.md")
+        state.specs.set_doc_written("product_vision", True)
+        state.specs.set_doc_path("product_vision", "projects/docs/product-vision.md")
         resolve(config, state)
         assert state.is_phase_completed("vision")
 
@@ -114,10 +114,10 @@ class TestSpecsWorkflowCompletion:
             state.add_phase(phase)
             state.set_phase_completed(phase)
         # Mark all docs written
-        state.set_doc_written("product_vision", True)
-        state.set_doc_written("decisions", True)
-        state.set_doc_written("architecture", True)
-        state.set_doc_written("backlog", True)
+        state.specs.set_doc_written("product_vision", True)
+        state.specs.set_doc_written("decisions", True)
+        state.specs.set_doc_written("architecture", True)
+        state.specs.set_doc_written("backlog", True)
         resolve(config, state)
         assert state.get("status") == "completed"
         assert state.get("workflow_active") is False
