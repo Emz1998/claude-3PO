@@ -29,6 +29,27 @@ STATE_PATH = Path(__file__).resolve().parent.parent / "state.jsonl"
 
 
 def _build_specs_state(session_id: str, args: str) -> dict:
+    """Build the initial state dict for a ``specs`` workflow.
+
+    Specs state tracks four documents (product_vision, decisions,
+    architecture, backlog) rather than the per-task plan/test/code
+    layout used by build workflows. Each ``docs`` entry is a uniform
+    ``{written, path}`` pair so resolvers can check completion the
+    same way for every doc type.
+
+    Args:
+        session_id (str): Hook session id; becomes ``state.session_id``.
+        args (str): Joined command args; parsed for ``--skip`` and the
+            free-form instruction tail.
+
+    Returns:
+        dict: Fresh specs-workflow state ready for ``StateStore.reinitialize``.
+
+    Example:
+        >>> s = _build_specs_state("sess-1", "")
+        >>> s["workflow_type"]
+        'specs'
+    """
     skip = parse_skip(args)
     test_mode = "--test" in args
     instructions = parse_instructions(args)
@@ -52,6 +73,27 @@ def _build_specs_state(session_id: str, args: str) -> dict:
 
 
 def _build_build_state(workflow_type: str, session_id: str, args: str) -> dict:
+    """Build the initial state dict for a ``build`` or ``implement`` workflow.
+
+    The two workflow types share the same state shape; ``workflow_type`` is
+    stored verbatim so resolvers can branch on it (e.g. ``implement`` requires
+    project-task subtasks rather than flat tasks). All review/revision lists
+    start empty so resolvers can append without checking for the key.
+
+    Args:
+        workflow_type (str): Either ``"build"`` or ``"implement"``.
+        session_id (str): Hook session id.
+        args (str): Joined command args; parsed for ``--tdd``, ``--test``,
+            ``--skip``, story id, and instruction tail.
+
+    Returns:
+        dict: Fresh build/implement state ready for ``StateStore.reinitialize``.
+
+    Example:
+        >>> s = _build_build_state("build", "sess-1", "--tdd")
+        >>> s["tdd"]
+        True
+    """
     skip = parse_skip(args)
     tdd = "--tdd" in args
     test_mode = "--test" in args
@@ -109,6 +151,22 @@ def _build_build_state(workflow_type: str, session_id: str, args: str) -> dict:
 
 
 def build_initial_state(workflow_type: str, session_id: str, args: str) -> dict:
+    """Dispatch to the per-workflow state builder.
+
+    Args:
+        workflow_type (str): One of ``"specs"``, ``"build"``, ``"implement"``.
+            Anything other than ``"specs"`` is treated as a build-style workflow.
+        session_id (str): Hook session id.
+        args (str): Joined command-line args.
+
+    Returns:
+        dict: A fresh state dict for the chosen workflow type.
+
+    Example:
+        >>> s = build_initial_state("specs", "sess-1", "")
+        >>> s["workflow_type"]
+        'specs'
+    """
     if workflow_type == "specs":
         return _build_specs_state(session_id, args)
     return _build_build_state(workflow_type, session_id, args)
@@ -125,6 +183,28 @@ def initialize(
     args: str,
     state_path: Path = STATE_PATH,
 ) -> None:
+    """Initialize state for a new workflow session.
+
+    For non-specs workflows, also archives the previous plan and contracts
+    files (if any) so the new session starts clean. The duplicate-story
+    guard prevents two concurrent sessions from racing on the same story
+    unless the caller explicitly opts in via ``--reset`` (start fresh)
+    or ``--takeover`` (resume the prior session's state).
+
+    Args:
+        workflow_type (str): ``"specs"``, ``"build"``, or ``"implement"``.
+        session_id (str): Hook session id, becomes the state owner.
+        args (str): Joined command-line args (flags + story id + instructions).
+        state_path (Path): Path to the state.jsonl store. Defaults to the
+            module-level STATE_PATH; overridable for tests.
+
+    Raises:
+        ValueError: If a story id is already active in another session and
+            neither ``--reset`` nor ``--takeover`` is supplied.
+
+    Example:
+        >>> initialize("specs", "sess-abc", "--test")  # doctest: +SKIP
+    """
     store = StateStore(state_path, session_id=session_id)
     store.cleanup_inactive()
 
@@ -166,6 +246,15 @@ def initialize(
 
 
 def main() -> None:
+    """Script entry point — parses ``sys.argv`` and calls :func:`initialize`.
+
+    Prints a usage line to stderr and returns (exit 0) when too few
+    arguments are supplied; the bash skill wrapper treats that as a
+    no-op rather than failing the user's command.
+
+    Example:
+        >>> main()  # doctest: +SKIP
+    """
     if len(sys.argv) < 3:
         print(
             "Usage: initializer.py <workflow_type> <session_id> [args...]",

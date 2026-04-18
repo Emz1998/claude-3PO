@@ -31,6 +31,7 @@
 ### Python
 
 - Include a readable docstring with the structure below:
+- **IMPORTANT**: Docstrings must include context, Args, Returns, Raises and Examples. Any missing ones are not acceptable.
 
 ```
     """

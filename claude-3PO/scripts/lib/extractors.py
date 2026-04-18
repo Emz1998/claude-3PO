@@ -1,14 +1,10 @@
-"""recorder.py — All state-mutation (recording) logic for workflow hooks.
+"""extractors.py — Pure extraction helpers for hook payloads and markdown text.
 
-Guards handle validation (allow/block). This module handles recording:
-tracking agents, files, phases, scores, and other state changes that
-happen after a tool use is allowed.
-
-Usage:
-    python3 recorder.py --hook-input '{"hook_event_name":"PostToolUse",...}'
-
-Environment:
-    RECORDER_STATE_PATH — override the default state.json path
+The functions here parse stuff out of strings — agent hook inputs, scoring
+text, markdown sections/tables/bullets, ``gh pr checks`` output, ``/build``
+prompts. They never touch the filesystem and never raise on malformed input
+(returning empty/``None`` instead) so guards and recorders can call them
+freely without try/except scaffolding.
 """
 
 import re
@@ -17,23 +13,57 @@ from typing import Literal
 
 
 def strip_namespace(name: str) -> str:
-    """Strip plugin namespace prefix. 'claudeguard:explore' → 'explore'."""
+    """Strip a plugin namespace prefix (``'claudeguard:explore' -> 'explore'``).
+
+    Example:
+        >>> strip_namespace("claudeguard:explore")
+        'explore'
+        >>> strip_namespace("explore")
+        'explore'
+    """
     if ":" in name:
         return name.split(":", 1)[1]
     return name
 
 
 def extract_skill_name(hook_input: dict) -> str:
-    """Extract skill name from hook input, stripping plugin namespace prefix."""
+    """
+    Extract the skill name from a hook payload, dropping any plugin namespace.
+
+    Args:
+        hook_input (dict): Raw hook event payload (must have ``tool_input.skill``).
+
+    Returns:
+        str: The bare skill name (e.g. ``"explore"``), or ``""`` if absent.
+
+    Example:
+        >>> extract_skill_name({"tool_input": {"skill": "claudeguard:explore"}})
+        'explore'
+    """
     raw = hook_input.get("tool_input", {}).get("skill", "")
     return strip_namespace(raw)
 
 
 def extract_agent_name(hook_input: dict, key: str = "subagent_type") -> str:
-    """Extract agent name from hook input, stripping plugin namespace prefix.
+    """
+    Extract an agent name from a hook payload, dropping any plugin namespace.
 
-    PreToolUse sends 'subagent_type' in tool_input.
-    SubagentStart sends 'agent_type' at top level.
+    Two hook events carry the agent name at different paths: ``PreToolUse``
+    sends ``tool_input.subagent_type``, while ``SubagentStart`` sends
+    ``agent_type`` at the top level. The ``key`` argument selects which schema
+    to read.
+
+    Args:
+        hook_input (dict): Raw hook event payload.
+        key (str): Either ``"subagent_type"`` (default, PreToolUse) or
+            ``"agent_type"`` (SubagentStart).
+
+    Returns:
+        str: The bare agent name, or ``""`` if absent.
+
+    Example:
+        >>> extract_agent_name({"tool_input": {"subagent_type": "QASpecialist"}})
+        'QASpecialist'
     """
     if key == "agent_type":
         raw = hook_input.get("agent_type", "")
@@ -46,7 +76,14 @@ from constants import SCORE_PATTERNS, TABLE_PATTERN
 
 
 def _extract_last_score(text: str, label: str) -> int | None:
-    """Find the last occurrence of a labeled score (e.g. 'Confidence: 85') in text."""
+    """Find the last labeled score (e.g. ``Confidence: 85``) in *text*; ``None`` if missing.
+
+    Example:
+        >>> _extract_last_score("Confidence: 70 then Confidence: 90", "confidence")
+        90
+        >>> _extract_last_score("nothing here", "confidence") is None
+        True
+    """
     matches: list[str] = []
     for pattern in SCORE_PATTERNS:
         matches.extend(re.findall(pattern.format(label=label), text, re.IGNORECASE))
@@ -56,7 +93,23 @@ def _extract_last_score(text: str, label: str) -> int | None:
 def extract_scores(
     text: str,
 ) -> dict[Literal["confidence_score", "quality_score"], int | None]:
-    """Extract confidence and quality scores from free-form reviewer text."""
+    """
+    Extract the latest confidence and quality scores from reviewer text.
+
+    Reviewers may state intermediate scores while reasoning, so the *last*
+    occurrence wins — that's the reviewer's final answer.
+
+    Args:
+        text (str): Free-form reviewer message body.
+
+    Returns:
+        dict[Literal["confidence_score", "quality_score"], int | None]: Both
+        keys always present; values are ``None`` when no score was found.
+
+    Example:
+        >>> extract_scores("Confidence: 85\\nQuality: 90")
+        {'confidence_score': 85, 'quality_score': 90}
+    """
     return {
         "confidence_score": _extract_last_score(text, "confidence"),
         "quality_score": _extract_last_score(text, "quality"),
@@ -64,7 +117,25 @@ def extract_scores(
 
 
 def extract_verdict(message: str) -> str:
-    """Extract Pass/Fail from the last non-empty line of an agent message."""
+    """
+    Extract a Pass/Fail verdict from the last non-empty line of *message*.
+
+    Reviewers are required to put their final verdict on the last line. Anything
+    that isn't exactly ``"Pass"`` is treated as a failure (fail-closed) so an
+    ambiguous or malformed verdict can't accidentally let work through.
+
+    Args:
+        message (str): Full reviewer message.
+
+    Returns:
+        str: ``"Pass"`` or ``"Fail"``.
+
+    Example:
+        >>> extract_verdict("Looks good.\\nPass")
+        'Pass'
+        >>> extract_verdict("Needs work.\\nReject")
+        'Fail'
+    """
     lines = [line.strip() for line in message.strip().splitlines() if line.strip()]
     if not lines:
         return "Fail"
@@ -75,7 +146,25 @@ def extract_verdict(message: str) -> str:
 
 
 def extract_md_sections(md: str, level: int) -> list[tuple[str, str]]:
-    """Extract sections from MD file. Returns heading and content."""
+    """
+    Extract every section at the given heading level from a markdown string.
+
+    A section ends at the next heading of the same-or-higher level (so ``##``
+    stops at ``##`` or ``#`` but not ``###``). Windows ``\\r\\n`` line endings
+    are normalized first because the regex assumes ``\\n``.
+
+    Args:
+        md (str): Full markdown text.
+        level (int): Heading depth (1 for ``#``, 2 for ``##``, etc.).
+
+    Returns:
+        list[tuple[str, str]]: ``[(heading_text, body), ...]`` in document
+        order. Bodies have surrounding whitespace stripped.
+
+    Example:
+        >>> extract_md_sections("## A\\nbody-a\\n## B\\nbody-b", 2)
+        [('A', 'body-a'), ('B', 'body-b')]
+    """
     md = md.replace("\r\n", "\n")
     pattern = re.compile(
         rf"""
@@ -97,7 +186,14 @@ _TABLE_PATTERN = re.compile(TABLE_PATTERN, re.MULTILINE)
 
 
 def _parse_table_row(line: str, cols: int | None = None) -> list[str]:
-    """Parse a single markdown table row into a list of cell strings."""
+    """Split a markdown ``| a | b | c |`` row into ``["a", "b", "c"]``.
+
+    Example:
+        >>> _parse_table_row("| a | b | c |")
+        ['a', 'b', 'c']
+        >>> _parse_table_row("| a | b | c |", cols=2)
+        ['a', 'b']
+    """
     cells = [c.strip() for c in line.strip().strip("|").split("|")]
     return cells[:cols] if cols is not None else cells
 
@@ -107,10 +203,26 @@ def extract_table(
     rows: int | None = None,
     cols: int | None = None,
 ) -> list[list[str]]:
-    """Extract the first markdown table from text.
+    """
+    Extract the first markdown table found in *md*.
 
-    Returns a list of rows, each row a list of cell strings (stripped).
-    The separator row (---) is excluded.
+    The header separator row (``|---|---|``) is dropped so callers always get
+    semantic rows. Pass ``rows`` / ``cols`` to truncate large tables — useful
+    when only the first few cells matter (e.g. type prefixes from an ID
+    conventions table).
+
+    Args:
+        md (str): Markdown text to search.
+        rows (int | None): Max number of body rows to return (header always kept).
+        cols (int | None): Max number of cells per row.
+
+    Returns:
+        list[list[str]]: Header row at index 0, then body rows. Empty list if
+        no table is present.
+
+    Example:
+        >>> extract_table("| A | B |\\n|---|---|\\n| 1 | 2 |")
+        [['A', 'B'], ['1', '2']]
     """
     match = _TABLE_PATTERN.search(md)
     if not match:
@@ -125,7 +237,19 @@ def extract_table(
 
 
 def extract_bullet_items(content: str) -> list[str]:
-    """Extract bullet list items (- item) from markdown content."""
+    """
+    Extract ``- item`` bullet items from a markdown blob.
+
+    Args:
+        content (str): Markdown text.
+
+    Returns:
+        list[str]: Bullet text with the leading ``- `` removed, in document order.
+
+    Example:
+        >>> extract_bullet_items("- foo\\n- bar\\nplain line")
+        ['foo', 'bar']
+    """
     return [
         line.lstrip("- ").strip()
         for line in content.splitlines()
@@ -134,7 +258,22 @@ def extract_bullet_items(content: str) -> list[str]:
 
 
 def extract_section_map(content: str, level: int) -> dict[str, str]:
-    """Return ``{heading.strip(): body}`` for every section at the given heading level."""
+    """
+    Return ``{heading.strip(): body}`` for every section at the given heading level.
+
+    Args:
+        content (str): Full markdown text.
+        level (int): Heading depth (1 for ``#``, 2 for ``##``, etc.).
+
+    Returns:
+        dict[str, str]: Heading-to-body map. Later sections with the same
+        heading clobber earlier ones — by design, since duplicate headings
+        in a single doc are an authoring bug.
+
+    Example:
+        >>> extract_section_map("## A\\nbody", 2)
+        {'A': 'body'}
+    """
     return {name.strip(): body for name, body in extract_md_sections(content, level)}
 
 
@@ -143,22 +282,68 @@ _extract_bullet_items = extract_bullet_items
 
 
 def _extract_section_bullets(content: str, heading: str) -> list[str]:
-    """Extract bullet items from a specific ## section in markdown."""
+    """Extract bullets from the ``## heading`` section in *content*.
+
+    Example:
+        >>> _extract_section_bullets("## Tasks\\n- a\\n- b", "Tasks")
+        ['a', 'b']
+    """
     return extract_bullet_items(extract_section_map(content, 2).get(heading, ""))
 
 
 def extract_plan_dependencies(content: str) -> list[str]:
-    """Parse ## Dependencies section from plan — extract bullet items as package names."""
+    """
+    Parse the ``## Dependencies`` bullet list from a plan file.
+
+    Args:
+        content (str): Full plan markdown.
+
+    Returns:
+        list[str]: Package names; empty if the section is missing.
+
+    Example:
+        >>> extract_plan_dependencies("## Dependencies\\n- requests\\n- pytest")
+        ['requests', 'pytest']
+    """
     return _extract_section_bullets(content, "Dependencies")
 
 
 def extract_plan_tasks(content: str) -> list[str]:
-    """Parse ## Tasks section from plan — extract bullet items as task subjects."""
+    """
+    Parse the ``## Tasks`` bullet list from a plan file.
+
+    Args:
+        content (str): Full plan markdown.
+
+    Returns:
+        list[str]: Task subjects; empty if the section is missing.
+
+    Example:
+        >>> extract_plan_tasks("## Tasks\\n- Write tests\\n- Implement")
+        ['Write tests', 'Implement']
+    """
     return _extract_section_bullets(content, "Tasks")
 
 
 def _extract_names_from_specs_table(sections: list[tuple[str, str]]) -> list[str] | None:
-    """Extract names from ## Specifications table. Returns None if no section found."""
+    """
+    Pull the first column of the ``## Specifications`` table.
+
+    Returns ``None`` (not ``[]``) when the section is absent so callers can
+    distinguish "no specs section" from "empty specs section" and fall back
+    to alternate parsing strategies.
+
+    Args:
+        sections (list[tuple[str, str]]): Output of ``extract_md_sections(..., 2)``.
+
+    Returns:
+        list[str] | None: Spec names, ``[]`` if section exists but has no
+        body rows, or ``None`` if no Specifications section was found.
+
+    Example:
+        >>> _extract_names_from_specs_table([("Other", "x")]) is None
+        True
+    """
     for name, body in sections:
         if name.strip() == "Specifications":
             table = extract_table(body)
@@ -169,9 +354,22 @@ def _extract_names_from_specs_table(sections: list[tuple[str, str]]) -> list[str
 
 
 def extract_contract_names(content: str) -> list[str]:
-    """Parse contract names from latest-contracts.md.
+    """
+    Parse contract names from ``latest-contracts.md`` with three fallbacks.
 
-    Priority: specs table → bullet items → heading names.
+    Tries in order: the Specifications table → top-level bullet list → H2
+    heading names. The cascade lets contracts be authored in whichever style
+    fits the doc without forcing one canonical layout.
+
+    Args:
+        content (str): Full contracts markdown.
+
+    Returns:
+        list[str]: Contract names found via the first matching strategy.
+
+    Example:
+        >>> extract_contract_names("- foo\\n- bar")
+        ['foo', 'bar']
     """
     sections = extract_md_sections(content, 2)
 
@@ -187,10 +385,23 @@ def extract_contract_names(content: str) -> list[str]:
 
 
 def extract_plan_files_to_modify(content: str) -> list[str]:
-    """Extract file paths from ## Files to Create/Modify table.
+    """
+    Extract file paths from the plan's ``Files to Create/Modify`` table.
 
-    Expects a markdown table with columns: Action | Path.
-    Returns the Path column values.
+    Accepts either ``Files to Create/Modify`` or the legacy ``Files to Modify``
+    heading. Expects an ``Action | Path`` table and returns the Path column.
+
+    Args:
+        content (str): Full plan markdown.
+
+    Returns:
+        list[str]: File paths in table order; empty if the section or table
+        is missing.
+
+    Example:
+        >>> md = "## Files to Modify\\n| Action | Path |\\n|---|---|\\n| edit | a.py |"
+        >>> extract_plan_files_to_modify(md)
+        ['a.py']
     """
     sections = extract_md_sections(content, 2)
     for name, body in sections:
@@ -204,7 +415,21 @@ def extract_plan_files_to_modify(content: str) -> list[str]:
 
 
 def extract_contract_files(content: str) -> list[str]:
-    """Extract file paths from ## Specifications table (File column, index 2)."""
+    """
+    Extract file paths from the contracts ``## Specifications`` File column.
+
+    Args:
+        content (str): Full contracts markdown.
+
+    Returns:
+        list[str]: File paths from the third column (index 2); empty if
+        the table is missing or has fewer than three columns.
+
+    Example:
+        >>> md = "## Specifications\\n| Name | Type | File |\\n|---|---|---|\\n| A | x | a.py |"
+        >>> extract_contract_files(md)
+        ['a.py']
+    """
     sections = extract_md_sections(content, 2)
     for name, body in sections:
         if name.strip() == "Specifications":
@@ -218,7 +443,19 @@ _PENDING_KEYWORDS = ("\tpending", "\tqueued", "\tin_progress", "\twaiting")
 
 
 def _ci_status_from_tabs(output: str) -> str | None:
-    """Check tab-delimited status keywords. Returns status or None if inconclusive."""
+    """
+    Read CI status from tab-delimited ``gh pr checks`` output.
+
+    Order matters: any failure beats any pending check, which beats a pass.
+    Returns ``None`` when the output isn't tab-delimited (caller falls back
+    to the summary parser).
+
+    Example:
+        >>> _ci_status_from_tabs("ci\\tpass\\tx")
+        'passed'
+        >>> _ci_status_from_tabs("plain text") is None
+        True
+    """
     if "\tfail" in output:
         return "failed"
     if any(kw in output for kw in _PENDING_KEYWORDS):
@@ -229,7 +466,14 @@ def _ci_status_from_tabs(output: str) -> str | None:
 
 
 def _ci_status_from_summary(output: str) -> str | None:
-    """Check summary format (gh pr checks --watch). Returns status or None."""
+    """Read CI status from the human-friendly ``gh pr checks --watch`` summary line.
+
+    Example:
+        >>> _ci_status_from_summary("All checks were successful")
+        'passed'
+        >>> _ci_status_from_summary("nothing relevant") is None
+        True
+    """
     if "All checks were successful" in output:
         return "passed"
     if "Some checks were not successful" in output:
@@ -238,9 +482,25 @@ def _ci_status_from_summary(output: str) -> str | None:
 
 
 def extract_ci_status(output: str) -> str:
-    """Parse gh pr checks output to determine CI status.
+    """
+    Parse ``gh pr checks`` output to a single CI status string.
 
-    Returns "passed", "failed", or "pending".
+    Tries the tab-delimited format first (default ``gh pr checks`` output)
+    then falls back to the summary line (``--watch`` mode). Empty/blank
+    output is treated as pending — the most cautious assumption when CI
+    hasn't reported yet.
+
+    Args:
+        output (str): Combined stdout from ``gh pr checks``.
+
+    Returns:
+        str: ``"passed"``, ``"failed"``, or ``"pending"``.
+
+    Example:
+        >>> extract_ci_status("ci\\tpass\\t...")
+        'passed'
+        >>> extract_ci_status("")
+        'pending'
     """
     if not output or not output.strip():
         return "pending"
@@ -269,7 +529,12 @@ _BUILD_FLAGS = [
 
 
 def _strip_flags_and_ids(text: str) -> str:
-    """Remove CLI flags and story IDs from raw instructions."""
+    """Strip recognized ``--flag`` tokens and ``ABC-123`` story IDs from *text*.
+
+    Example:
+        >>> _strip_flags_and_ids("US-001 --tdd add login")
+        'add login'
+    """
     text = re.sub(_STORY_ID_PATTERN, "", text)
     for flag in _BUILD_FLAGS:
         text = text.replace(flag, "")
@@ -277,7 +542,27 @@ def _strip_flags_and_ids(text: str) -> str:
 
 
 def extract_build_instructions(prompt: str) -> str | None:
-    """Extract instructions from a /build prompt. Returns None if not a /build."""
+    """
+    Extract the free-text instructions from a ``/build`` slash-command prompt.
+
+    Story IDs and known flags are stripped so the remainder is just the user's
+    actual instruction text. Returns ``None`` (not ``""``) when the prompt
+    isn't a ``/build`` command, so callers can branch on "is this a build?"
+    independent of "are there instructions?".
+
+    Args:
+        prompt (str): Raw user prompt.
+
+    Returns:
+        str | None: Cleaned instruction text, or ``None`` if not a build prompt
+        or if the instruction is empty after stripping flags/IDs.
+
+    Example:
+        >>> extract_build_instructions("/build US-001 --tdd add login")
+        'add login'
+        >>> extract_build_instructions("hello") is None
+        True
+    """
     match = _BUILD_PATTERN.match(prompt.strip())
     if not match:
         return None
@@ -285,7 +570,20 @@ def extract_build_instructions(prompt: str) -> str | None:
 
 
 def extract_md_body(content: str) -> str:
-    """Remove YAML frontmatter (--- ... ---) and return the markdown body."""
+    """
+    Strip a YAML frontmatter block (``---ed ... ---``) and return the markdown body.
+
+    Args:
+        content (str): Full markdown including optional frontmatter.
+
+    Returns:
+        str: Body with leading newlines trimmed; the unchanged input if no
+        frontmatter is present.
+
+    Example:
+        >>> extract_md_body("---\\nkey: val\\n---\\n# Title")
+        '# Title'
+    """
     if content.startswith("---"):
         parts = content.split("---", 2)
         if len(parts) >= 3:
@@ -297,10 +595,22 @@ _BOLD_METADATA_PATTERN = re.compile(r"^\*\*([^*:]+?):\*\*\s*(.*)$")
 
 
 def extract_bold_metadata(content: str) -> dict[str, str]:
-    """Parse bold-label metadata rows (`**Key:** value`) into {key: value}.
+    """
+    Parse bold-label metadata rows (``**Key:** value``) into a dict.
 
     Values are stripped of surrounding whitespace and backticks; placeholders
-    like `[your project]` or `<TBD>` are returned as-is so callers can flag them.
+    like ``[your project]`` or ``<TBD>`` are returned as-is so callers can flag
+    them as un-filled-in.
+
+    Args:
+        content (str): Markdown text containing bold metadata lines.
+
+    Returns:
+        dict[str, str]: ``{label: value}`` for every recognized line.
+
+    Example:
+        >>> extract_bold_metadata("**Status:** Draft\\n**Owner:** Alice")
+        {'Status': 'Draft', 'Owner': 'Alice'}
     """
     meta: dict[str, str] = {}
     for line in content.splitlines():

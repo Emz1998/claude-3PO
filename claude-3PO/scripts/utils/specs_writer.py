@@ -1,7 +1,10 @@
 """specs_writer.py — Writes specs docs (md + json for backlog) to disk.
 
 Validates content before writing. Used by AgentReportGuard for
-auto-writing architect and backlog outputs.
+auto-writing architect and backlog outputs. The bottom of this module
+re-exports two ``validate_*`` helpers from :mod:`lib.specs_validation`
+for back-compat — older guards imported them from here, and silently
+breaking those import paths would be an upgrade hazard.
 """
 
 import json
@@ -12,11 +15,33 @@ from utils.validator import SpecsValidator
 
 
 def _validator() -> SpecsValidator:
+    """Construct a fresh SpecsValidator bound to the default Config.
+
+    Example:
+        >>> _validator()  # doctest: +SKIP
+    """
     return SpecsValidator(Config())
 
 
 def write_doc(content: str, file_path: str) -> None:
-    """Write markdown content to disk. Validates non-empty content and path."""
+    """Write markdown content to disk after light validation.
+
+    Validates that both ``content`` and ``file_path`` are non-empty before
+    touching the filesystem; both checks raise rather than silently no-op
+    so a misconfigured caller fails loudly instead of producing an empty
+    file with a wrong name. Parent directories are created on demand.
+
+    Args:
+        content (str): Markdown body to write (must be non-blank).
+        file_path (str): Absolute filesystem path to write to.
+
+    Raises:
+        ValueError: If ``content`` is blank or ``file_path`` is empty.
+        OSError: If the file cannot be written.
+
+    Example:
+        >>> write_doc("# Title", "/tmp/doc.md")  # doctest: +SKIP
+    """
     if not content.strip():
         raise ValueError("Document content is empty")
     if not file_path:
@@ -27,7 +52,26 @@ def write_doc(content: str, file_path: str) -> None:
 
 
 def write_backlog(content: str, md_path: str, json_path: str) -> None:
-    """Write backlog.md and convert to backlog.json."""
+    """Write backlog markdown to ``md_path`` and a derived JSON to ``json_path``.
+
+    The markdown is the source of truth — the JSON is regenerated from
+    it on every write via :meth:`SpecsValidator.convert_backlog_md_to_json`.
+    That way the two files can never drift: writing the markdown is the
+    only authoring action, and the JSON view stays consistent for
+    downstream consumers (sprint planners, CI, etc).
+
+    Args:
+        content (str): Backlog markdown body (must be non-blank).
+        md_path (str): Path for the markdown file.
+        json_path (str): Path for the derived JSON file.
+
+    Raises:
+        ValueError: If ``content`` is blank.
+        OSError: If either file cannot be written.
+
+    Example:
+        >>> write_backlog("# Backlog\\n", "/tmp/b.md", "/tmp/b.json")  # doctest: +SKIP
+    """
     if not content.strip():
         raise ValueError("Backlog content is empty")
     write_doc(content, md_path)

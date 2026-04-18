@@ -36,6 +36,10 @@ class TemplateSchema:
     ``valid_item_types`` / ``json_item_statuses`` which the others leave empty).
     Each ``required_*`` collection is what the validator checks for *presence*;
     ``allowed_extra_sections`` lists names that may appear but aren't required.
+
+    Example:
+        >>> TemplateSchema(required_sections=["Overview"]).required_sections
+        ['Overview']
     """
 
     metadata_fields: list[str] = field(default_factory=list)
@@ -276,6 +280,10 @@ def _build_architecture_schema(
         TemplateSchema: Schema with ``required_sections`` (numbered H2s),
         ``required_subsections`` (numbered H3s under numbered H2s), and
         ``allowed_extra_sections`` (un-numbered H2s).
+
+    Example:
+        >>> _build_architecture_schema("## 1. Overview\\n", None).required_sections
+        ['1. Overview']
     """
     metadata = _parse_metadata_block(text)
     all_h2 = [name for name, _ in extract_md_sections(text, 2)]
@@ -338,6 +346,10 @@ def _build_constitution_schema(
         TemplateSchema: Schema with ``doc_title``, ``required_sections`` (H1s
         excluding title), ``required_subsections`` (H2s under each H1), and
         ``required_h3_subsections`` (H3s under each H2).
+
+    Example:
+        >>> _build_constitution_schema("# Title\\n# Principles\\n", None).doc_title
+        'Title'
     """
     metadata = _parse_metadata_block(text)
     h1s = [name for name, _ in extract_md_sections(text, 1)]
@@ -368,6 +380,11 @@ def _constitution_sections(
             ``(required_h1s, {h1: [h2s]}, {h2: [h3s]})`` — the first element is
             the list of H1 section names to require; the maps are populated only
             for parents that have children at the next level.
+
+    Example:
+        >>> required, _, _ = _constitution_sections("# Title\\n# Principles\\n", "Title")
+        >>> required
+        ['Principles']
     """
     required: list[str] = []
     h2_map: dict[str, list[str]] = {}
@@ -407,6 +424,10 @@ def _build_product_vision_schema(
     Returns:
         TemplateSchema: Schema with all H2s required, H3 children mapped per H2,
         and any tables fingerprinted via ``required_tables``.
+
+    Example:
+        >>> _build_product_vision_schema("## Goals\\n", None).required_sections
+        ['Goals']
     """
     metadata = _parse_metadata_block(text)
     sections = [name for name, _ in extract_md_sections(text, 2)]
@@ -482,6 +503,10 @@ def _build_backlog_schema(
     Returns:
         TemplateSchema: Populated with all five backlog-specific fields plus
         the standard ``metadata_fields`` and ``required_sections``.
+
+    Example:
+        >>> _build_backlog_schema("## Stories\\n", None).required_sections
+        ['Stories']
     """
     metadata = _parse_metadata_block(text)
     sections = [name for name, _ in extract_md_sections(text, 2)]
@@ -536,6 +561,10 @@ def _parse_id_conventions(text: str) -> tuple[list[str], dict[str, str]]:
     Returns:
         tuple[list[str], dict[str, str]]: ``(prefixes, {prefix: type_name})``;
         both empty if the section or table is missing.
+
+    Example:
+        >>> _parse_id_conventions("")
+        ([], {})
     """
     for h2_name, h2_body in extract_md_sections(text, 2):
         if h2_name.strip() != "ID Conventions":
@@ -597,6 +626,10 @@ def _parse_backlog_sample_statuses(templates_dir: Path | None) -> list[str]:
         json.JSONDecodeError: If ``backlog-sample.json`` exists but is malformed
             (deliberately propagated — a corrupt sample file is an authoring bug
             that should fail loudly).
+
+    Example:
+        >>> _parse_backlog_sample_statuses(None)
+        []
     """
     if templates_dir is None:
         return []

@@ -1,3 +1,5 @@
+"""Re-exports of workflow constants (regex patterns, command lists, file globs)."""
+
 from .constants import *
 
 __all__ = [

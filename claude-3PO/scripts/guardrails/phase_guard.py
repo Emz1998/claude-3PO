@@ -1,7 +1,9 @@
-"""PhaseGuard — Validates phase transitions (skill invocations).
+"""PhaseGuard — validates phase transitions triggered by Skill invocations.
 
-Pure validator: never mutates state and never calls the resolver.
-Dispatchers apply state effects after Allow.
+**Pure validator** — never mutates state and never calls the resolver. Each
+``_handle_*`` method only returns a Decision describing whether the transition
+is legal; dispatchers are responsible for applying the side effects via
+``Recorder.apply_phase_skill`` after Allow.
 """
 
 from typing import Literal
@@ -15,9 +17,41 @@ Decision = tuple[Literal["allow", "block"], str]
 
 
 class PhaseGuard:
-    """Validate phase transition (skill invocation)."""
+    """Validate a phase transition triggered by a Skill invocation.
+
+    Two transition models live side-by-side:
+
+    - **Ordered transitions** — most skills must follow ``self.phases`` in order,
+      with no skipping and no going back. Auto-phases (those that start
+      automatically) cannot be invoked as skills at all.
+    - **Special skills** — ``/continue``, ``/plan-approved``, ``/revise-plan``,
+      and ``/reset-plan-review`` each have their own ``_handle_*`` method
+      that returns a Decision based on phase + status invariants
+      (e.g. ``/plan-approved`` requires plan-review to be at checkpoint or
+      review-exhausted).
+
+    The class is a **pure validator** — handlers no longer mutate state. After
+    Allow, dispatchers apply state effects via :meth:`Recorder.apply_phase_skill`.
+
+    Example:
+        >>> guard = PhaseGuard(hook_input, config, state)  # doctest: +SKIP
+        >>> decision, message = guard.validate()  # doctest: +SKIP
+    """
 
     def __init__(self, hook_input: dict, config: Config, state: StateStore):
+        """
+        Cache phase, status, target skill, and the workflow's ordered phase list.
+
+        Args:
+            hook_input (dict): Raw PreToolUse hook payload.
+            config (Config): Workflow configuration (phase ordering, auto-phase flags).
+            state (StateStore): Mutable workflow state snapshot.
+
+        Example:
+            >>> guard = PhaseGuard(hook_input, config, state)  # doctest: +SKIP
+            >>> guard.next_phase  # doctest: +SKIP
+            'plan'
+        """
         self.hook_input = hook_input
         self.config = config
         self.state = state
@@ -27,6 +61,11 @@ class PhaseGuard:
         self.phases = self._get_workflow_phases()
 
     def _get_workflow_phases(self) -> list[str]:
+        """Return the phase list for the current workflow type (build / implement / etc.).
+
+        Example:
+            >>> phases = guard._get_workflow_phases()  # doctest: +SKIP
+        """
         workflow_type = self.state.get("workflow_type", "build")
         phases = self.config.get_phases(workflow_type)
         return phases if phases else self.config.main_phases
@@ -34,13 +73,51 @@ class PhaseGuard:
     # ── Order validation ──────────────────────────────────────────
 
     def _check_item_in_order(self, item: str, order: list[str], label: str) -> None:
+        """
+        Confirm ``item`` appears in ``order``.
+
+        Args:
+            item (str): Item to check.
+            order (list[str]): Reference ordered list.
+            label (str): Human-readable label used in the error message.
+
+        Raises:
+            ValueError: If ``item`` is not in ``order``.
+
+        Example:
+            >>> # Raises ValueError when the item is missing from order:
+            >>> guard._check_item_in_order("test", ["plan", "code"], "phase")  # doctest: +SKIP
+        """
         if item not in order:
             raise ValueError(f"Invalid {label} '{item}'")
 
     def _validate_order(
         self, prev: str | None, next_item: str, order: list[str]
     ) -> str:
-        """Validate transition and return success message."""
+        """
+        Enforce strict forward-by-one ordering against ``order``.
+
+        Used for both phase ordering (with current-phase as ``prev``) and skill
+        ordering. The first transition (``prev is None``) must hit ``order[0]``;
+        subsequent transitions must advance by exactly one position — equal index
+        means "already entered", lower index means "going backwards", higher than
+        +1 means "skipping phases".
+
+        Args:
+            prev (str | None): Previous item, or ``None`` for first transition.
+            next_item (str): Item being transitioned to.
+            order (list[str]): Reference order.
+
+        Returns:
+            str: Success message describing the allowed transition.
+
+        Raises:
+            ValueError: If the transition violates the ordering invariants.
+
+        Example:
+            >>> guard._validate_order("plan", "code", ["plan", "code"])  # doctest: +SKIP
+            "Phase is allowed to transition to 'code'"
+        """
         self._check_item_in_order(next_item, order, "next item")
 
         if prev is None:
@@ -76,6 +153,24 @@ class PhaseGuard:
     }
 
     def _is_review_exhausted(self, phase: str) -> bool:
+        """
+        True iff a review phase has hit 3 failed attempts.
+
+        ``quality-check`` / ``validate`` use a separate counter
+        (``qa_specialist_count`` + ``quality_check_result``). Other review
+        phases lookup their (count_attr, verdict_key) pair in
+        ``_EXHAUSTION_MAP``.
+
+        Args:
+            phase (str): Review phase name.
+
+        Returns:
+            bool: ``True`` if the phase has 3+ failures and the last review failed.
+
+        Example:
+            >>> guard._is_review_exhausted("plan-review")  # doctest: +SKIP
+            False
+        """
         if phase in ("quality-check", "validate"):
             return (
                 self.state.qa_specialist_count >= 3
@@ -94,6 +189,24 @@ class PhaseGuard:
     # ── Skill handlers ────────────────────────────────────────────
 
     def _handle_continue(self) -> Decision:
+        """
+        Validate ``/continue`` — advance past the current phase.
+
+        Pure: returns a Decision; the dispatcher is responsible for the
+        actual phase advance via Recorder.
+
+        Returns:
+            Decision: Allow if the phase is completed or in_progress (which
+            counts as a force-complete). Block in plan-review (use
+            ``/plan-approved`` or ``/revise-plan`` instead).
+
+        Raises:
+            ValueError: If used in plan-review or when the current phase has
+                no advance-able status.
+
+        Example:
+            >>> decision, message = guard._handle_continue()  # doctest: +SKIP
+        """
         if self.current == "plan-review":
             raise ValueError(
                 "Use '/plan-approved' to approve the plan, or '/revise-plan' to revise it."
@@ -107,6 +220,23 @@ class PhaseGuard:
         )
 
     def _handle_plan_approved(self) -> Decision:
+        """
+        Validate ``/plan-approved`` — operator overrides plan-review to proceed.
+
+        Pure: returns a Decision; the dispatcher applies the phase advance.
+        Allowed when plan-review is completed (Pass at checkpoint) OR when
+        review is exhausted (3 fails) — the latter is the operator's escape
+        hatch from a stuck reviewer.
+
+        Returns:
+            Decision: Allow if at checkpoint or review-exhausted, otherwise Block.
+
+        Raises:
+            ValueError: If invoked outside plan-review or in any other state.
+
+        Example:
+            >>> decision, message = guard._handle_plan_approved()  # doctest: +SKIP
+        """
         if self.current != "plan-review":
             raise ValueError(
                 "'/plan-approved' can only be used during plan-review. "
@@ -125,6 +255,23 @@ class PhaseGuard:
         )
 
     def _handle_revise_plan(self) -> Decision:
+        """
+        Validate ``/revise-plan`` — reopen plan-review for another revision pass.
+
+        Pure: returns a Decision; the dispatcher reopens the phase. Allowed
+        under the same conditions as ``/plan-approved``: checkpoint or review
+        exhaustion.
+
+        Returns:
+            Decision: Allow when plan-review is at checkpoint or exhausted,
+            otherwise Block.
+
+        Raises:
+            ValueError: If invoked outside plan-review or in any other state.
+
+        Example:
+            >>> decision, message = guard._handle_revise_plan()  # doctest: +SKIP
+        """
         if self.current != "plan-review":
             raise ValueError(
                 "'/revise-plan' can only be used during plan-review. "
@@ -145,6 +292,18 @@ class PhaseGuard:
         )
 
     def _handle_reset_plan_review(self) -> Decision:
+        """
+        Validate ``/reset-plan-review`` — test-mode-only escape hatch.
+
+        Returns:
+            Decision: Allow when ``state.test_mode`` is truthy, otherwise Block.
+
+        Raises:
+            ValueError: If invoked outside test mode.
+
+        Example:
+            >>> decision, message = guard._handle_reset_plan_review()  # doctest: +SKIP
+        """
         if self.state.get("test_mode"):
             return "allow", "Test-mode reset allowed"
         raise ValueError("'/reset-plan-review' is only available in test mode.")
@@ -152,6 +311,19 @@ class PhaseGuard:
     # ── Transition validation ─────────────────────────────────────
 
     def _check_not_auto_phase(self) -> None:
+        """
+        Reject explicit invocation of an auto-phase.
+
+        Auto-phases are entered automatically when the previous phase
+        completes; invoking them as skills would cause a double-enter.
+
+        Raises:
+            ValueError: If ``self.next_phase`` is an auto-phase.
+
+        Example:
+            >>> # Raises ValueError when the next phase is an auto-phase:
+            >>> guard._check_not_auto_phase()  # doctest: +SKIP
+        """
         if self.config.is_auto_phase(self.next_phase):
             raise ValueError(
                 f"'{self.next_phase}' is an auto-phase — it starts automatically after the previous phase completes. "
@@ -159,6 +331,18 @@ class PhaseGuard:
             )
 
     def _check_current_phase_done(self) -> None:
+        """
+        Forbid leaving the current phase before its status is ``completed``.
+
+        Raises:
+            ValueError: If transitioning while the current phase is not
+                completed (with a friendlier message when the user is
+                re-invoking the same phase).
+
+        Example:
+            >>> # Raises ValueError when leaving an unfinished phase:
+            >>> guard._check_current_phase_done()  # doctest: +SKIP
+        """
         if self.next_phase and self.status != "completed":
             if self.next_phase == self.current:
                 raise ValueError(
@@ -169,7 +353,20 @@ class PhaseGuard:
             )
 
     def _resolve_prev_for_ordering(self) -> str:
-        """When current phase is an auto-phase, find the last completed skill-phase for ordering."""
+        """
+        Map an auto-phase ``current`` back to its preceding skill phase.
+
+        Skill ordering is computed against the skill-phase list (auto-phases
+        excluded). When the current phase is itself an auto-phase, this helper
+        walks backwards through completed phases to find the last skill phase
+        — that's the right "previous" anchor for the next-skill ordering check.
+
+        Returns:
+            str: The skill-phase to use as ``prev`` in :meth:`_validate_order`.
+
+        Example:
+            >>> prev = guard._resolve_prev_for_ordering()  # doctest: +SKIP
+        """
         skill_phases = [p for p in self.phases if not self.config.is_auto_phase(p)]
         if not self.config.is_auto_phase(self.current):
             return self.current
@@ -180,6 +377,18 @@ class PhaseGuard:
         return self.current
 
     def _get_skill_phases(self) -> list[str]:
+        """
+        Return the ordered skill-only phase list, with TDD-only phases filtered.
+
+        When ``state.tdd`` is False, the test-review phases are dropped so
+        non-TDD workflows don't trip on a "you skipped test-review" error.
+
+        Returns:
+            list[str]: Skill-invokable phases in workflow order.
+
+        Example:
+            >>> skill_phases = guard._get_skill_phases()  # doctest: +SKIP
+        """
         skill_phases = [p for p in self.phases if not self.config.is_auto_phase(p)]
         if not self.state.get("tdd", False):
             skill_phases = [
@@ -190,7 +399,24 @@ class PhaseGuard:
     # ── Validate ──────────────────────────────────────────────────
 
     def validate(self) -> Decision:
-        """Returns ("allow", message) or ("block", reason)."""
+        """
+        Validate the requested skill / phase transition.
+
+        Dispatches to a special-skill handler if the next phase is one of the
+        operator commands (``continue`` / ``plan-approved`` / ``revise-plan`` /
+        ``reset-plan-review``). Otherwise enforces auto-phase, current-phase-done,
+        and ordering checks against the workflow's skill-phase list. The
+        Explore+Research parallel case is short-circuited.
+
+        Returns:
+            Decision: ``("allow", message)`` if the transition is legal,
+            otherwise ``("block", reason)``.
+
+        Example:
+            >>> decision, message = guard.validate()  # doctest: +SKIP
+            >>> decision  # doctest: +SKIP
+            'allow'
+        """
         try:
             # Skill command handlers
             if self.next_phase == "continue":

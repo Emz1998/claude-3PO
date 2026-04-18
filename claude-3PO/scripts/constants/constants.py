@@ -1,3 +1,21 @@
+"""Shared constants used across hooks, guards, validators, and the async batcher.
+
+Layout overview:
+    * ``CODE_EXTENSIONS`` — file extensions treated as "source code" by guards.
+    * Regex patterns (``PR_COMMAND_PATTERNS``, ``TEST_RUN_PATTERNS``,
+      ``CI_CHECK_PATTERNS``, ``STORY_ID_PATTERN``, ``SCORE_PATTERNS``,
+      ``TABLE_PATTERN``) — used by hooks to classify Bash invocations and parse
+      structured agent output.
+    * Command lists (``PR_COMMANDS``, ``CI_COMMANDS``, ``INSTALL_COMMANDS``,
+      ``TEST_COMMANDS``, ``READ_ONLY_COMMANDS``, ``WRITE_COMMANDS``) — keyed by
+      phase via ``COMMANDS_MAP`` to gate which shell commands a phase may run.
+    * File patterns (``PACKAGE_MANAGER_FILES``, ``TEST_FILE_PATTERNS``) —
+      heuristics for locating dependency manifests and test files.
+    * Specs grammar (``SPECS_*``) — markdown markers, ID regex template, and
+      blockquote patterns the SpecsValidator uses to parse backlog.md.
+"""
+
+
 CODE_EXTENSIONS = {
     ".py",
     ".ts",
@@ -196,7 +214,10 @@ SPECS_FIELD_MARKERS = {
 # Story/task ID regex; the prefix list lives in config.specs_valid_item_types.
 SPECS_ID_REGEX_TEMPLATE = r"^{prefix}-\d+$"
 
-# Blockquote format regexes keyed by backlog item type.
+# Blockquote format regexes keyed by backlog item type prefix (US/TS/SK/BG).
+# Each value is the regex that the blockquote body of a story of that type
+# must match — e.g. user stories must contain "**As a**", spikes must contain
+# "**Investigate:**". Keys must align with config.specs_valid_item_types.
 SPECS_BLOCKQUOTE_PATTERNS = {
     "US": r"\*\*As a\*\*",
     "TS": r"\*\*As a\*\*",

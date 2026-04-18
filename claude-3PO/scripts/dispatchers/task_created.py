@@ -1,5 +1,19 @@
 #!/usr/bin/env python3
-"""TaskCreated hook dispatcher — validates and records task creation."""
+"""TaskCreated hook — validate new tasks against the workflow plan and record them.
+
+Serves the Claude Code ``TaskCreated`` event. Flow:
+
+    1. Read hook stdin; bail (``exit 0``) if no session_id or no active workflow.
+    2. Run ``TaskCreatedGuard`` to check the new task against the planned
+       build/implement task list.
+    3. On ``"block"``: append a violations.md row and ``Hook.block`` (``exit 2``)
+       so Claude sees the rejection and course-corrects.
+    4. On ``"allow"``: apply task effects via :func:`_apply_task_effects` —
+       record the matched build subject and/or attach the task as a subtask of
+       its matched implement-workflow parent.
+
+Env override: ``TASK_CREATED_STATE_PATH`` redirects state.jsonl (used by tests).
+"""
 
 import os
 import sys
@@ -22,6 +36,15 @@ STATE_PATH = Path(os.environ.get(
 
 
 def main() -> None:
+    """Entry point — runs once per TaskCreated event.
+
+    Early-exit cascade: no session_id → no active workflow → otherwise validate
+    the task and either block (with a violation row) or apply the matched
+    side-effects.
+
+    Example:
+        >>> main()  # doctest: +SKIP — reads JSON from stdin and exits
+    """
     hook_input = Hook.read_stdin()
 
     session_id = hook_input.get("session_id", "")
@@ -55,6 +78,24 @@ def main() -> None:
 
 
 def _apply_task_effects(guard: TaskCreatedGuard, state: StateStore) -> None:
+    """Record the matched task data exposed by an allowed ``TaskCreatedGuard``.
+
+    Two independent effects, both gated on what the guard actually matched:
+
+    - ``matched_build_subject`` — the new task corresponds to a planned build
+      task; record it as the active created task for the build flow.
+    - ``matched_implement_parent_id`` + ``matched_implement_payload`` — the new
+      task is a subtask of an implement-workflow parent; attach it under that
+      parent so ``TaskCompleted`` can later cascade completion upward.
+
+    Args:
+        guard (TaskCreatedGuard): Already-validated guard exposing the matched
+            build/implement metadata.
+        state (StateStore): Live workflow state, mutated by Recorder.
+
+    Example:
+        >>> _apply_task_effects(guard, state)  # doctest: +SKIP
+    """
     recorder = Recorder(state)
     if guard.matched_build_subject:
         recorder.record_created_task(guard.matched_build_subject)

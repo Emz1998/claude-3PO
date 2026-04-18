@@ -1,5 +1,19 @@
 #!/usr/bin/env python3
-"""Stop hook — prevents the main agent from stopping if workflow isn't done."""
+"""Stop hook — keep the main agent running while the workflow has more to do.
+
+Serves the Claude Code ``Stop`` event. Flow:
+
+    1. Read hook stdin; bail (``exit 0``) if no session_id or no active workflow.
+    2. Honour the ``stop_hook_active`` re-entrancy flag — if Claude Code is
+       already replaying our previous block, exit cleanly to avoid an infinite
+       block loop.
+    3. Ask ``StopGuard`` whether stopping is OK right now. On ``"block"``, emit
+       a ``{"decision": "block", "reason": ...}`` JSON payload (the Stop event's
+       documented block protocol; we intentionally do NOT use ``Hook.block``'s
+       ``exit 2``, which is for PreToolUse-style denials).
+    4. Always finish with ``exit 0``; the JSON payload is what tells Claude
+       Code to keep going.
+"""
 
 import sys
 import json
@@ -15,6 +29,14 @@ from config import Config
 
 
 def main() -> None:
+    """Entry point — runs once per Stop event.
+
+    Early-exit cascade: no session_id → no active workflow → mid-block re-entry
+    → otherwise consult ``StopGuard`` and emit a block-JSON payload if needed.
+
+    Example:
+        >>> main()  # doctest: +SKIP — reads JSON from stdin and exits
+    """
     hook_input = Hook.read_stdin()
 
     session_id = hook_input.get("session_id", "")

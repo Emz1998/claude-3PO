@@ -33,7 +33,12 @@ STATE_PATH = SCRIPTS_DIR / "state.jsonl"
 
 
 def _build_summary_prompt(instructions: str) -> str:
-    """Render the instruction string as a Claude prompt asking for a ≤60-char summary."""
+    """Render the instruction string as a Claude prompt asking for a ≤60-char summary.
+
+    Example:
+        >>> "Summarize" in _build_summary_prompt("build a login form")
+        True
+    """
     return (
         "Summarize the following task instructions in one short sentence (under 60 characters). "
         "Respond with ONLY the summary, nothing else.\n\n"
@@ -42,7 +47,12 @@ def _build_summary_prompt(instructions: str) -> str:
 
 
 def _truncate(text: str, max_len: int = 60) -> str:
-    """Hard-cap raw instruction text used as the fallback summary."""
+    """Hard-cap raw instruction text used as the fallback summary.
+
+    Example:
+        >>> _truncate("hello world", max_len=5)
+        'hello'
+    """
     return text[:max_len] if len(text) > max_len else text
 
 
@@ -54,6 +64,9 @@ def summarize(instructions: str) -> str:
     overshoots slightly, and a few extra chars beat a silent truncation).
     On any failure (timeout, missing CLI, empty output) falls back to the
     first 60 chars of ``instructions`` so the summary field is never empty.
+
+    Example:
+        >>> summarize("build a login form")  # doctest: +SKIP
     """
     prompt = _build_summary_prompt(instructions)
     output = invoke_claude(prompt, timeout=30)
@@ -72,6 +85,9 @@ def main() -> None:
     no session id, no prompt body, prompt isn't a `/build`, no active
     workflow, or workflow isn't ``build``. Only when all checks pass do
     we spend a Claude call to generate the summary.
+
+    Example:
+        >>> main()  # doctest: +SKIP
     """
     hook_input = Hook.read_stdin()
 

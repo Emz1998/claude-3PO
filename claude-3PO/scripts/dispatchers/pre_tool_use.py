@@ -1,5 +1,23 @@
 #!/usr/bin/env python3
-"""PreToolUse hook — dispatches to the appropriate guardrail based on tool_name."""
+"""PreToolUse hook — gate every tool call through the matching guardrail.
+
+Serves the Claude Code ``PreToolUse`` event. Flow:
+
+    1. Read hook stdin; bail (``exit 0``) if no session_id or no active workflow.
+    2. Look up the per-tool guard in ``TOOL_GUARDS`` (keyed by ``tool_name``).
+       Tools without a guard are silently allowed.
+    3. Run the guard. On ``"block"`` log the violation and call
+       ``Hook.advanced_block`` — emits a ``permissionDecision: deny`` JSON
+       payload so the Claude Code UI shows a structured denial reason.
+    4. On ``"allow"`` for ``Skill`` invocations, apply phase-skill side effects
+       (state mutations + auto-advance) via :func:`_apply_phase_skill_effects`.
+    5. Always finish with ``Hook.system_message`` so the optional guard message
+       reaches the model regardless of decision.
+
+The Skill side-effect pass at step 4 used to live inside ``PhaseGuard``; it was
+extracted so the guard stays a pure pass/fail validator and the dispatcher owns
+the post-Allow mutations (SRP refactor).
+"""
 
 import sys
 from pathlib import Path
@@ -23,16 +41,33 @@ PRE_WORKFLOW_PHASE = "pre-workflow"
 def resolve_violation_phase(
     state: StateStore, config: Config, tool_name: str, hook_input: dict
 ) -> str:
-    """Pick the phase label for a violation row.
+    """Pick the phase label written into a violation row.
 
-    Priority:
-    1. `state.current_phase` — the phase the user was *in* when the block fired.
-    2. For a Skill tool with no active phase: the attempted skill name, since
-       invoking a skill IS what establishes a phase, so its name is the most
-       meaningful label for the violation.
-    3. Otherwise: the `pre-workflow` sentinel. We deliberately do NOT fall back
-       to the first workflow phase — labelling a pre-`/vision` Write as
-       `vision` misleadingly implies the user had entered that phase.
+    Cascading priority:
+
+    1. ``state.current_phase`` — the phase the user was *in* when the block
+       fired. Most accurate signal.
+    2. For a ``Skill`` tool with no active phase: the attempted skill name.
+       Invoking a skill IS what establishes a phase, so its name is the most
+       meaningful label even though the phase isn't set yet.
+    3. Otherwise: the ``pre-workflow`` sentinel. We deliberately do NOT fall
+       back to the first workflow phase — labelling a pre-``/vision`` Write as
+       ``vision`` would misleadingly imply the user had entered that phase.
+
+    Args:
+        state (StateStore): Live workflow state for the current session.
+        config (Config): Workflow configuration (currently unused; kept in the
+            signature so future cascades can consult it without re-threading).
+        tool_name (str): The tool being attempted, e.g. ``"Skill"`` or ``"Write"``.
+        hook_input (dict): Raw PreToolUse hook payload, used only to extract the
+            attempted skill name when ``tool_name == "Skill"``.
+
+    Returns:
+        str: The phase label to record on the violation.
+
+    Example:
+        >>> resolve_violation_phase(state, config, "Skill", hook_input)  # doctest: +SKIP
+        'vision'
     """
     if state.current_phase:
         return state.current_phase
@@ -45,6 +80,15 @@ def resolve_violation_phase(
 
 
 def main() -> None:
+    """Entry point — runs once per PreToolUse event.
+
+    Early-exit cascade: no session_id → no active workflow → no guard registered
+    for this tool → run the guard and either ``advanced_block`` (deny) or
+    ``system_message`` (allow, optionally with a status nudge).
+
+    Example:
+        >>> main()  # doctest: +SKIP — reads JSON from stdin and exits
+    """
     hook_input = Hook.read_stdin()
 
     session_id = hook_input.get("session_id", "")
@@ -83,8 +127,31 @@ def main() -> None:
 
 
 def _apply_phase_skill_effects(hook_input: dict, config: Config, state: StateStore) -> None:
-    """For meta-skills (/continue, /plan-approved, /revise-plan), apply state mutations
-    and run auto-advance — work that previously lived inside PhaseGuard."""
+    """Apply state mutations + auto-advance for the meta-skills.
+
+    Runs only after PhaseGuard returns Allow for one of the three meta-skills
+    that mutate workflow state rather than enter a phase:
+
+    - ``/continue`` — record the user's intent to keep going on the current
+      phase, then auto-start the next phase (respecting checkpoints).
+    - ``/plan-approved`` — same record + auto-start, but ``skip_checkpoint=True``
+      because plan approval IS the checkpoint.
+    - ``/revise-plan`` — record only; the user will re-enter the plan phase
+      manually so no auto-advance fires.
+
+    This logic used to live inside ``PhaseGuard``; extracting it here keeps the
+    guard a pure validator and concentrates the post-Allow side effects in the
+    dispatcher (recent SRP refactor).
+
+    Args:
+        hook_input (dict): Raw PreToolUse hook payload (used to read the skill name).
+        config (Config): Workflow configuration passed through to ``Resolver``.
+        state (StateStore): Live workflow state; mutated by ``Recorder`` and
+            possibly advanced by ``Resolver``.
+
+    Example:
+        >>> _apply_phase_skill_effects(hook_input, config, state)  # doctest: +SKIP
+    """
     skill = extract_skill_name(hook_input)
     if skill not in ("continue", "plan-approved", "revise-plan"):
         return

@@ -1,5 +1,15 @@
 #!/usr/bin/env python3
-"""UserPromptSubmit async dispatcher — summarizes build prompts."""
+"""UserPromptSubmit async dispatcher — summarize ``/build`` prompts.
+
+Thin shim that delegates to :func:`utils.summarize_prompt.main`. Registered
+with ``async: true`` in ``hooks.json``, so it must never block the live
+session — the underlying summarizer fails silently on every error path
+(timeout, missing CLI, empty output) and falls back to a hard-truncated
+copy of the original instructions.
+
+See ``utils.summarize_prompt`` for the full numbered flow (``/build`` filter
+→ headless Claude call → state write + violations.md back-fill).
+"""
 
 import sys
 from pathlib import Path

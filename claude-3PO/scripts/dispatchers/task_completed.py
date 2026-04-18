@@ -1,11 +1,21 @@
 #!/usr/bin/env python3
-"""TaskCompleted hook — marks child tasks done, auto-completes parent project tasks.
+"""TaskCompleted hook — propagate child completion up to the parent project task.
 
-When a Claude task completes:
-1. Find the parent project task via state.get_parent_for_subtask(task_id)
-2. Mark the child subtask as completed
-3. Check if all siblings are completed → mark parent as completed
-4. If parent completed, update project_manager status to "Done"
+Serves the Claude Code ``TaskCompleted`` event for the ``implement`` workflow.
+Flow:
+
+    1. Read hook stdin; bail (``exit 0``) if no session_id, no active workflow,
+       or the workflow isn't ``implement`` (only ``implement`` tracks
+       parent/child task relationships).
+    2. Look up the parent project task via
+       ``state.get_parent_for_subtask(task_id)``. No parent → exit; this task
+       isn't part of a tracked project breakdown.
+    3. Mark the child subtask completed in state.
+    4. If every sibling subtask is now completed, mark the parent completed and
+       fire-and-forget a ``project_manager update`` CLI call to set its status
+       to ``"Done"`` (state remains source of truth — the CLI sync is best-effort).
+
+Always exits 0 — this hook is purely an observer; it never blocks.
 """
 
 import subprocess
@@ -23,7 +33,19 @@ PLUGIN_ROOT = SCRIPTS_DIR.parent
 
 
 def _update_project_task_status(task_id: str, status: str) -> None:
-    """Call project_manager to update task status. Fire-and-forget."""
+    """Fire-and-forget call to ``project_manager.cli`` to update task status.
+
+    Best-effort by design: state.jsonl is the source of truth, so any failure
+    here (CLI missing, timeout, OSError) is swallowed silently — the workflow
+    continues with state already correct.
+
+    Args:
+        task_id (str): Project task id to update.
+        status (str): New status string (e.g. ``"Done"``).
+
+    Example:
+        >>> _update_project_task_status("task-42", "Done")  # doctest: +SKIP
+    """
     try:
         subprocess.run(
             [sys.executable, "-m", "project_manager.cli", "update", task_id, "--status", status],
@@ -37,6 +59,15 @@ def _update_project_task_status(task_id: str, status: str) -> None:
 
 
 def main() -> None:
+    """Entry point — runs once per TaskCompleted event.
+
+    Early-exit cascade: no session_id → no active workflow → workflow isn't
+    ``implement`` → no task_id in payload → no parent project task →
+    otherwise mark the child done and possibly cascade completion to the parent.
+
+    Example:
+        >>> main()  # doctest: +SKIP — reads JSON from stdin and exits
+    """
     hook_input = Hook.read_stdin()
 
     session_id = hook_input.get("session_id", "")

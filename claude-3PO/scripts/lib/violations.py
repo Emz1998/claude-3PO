@@ -1,7 +1,10 @@
 """violations.py — Append-only markdown violation logger.
 
-Logs every guardrail block to ${CLAUDE_PLUGIN_ROOT}/logs/violations.md.
-Override the target path with the VIOLATIONS_PATH env variable (tests).
+Logs every guardrail block to ``${CLAUDE_PLUGIN_ROOT}/logs/violations.md`` as
+a markdown table. Override the target path with the ``VIOLATIONS_PATH`` env
+variable (used by tests). The log is human-browseable as plain markdown but
+machine-parseable via the table separator, so the same file serves both
+debugging and automation.
 """
 
 import os
@@ -19,6 +22,12 @@ SEPARATOR = "|-----------|---------|----------|----------|----------------|-----
 
 
 def _escape_pipe(value: str) -> str:
+    """Escape ``|`` so a free-text value can sit inside a markdown table cell.
+
+    Example:
+        >>> _escape_pipe("a|b")
+        'a\\\\|b'
+    """
     return value.replace("|", "\\|")
 
 
@@ -32,7 +41,33 @@ def log_violation(
     action: str,
     reason: str,
 ) -> None:
-    """Append a violation row to the violations log."""
+    """
+    Append one violation row to the violations log, creating the file if needed.
+
+    The first ever write seeds the markdown header + separator so the file is
+    immediately rendered as a table. ``prompt_summary`` is recorded as
+    ``"Pending..."`` for build workflows (the user prompt isn't yet condensed
+    when the first block fires) and as ``"N/A"`` for implement workflows. A
+    later call to :func:`resolve_pending_summaries` rewrites the placeholder.
+
+    Args:
+        session_id (str): Unique session identifier.
+        workflow_type (str): ``"build"``, ``"implement"``, ``"specs"``, etc.
+        story_id (str | None): Story being worked, or ``None``.
+        prompt_summary (str | None): Short user-prompt summary; placeholders
+            applied if ``None``.
+        phase (str): Workflow phase name when the block fired.
+        tool (str): Tool that triggered the block (``Write``, ``Bash``, …).
+        action (str): Tool-specific action string (file path, command, …).
+        reason (str): Human-readable block reason.
+
+    Returns:
+        None: Side-effects only — appends to the violations file.
+
+    Example:
+        >>> log_violation("s1", "build", "US-001", "add login",
+        ...               "plan", "Write", "/x.py", "blocked")  # doctest: +SKIP
+    """
     path = VIOLATIONS_PATH
     lock = FileLock(path.with_suffix(".lock"))
 
@@ -63,7 +98,26 @@ def log_violation(
 
 
 def resolve_pending_summaries(path: Path, session_id: str, summary: str) -> None:
-    """Replace 'Pending...' with the actual summary for a session."""
+    """
+    Replace ``Pending...`` placeholders for *session_id* with the real summary.
+
+    Build workflows can't compute a prompt summary until well after early
+    blocks have already been logged with the placeholder. Once the summary is
+    available, this rewrites every matching row in place under the file lock
+    so concurrent appends don't get clobbered.
+
+    Args:
+        path (Path): Violations log path.
+        session_id (str): Session whose placeholders should be resolved.
+        summary (str): Final summary text to substitute in.
+
+    Returns:
+        None: Side-effects only — rewrites the file in place. No-op if the
+        file doesn't exist yet.
+
+    Example:
+        >>> resolve_pending_summaries(Path("/tmp/v.md"), "s1", "add login")  # doctest: +SKIP
+    """
     if not path.exists():
         return
 
@@ -82,7 +136,28 @@ def resolve_pending_summaries(path: Path, session_id: str, summary: str) -> None
 
 
 def extract_action(tool_name: str, hook_input: dict) -> str:
-    """Extract the relevant action string from hook input based on tool type."""
+    """
+    Pull the most informative action string from a hook payload.
+
+    Each tool stores its "what it's doing" in a different field — file_path
+    for Write/Edit, command for Bash, subagent_type for Agent, etc. This
+    centralizes the per-tool unpacking so the logger doesn't have to know
+    the schema. Bash commands are truncated to 80 chars to keep the table
+    cell readable.
+
+    Args:
+        tool_name (str): Tool name (``"Write"``, ``"Bash"``, ``"Agent"``,
+            ``"Skill"``, ``"WebFetch"``).
+        hook_input (dict): Full hook payload.
+
+    Returns:
+        str: Action string suitable for the violations log; ``""`` if the
+        tool isn't recognized or its field is missing.
+
+    Example:
+        >>> extract_action("Write", {"tool_input": {"file_path": "/a.py"}})
+        '/a.py'
+    """
     tool_input = hook_input.get("tool_input", {})
 
     if tool_name in ("Write", "Edit"):
