@@ -1,7 +1,13 @@
 """Tests for auto-transition phases.
 
-Auto phases (create-tasks, write-tests, write-code) are started automatically
-by resolvers after the previous phase completes — no skill command needed.
+Auto phases (clarify, create-tasks, write-tests, write-code) are started
+automatically by the resolver / initializer after the previous phase completes.
+
+The build phase order is:
+    clarify (auto) → explore → research → decision → plan → plan-review →
+    create-tasks (auto) → write-tests (auto, TDD) → test-review (TDD) →
+    write-code (auto) → quality-check → code-review → pr-create → ci-check →
+    write-report
 """
 
 import pytest
@@ -12,16 +18,16 @@ from lib.state_store import StateStore
 
 
 class TestAutoTransitionBuild:
-    """Build workflow: write-tests auto-starts after test-review, write-code auto-starts after write-tests or define-contracts."""
+    """Build workflow auto-transitions after clarify removal."""
 
-    def test_write_tests_auto_starts_after_define_contracts(self, config, state):
+    def test_write_tests_auto_starts_after_create_tasks_tdd(self, config, state):
         state.set("workflow_type", "build")
         state.set("tdd", True)
-        state.add_phase("define-contracts")
-        state.set_contracts_written(True)
-        state.set_contracts_validated(True)
+        state.add_phase("create-tasks")
+        state.set_tasks(["Build login"])
+        state.add_created_task("Build login")
         resolve(config, state)
-        assert state.is_phase_completed("define-contracts")
+        assert state.is_phase_completed("create-tasks")
         assert state.current_phase == "write-tests"
 
     def test_write_code_auto_starts_after_test_review_pass(self, config, state):
@@ -33,14 +39,14 @@ class TestAutoTransitionBuild:
         assert state.is_phase_completed("test-review")
         assert state.current_phase == "write-code"
 
-    def test_write_code_auto_starts_after_define_contracts_non_tdd(self, config, state):
+    def test_write_code_auto_starts_after_create_tasks_non_tdd(self, config, state):
         state.set("workflow_type", "build")
         state.set("tdd", False)
-        state.add_phase("define-contracts")
-        state.set_contracts_written(True)
-        state.set_contracts_validated(True)
+        state.add_phase("create-tasks")
+        state.set_tasks(["Build login"])
+        state.add_created_task("Build login")
         resolve(config, state)
-        assert state.is_phase_completed("define-contracts")
+        assert state.is_phase_completed("create-tasks")
         assert state.current_phase == "write-code"
 
 
@@ -89,7 +95,7 @@ class TestAutoTransitionImplement:
 
 
 class TestAutoPhaseNotSkillInvoked:
-    """Auto phases should NOT be invokable via skill command — they start automatically."""
+    """Auto phases must not be invokable via skill command."""
 
     def test_create_tasks_blocks_as_skill(self, config, state):
         from helpers import make_hook_input
@@ -105,8 +111,8 @@ class TestAutoPhaseNotSkillInvoked:
         from helpers import make_hook_input
 
         state.set("workflow_type", "build")
-        state.add_phase("define-contracts")
-        state.set_phase_completed("define-contracts")
+        state.add_phase("test-review")
+        state.set_phase_completed("test-review")
         hook = make_hook_input("Skill", {"skill": "write-tests"})
         decision, _ = phase_guard(hook, config, state)
         assert decision == "block"
@@ -120,3 +126,14 @@ class TestAutoPhaseNotSkillInvoked:
         hook = make_hook_input("Skill", {"skill": "write-code"})
         decision, _ = phase_guard(hook, config, state)
         assert decision == "block"
+
+    def test_clarify_blocks_as_skill(self, config, state):
+        from helpers import make_hook_input
+
+        state.set("workflow_type", "build")
+        # clarify is the first phase; even with no phases active, invoking it
+        # as a skill should block since it's an auto-phase.
+        hook = make_hook_input("Skill", {"skill": "clarify"})
+        decision, msg = phase_guard(hook, config, state)
+        assert decision == "block"
+        assert "auto-phase" in msg.lower()

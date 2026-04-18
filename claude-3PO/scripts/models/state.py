@@ -123,7 +123,7 @@ class PhaseEntry(_Base):
     """
 
     name: str
-    status: Literal["in_progress", "completed"] = "in_progress"
+    status: Literal["in_progress", "completed", "skipped"] = "in_progress"
 
 
 class Agent(_Base):
@@ -163,33 +163,6 @@ class CI(_Base):
     results: list[dict] | None = None
 
 
-class Dependencies(_Base):
-    """Package dependencies the workflow needs and whether they're installed.
-
-    Example:
-        >>> Dependencies(packages=["pydantic"], installed=True).installed
-        True
-    """
-
-    packages: list[str] = []
-    installed: bool = False
-
-
-class Contracts(_Base):
-    """Interface/contract files defined by the plan and used to scaffold code.
-
-    Example:
-        >>> Contracts(file_path="contracts.py", names=["Reader"], written=True).written
-        True
-    """
-
-    file_path: str | None = None
-    names: list[str] = []
-    code_files: list[str] = []
-    written: bool = False
-    validated: bool = False
-
-
 class State(_Base):
     """Top-level workflow state persisted to ``state.jsonl``.
 
@@ -215,8 +188,6 @@ class State(_Base):
     plan: Plan = Plan()
     tasks: list[str] = []
     project_tasks: list[dict] = []
-    dependencies: Dependencies = Dependencies()
-    contracts: Contracts = Contracts()
     tests: Tests = Tests()
     code_files_to_write: list[str] = []
     code_files: CodeFiles = CodeFiles()

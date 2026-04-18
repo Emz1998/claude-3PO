@@ -55,6 +55,7 @@ class PhaseGuard:
         self.hook_input = hook_input
         self.config = config
         self.state = state
+        self.tool_name = hook_input.get("tool_name", "")
         self.current = state.current_phase
         self.status = state.get_phase_status(self.current)
         self.next_phase = extract_skill_name(hook_input)
@@ -332,18 +333,18 @@ class PhaseGuard:
 
     def _check_current_phase_done(self) -> None:
         """
-        Forbid leaving the current phase before its status is ``completed``.
+        Forbid leaving the current phase before its status is ``completed`` or ``skipped``.
 
         Raises:
             ValueError: If transitioning while the current phase is not
-                completed (with a friendlier message when the user is
-                re-invoking the same phase).
+                completed or skipped (with a friendlier message when the
+                user is re-invoking the same phase).
 
         Example:
             >>> # Raises ValueError when leaving an unfinished phase:
             >>> guard._check_current_phase_done()  # doctest: +SKIP
         """
-        if self.next_phase and self.status != "completed":
+        if self.next_phase and self.status not in ("completed", "skipped"):
             if self.next_phase == self.current:
                 raise ValueError(
                     f"Already in '{self.current}' phase. Complete the phase tasks instead of re-invoking the skill."
@@ -352,17 +353,21 @@ class PhaseGuard:
                 f"Phase '{self.current}' is not completed. Finish it before transitioning to '{self.next_phase}'."
             )
 
-    def _resolve_prev_for_ordering(self) -> str:
+    def _resolve_prev_for_ordering(self) -> str | None:
         """
         Map an auto-phase ``current`` back to its preceding skill phase.
 
         Skill ordering is computed against the skill-phase list (auto-phases
         excluded). When the current phase is itself an auto-phase, this helper
-        walks backwards through completed phases to find the last skill phase
+        walks backwards through finished phases to find the last skill phase
         — that's the right "previous" anchor for the next-skill ordering check.
+        If no skill phase precedes the current auto-phase (e.g. clarify is
+        the very first phase, with nothing before it), returns ``None`` so
+        the caller treats the next skill as the workflow's first.
 
         Returns:
-            str: The skill-phase to use as ``prev`` in :meth:`_validate_order`.
+            str | None: The skill-phase to use as ``prev``, or ``None`` if
+            no prior skill phase exists.
 
         Example:
             >>> prev = guard._resolve_prev_for_ordering()  # doctest: +SKIP
@@ -370,11 +375,14 @@ class PhaseGuard:
         skill_phases = [p for p in self.phases if not self.config.is_auto_phase(p)]
         if not self.config.is_auto_phase(self.current):
             return self.current
-        completed = [p["name"] for p in self.state.phases if p["status"] == "completed"]
-        for p in reversed(completed):
+        finished = [
+            p["name"] for p in self.state.phases
+            if p["status"] in ("completed", "skipped")
+        ]
+        for p in reversed(finished):
             if p in skill_phases:
                 return p
-        return self.current
+        return None
 
     def _get_skill_phases(self) -> list[str]:
         """
@@ -398,6 +406,28 @@ class PhaseGuard:
 
     # ── Validate ──────────────────────────────────────────────────
 
+    def _check_clarify_iteration_ceiling(self) -> Decision:
+        """
+        Enforce the ``clarify.max_iterations`` cap on AskUserQuestion calls.
+
+        Returns:
+            Decision: Block when the cap has been reached, allow otherwise.
+
+        Example:
+            >>> decision, message = guard._check_clarify_iteration_ceiling()  # doctest: +SKIP
+        """
+        if self.current != "clarify":
+            return "allow", "AskUserQuestion allowed"
+        phase = self.state.get_clarify_phase() or {}
+        count = int(phase.get("iteration_count", 0))
+        cap = self.config.clarify_max_iterations
+        if count >= cap:
+            return (
+                "block",
+                f"Max clarify iterations ({cap}) reached — please simplify the prompt and re-run /build",
+            )
+        return "allow", f"AskUserQuestion allowed in clarify ({count}/{cap})"
+
     def validate(self) -> Decision:
         """
         Validate the requested skill / phase transition.
@@ -408,6 +438,9 @@ class PhaseGuard:
         and ordering checks against the workflow's skill-phase list. The
         Explore+Research parallel case is short-circuited.
 
+        AskUserQuestion is also routed here so the clarify-phase iteration
+        ceiling can be enforced without a separate guard module.
+
         Returns:
             Decision: ``("allow", message)`` if the transition is legal,
             otherwise ``("block", reason)``.
@@ -417,6 +450,8 @@ class PhaseGuard:
             >>> decision  # doctest: +SKIP
             'allow'
         """
+        if self.tool_name == "AskUserQuestion":
+            return self._check_clarify_iteration_ceiling()
         try:
             # Skill command handlers
             if self.next_phase == "continue":

@@ -1,6 +1,24 @@
 {
   "phases": [
     {
+      "name": "vision",
+      "workflows": ["specs"],
+      "docs_write": true
+    },
+    {
+      "name": "strategy",
+      "workflows": ["specs"],
+      "read_only": true,
+      "agent": "Research",
+      "agent_count": 3
+    },
+    {
+      "name": "clarify",
+      "workflows": ["build"],
+      "read_only": true,
+      "auto": true
+    },
+    {
       "name": "explore",
       "workflows": ["build", "implement"],
       "read_only": true,
@@ -13,6 +31,11 @@
       "read_only": true,
       "agent": "Research",
       "agent_count": 2
+    },
+    {
+      "name": "decision",
+      "workflows": ["specs", "build"],
+      "docs_write": true
     },
     {
       "name": "plan",
@@ -35,8 +58,6 @@
       "workflows": ["build", "implement"],
       "auto": true
     },
-    { "name": "install-deps", "workflows": ["build"], "code_write": true },
-    { "name": "define-contracts", "workflows": ["build"], "code_write": true },
     {
       "name": "write-tests",
       "workflows": ["build", "implement"],
@@ -101,23 +122,6 @@
       "code_edit": true
     },
     { "name": "plan-revision", "workflows": [], "code_edit": true },
-    {
-      "name": "vision",
-      "workflows": ["specs"],
-      "docs_write": true
-    },
-    {
-      "name": "strategy",
-      "workflows": ["specs"],
-      "read_only": true,
-      "agent": "Research",
-      "agent_count": 3
-    },
-    {
-      "name": "decision",
-      "workflows": ["specs"],
-      "docs_write": true
-    },
     {
       "name": "architect",
       "workflows": ["specs"],
@@ -189,6 +193,10 @@
     "max_report_retries": 3
   },
 
+  "clarify": {
+    "max_iterations": 10
+  },
+
   "paths": {
     "state_jsonl": ".claude/state.jsonl",
     "log_file": "build.log",
@@ -198,8 +206,7 @@
     "test_file": ".claude/tests/test.md",
     "code_file": ".claude/code/code.md",
     "report_file": ".claude/reports/report.md",
-    "contracts_file": ".claude/contracts/latest-contracts.md",
-    "contracts_archive_dir": ".claude/contracts/archive",
+    "clarity_review_prompt_file": "templates/clarity-review.md",
     "product_vision_file": "projects/docs/product-vision.md",
     "decisions_file": "projects/docs/decisions.md",
     "architecture_file": "projects/docs/architecture.md",

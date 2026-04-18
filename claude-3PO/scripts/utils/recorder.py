@@ -15,16 +15,13 @@ import json
 import re
 from pathlib import Path
 
-from constants import TEST_RUN_PATTERNS, INSTALL_COMMANDS
+from constants import TEST_RUN_PATTERNS
 from lib.extractors import (
     extract_skill_name,
     extract_scores,
     extract_verdict,
-    extract_plan_dependencies,
     extract_plan_tasks,
     extract_plan_files_to_modify,
-    extract_contract_names,
-    extract_contract_files,
 )
 from lib.parallel_check import is_parallel_explore_research
 from lib.scoring import scores_valid, verdict_valid
@@ -183,21 +180,6 @@ class Recorder:
         else:
             self.state.set_ci_status("pending")
 
-    def record_deps_installed(self, phase: str, command: str) -> None:
-        """Mark dependencies installed when a known install command runs in install-deps.
-
-        Args:
-            phase (str): Currently active phase.
-            command (str): Bash command that just ran.
-
-        Example:
-            >>> Recorder(state).record_deps_installed("install-deps", "pip install foo")  # doctest: +SKIP
-        """
-        if phase == "install-deps" and any(
-            command.startswith(cmd) for cmd in INSTALL_COMMANDS
-        ):
-            self.state.set_dependencies_installed()
-
     # ── File write ────────────────────────────────────────────────
 
     _SPECS_DOC_PHASES: dict[str, str] = {"vision": "product_vision", "decision": "decisions"}
@@ -215,10 +197,7 @@ class Recorder:
             >>> Recorder(state).record_write("write-code", "src/foo.py", False)  # doctest: +SKIP
         """
         if phase == "plan":
-            self._record_plan_write(file_path, is_plan_file)
-        elif phase == "define-contracts":
-            self.state.add_contract_code_file(file_path)
-            self.state.set_contracts_written(True)
+            self.record_plan_write(file_path, is_plan_file)
         elif phase == "write-tests":
             self.state.add_test_file(file_path)
         elif phase == "write-code":
@@ -228,7 +207,7 @@ class Recorder:
         elif phase in self._SPECS_DOC_PHASES:
             self._record_specs_doc(self._SPECS_DOC_PHASES[phase], file_path)
 
-    def _record_plan_write(self, file_path: str, is_plan_file: bool) -> None:
+    def record_plan_write(self, file_path: str, is_plan_file: bool) -> None:
         """Record a plan-file write only when the path matches the plan target.
 
         Example:
@@ -260,11 +239,11 @@ class Recorder:
         inject_plan_metadata(file_path, self.state)
 
     def record_plan_sections(self, file_path: str) -> None:
-        """Auto-parse Dependencies, Tasks, and Files-to-Modify out of the plan.
+        """Auto-parse Tasks and Files-to-Modify out of the plan.
 
-        Reading three sections at once amortizes the file read; doing it as
-        part of the plan-write recorder means downstream phases (install-deps,
-        create-tasks, write-code) can rely on these lists being populated
+        Reading both sections at once amortizes the file read; doing it as
+        part of the plan-write recorder means downstream phases
+        (create-tasks, write-code) can rely on these lists being populated
         without an extra parse step.
 
         Args:
@@ -278,32 +257,10 @@ class Recorder:
             return
 
         content = path.read_text()
-        self.state.set_dependencies_packages(extract_plan_dependencies(content))
         self.state.set_tasks(extract_plan_tasks(content))
 
         for f in extract_plan_files_to_modify(content):
             self.state.add_code_file_to_write(f)
-
-    def record_contracts_file(self, file_path: str) -> None:
-        """Auto-parse contract names and code-file paths from contracts.md.
-
-        Args:
-            file_path (str): Path to the just-written contracts markdown.
-
-        Example:
-            >>> Recorder(state).record_contracts_file("contracts.md")  # doctest: +SKIP
-        """
-        path = Path(file_path)
-        if not path.exists():
-            return
-
-        content = path.read_text()
-        self.state.set_contracts_file_path(file_path)
-        self.state.set_contracts_names(extract_contract_names(content))
-
-        files = extract_contract_files(content)
-        if files:
-            self.state.set("contract_files", files)
 
     # ── File edit ─────────────────────────────────────────────────
 
@@ -661,19 +618,6 @@ class Recorder:
         if is_plan:
             self.record_plan_metadata(file_path)
             self.record_plan_sections(file_path)
-        if file_path and self._is_contracts_write(file_path, config):
-            self.record_contracts_file(file_path)
-
-    @staticmethod
-    def _is_contracts_write(file_path: str, config: Config) -> bool:
-        """Return True if ``file_path`` is the configured contracts file.
-
-        Example:
-            >>> Recorder._is_contracts_write("contracts.md", config)  # doctest: +SKIP
-        """
-        return bool(config.contracts_file_path) and file_path.endswith(
-            config.contracts_file_path
-        )
 
     @staticmethod
     def _canonicalize_specs_path(phase: str, file_path: str, config: Config) -> str:
@@ -736,7 +680,6 @@ class Recorder:
         command = tool_input.get("command", "")
 
         self.record_test_execution(phase, command)
-        self.record_deps_installed(phase, command)
 
         if phase == "pr-create" and command.startswith("gh pr create"):
             self.record_pr_create(tool_output)

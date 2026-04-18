@@ -9,6 +9,11 @@ Serves the Claude Code ``PostToolUse`` event. Flow:
     3. ``resolve`` advances the workflow (e.g. mark a phase complete, auto-start
        the next phase) based on the freshly recorded state.
 
+Special-case: when the tool is ``AskUserQuestion`` and the current phase is
+``clarify``, the resumed headless-Claude session is invoked with the latest
+Q&A so the model can re-evaluate clarity. A verdict of ``clear`` completes
+the phase; ``vague`` increments ``iteration_count`` and the loop continues.
+
 Exit code semantics:
 
 - ``Hook.block`` (``exit 2``) is used when ``Recorder.record`` raises
@@ -28,9 +33,68 @@ sys.path.insert(0, str(SCRIPTS_DIR))
 
 from lib.hook import Hook
 from lib.state_store import StateStore
+from lib import clarity_check
 from utils.recorder import Recorder
 from utils.resolver import resolve
 from config import Config
+
+
+def _build_qa_payload(hook_input: dict) -> str:
+    """Serialize the latest AskUserQuestion question/answer pair into plain text.
+
+    The resumed headless session already has the full prior conversation —
+    only the new turn needs to be sent. Format is intentionally simple
+    plain-text so the headless model can read it without a JSON parse.
+
+    Args:
+        hook_input (dict): PostToolUse payload for an AskUserQuestion event.
+
+    Returns:
+        str: Multi-line ``Q: <question>\\nA: <answer>`` block.
+
+    Example:
+        >>> _build_qa_payload({"tool_input": {"questions": [{"question": "Q?"}]},
+        ...                    "tool_response": {"answers": {"Q?": "A!"}}})
+        'Q: Q?\\nA: A!'
+    """
+    tool_input = hook_input.get("tool_input", {}) or {}
+    tool_response = hook_input.get("tool_response", {}) or {}
+    answers = tool_response.get("answers", {}) or {}
+    lines: list[str] = []
+    for q in tool_input.get("questions", []):
+        text = q.get("question", "") if isinstance(q, dict) else str(q)
+        ans = answers.get(text, "")
+        lines.append(f"Q: {text}\nA: {ans}")
+    return "\n\n".join(lines)
+
+
+def handle_clarify_resume(hook_input: dict, state: StateStore) -> None:
+    """Resume the clarify headless session after an AskUserQuestion answer.
+
+    No-ops unless the current phase is ``clarify`` (so a stray
+    AskUserQuestion in another phase doesn't trigger a headless call).
+    Increments ``iteration_count`` on every resume; on a ``clear`` verdict
+    flips the phase to ``completed`` so ``auto_start_next`` can advance.
+
+    Args:
+        hook_input (dict): PostToolUse payload (must include the
+            AskUserQuestion ``tool_input`` and ``tool_response``).
+        state (StateStore): Live workflow state for this session.
+
+    Example:
+        >>> handle_clarify_resume(hook_input, state)  # doctest: +SKIP
+    """
+    phase = state.get_clarify_phase()
+    if not phase or phase.get("status") != "in_progress":
+        return
+    sid = phase.get("headless_session_id", "")
+    if not sid:
+        return
+    qa = _build_qa_payload(hook_input)
+    verdict = clarity_check.run_resume(sid, qa)
+    state.bump_clarify_iteration()
+    if verdict == "clear":
+        state.set_phase_completed("clarify")
 
 
 def main() -> None:
@@ -55,6 +119,9 @@ def main() -> None:
         sys.exit(0)
 
     config = Config()
+
+    if hook_input.get("tool_name") == "AskUserQuestion":
+        handle_clarify_resume(hook_input, state)
 
     try:
         Recorder(state).record(hook_input, config)

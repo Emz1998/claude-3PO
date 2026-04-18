@@ -9,7 +9,7 @@ You are a **guardrail test runner**. Systematically test every guardrail by deli
 
 ## Workflow Initialization
 
-!`python3 '${CLAUDE_PLUGIN_ROOT}/scripts/utils/initializer.py' build ${CLAUDE_SESSION_ID} --tdd --test test guardrails`
+!`python3 '${CLAUDE_PLUGIN_ROOT}/scripts/utils/initializer.py' build ${CLAUDE_SESSION_ID} --tdd --test --skip-clarify test guardrails`
 
 ## Rules
 
@@ -107,7 +107,7 @@ Invoke `/explore` and `/research` in parallel (both skills in the same message).
 
 ## Phase: plan
 
-1. `/install-deps` — _should block_ (must complete plan first, cannot skip ahead)
+1. `/write-code` — _should block_ (auto-phase, cannot invoke)
 2. `/explore` — _should block_ (cannot go backwards)
 3. Invoke `/plan`
 4. `Write` to `.claude/plans/latest-plan.md` with content `x` — _should block_ (Plan agent must complete first)
@@ -168,19 +168,6 @@ Testing guardrails.
 Run pytest.
 ```
 
-10. `Write` to `.claude/contracts/latest-contracts.md` with content `# Contracts\n\nNo specs.` — _should block_ (missing ## Specifications)
-11. `Write` to `.claude/contracts/latest-contracts.md` with content below — _should allow_
-
-```markdown
-# Contracts
-
-## Specifications
-
-| Name         | Type     | File         | Description    |
-| ------------ | -------- | ------------ | -------------- |
-| HelloService | function | src/hello.py | Hello function |
-```
-
 **State check:**
 
 ```json
@@ -190,28 +177,19 @@ Run pytest.
     "file_path": ".claude/plans/latest-plan.md",
     "revised": null
   },
-  "tasks": ["Create hello function"],
-  "dependencies": {
-    "packages": ["None"]
-  },
-  "contracts": {
-    "names": ["HelloService"],
-    "file_path": ".claude/contracts/latest-contracts.md"
-  },
-  "contract_files": ["src/hello.py"]
+  "tasks": ["Create hello function"]
 }
 ```
 
 **Violations check:**
 
 ```markdown
-| ... | install-deps | Skill | install-deps | ... |
-| ... | explore | Skill | explore | ... |
+| ... | plan | Skill | write-code | ... |
+| ... | plan | Skill | explore | ... |
 | ... | plan | Write | .claude/plans/latest-plan.md | ... |
 | ... | plan | Write | .claude/plans/latest-plan.md | ... |
 | ... | plan | Write | .claude/plans/latest-plan.md | ... |
 | ... | plan | Write | wrong-plan.md | ... |
-| ... | plan | Write | .claude/contracts/latest-contracts.md | ... |
 ```
 
 **IMPORTANT**: Write report after this phase.
@@ -418,67 +396,9 @@ Note: Row 3 has empty Action (empty subject). Row 4 has subject but empty descri
 
 **IMPORTANT**: Write report after this phase.
 
-## Phase: install-deps
-
-1. Invoke `/install-deps`
-2. `Write` to `app.py` — _should block_ (only package manager files)
-3. `Bash` with `echo "not an install"` — _should block_ (not an install command)
-4. `Write` to `requirements.txt` with content `# test deps` — _should allow_
-5. `Bash` with `pip install -r requirements.txt` — _should allow_
-
-**State check:**
-
-```json
-{
-  "dependencies": { "installed": true }
-}
-```
-
-**Violations check:**
-
-```markdown
-| ... | install-deps | Write | app.py | ... |
-| ... | install-deps | Bash | echo "not an install" | ... |
-```
-
-**IMPORTANT**: Write report after this phase.
-
-## Phase: define-contracts
-
-1. Invoke `/define-contracts`
-2. `Write` to `notes.md` — _should block_ (not in contracts file list)
-3. `Write` to `src/random.py` with content `x = 1` — _should block_ (not in contracts file list)
-4. `Write` to `src/hello.py` with content below — _should allow_ (listed in contracts, contains contract name)
-
-```python
-def HelloService(): return "hello"
-```
-
-**State check:**
-
-```json
-{
-  "contracts": {
-    "written": true,
-    "validated": true,
-    "code_files": ["src/hello.py"]
-  },
-  "phases": [{ "name": "define-contracts", "status": "completed" }]
-}
-```
-
-**Violations check:**
-
-```markdown
-| ... | define-contracts | Write | notes.md | ... |
-| ... | define-contracts | Write | src/random.py | ... |
-```
-
-**IMPORTANT**: Write report after this phase.
-
 ## Phase: write-tests (AUTO)
 
-Auto-starts after define-contracts completes. Verify by reading `state.jsonl` — write-tests should be `in_progress`.
+Auto-starts after create-tasks completes. Verify by reading `state.jsonl` — write-tests should be `in_progress`.
 
 1. `Write` to `app.py` — _should block_ (test files only)
 2. `Write` to `test_hello.py` with content below — _should allow_

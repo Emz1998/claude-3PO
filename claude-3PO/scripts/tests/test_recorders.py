@@ -198,16 +198,15 @@ class TestInjectPlanMetadata:
 
 
 class TestRecordPlanSections:
-    def test_extracts_dependencies_and_tasks(self, tmp_path, state):
+    def test_extracts_tasks_and_files(self, tmp_path, state):
         recorder = Recorder(state)
         plan = tmp_path / "plan.md"
         plan.write_text(
-            "# Plan\n\n## Dependencies\n- flask\n- sqlalchemy\n\n"
+            "# Plan\n\n"
             "## Tasks\n- Build login\n- Create schema\n\n"
             "## Files to Modify\n\n| Action | Path |\n|--------|------|\n| Create | src/app.py |\n"
         )
         recorder.record_plan_sections(str(plan))
-        assert state.get("dependencies", {}).get("packages") == ["flask", "sqlalchemy"]
         assert state.tasks == ["Build login", "Create schema"]
         assert "src/app.py" in state.code_files_to_write
 
@@ -219,40 +218,6 @@ class TestRecordPlanSections:
     def test_empty_sections(self, tmp_path, state):
         recorder = Recorder(state)
         plan = tmp_path / "plan.md"
-        plan.write_text("# Plan\n\n## Dependencies\n\n## Tasks\n")
+        plan.write_text("# Plan\n\n## Tasks\n")
         recorder.record_plan_sections(str(plan))
         assert state.tasks == []
-
-
-class TestRecordContractsFile:
-    def test_extracts_names_and_files(self, tmp_path, state):
-        recorder = Recorder(state)
-        contracts = tmp_path / "contracts.md"
-        contracts.write_text(
-            "# Contracts\n\n## Specifications\n\n"
-            "| Name | Type | File | Description |\n"
-            "| --- | --- | --- | --- |\n"
-            "| UserService | class | src/user.py | User management |\n"
-            "| AuthProvider | class | src/auth.py | Auth handling |\n"
-            "| DatabaseClient | class | src/db.py | DB access |\n"
-        )
-        recorder.record_contracts_file(str(contracts))
-        assert state.contract_names == ["UserService", "AuthProvider", "DatabaseClient"]
-
-    def test_missing_file_noop(self, state):
-        recorder = Recorder(state)
-        recorder.record_contracts_file("/nonexistent/contracts.md")
-        assert state.contract_names == []
-
-    def test_empty_specs(self, tmp_path, state):
-        recorder = Recorder(state)
-        contracts = tmp_path / "contracts.md"
-        contracts.write_text("# Contracts\n\n## Specifications\n")
-        recorder.record_contracts_file(str(contracts))
-        assert state.contract_names == []
-
-
-class TestRecordDependencyInstall:
-    def test_marks_installed(self, state):
-        state.set_dependencies_installed()
-        assert state.dependencies["installed"] is True

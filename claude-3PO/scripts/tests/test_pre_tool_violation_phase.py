@@ -39,10 +39,10 @@ class TestResolveViolationPhase:
         Log consumers want the phase the user *was in*, not the skill they tried to jump to."""
         state.set("workflow_type", "build")
         state.add_phase("research")
-        hook = make_hook_input("Skill", {"skill": "install-deps"})
+        hook = make_hook_input("Skill", {"skill": "plan"})
         assert resolve_violation_phase(state, config, "Skill", hook) == "research"
 
     def test_skill_name_fallback_when_no_phase_active(self, config, state):
         state.set("workflow_type", "build")
-        hook = make_hook_input("Skill", {"skill": "install-deps"})
-        assert resolve_violation_phase(state, config, "Skill", hook) == "install-deps"
+        hook = make_hook_input("Skill", {"skill": "plan"})
+        assert resolve_violation_phase(state, config, "Skill", hook) == "plan"

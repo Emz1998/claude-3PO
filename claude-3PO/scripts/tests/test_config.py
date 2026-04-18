@@ -7,10 +7,10 @@ from config import Config
 class TestGetPhases:
     def test_build_phases(self, config):
         phases = config.get_phases("build")
+        assert "clarify" in phases
         assert "explore" in phases
+        assert "decision" in phases
         assert "create-tasks" in phases
-        assert "install-deps" in phases
-        assert "define-contracts" in phases
         assert "write-report" in phases
 
     def test_implement_phases(self, config):
@@ -18,9 +18,9 @@ class TestGetPhases:
         assert "explore" in phases
         assert "create-tasks" in phases
         assert "validate" in phases
-        # Implement has NO install-deps or define-contracts
-        assert "install-deps" not in phases
-        assert "define-contracts" not in phases
+        # Implement has no clarify/decision (build-only auto-phases)
+        assert "clarify" not in phases
+        assert "decision" not in phases
         # Implement has validate instead of quality-check
         assert "quality-check" not in phases
 
@@ -31,7 +31,10 @@ class TestGetPhases:
     def test_build_phases_order(self, config):
         phases = config.get_phases("build")
         # Verify ordering of key phases
+        assert phases.index("clarify") < phases.index("explore")
         assert phases.index("explore") < phases.index("plan")
+        assert phases.index("research") < phases.index("decision")
+        assert phases.index("decision") < phases.index("plan")
         assert phases.index("plan") < phases.index("plan-review")
         assert phases.index("write-code") < phases.index("code-review")
         assert phases.index("code-review") < phases.index("pr-create")
@@ -116,6 +119,52 @@ class TestSpecsPhases:
         assert phases.index("strategy") < phases.index("decision")
         assert phases.index("decision") < phases.index("architect")
         assert phases.index("architect") < phases.index("backlog")
+
+
+class TestClarifyPhase:
+    """clarify is an auto-phase that runs first in build only."""
+
+    def test_clarify_in_build(self, config):
+        assert "clarify" in config.get_phases("build")
+
+    def test_clarify_is_first_in_build(self, config):
+        assert config.get_phases("build")[0] == "clarify"
+
+    def test_clarify_is_auto(self, config):
+        assert config.is_auto_phase("clarify")
+        assert "clarify" in config.auto_phases
+
+    def test_clarify_is_read_only(self, config):
+        assert config.is_read_only_phase("clarify")
+
+    def test_clarify_not_in_implement(self, config):
+        assert "clarify" not in config.get_phases("implement")
+
+    def test_clarify_not_in_specs(self, config):
+        assert "clarify" not in config.get_phases("specs")
+
+    def test_max_iterations_default(self, config):
+        assert config.clarify_max_iterations == 10
+
+
+class TestDecisionInBuild:
+    """decision phase is shared between specs and build workflows."""
+
+    def test_decision_in_build(self, config):
+        assert "decision" in config.get_phases("build")
+
+    def test_decision_in_specs(self, config):
+        assert "decision" in config.get_phases("specs")
+
+    def test_decision_after_research_in_build(self, config):
+        phases = config.get_phases("build")
+        assert phases.index("research") < phases.index("decision")
+        assert phases.index("decision") < phases.index("plan")
+
+
+class TestClarityReviewPromptPath:
+    def test_path_resolves(self, config):
+        assert config.clarity_review_prompt_file_path == "templates/clarity-review.md"
 
 
 class TestSpecsPaths:

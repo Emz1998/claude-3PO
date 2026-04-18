@@ -1,19 +1,21 @@
 ---
 name: decision
-description: Phase 3 — Ask 10 technical decision questions informed by strategy research, then write decisions.md
+description: Ask 10 technical decision questions informed by prior research, then write decisions.md
 argument-hint: <decision-context>
 model: sonnet
 ---
 
-**Phase 3: Technical Decisions**
+**Technical Decisions**
 
-Ask the user 10 technical decision questions using `AskUserQuestion`, informed by the strategy research. Then write `projects/docs/decisions.md`.
+Ask the user 10 technical decision questions using `AskUserQuestion`, informed by the prior research (specs `/strategy` or build `/research`). Then write `projects/docs/decisions.md`.
+
+This phase is shared between the `specs` and `build` workflows. In specs it follows `/strategy`; in build it follows `/research`.
 
 ## Questions
 
 Read the decision questions from `${CLAUDE_PLUGIN_ROOT}/commands/decision_questions.md`.
 
-Ask these questions **one at a time** via `AskUserQuestion`. For each question, provide context from the strategy research to help the user decide:
+Ask these questions **one at a time** via `AskUserQuestion`. For each question, provide context from the prior research to help the user decide:
 
 1. Which programming language and framework will you use for the backend?
 2. Which frontend framework or platform will you build on?
@@ -28,10 +30,10 @@ Ask these questions **one at a time** via `AskUserQuestion`. For each question, 
 
 ## Instructions
 
-1. Read `projects/docs/product-vision.md` for product context
-2. Summarize key findings from the strategy research agents before each question
-3. Ask all 10 questions sequentially using `AskUserQuestion`
-4. Write the completed decisions document to `projects/docs/decisions.md`
+1. Read `projects/docs/product-vision.md` (specs) or the explore/research output (build) for prior context.
+2. Summarize key findings from the prior phase before each question.
+3. Ask all 10 questions sequentially using `AskUserQuestion`.
+4. Write the completed decisions document to `projects/docs/decisions.md`.
 
 ## Completion
 

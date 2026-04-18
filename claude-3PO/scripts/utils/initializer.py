@@ -16,8 +16,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from lib.parser import parse_skip, parse_story_id, parse_instructions
-from lib.archiver import archive_plan, archive_contracts
+from lib.archiver import archive_plan
 from lib.state_store import StateStore
+from lib import clarity_check
 from config import Config
 
 STATE_PATH = Path(__file__).resolve().parent.parent / "state.jsonl"
@@ -119,14 +120,6 @@ def _build_build_state(workflow_type: str, session_id: str, args: str) -> dict:
             "reviews": [],
         },
         "tasks": [],
-        "dependencies": {"packages": [], "installed": False},
-        "contracts": {
-            "file_path": None,
-            "names": [],
-            "code_files": [],
-            "written": False,
-            "validated": False,
-        },
         "tests": {
             "file_paths": [],
             "executed": False,
@@ -138,8 +131,6 @@ def _build_build_state(workflow_type: str, session_id: str, args: str) -> dict:
         "code_files": {
             "file_paths": [],
             "reviews": [],
-            "tests_to_revise": [],
-            "tests_revised": [],
             "files_to_revise": [],
             "files_revised": [],
         },
@@ -215,7 +206,6 @@ def initialize(
 
     config = Config()
     archive_plan(config)
-    archive_contracts(config)
 
     story_id = parse_story_id(args)
     reset = "--reset" in args
@@ -243,6 +233,57 @@ def initialize(
 
     state = build_initial_state(workflow_type, session_id, args)
     store.reinitialize(state)
+    if workflow_type == "build":
+        _seed_clarify_phase(store, args)
+
+
+def _seed_clarify_phase(store: StateStore, args: str) -> None:
+    """Add the ``clarify`` phase to fresh build state, gated by headless review.
+
+    Skips the headless call entirely when ``--skip-clarify`` is in args
+    (clarify gets ``status="skipped"``). Otherwise runs ``clarity_check
+    .run_initial`` against the user's prompt and either marks clarify
+    skipped (verdict=clear) or in-progress with the captured headless
+    session id (verdict=vague).
+
+    Args:
+        store (StateStore): The freshly-initialized state store.
+        args (str): Joined command-line args (parsed for ``--skip-clarify``
+            and the user's instruction tail).
+
+    Example:
+        >>> _seed_clarify_phase(store, "--skip-clarify add login")  # doctest: +SKIP
+    """
+    if "--skip-clarify" in args:
+        _add_clarify(store, status="skipped")
+        return
+    prompt = parse_instructions(args)
+    sid, verdict = clarity_check.run_initial(prompt)
+    if verdict == "clear":
+        _add_clarify(store, status="skipped")
+    else:
+        _add_clarify(store, status="in_progress", session_id=sid)
+
+
+def _add_clarify(store: StateStore, status: str, session_id: str = "") -> None:
+    """Append the clarify phase entry with the given status (and optional session).
+
+    Args:
+        store (StateStore): Target state store.
+        status (str): One of ``"skipped"`` or ``"in_progress"``.
+        session_id (str): Headless session id; ignored when status is skipped.
+
+    Example:
+        >>> _add_clarify(store, "in_progress", "sess_x")  # doctest: +SKIP
+    """
+    def _add(d: dict) -> None:
+        entry = {"name": "clarify", "status": status}
+        if status == "in_progress":
+            entry["headless_session_id"] = session_id
+            entry["iteration_count"] = 0
+        d.setdefault("phases", []).append(entry)
+
+    store.update(_add)
 
 
 def main() -> None:

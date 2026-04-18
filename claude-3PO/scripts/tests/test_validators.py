@@ -683,126 +683,23 @@ class TestPlanEditSectionPreservation:
 
 
 # ═══════════════════════════════════════════════════════════════════
-# Install-deps file write — package manager files only
+# Clarify phase write rules — no writes allowed (read-only)
 # ═══════════════════════════════════════════════════════════════════
 
 
-class TestInstallDepsFileWrite:
-    def test_package_json_allowed(self, config, state):
-        state.add_phase("install-deps")
-        hook = make_hook_input("Write", {"file_path": "package.json"})
-        decision, _ = write_guard(hook, config, state)
-        assert decision == "allow"
-
-    def test_requirements_txt_allowed(self, config, state):
-        state.add_phase("install-deps")
-        hook = make_hook_input("Write", {"file_path": "requirements.txt"})
-        decision, _ = write_guard(hook, config, state)
-        assert decision == "allow"
-
-    def test_pyproject_toml_allowed(self, config, state):
-        state.add_phase("install-deps")
-        hook = make_hook_input("Write", {"file_path": "pyproject.toml"})
-        decision, _ = write_guard(hook, config, state)
-        assert decision == "allow"
-
-    def test_go_mod_allowed(self, config, state):
-        state.add_phase("install-deps")
-        hook = make_hook_input("Write", {"file_path": "go.mod"})
-        decision, _ = write_guard(hook, config, state)
-        assert decision == "allow"
-
-    def test_cargo_toml_allowed(self, config, state):
-        state.add_phase("install-deps")
-        hook = make_hook_input("Write", {"file_path": "Cargo.toml"})
-        decision, _ = write_guard(hook, config, state)
-        assert decision == "allow"
-
-    def test_gemfile_allowed(self, config, state):
-        state.add_phase("install-deps")
-        hook = make_hook_input("Write", {"file_path": "Gemfile"})
-        decision, _ = write_guard(hook, config, state)
-        assert decision == "allow"
-
-    def test_pipfile_allowed(self, config, state):
-        state.add_phase("install-deps")
-        hook = make_hook_input("Write", {"file_path": "Pipfile"})
-        decision, _ = write_guard(hook, config, state)
-        assert decision == "allow"
-
-    def test_random_file_blocked(self, config, state):
-        state.add_phase("install-deps")
-        hook = make_hook_input("Write", {"file_path": "app.py"})
+class TestClarifyReadOnly:
+    def test_blocks_write(self, config, state):
+        state.set("workflow_type", "build")
+        state.add_phase("clarify")
+        hook = make_hook_input("Write", {"file_path": "anything.py"})
         decision, msg = write_guard(hook, config, state)
         assert decision == "block"
         assert "not allowed" in msg
 
-    def test_markdown_blocked(self, config, state):
-        state.add_phase("install-deps")
-        hook = make_hook_input("Write", {"file_path": "readme.md"})
-        decision, msg = write_guard(hook, config, state)
+    def test_blocks_edit(self, config, state):
+        state.set("workflow_type", "build")
+        state.add_phase("clarify")
+        hook = make_hook_input("Edit", {"file_path": "anything.py"})
+        decision, msg = edit_guard(hook, config, state)
         assert decision == "block"
         assert "not allowed" in msg
-
-
-# ═══════════════════════════════════════════════════════════════════
-# Define-contracts file write — code extensions only
-# ═══════════════════════════════════════════════════════════════════
-
-
-class TestDefineContractsFileWrite:
-    def test_python_file_allowed(self, config, state):
-        state.add_phase("define-contracts")
-        hook = make_hook_input("Write", {"file_path": "src/interfaces.py"})
-        decision, _ = write_guard(hook, config, state)
-        assert decision == "allow"
-
-    def test_typescript_file_allowed(self, config, state):
-        state.add_phase("define-contracts")
-        hook = make_hook_input("Write", {"file_path": "src/types.ts"})
-        decision, _ = write_guard(hook, config, state)
-        assert decision == "allow"
-
-    def test_markdown_blocked(self, config, state):
-        state.add_phase("define-contracts")
-        hook = make_hook_input("Write", {"file_path": "readme.md"})
-        decision, msg = write_guard(hook, config, state)
-        assert decision == "block"
-        assert "not allowed" in msg
-
-    def test_text_file_blocked(self, config, state):
-        state.add_phase("define-contracts")
-        hook = make_hook_input("Write", {"file_path": "notes.txt"})
-        decision, msg = write_guard(hook, config, state)
-        assert decision == "block"
-        assert "not allowed" in msg
-
-
-# ═══════════════════════════════════════════════════════════════════
-# Plan Write — contracts file allowed during plan phase
-# ═══════════════════════════════════════════════════════════════════
-
-
-class TestPlanWriteContractsFile:
-    def test_contracts_file_allowed_in_plan_phase(self, config, state):
-        state.add_phase("plan")
-        state.add_agent(Agent(name="Plan", status="completed", tool_use_id="p-1"))
-        hook = make_hook_input("Write", {
-            "file_path": ".claude/contracts/latest-contracts.md",
-            "content": "# Contracts\n\n- UserService\n",
-        })
-        decision, _ = write_guard(hook, config, state)
-        assert decision == "allow"
-
-
-# ═══════════════════════════════════════════════════════════════════
-# Install-deps command validation
-# ═══════════════════════════════════════════════════════════════════
-
-
-class TestInstallDepsCommandAllowed:
-    def test_npm_install_allowed(self, config, state):
-        state.add_phase("install-deps")
-        hook = make_hook_input("Bash", {"command": "npm install"})
-        decision, _ = command_guard(hook, config, state)
-        assert decision == "allow"

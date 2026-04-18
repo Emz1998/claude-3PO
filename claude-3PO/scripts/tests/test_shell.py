@@ -7,7 +7,7 @@ from unittest.mock import patch, MagicMock
 import pytest
 
 
-from lib.shell import run_git, invoke_claude
+from lib.shell import run_git, invoke_claude, invoke_codex
 
 
 # ── run_git ──────────────────────────────────────────────────────
@@ -81,3 +81,77 @@ class TestInvokeClaude:
         assert "claude" in argv
         assert "-p" in argv
         assert "--allowedTools" in argv
+
+
+# ── invoke_codex ─────────────────────────────────────────────────
+
+
+class TestInvokeCodex:
+    def test_returns_stdout_on_success(self):
+        fake = MagicMock(returncode=0, stdout="report body\n", stderr="")
+        with patch("lib.shell.subprocess.run", return_value=fake):
+            out = invoke_codex("prompt", timeout=30)
+        assert out == "report body"
+
+    def test_prompt_passed_via_stdin(self):
+        fake = MagicMock(returncode=0, stdout="ok", stderr="")
+        with patch("lib.shell.subprocess.run", return_value=fake) as run:
+            invoke_codex("PROMPT-XYZ", timeout=30)
+        kwargs = run.call_args.kwargs
+        assert kwargs["input"] == "PROMPT-XYZ"
+
+    def test_argv_reads_stdin_dash(self):
+        fake = MagicMock(returncode=0, stdout="ok", stderr="")
+        with patch("lib.shell.subprocess.run", return_value=fake) as run:
+            invoke_codex("p", timeout=30)
+        argv = run.call_args.args[0]
+        assert argv[0] == "codex"
+        assert argv[1] == "exec"
+        assert argv[-1] == "-"
+
+    def test_argv_uses_read_only_sandbox_by_default(self):
+        fake = MagicMock(returncode=0, stdout="ok", stderr="")
+        with patch("lib.shell.subprocess.run", return_value=fake) as run:
+            invoke_codex("p", timeout=30)
+        argv = run.call_args.args[0]
+        assert "--sandbox" in argv
+        assert argv[argv.index("--sandbox") + 1] == "read-only"
+        assert "--skip-git-repo-check" in argv
+
+    def test_sandbox_override(self):
+        fake = MagicMock(returncode=0, stdout="ok", stderr="")
+        with patch("lib.shell.subprocess.run", return_value=fake) as run:
+            invoke_codex("p", timeout=30, sandbox="workspace-write")
+        argv = run.call_args.args[0]
+        assert argv[argv.index("--sandbox") + 1] == "workspace-write"
+
+    def test_returns_none_on_non_zero_exit(self):
+        fake = MagicMock(returncode=1, stdout="", stderr="err")
+        with patch("lib.shell.subprocess.run", return_value=fake):
+            out = invoke_codex("p", timeout=30)
+        assert out is None
+
+    def test_returns_none_on_empty_stdout(self):
+        fake = MagicMock(returncode=0, stdout="   \n", stderr="")
+        with patch("lib.shell.subprocess.run", return_value=fake):
+            out = invoke_codex("p", timeout=30)
+        assert out is None
+
+    def test_returns_none_on_timeout(self):
+        exc = subprocess.TimeoutExpired(cmd="codex", timeout=30)
+        with patch("lib.shell.subprocess.run", side_effect=exc):
+            out = invoke_codex("p", timeout=30)
+        assert out is None
+
+    def test_returns_none_when_codex_missing(self):
+        with patch("lib.shell.subprocess.run", side_effect=FileNotFoundError):
+            out = invoke_codex("p", timeout=30)
+        assert out is None
+
+    def test_passes_cwd_and_timeout(self, tmp_path):
+        fake = MagicMock(returncode=0, stdout="ok", stderr="")
+        with patch("lib.shell.subprocess.run", return_value=fake) as run:
+            invoke_codex("p", timeout=7, cwd=tmp_path)
+        kwargs = run.call_args.kwargs
+        assert kwargs["cwd"] == tmp_path
+        assert kwargs["timeout"] == 7

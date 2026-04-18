@@ -6,13 +6,11 @@ try:
     from lib.extractors import (
         extract_plan_dependencies,
         extract_plan_tasks,
-        extract_contract_names,
         extract_bold_metadata,
     )
 except ImportError:
     extract_plan_dependencies = None
     extract_plan_tasks = None
-    extract_contract_names = None
     extract_bold_metadata = None
 
 _not_implemented = pytest.mark.skipif(
@@ -107,58 +105,13 @@ class TestExtractPlanTasks:
 
     def test_tasks_after_other_sections(self):
         content = (
-            "## Dependencies\n- flask\n\n"
-            "## Contracts\n- UserService\n\n"
+            "## Goals\n- ship\n\n"
             "## Tasks\n"
             "- Implement auth\n"
             "- Write tests\n"
         )
         tasks = extract_plan_tasks(content)
         assert tasks == ["Implement auth", "Write tests"]
-
-
-# ═══════════════════════════════════════════════════════════════════
-# extract_contract_names
-# ═══════════════════════════════════════════════════════════════════
-
-
-@_not_implemented
-class TestExtractContractNames:
-    def test_extracts_bullet_items(self):
-        content = (
-            "# Contracts\n\n"
-            "- UserService\n"
-            "- AuthProvider\n"
-            "- DatabaseClient\n"
-        )
-        names = extract_contract_names(content)
-        assert names == ["UserService", "AuthProvider", "DatabaseClient"]
-
-    def test_empty_content(self):
-        names = extract_contract_names("")
-        assert names == []
-
-    def test_no_bullet_items(self):
-        content = "# Contracts\n\nSome text with no bullets.\n"
-        names = extract_contract_names(content)
-        assert names == []
-
-    def test_strips_whitespace(self):
-        content = "-   UserService   \n-  AuthProvider  \n"
-        names = extract_contract_names(content)
-        assert names == ["UserService", "AuthProvider"]
-
-    def test_extracts_from_headings(self):
-        content = (
-            "## UserService\n"
-            "Description of UserService.\n\n"
-            "## AuthProvider\n"
-            "Description of AuthProvider.\n"
-        )
-        names = extract_contract_names(content)
-        assert "UserService" in names
-        assert "AuthProvider" in names
-
 
 
 # ═══════════════════════════════════════════════════════════════════

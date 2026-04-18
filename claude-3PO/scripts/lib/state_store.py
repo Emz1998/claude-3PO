@@ -1229,128 +1229,58 @@ class StateStore:
 
         self.update(_add)
 
-    # ── Dependencies ──────────────────────────────────────────────
+    # ── Clarify phase fields (build workflow) ─────────────────────
 
-    @property
-    def dependencies(self) -> dict[str, Any]:
-        """Dependency tracking dict (``{packages: [...], installed: bool}``).
+    def get_clarify_phase(self) -> dict | None:
+        """Return the clarify phase dict from ``state.phases``, or ``None``.
+
+        Returns:
+            dict | None: The phase entry whose ``name`` is ``"clarify"``.
 
         Example:
-            >>> store.dependencies  # doctest: +SKIP
-            {'packages': ['requests'], 'installed': True}
+            >>> store.get_clarify_phase()  # doctest: +SKIP
+            {'name': 'clarify', 'status': 'in_progress', ...}
         """
-        return self.load().get("dependencies", {"packages": [], "installed": False})
+        for p in self.phases:
+            if p.get("name") == "clarify":
+                return p
+        return None
 
-    def set_dependencies_packages(self, packages: list[str]) -> None:
-        """Set the list of packages the plan declares as dependencies.
+    def set_clarify_session(self, headless_session_id: str) -> None:
+        """Stamp the headless session id and zero the iteration counter.
+
+        Args:
+            headless_session_id (str): Session id returned by the initial
+                headless ``claude -p`` clarity check.
 
         Example:
-            >>> store.set_dependencies_packages(["requests"])  # doctest: +SKIP
+            >>> store.set_clarify_session("sess_abc123")  # doctest: +SKIP
         """
         def _set(d: dict) -> None:
-            d.setdefault("dependencies", {})["packages"] = packages
+            for p in d.get("phases", []):
+                if p.get("name") == "clarify":
+                    p["headless_session_id"] = headless_session_id
+                    p["iteration_count"] = 0
+                    break
 
         self.update(_set)
 
-    def set_dependencies_installed(self) -> None:
-        """Mark dependencies as installed.
+    def bump_clarify_iteration(self) -> None:
+        """Increment ``iteration_count`` on the clarify phase by one.
+
+        No-op if the clarify phase is missing — the caller is expected to
+        verify it exists before incrementing.
 
         Example:
-            >>> store.set_dependencies_installed()  # doctest: +SKIP
+            >>> store.bump_clarify_iteration()  # doctest: +SKIP
         """
-        def _set(d: dict) -> None:
-            d.setdefault("dependencies", {})["installed"] = True
+        def _bump(d: dict) -> None:
+            for p in d.get("phases", []):
+                if p.get("name") == "clarify":
+                    p["iteration_count"] = int(p.get("iteration_count", 0)) + 1
+                    break
 
-        self.update(_set)
-
-    # ── Contracts ─────────────────────────────────────────────────
-
-    @property
-    def contracts(self) -> dict[str, Any]:
-        """The contracts sub-dict (file_path, names, code_files, written, validated).
-
-        Example:
-            >>> store.contracts  # doctest: +SKIP
-            {'file_path': '/tmp/contracts.md', 'names': ['UserAPI']}
-        """
-        return self.load().get(
-            "contracts",
-            {
-                "file_path": None,
-                "names": [],
-                "code_files": [],
-                "written": False,
-                "validated": False,
-            },
-        )
-
-    @property
-    def contract_names(self) -> list[str]:
-        """Names of declared contracts.
-
-        Example:
-            >>> store.contract_names  # doctest: +SKIP
-            ['UserAPI']
-        """
-        return self.contracts.get("names", [])
-
-    def set_contracts_file_path(self, path: str) -> None:
-        """Record where the contracts file was written.
-
-        Example:
-            >>> store.set_contracts_file_path("/tmp/contracts.md")  # doctest: +SKIP
-        """
-        def _set(d: dict) -> None:
-            d.setdefault("contracts", {})["file_path"] = path
-
-        self.update(_set)
-
-    def set_contracts_names(self, names: list[str]) -> None:
-        """Set the list of contract names.
-
-        Example:
-            >>> store.set_contracts_names(["UserAPI"])  # doctest: +SKIP
-        """
-        def _set(d: dict) -> None:
-            d.setdefault("contracts", {})["names"] = names
-
-        self.update(_set)
-
-    def set_contracts_written(self, written: bool = True) -> None:
-        """Toggle the contracts-written flag.
-
-        Example:
-            >>> store.set_contracts_written(True)  # doctest: +SKIP
-        """
-        def _set(d: dict) -> None:
-            d.setdefault("contracts", {})["written"] = written
-
-        self.update(_set)
-
-    def set_contracts_validated(self, validated: bool = True) -> None:
-        """Toggle the contracts-validated flag.
-
-        Example:
-            >>> store.set_contracts_validated(True)  # doctest: +SKIP
-        """
-        def _set(d: dict) -> None:
-            d.setdefault("contracts", {})["validated"] = validated
-
-        self.update(_set)
-
-    def add_contract_code_file(self, file_path: str) -> None:
-        """Record *file_path* as a code file produced from a contract (deduplicated).
-
-        Example:
-            >>> store.add_contract_code_file("src/user_api.py")  # doctest: +SKIP
-        """
-        def _add(d: dict) -> None:
-            contracts = d.setdefault("contracts", {})
-            code_files = contracts.setdefault("code_files", [])
-            if file_path not in code_files:
-                code_files.append(file_path)
-
-        self.update(_add)
+        self.update(_bump)
 
     # ── Project tasks (implement workflow) ─────────────────────────
 

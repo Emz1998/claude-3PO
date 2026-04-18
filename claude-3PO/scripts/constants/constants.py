@@ -6,11 +6,11 @@ Layout overview:
       ``CI_CHECK_PATTERNS``, ``STORY_ID_PATTERN``, ``SCORE_PATTERNS``,
       ``TABLE_PATTERN``) — used by hooks to classify Bash invocations and parse
       structured agent output.
-    * Command lists (``PR_COMMANDS``, ``CI_COMMANDS``, ``INSTALL_COMMANDS``,
-      ``TEST_COMMANDS``, ``READ_ONLY_COMMANDS``, ``WRITE_COMMANDS``) — keyed by
-      phase via ``COMMANDS_MAP`` to gate which shell commands a phase may run.
-    * File patterns (``PACKAGE_MANAGER_FILES``, ``TEST_FILE_PATTERNS``) —
-      heuristics for locating dependency manifests and test files.
+    * Command lists (``PR_COMMANDS``, ``CI_COMMANDS``, ``TEST_COMMANDS``,
+      ``READ_ONLY_COMMANDS``, ``WRITE_COMMANDS``) — keyed by phase via
+      ``COMMANDS_MAP`` to gate which shell commands a phase may run.
+    * File patterns (``TEST_FILE_PATTERNS``) — heuristics for locating
+      test files.
     * Specs grammar (``SPECS_*``) — markdown markers, ID regex template, and
       blockquote patterns the SpecsValidator uses to parse backlog.md.
 """
@@ -84,20 +84,6 @@ CI_COMMANDS = [
     "gh pr status",
 ]
 
-INSTALL_COMMANDS = [
-    "npm install",
-    "yarn install",
-    "yarn add",
-    "go get",
-    "go mod tidy",
-    "pip install",
-    "pip install -r",
-    "gem install",
-    "cargo add",
-    "pnpm install",
-    "pnpm add",
-]
-
 TEST_COMMANDS = [
     "pytest",
     "python -m pytest",
@@ -149,23 +135,12 @@ READ_ONLY_COMMANDS = [
 ]
 
 COMMANDS_MAP = {
-    "install-deps": INSTALL_COMMANDS,
     "write-tests": TEST_COMMANDS,
     "write-code": TEST_COMMANDS,
     "test-review": TEST_COMMANDS,
     "pr-create": PR_COMMANDS,
     "ci-check": CI_COMMANDS,
 }
-
-PACKAGE_MANAGER_FILES = [
-    "package.json",
-    "requirements.txt",
-    "Pipfile",
-    "go.mod",
-    "Cargo.toml",
-    "Gemfile",
-    "pyproject.toml",
-]
 
 TEST_FILE_PATTERNS = [
     # JS / TS style

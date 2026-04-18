@@ -81,7 +81,7 @@ class Config:
 
         Example:
             >>> get_config().get_phases("build")  # doctest: +SKIP
-            ['plan', 'install-deps', 'define-contracts', 'write-tests', 'write-code', 'write-report']
+            ['clarify', 'explore', 'research', 'decision', 'plan', 'plan-review', 'create-tasks', 'write-tests', 'test-review', 'write-code', 'quality-check', 'code-review', 'pr-create', 'ci-check', 'write-report']
         """
         return [p["name"] for p in self._phase_list if workflow_type in p.get("workflows", [])]
 
@@ -91,7 +91,7 @@ class Config:
 
         Example:
             >>> get_config().build_phases  # doctest: +SKIP
-            ['plan', 'install-deps', 'define-contracts', 'write-tests', 'write-code', 'write-report']
+            ['clarify', 'explore', 'research', 'decision', 'plan', 'plan-review', 'create-tasks', 'write-tests', 'test-review', 'write-code', 'quality-check', 'code-review', 'pr-create', 'ci-check', 'write-report']
         """
         return self.get_phases("build")
 
@@ -120,7 +120,7 @@ class Config:
         """Phases that the orchestrator may advance without user prompt.
 
         Example:
-            >>> "install-deps" in get_config().auto_phases  # doctest: +SKIP
+            >>> "write-code" in get_config().auto_phases  # doctest: +SKIP
             True
         """
         return self._phases_with("auto")
@@ -141,7 +141,7 @@ class Config:
 
         Example:
             >>> get_config().code_write_phases  # doctest: +SKIP
-            ['plan', 'install-deps', 'define-contracts', 'write-tests', 'write-code', 'write-report']
+            ['write-tests', 'write-code']
         """
         return self._phases_with("code_write")
 
@@ -189,7 +189,7 @@ class Config:
         """Return whether ``phase`` is flagged ``auto``.
 
         Example:
-            >>> get_config().is_auto_phase("install-deps")  # doctest: +SKIP
+            >>> get_config().is_auto_phase("write-code")  # doctest: +SKIP
             True
         """
         return self._phase_map.get(phase, {}).get("auto", False)
@@ -455,24 +455,14 @@ class Config:
         return self._paths().get("report_file", "")
 
     @property
-    def contracts_file_path(self) -> str:
-        """Path to the active contracts (interface) file.
+    def clarity_review_prompt_file_path(self) -> str:
+        """Path to the headless-Claude clarity-review prompt template.
 
         Example:
-            >>> get_config().contracts_file_path  # doctest: +SKIP
-            '.claude/contracts/active.py'
+            >>> get_config().clarity_review_prompt_file_path  # doctest: +SKIP
+            'templates/clarity-review.md'
         """
-        return self._paths().get("contracts_file", "")
-
-    @property
-    def contracts_archive_dir(self) -> str:
-        """Directory where completed contracts files are archived.
-
-        Example:
-            >>> get_config().contracts_archive_dir  # doctest: +SKIP
-            '.claude/contracts/archive'
-        """
-        return self._paths().get("contracts_archive_dir", "")
+        return self._paths().get("clarity_review_prompt_file", "")
 
     @property
     def log_file(self) -> str:
@@ -503,6 +493,22 @@ class Config:
             '.claude/state.jsonl'
         """
         return self._paths().get("state_jsonl", "")
+
+    # ── Clarify safety ceiling ────────────────────────────────────
+
+    @property
+    def clarify_max_iterations(self) -> int:
+        """Max number of AskUserQuestion iterations allowed in clarify.
+
+        Defaults to 10 — beyond that, the guardrail blocks further
+        AskUserQuestion calls so an unbounded prompt clarification
+        loop can't run forever.
+
+        Example:
+            >>> get_config().clarify_max_iterations  # doctest: +SKIP
+            10
+        """
+        return int(self._data.get("clarify", {}).get("max_iterations", 10))
 
     # ── Specs review cap ──────────────────────────────────────────
 

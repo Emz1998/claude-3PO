@@ -5,9 +5,7 @@ from fnmatch import fnmatch
 from constants import (
     TEST_FILE_PATTERNS,
     CODE_EXTENSIONS,
-    PACKAGE_MANAGER_FILES,
 )
-from constants.markers import SPECIFICATIONS_MARKER
 from constants.paths import E2E_TEST_REPORT
 from typing import Literal
 
@@ -51,13 +49,8 @@ class FileWriteGuard:
 
     Each writable phase has its own per-path-and-content validator:
 
-    - ``plan`` — only the plan / contracts files; plan content must contain
-      every required section (and bullet sections must use bullets, not H3
-      subsections); contracts content must contain a non-empty
-      ``Specifications`` table.
-    - ``install-deps`` — only known package-manager files (lockfiles, etc.).
-    - ``define-contracts`` — files declared in the contracts list (or a code
-      file extension when the list is empty).
+    - ``plan`` — only the plan file; plan content must contain every required
+      section (and bullet sections must use bullets, not H3 subsections).
     - ``write-tests`` — only paths matching ``TEST_FILE_PATTERNS``.
     - ``write-code`` — code-extension paths (build) or paths from the plan's
       ``## Files to Create/Modify`` (implement).
@@ -164,21 +157,19 @@ class FileWriteGuard:
 
     def _check_plan_path(self) -> None:
         """
-        Confirm the write targets the plan or contracts file.
+        Confirm the write targets the plan file.
 
         Raises:
-            ValueError: If the path isn't one of the allowed plan-phase files.
+            ValueError: If the path isn't the configured plan file.
 
         Example:
             >>> # Raises ValueError when writing a non-plan path during plan phase:
             >>> guard._check_plan_path()  # doctest: +SKIP
         """
-        allowed = [self.config.plan_file_path, self.config.contracts_file_path]
-        if not any(
-            self.file_path == p or self.file_path.endswith(p) for p in allowed if p
-        ):
+        expected = self.config.plan_file_path
+        if not (expected and (self.file_path == expected or self.file_path.endswith(expected))):
             raise ValueError(
-                f"Writing '{self.file_path}' not allowed\nAllowed: {allowed}"
+                f"Writing '{self.file_path}' not allowed\nAllowed: {expected}"
             )
 
     def _is_plan_file(self) -> bool:
@@ -189,15 +180,6 @@ class FileWriteGuard:
             True
         """
         return path_matches(self.file_path, self.config.plan_file_path)
-
-    def _is_contracts_file(self) -> bool:
-        """True iff the target file is the configured contracts file.
-
-        Example:
-            >>> guard._is_contracts_file()  # doctest: +SKIP
-            True
-        """
-        return path_matches(self.file_path, self.config.contracts_file_path)
 
     def _check_plan_content(self) -> None:
         """Dispatch to the build- or implement-flavour plan-content check.
@@ -277,54 +259,8 @@ class FileWriteGuard:
         if missing:
             raise ValueError(f"Plan missing required sections: {missing}")
 
-    def _check_contracts_content(self) -> None:
-        """
-        Validate the contracts file has a non-empty ``Specifications`` section.
-
-        Raises:
-            ValueError: If the marker is missing, the section is missing, or
-                the table inside it has no contract rows.
-
-        Example:
-            >>> # Raises ValueError when the Specifications section is missing:
-            >>> guard._check_contracts_content()  # doctest: +SKIP
-        """
-        if SPECIFICATIONS_MARKER not in self.content:
-            raise ValueError(
-                f"Contracts file missing required section: {SPECIFICATIONS_MARKER}. "
-                "See the contracts template for the correct format."
-            )
-        for name, body in extract_md_sections(self.content, 2):
-            if name.strip() == "Specifications":
-                self._check_specifications_table(body)
-                return
-        raise ValueError(f"{SPECIFICATIONS_MARKER} section is empty.")
-
-    @staticmethod
-    def _check_specifications_table(body: str) -> None:
-        """
-        Require the Specifications table to have at least one data row.
-
-        Args:
-            body (str): Markdown body of the ``Specifications`` section.
-
-        Raises:
-            ValueError: If the table has fewer than 2 rows (header + 1 data row).
-
-        Example:
-            >>> # Raises ValueError when the Specifications table has no data rows.
-            >>> FileWriteGuard._check_specifications_table("| h |\\n|---|\\n")  # doctest: +SKIP
-        """
-        from lib.extractors import extract_table
-
-        if len(extract_table(body)) < 2:
-            raise ValueError(
-                f"{SPECIFICATIONS_MARKER} must have at least one contract in the table. "
-                "See the contracts template for the correct format."
-            )
-
     def _validate_plan(self) -> None:
-        """Apply all plan-phase write checks: agent done, path, plan/contracts content.
+        """Apply plan-phase write checks: agent done, path, plan content.
 
         Example:
             >>> guard._validate_plan()  # doctest: +SKIP
@@ -333,58 +269,8 @@ class FileWriteGuard:
         self._check_plan_path()
         if self._is_plan_file():
             self._check_plan_content()
-        if self._is_contracts_file():
-            workflow_type = self.state.get("workflow_type", "build")
-            if workflow_type == "build":
-                self._check_contracts_content()
 
     # ── Other phases ──────────────────────────────────────────────
-
-    def _check_package_manager_path(self) -> None:
-        """
-        Restrict ``install-deps`` writes to recognised package-manager files.
-
-        Raises:
-            ValueError: If the basename isn't in ``PACKAGE_MANAGER_FILES``.
-
-        Example:
-            >>> # Raises ValueError when writing a non-package-manager file in install-deps:
-            >>> guard._check_package_manager_path()  # doctest: +SKIP
-        """
-        basename = self.file_path.rsplit("/", 1)[-1]
-        if basename not in PACKAGE_MANAGER_FILES:
-            raise ValueError(
-                f"Writing '{self.file_path}' not allowed in install-deps"
-                f"\nAllowed: {PACKAGE_MANAGER_FILES}"
-            )
-
-    def _check_contract_file(self) -> None:
-        """
-        Validate ``define-contracts`` writes against the declared contract file list.
-
-        Falls back to the generic code-extension check when no contract files
-        are declared (i.e. before any contracts have been written, the path must
-        at least look like code so we don't accept arbitrary docs).
-
-        Raises:
-            ValueError: If the path isn't in the contract file list (and isn't
-                a recognised code file when the list is empty).
-
-        Example:
-            >>> # Raises ValueError when path isn't in the contracts list:
-            >>> guard._check_contract_file()  # doctest: +SKIP
-        """
-        contract_files = self.state.get("contract_files", [])
-        if contract_files:
-            if self.file_path not in contract_files and not any(
-                self.file_path.endswith(f) for f in contract_files
-            ):
-                raise ValueError(
-                    f"Writing '{self.file_path}' not in contracts {SPECIFICATIONS_MARKER} file list"
-                    f"\nAllowed: {contract_files}"
-                )
-        else:
-            self._check_code_path()
 
     def _check_test_path(self) -> None:
         """
@@ -495,10 +381,6 @@ class FileWriteGuard:
 
             if self.phase == "plan":
                 self._validate_plan()
-            elif self.phase == "install-deps":
-                self._check_package_manager_path()
-            elif self.phase == "define-contracts":
-                self._check_contract_file()
             elif self.phase == "write-tests":
                 self._check_test_path()
             elif self.phase == "write-code":

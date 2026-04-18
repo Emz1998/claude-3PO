@@ -379,91 +379,6 @@ class Resolver:
         if self.state.report_written:
             self.state.set_phase_completed("write-report")
 
-    # ── Install / contracts ───────────────────────────────────────
-
-    def _resolve_install_deps(self) -> None:
-        """Complete ``install-deps`` once dependencies are flagged installed.
-
-        Example:
-            >>> Resolver(config, state)._resolve_install_deps()  # doctest: +SKIP
-        """
-        if self.state.dependencies.get("installed"):
-            self.state.set_phase_completed("install-deps")
-
-    @staticmethod
-    def _find_contract_names_in_files(
-        names: list[str], code_files: list[str]
-    ) -> set[str]:
-        """Return the subset of contract names that actually appear in any file.
-
-        Args:
-            names (list[str]): Contract names extracted from contracts.md.
-            code_files (list[str]): Paths to candidate code files.
-
-        Returns:
-            set[str]: Names found verbatim in at least one readable file.
-
-        Example:
-            >>> Resolver._find_contract_names_in_files(["Foo"], ["src/foo.py"])  # doctest: +SKIP
-        """
-        from pathlib import Path
-
-        found = set()
-        for fp in code_files:
-            path = Path(fp)
-            if path.exists():
-                content = path.read_text()
-                for name in names:
-                    if name in content:
-                        found.add(name)
-        return found
-
-    def _are_contracts_written(self) -> bool:
-        """Return True if ``state.contracts.written`` is truthy.
-
-        Example:
-            >>> Resolver(config, state)._are_contracts_written()  # doctest: +SKIP
-        """
-        return bool(self.state.contracts.get("written"))
-
-    def _are_contracts_validated(self) -> bool:
-        """Return True if ``state.contracts.validated`` is truthy.
-
-        Example:
-            >>> Resolver(config, state)._are_contracts_validated()  # doctest: +SKIP
-        """
-        return bool(self.state.contracts.get("validated"))
-
-    def _validate_and_complete_contracts(self) -> None:
-        """Mark contracts validated when every contract name appears in code.
-
-        Example:
-            >>> Resolver(config, state)._validate_and_complete_contracts()  # doctest: +SKIP
-        """
-        contracts = self.state.contracts
-        names = contracts.get("names", [])
-        code_files = contracts.get("code_files", [])
-        if not names or not code_files:
-            return
-
-        found = self._find_contract_names_in_files(names, code_files)
-        if found >= set(names):
-            self.state.set_contracts_validated(True)
-            self.state.set_phase_completed("define-contracts")
-
-    def _resolve_define_contracts(self) -> None:
-        """Resolve ``define-contracts`` — written + validated, in two steps.
-
-        Example:
-            >>> Resolver(config, state)._resolve_define_contracts()  # doctest: +SKIP
-        """
-        if not self._are_contracts_written():
-            return
-        if self._are_contracts_validated():
-            self.state.set_phase_completed("define-contracts")
-            return
-        self._validate_and_complete_contracts()
-
     # ── Tasks ─────────────────────────────────────────────────────
 
     def _all_tasks_created(self) -> bool:
@@ -531,7 +446,7 @@ class Resolver:
     # ══════════════════════════════════════════════════════════════
 
     def _is_phase_ready_to_advance(self, skip_checkpoint: bool) -> bool:
-        """Return True if the current phase is ``completed`` and may auto-advance.
+        """Return True if the current phase is finished (completed/skipped) and may auto-advance.
 
         ``plan-review`` is special — it's a human checkpoint and never
         auto-advances unless the caller explicitly opts in via
@@ -547,7 +462,7 @@ class Resolver:
             >>> Resolver(config, state)._is_phase_ready_to_advance(False)  # doctest: +SKIP
         """
         phase = self.state.current_phase
-        if not phase or self.state.get_phase_status(phase) != "completed":
+        if not phase or self.state.get_phase_status(phase) not in ("completed", "skipped"):
             return False
         if phase == "plan-review" and not skip_checkpoint:
             return False
@@ -667,7 +582,10 @@ class Resolver:
                 if p not in ("write-tests", "test-review", "tests-review")
             ]
 
-        completed = {p["name"] for p in self.state.phases if p["status"] == "completed"}
+        completed = {
+            p["name"] for p in self.state.phases
+            if p["status"] in ("completed", "skipped")
+        }
         if all(p in completed for p in required):
             self.state.set("status", "completed")
             self.state.set("workflow_active", False)
@@ -694,8 +612,6 @@ class Resolver:
 
     _TOOL_RESOLVER_MAP: dict[str, str] = {
         "plan": "_resolve_plan",
-        "install-deps": "_resolve_install_deps",
-        "define-contracts": "_resolve_define_contracts",
         "create-tasks": "_resolve_create_tasks",
         "write-tests": "_resolve_write_tests",
         "write-code": "_resolve_write_code",

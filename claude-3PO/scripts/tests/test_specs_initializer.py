@@ -45,7 +45,7 @@ class TestSpecsInitialState:
         state = build_initial_state("specs", "sess-1", "")
         for key in ("tdd", "story_id", "plan", "tests", "code_files",
                      "quality_check_result", "pr", "ci-check", "report_written",
-                     "contracts", "dependencies", "tasks", "code_files_to_write"):
+                     "tasks", "code_files_to_write"):
             assert key not in state, f"specs state should not have '{key}'"
 
     def test_all_schema_keys(self):

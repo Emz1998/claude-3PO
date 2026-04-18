@@ -49,7 +49,7 @@ class TestPathMatches:
         [
             ("docs/plan.md", "docs/plan.md", True),
             ("/repo/docs/plan.md", "docs/plan.md", True),
-            ("docs/contracts.md", "docs/plan.md", False),
+            ("docs/notes.md", "docs/plan.md", False),
             ("", "docs/plan.md", False),
             ("docs/plan.md", "", False),
         ],
@@ -67,6 +67,6 @@ class TestPathMatches:
         assert path_matches("/r/a.md", "a.md") is True
         assert path_matches("/r/a.json", "a.md") is False
 
-    def test_plan_vs_contracts_suffix(self):
+    def test_plan_vs_other_doc_suffix(self):
         assert path_matches("/r/docs/plan.md", "docs/plan.md") is True
-        assert path_matches("/r/docs/contracts.md", "docs/plan.md") is False
+        assert path_matches("/r/docs/notes.md", "docs/plan.md") is False

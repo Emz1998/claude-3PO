@@ -325,65 +325,6 @@ def extract_plan_tasks(content: str) -> list[str]:
     return _extract_section_bullets(content, "Tasks")
 
 
-def _extract_names_from_specs_table(sections: list[tuple[str, str]]) -> list[str] | None:
-    """
-    Pull the first column of the ``## Specifications`` table.
-
-    Returns ``None`` (not ``[]``) when the section is absent so callers can
-    distinguish "no specs section" from "empty specs section" and fall back
-    to alternate parsing strategies.
-
-    Args:
-        sections (list[tuple[str, str]]): Output of ``extract_md_sections(..., 2)``.
-
-    Returns:
-        list[str] | None: Spec names, ``[]`` if section exists but has no
-        body rows, or ``None`` if no Specifications section was found.
-
-    Example:
-        >>> _extract_names_from_specs_table([("Other", "x")]) is None
-        True
-    """
-    for name, body in sections:
-        if name.strip() == "Specifications":
-            table = extract_table(body)
-            if len(table) >= 2:
-                return [row[0].strip() for row in table[1:] if row and row[0].strip()]
-            return []
-    return None
-
-
-def extract_contract_names(content: str) -> list[str]:
-    """
-    Parse contract names from ``latest-contracts.md`` with three fallbacks.
-
-    Tries in order: the Specifications table → top-level bullet list → H2
-    heading names. The cascade lets contracts be authored in whichever style
-    fits the doc without forcing one canonical layout.
-
-    Args:
-        content (str): Full contracts markdown.
-
-    Returns:
-        list[str]: Contract names found via the first matching strategy.
-
-    Example:
-        >>> extract_contract_names("- foo\\n- bar")
-        ['foo', 'bar']
-    """
-    sections = extract_md_sections(content, 2)
-
-    from_table = _extract_names_from_specs_table(sections)
-    if from_table is not None:
-        return from_table
-
-    bullets = _extract_bullet_items(content)
-    if bullets:
-        return bullets
-
-    return [name.strip() for name, _ in sections]
-
-
 def extract_plan_files_to_modify(content: str) -> list[str]:
     """
     Extract file paths from the plan's ``Files to Create/Modify`` table.
@@ -411,31 +352,6 @@ def extract_plan_files_to_modify(content: str) -> list[str]:
                 return []
             # Skip header row, extract Path column (index 1)
             return [row[1].strip() for row in table[1:] if len(row) > 1 and row[1].strip()]
-    return []
-
-
-def extract_contract_files(content: str) -> list[str]:
-    """
-    Extract file paths from the contracts ``## Specifications`` File column.
-
-    Args:
-        content (str): Full contracts markdown.
-
-    Returns:
-        list[str]: File paths from the third column (index 2); empty if
-        the table is missing or has fewer than three columns.
-
-    Example:
-        >>> md = "## Specifications\\n| Name | Type | File |\\n|---|---|---|\\n| A | x | a.py |"
-        >>> extract_contract_files(md)
-        ['a.py']
-    """
-    sections = extract_md_sections(content, 2)
-    for name, body in sections:
-        if name.strip() == "Specifications":
-            table = extract_table(body)
-            if len(table) >= 2 and len(table[0]) > 2:
-                return [row[2].strip() for row in table[1:] if len(row) > 2 and row[2].strip()]
     return []
 
 
@@ -519,6 +435,7 @@ def extract_ci_status(output: str) -> str:
 _BUILD_PATTERN = re.compile(r"^/(?:\w+:)?build\s+(.*)", re.DOTALL)
 _STORY_ID_PATTERN = r"\b([A-Z]{2,}-\d+)\b"
 _BUILD_FLAGS = [
+    "--skip-clarify",
     "--skip-explore",
     "--skip-research",
     "--skip-all",

@@ -274,74 +274,35 @@ class TestQualityCheck:
 
 
 # ═══════════════════════════════════════════════════════════════════
-# Dependencies
+# Clarify phase fields (headless_session_id + iteration_count)
 # ═══════════════════════════════════════════════════════════════════
 
 
-class TestDependencies:
-    def test_dependencies_default(self, state):
-        deps = state.dependencies
-        assert deps["packages"] == []
-        assert deps["installed"] is False
+class TestClarifyPhaseFields:
+    def test_get_clarify_phase_returns_none_initially(self, state):
+        assert state.get_clarify_phase() is None
 
-    def test_set_dependencies_packages(self, state):
-        state.set_dependencies_packages(["flask", "sqlalchemy"])
-        assert state.dependencies["packages"] == ["flask", "sqlalchemy"]
+    def test_get_clarify_phase_returns_dict_after_add(self, state):
+        state.add_phase("clarify")
+        phase = state.get_clarify_phase()
+        assert phase is not None
+        assert phase["name"] == "clarify"
+        assert phase["status"] == "in_progress"
 
-    def test_set_dependencies_installed(self, state):
-        state.set_dependencies_installed()
-        assert state.dependencies["installed"] is True
+    def test_set_clarify_session_persists_id(self, state):
+        state.add_phase("clarify")
+        state.set_clarify_session("sess_abc123")
+        phase = state.get_clarify_phase()
+        assert phase["headless_session_id"] == "sess_abc123"
+        assert phase["iteration_count"] == 0
 
-    def test_set_packages_then_installed(self, state):
-        state.set_dependencies_packages(["flask"])
-        state.set_dependencies_installed()
-        deps = state.dependencies
-        assert deps["packages"] == ["flask"]
-        assert deps["installed"] is True
-
-
-# ═══════════════════════════════════════════════════════════════════
-# Contracts
-# ═══════════════════════════════════════════════════════════════════
-
-
-class TestContracts:
-    def test_contracts_default(self, state):
-        contracts = state.contracts
-        assert contracts["file_path"] is None
-        assert contracts["names"] == []
-        assert contracts["code_files"] == []
-        assert contracts["written"] is False
-        assert contracts["validated"] is False
-
-    def test_set_contracts_file_path(self, state):
-        state.set_contracts_file_path(".claude/contracts/latest-contracts.md")
-        assert state.contracts["file_path"] == ".claude/contracts/latest-contracts.md"
-
-    def test_set_contracts_names(self, state):
-        state.set_contracts_names(["UserService", "AuthProvider"])
-        assert state.contracts["names"] == ["UserService", "AuthProvider"]
-
-    def test_set_contracts_written(self, state):
-        state.set_contracts_written(True)
-        assert state.contracts["written"] is True
-
-    def test_set_contracts_validated(self, state):
-        state.set_contracts_validated(True)
-        assert state.contracts["validated"] is True
-
-    def test_add_contract_code_file(self, state):
-        state.add_contract_code_file("src/interfaces.py")
-        assert "src/interfaces.py" in state.contracts["code_files"]
-
-    def test_add_contract_code_file_dedup(self, state):
-        state.add_contract_code_file("src/interfaces.py")
-        state.add_contract_code_file("src/interfaces.py")
-        assert state.contracts["code_files"].count("src/interfaces.py") == 1
-
-    def test_contract_names_property(self, state):
-        state.set_contracts_names(["UserService", "AuthProvider"])
-        assert state.contract_names == ["UserService", "AuthProvider"]
+    def test_bump_clarify_iteration(self, state):
+        state.add_phase("clarify")
+        state.set_clarify_session("sess_abc123")
+        state.bump_clarify_iteration()
+        state.bump_clarify_iteration()
+        phase = state.get_clarify_phase()
+        assert phase["iteration_count"] == 2
 
 
 # ═══════════════════════════════════════════════════════════════════

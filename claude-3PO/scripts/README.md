@@ -30,7 +30,7 @@ Three workflows are wired in `config/config.json`. A phase belongs to a workflow
 
 | Workflow    | Purpose                                | Phase track                                                                                                                                                    |
 | ----------- | -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `build`     | End-to-end feature build from scratch  | explore → research → plan → plan-review → create-tasks → install-deps → define-contracts → write-tests → test-review → write-code → quality-check → code-review → pr-create → ci-check → write-report |
+| `build`     | End-to-end feature build from scratch  | clarify (auto) → explore → research → decision → plan → plan-review → create-tasks → write-tests → test-review → write-code → quality-check → code-review → pr-create → ci-check → write-report |
 | `implement` | Execute an existing story from a backlog | explore → research → plan → plan-review → create-tasks → write-tests → tests-review → write-code → validate → code-review → pr-create → ci-check → write-report |
 | `specs`     | Produce product/architecture artifacts   | vision → strategy → decision → architect → backlog                                                                                                             |
 
@@ -63,7 +63,7 @@ Each guard is a class exposing `validate() → ("allow" | "block", message)`. `g
 | -------------------------- | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `PhaseGuard`               | `Skill` (PreToolUse)                 | Phase transition follows the workflow ordering. Handles `/continue`, `/plan-approved`, `/revise-plan`, `/reset-plan-review`. Skips auto-phases. Allows parallel `explore`+`research`. |
 | `CommandGuard`             | `Bash` (PreToolUse)                  | Command is read-only, or matches the phase whitelist in `constants.COMMANDS_MAP`. Requires `--json` on `gh pr create` / `gh pr checks`.                                |
-| `FileWriteGuard`           | `Write` (PreToolUse)                 | Phase permits writes; path matches the phase's target (`plan_file`, `contracts_file`, plan-declared code files, test patterns, package manager files, report path). Plan writes must include the required sections and use bullet format for `Dependencies`/`Tasks`; contracts must have a populated `## Specifications` table. |
+| `FileWriteGuard`           | `Write` (PreToolUse)                 | Phase permits writes; path matches the phase's target (`plan_file`, plan-declared code files, test patterns, report path). Plan writes must include the required sections and use bullet format for `Dependencies`/`Tasks`. |
 | `FileEditGuard`            | `Edit` (PreToolUse)                  | Phase permits edits; file is plan/test/code in the current session. Edits to the plan must preserve required sections.                                                  |
 | `AgentGuard`               | `Agent` (PreToolUse)                 | Agent type matches the phase's required agent, under `agent_count`. In review phases, blocks re-invocation until revisions (plan/tests/code) are done.                  |
 | `WebFetchGuard`            | `WebFetch` (PreToolUse)              | URL host is in `config.safe_domains`.                                                                                                                                   |
@@ -79,7 +79,7 @@ Called by `post_tool_use.py` after a guard allows a tool. Dispatches on `tool_na
 - **Skill** — records a phase transition (except for no-op skills `continue`, `revise-plan`, `plan-approved`, `reset-plan-review`). Handles the explore↔research parallel case.
 - **Write** — marks plan/contracts/test/code/report files written, tracks specs docs, injects frontmatter metadata into the plan, and auto-extracts `## Dependencies`, `## Tasks`, `## Files to Create/Modify`, and contract names from the written markdown.
 - **Edit** — records plan revision, test-file revision, code/test revisions.
-- **Bash** — detects test execution (`TEST_RUN_PATTERNS`), dependency installation (`INSTALL_COMMANDS`), PR creation (parses `gh pr create --json`), and CI status (parses `gh pr checks --json`).
+- **Bash** — detects test execution (`TEST_RUN_PATTERNS`), PR creation (parses `gh pr create --json`), and CI status (parses `gh pr checks --json`).
 
 Score/verdict/revision-file recorders are owned by `AgentReportGuard` but delegate to the same `Recorder`.
 
@@ -88,7 +88,7 @@ Score/verdict/revision-file recorders are owned by `AgentReportGuard` but delega
 After every record, `Resolver.resolve()` runs two maps on the current phase:
 
 - `_PHASE_RESOLVER_MAP` — review phases, agent phases, specs doc phases.
-- `_TOOL_RESOLVER_MAP` — file-write phases (`plan`, `install-deps`, `define-contracts`, `write-tests`, `write-code`, `write-report`) and delivery phases (`pr-create`, `ci-check`).
+- `_TOOL_RESOLVER_MAP` — file-write phases (`plan`, `write-tests`, `write-code`, `write-report`) and delivery phases (`pr-create`, `ci-check`).
 
 Score-based reviews compare against `config.score_thresholds` (plan/tests `confidence_score ≥ 80 & quality ≥ 80`; code `confidence_score ≥ 90 & quality ≥ 80`). Below threshold → review `Fail`. Three failed reviews → "exhausted," unlocking `/plan-approved` override. Verdict-based reviews (test-review, quality-check/validate) check for a `Pass` string.
 
@@ -100,7 +100,7 @@ A checkpoint on `plan-review` is honored: the resolver refuses to advance until 
 
 `StateStore` is session-scoped. Each line in `state.jsonl` is a complete state snapshot for one `session_id`; reads and writes filter by that id and use `filelock` to serialize concurrent hooks. Operations: `load`, `save`, `update(fn)`, `get/set`, and dozens of domain helpers (`add_phase`, `set_phase_completed`, `add_plan_review`, `add_subtask`, …).
 
-Schema lives in `models/state.py` as Pydantic models: `State`, `PhaseEntry`, `Agent`, `Plan`, `PlanReview`, `Tests`, `CodeFiles`, `CodeReview`, `Dependencies`, `Contracts`, `PR`, `CI`. `utils/initializer.py` builds the initial state for `build`, `implement`, or `specs` from CLI args (`--tdd`, `--test`, `--skip-*`, story id, free-form instructions) and handles duplicate-story guard, `--reset`, and `--takeover`.
+Schema lives in `models/state.py` as Pydantic models: `State`, `PhaseEntry`, `Agent`, `Plan`, `PlanReview`, `Tests`, `CodeFiles`, `CodeReview`, `PR`, `CI`. `utils/initializer.py` builds the initial state for `build`, `implement`, or `specs` from CLI args (`--tdd`, `--test`, `--skip-clarify`, `--skip-*`, story id, free-form instructions) and handles duplicate-story guard, `--reset`, and `--takeover`. For build workflows, the initializer also runs the headless-Claude clarity review (unless `--skip-clarify`) and seeds the `clarify` auto-phase as either `skipped` (verdict=clear) or `in_progress` with the captured `headless_session_id` (verdict=vague).
 
 ## Config (`config/config.json`)
 
@@ -110,7 +110,8 @@ Single source of truth, loaded by `config/config.py`. Declares:
 - **`plan_templates`** — required sections and bullet sections per workflow type.
 - **`score_thresholds`** — plan / tests / code confidence & quality thresholds.
 - **`safe_domains`** — whitelist for `WebFetchGuard`.
-- **`paths`** — `state_jsonl`, plan/contracts/tests/code/report paths, specs doc paths, archive directories, log files.
+- **`paths`** — `state_jsonl`, plan/tests/code/report paths, specs doc paths, archive directories, log files, `clarity_review_prompt_file`.
+- **`clarify.max_iterations`** — safety ceiling on `AskUserQuestion` rounds during the clarify auto-phase; default 10.
 - **`specs_phases.max_report_retries`** — how many times the SubagentStop retry loop rejects an agent report before giving up. Defaults to 3. `config.specs_max_report_retries` is the accessor.
 
 Specs validation schemas are **not** stored here. They are derived at runtime from the canonical template markdown files in `../templates/` via `utils/template_schema.TemplateSchema`, so editing a template is the only change needed to adjust the contract.
@@ -130,7 +131,7 @@ The `constants/` package now spans several modules so each kind of constant live
 
 ### `constants/constants.py`
 
-Regex patterns (`TEST_RUN_PATTERNS`, `SCORE_PATTERNS`, `STORY_ID_PATTERN`, `TABLE_PATTERN`), command lists (`READ_ONLY_COMMANDS`, `INSTALL_COMMANDS`, `TEST_COMMANDS`, `PR_COMMANDS`, `CI_COMMANDS`), the `COMMANDS_MAP` phase→whitelist, `PACKAGE_MANAGER_FILES`, `TEST_FILE_PATTERNS`, and `CODE_EXTENSIONS`.
+Regex patterns (`TEST_RUN_PATTERNS`, `SCORE_PATTERNS`, `STORY_ID_PATTERN`, `TABLE_PATTERN`), command lists (`READ_ONLY_COMMANDS`, `TEST_COMMANDS`, `PR_COMMANDS`, `CI_COMMANDS`), the `COMMANDS_MAP` phase→whitelist, `TEST_FILE_PATTERNS`, and `CODE_EXTENSIONS`.
 
 Specs grammar (shared by `utils/validator.py` — these are invariants of the markdown grammar, not per-project policy): `SPECS_FIELD_MARKERS`, `SPECS_ID_REGEX_TEMPLATE`, `SPECS_BLOCKQUOTE_PATTERNS`, `SPECS_AC_MARKERS`, `SPECS_PLACEHOLDER_PREFIXES`, `SPECS_STORIES_HEADING`.
 
@@ -142,12 +143,13 @@ Specs grammar (shared by `utils/validator.py` — these are invariants of the ma
 | `state_store.py` | Session-scoped JSONL state with filelock (see above).                                                                   |
 | `extractors.py`  | Pure parsers: skill name, agent name, scores, verdicts, markdown sections/tables/bullets, plan sections, contract names, build instructions. |
 | `parser.py`      | CLI-arg parsers for `initializer.py` and frontmatter reader.                                                            |
-| `archiver.py`    | Moves `latest-plan.md` / `latest-contracts.md` to `archive/` at workflow start.                                          |
+| `archiver.py`    | Moves `latest-plan.md` to `archive/` at workflow start.                                                                  |
+| `clarity_check.py` | Headless-Claude wrapper used by the build initializer + post_tool_use hook to evaluate prompt clarity (`run_initial`, `run_resume`). |
 | `injector.py`    | Writes YAML frontmatter (session_id, workflow_type, story_id, date) into the plan after `Write`.                        |
 | `file_manager.py`| Locked JSON/JSONL helpers used by GitHub-project and tests. Also backs the `auto_commit` ledger.                        |
 | `violations.py`  | Append-only markdown log of every block (`logs/violations.md`). Fills in prompt summaries async.                        |
 | `paths.py`       | Pure path helpers (`basenames`, `path_matches`) shared by guards, recorder, and resolver.                                |
-| `shell.py`       | `run_git()` and `invoke_claude()` subprocess wrappers; one place to mock for tests.                                      |
+| `shell.py`       | `run_git()`, `invoke_claude()`, and `invoke_codex()` subprocess wrappers; one place to mock for tests.                   |
 | `scoring.py`     | `scores_valid()` and `verdict_valid()` — pure validators reused by `AgentReportGuard` and `Recorder`.                    |
 | `parallel_check.py` | `is_parallel_explore_research()` predicate shared by the recorder, resolver, and guard.                              |
 | `specs_validation.py` | `validate_architecture_content` / `validate_backlog_content` — pure validators used by `AgentReportGuard`.          |
@@ -187,12 +189,14 @@ Plain markdown + sample JSON consumed by the specs workflow commands. All specs 
 | `visionize-questions.md`   | `commands/vision.md` discovery questions   |
 | `plan.md`                  | build workflow plan template                |
 | `implement-plan.md`        | implement workflow plan template            |
-| `contracts.md`             | `commands/define-contracts.md`              |
+| `clarity-review.md`        | `lib/clarity_check.py` (headless-Claude prompt) |
 
 ## Adjacent packages
 
 - **`../project_manager/`** — local-first project manager (`cli.py` → `ProjectManager`) backed by `issues/{stories,backlog,metadata}.json`. Used by the implement workflow to load project tasks, record child subtasks, and mark tasks `Done` on completion. CLI subcommands: `list`, `view`, `summary`, `progress`, `update`, `add-task`, `add-story`, `sync`, `unblocked`.
 - **`headless_claude/claude.py`** — thin wrapper around `subprocess.run(["claude", "-p", …])` used by the async dispatchers to generate summaries and commit messages without blocking the live session.
+- **`headless/codex/`** — headless-Codex helpers that delegate the subprocess call to `lib/shell.invoke_codex()`. `codex_plan_review.py` loads the prompt template from `headless/prompts/codex/plan_review.md`, substitutes the build-phase plan body, and asks Codex to return a scored plan-review report (Confidence + Quality + `Pass`/`Fail`) matching `AgentReportGuard`'s plan-review format. Fail-open: returns `None` if the plan file or `codex` binary is missing.
+- **`headless/claude/`** — headless-Claude counterpart that delegates to `lib/shell.invoke_claude()`. `claude_plan_review.py` uses the same orchestration as the Codex version but loads its prompt from `headless/prompts/claude/plan_review.md`, letting the build phase fan out a second plan-review opinion without coupling to Codex. Fail-open on missing plan/binary.
 - **`tests/`** — pytest suite covering dispatchers, guardrails, recorder, resolver, extractors, state store, initializer, auto-commit, specs flow, task lifecycle, and more.
 
 ## Data flow summary

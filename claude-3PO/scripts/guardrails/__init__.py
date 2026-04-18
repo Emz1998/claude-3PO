@@ -168,6 +168,7 @@ TOOL_GUARDS: dict[str, callable] = {
     "Agent": agent_guard,
     "WebFetch": webfetch_guard,
     "TaskCreate": task_create_guard,
+    "AskUserQuestion": phase_guard,
 }
 
 def agent_report_guard(hook_input: dict, config: Config, state: StateStore) -> Decision:

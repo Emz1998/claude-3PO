@@ -120,8 +120,6 @@ class TestRevisePlan:
         state.add_phase("plan-review")
         state.set_phase_completed("plan-review")
         state.add_phase("create-tasks")
-        state.set_phase_completed("create-tasks")
-        state.add_phase("install-deps")
 
         hook = make_hook_input("Skill", {"skill": "revise-plan"})
         decision, msg = phase_guard(hook, config, state)

@@ -48,20 +48,25 @@ def parse_skip(args: str) -> list[str]:
     Translate ``--skip-*`` flags in a ``/build`` arg string into phase names.
 
     ``--skip-all`` is shorthand for ``--skip-explore`` and ``--skip-research``
-    together; ``--skip-vision`` stands alone. Returns the list rather than a
-    set because downstream code occasionally cares about insertion order.
+    together; ``--skip-vision`` and ``--skip-clarify`` stand alone. Returns
+    the list rather than a set because downstream code occasionally cares
+    about insertion order.
 
     Args:
         args (str): Raw arg portion of a ``/build`` invocation.
 
     Returns:
-        list[str]: Subset of ``["explore", "research", "vision"]``.
+        list[str]: Subset of ``["clarify", "explore", "research", "vision"]``.
 
     Example:
         >>> parse_skip("--skip-all --tdd")
         ['explore', 'research']
+        >>> parse_skip("--skip-clarify build login")
+        ['clarify']
     """
     skip: list[str] = []
+    if "--skip-clarify" in args:
+        skip.append("clarify")
     if "--skip-explore" in args or "--skip-all" in args:
         skip.append("explore")
     if "--skip-research" in args or "--skip-all" in args:
@@ -108,7 +113,7 @@ def parse_instructions(args: str) -> str:
         'add login'
     """
     flags = [
-        "--skip-explore", "--skip-research", "--skip-vision", "--skip-all",
+        "--skip-clarify", "--skip-explore", "--skip-research", "--skip-vision", "--skip-all",
         "--tdd", "--reset", "--takeover", "--test",
     ]
     text = re.sub(STORY_ID_PATTERN, "", args)

@@ -32,6 +32,16 @@
             "timeout": 10
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/dispatchers/async/post_tool_use.py",
+            "async": true,
+            "timeout": 60
+          }
+        ]
       }
     ],
     "SubagentStart": [

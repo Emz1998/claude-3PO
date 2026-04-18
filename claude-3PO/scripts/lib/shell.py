@@ -88,3 +88,58 @@ def _claude_argv(prompt: str, allowed_tools: str) -> list[str]:
         "--allowedTools", allowed_tools,
         "--output-format", "text",
     ]
+
+
+def invoke_codex(
+    prompt: str,
+    timeout: int,
+    cwd: Path | None = None,
+    sandbox: str = "read-only",
+) -> str | None:
+    """
+    Run a headless ``codex exec`` invocation with *prompt* piped via stdin.
+
+    Mirrors :func:`invoke_claude`'s fail-open contract: any failure mode —
+    timeout, missing ``codex`` binary, non-zero exit, or empty stdout —
+    returns ``None`` so callers can treat codex reviews as optional. The
+    prompt is passed on stdin (``codex exec -``) rather than as an argv
+    string to avoid shell-escaping and arg-length limits on large plans.
+
+    Args:
+        prompt (str): Prompt text for codex.
+        timeout (int): Max seconds before the subprocess is killed.
+        cwd (Path | None): Working directory; ``None`` uses the current.
+        sandbox (str): Codex sandbox mode. Defaults to ``"read-only"``.
+
+    Returns:
+        str | None: Stripped stdout on success, ``None`` on any failure.
+
+    Example:
+        >>> invoke_codex("Review this plan", timeout=60)  # doctest: +SKIP
+    """
+    argv = _codex_argv(sandbox)
+    try:
+        result = subprocess.run(
+            argv, input=prompt, capture_output=True, text=True,
+            timeout=timeout, cwd=cwd,
+        )
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        return None
+    if result.returncode == 0 and result.stdout.strip():
+        return result.stdout.strip()
+    return None
+
+
+def _codex_argv(sandbox: str) -> list[str]:
+    """Build the argv list for a headless ``codex exec`` invocation.
+
+    Example:
+        >>> _codex_argv("read-only")[:2]
+        ['codex', 'exec']
+    """
+    return [
+        "codex", "exec",
+        "--sandbox", sandbox,
+        "--skip-git-repo-check",
+        "-",
+    ]
