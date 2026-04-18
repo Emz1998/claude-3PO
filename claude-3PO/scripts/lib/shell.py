@@ -10,6 +10,7 @@ since the headless call is usually for context enrichment, not for control.
 
 import subprocess
 from pathlib import Path
+from typing_extensions import Literal
 
 
 DEFAULT_ALLOWED_TOOLS = "Read,Grep,Glob"
@@ -35,43 +36,6 @@ def run_git(args: list[str], cwd: Path) -> subprocess.CompletedProcess:
     )
 
 
-def invoke_claude(
-    prompt: str,
-    timeout: int,
-    cwd: Path | None = None,
-    allowed_tools: str = DEFAULT_ALLOWED_TOOLS,
-) -> str | None:
-    """
-    Run a headless ``claude -p ...`` invocation and return stripped stdout.
-
-    Returns ``None`` on any failure mode — timeout, missing ``claude`` binary,
-    non-zero exit, or empty stdout — so callers can use the result as an
-    optional enrichment without try/except scaffolding. The default tool
-    allowlist is read-only (``Read,Grep,Glob``) to keep nested invocations
-    side-effect free.
-
-    Args:
-        prompt (str): Prompt to send to Claude.
-        timeout (int): Max seconds before the subprocess is killed.
-        cwd (Path | None): Working directory; ``None`` uses the current.
-        allowed_tools (str): Comma-separated tool allowlist passed to ``claude``.
-
-    Returns:
-        str | None: Stripped stdout on success, ``None`` on any failure.
-
-    Example:
-        >>> invoke_claude("List Python files", timeout=10)  # doctest: +SKIP
-    """
-    argv = _claude_argv(prompt, allowed_tools)
-    try:
-        result = subprocess.run(
-            argv, capture_output=True, text=True, timeout=timeout, cwd=cwd
-        )
-    except (subprocess.TimeoutExpired, FileNotFoundError):
-        return None
-    if result.returncode == 0 and result.stdout.strip():
-        return result.stdout.strip()
-    return None
 
 
 def _claude_argv(prompt: str, allowed_tools: str) -> list[str]:
@@ -90,34 +54,55 @@ def _claude_argv(prompt: str, allowed_tools: str) -> list[str]:
     ]
 
 
-def invoke_codex(
-    prompt: str,
-    timeout: int,
-    cwd: Path | None = None,
-    sandbox: str = "read-only",
-) -> str | None:
-    """
-    Run a headless ``codex exec`` invocation with *prompt* piped via stdin.
 
-    Mirrors :func:`invoke_claude`'s fail-open contract: any failure mode —
-    timeout, missing ``codex`` binary, non-zero exit, or empty stdout —
-    returns ``None`` so callers can treat codex reviews as optional. The
-    prompt is passed on stdin (``codex exec -``) rather than as an argv
-    string to avoid shell-escaping and arg-length limits on large plans.
+
+def _codex_argv(prompt:str) -> list[str]:
+    """Build the argv list for a headless ``codex exec`` invocation.
+
+    Example:
+        >>> _codex_argv("read-only")[:2]
+        ['codex', 'exec']
+    """
+    
+    return [
+        "codex",
+        "exec", prompt,
+        "--skip-git-repo-check",
+        "-",
+    ]
+
+
+
+
+def _build_argv(name: Literal["codex", "claude"], prompt: str) -> list[str]:
+    """Helper to build argv for either a headless Claude or Codex invocation."""
+    if name == "claude":
+        return _claude_argv(prompt, DEFAULT_ALLOWED_TOOLS)
+    if name == "codex":
+
+        return _codex_argv(prompt)
+    raise ValueError(f"Unsupported agent name: {name}")
+
+
+def invoke_headless_agent(name: Literal["codex", "claude"], prompt: str, timeout: int, cwd: Path | None = None) -> str | None:
+    """
+    Helper to invoke either a headless Claude or Codex agent based on *name*.
 
     Args:
-        prompt (str): Prompt text for codex.
+        name (Literal["codex", "claude"]): Which agent to invoke.
+        prompt (str): Prompt text for the agent.
         timeout (int): Max seconds before the subprocess is killed.
         cwd (Path | None): Working directory; ``None`` uses the current.
         sandbox (str): Codex sandbox mode. Defaults to ``"read-only"``.
 
     Returns:
-        str | None: Stripped stdout on success, ``None`` on any failure.
-
+        str | None: Stripped stdout on success, ``None`` on any failure.    
+    
     Example:
-        >>> invoke_codex("Review this plan", timeout=60)  # doctest: +SKIP
+        >>> invoke_headless_agent("claude", "Review this plan", timeout=60)  # doctest: +SKIP  
     """
-    argv = _codex_argv(sandbox)
+
+    argv = _build_argv(name, prompt)
     try:
         result = subprocess.run(
             argv, input=prompt, capture_output=True, text=True,
@@ -128,18 +113,3 @@ def invoke_codex(
     if result.returncode == 0 and result.stdout.strip():
         return result.stdout.strip()
     return None
-
-
-def _codex_argv(sandbox: str) -> list[str]:
-    """Build the argv list for a headless ``codex exec`` invocation.
-
-    Example:
-        >>> _codex_argv("read-only")[:2]
-        ['codex', 'exec']
-    """
-    return [
-        "codex", "exec",
-        "--sandbox", sandbox,
-        "--skip-git-repo-check",
-        "-",
-    ]
