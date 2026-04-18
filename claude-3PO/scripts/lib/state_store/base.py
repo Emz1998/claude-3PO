@@ -1,4 +1,4 @@
-"""state_store.py — Session-scoped JSONL state with file-locking.
+"""base.py — Shared core for :class:`StateStore` (BaseState).
 
 Each line in the underlying JSONL file is a complete state snapshot for one
 session, identified by ``session_id``. Operations always filter by that ID so
@@ -6,9 +6,16 @@ concurrent workflows on the same machine don't collide. A ``filelock``-backed
 mutex on a sibling ``.lock`` file serializes read-modify-write cycles across
 processes.
 
-The class is deliberately property-heavy: each workflow concept (phases,
-plan, tests, code reviews, PR, CI, contracts, project tasks, docs) gets its
-own getter/setter accessors so callers never reach into the raw dict. The
+:class:`BaseState` owns every accessor that is meaningful across all workflows
+— core I/O, phases, plan / test / code review tracking, agents, PR/CI/report,
+and flat-API sinks. Workflow-specific slices (build / implement / specs) live
+in sibling modules and compose a :class:`BaseState` instance through the
+:class:`StateStore` facade; that way every workflow shares one file and one
+lock.
+
+The class is deliberately property-heavy: each workflow-agnostic concept
+(phases, plan, tests, code reviews, PR, CI, commands, tasks) gets its own
+getter/setter accessors so callers never reach into the raw dict. The
 trade-off is verbosity in this file; the win is that the JSON schema lives in
 exactly one named place per concept.
 """
@@ -19,15 +26,21 @@ from pathlib import Path
 from typing import Any, Callable, Literal
 
 from models.state import (
-    Agent, CodeReview, DONE_STATUSES, ReviewResult, State, Task,
+    Agent, CodeReview, DONE_STATUSES, ReviewResult, State,
     TestReview, Validation,
 )
 from filelock import FileLock
 
 
-class StateStore:
+class BaseState:
     """
     Session-scoped JSONL state store with cross-process locking.
+
+    Shared core for every workflow: core I/O, phases, plan/test/code review
+    tracking, agents, PR/CI/report, flat-API sinks. Workflow-specific slices
+    (build / implement / specs) live in :mod:`build`, :mod:`implement`,
+    :mod:`specs` and reference a :class:`BaseState` instance through composition
+    on :class:`StateStore`, so every workflow shares a single file and lock.
 
     Each session occupies one JSON object on its own line in the file; reads
     and writes always filter by ``session_id`` so multiple sessions can share
@@ -36,8 +49,8 @@ class StateStore:
     the raw ``load`` / ``save`` API.
 
     Example:
-        >>> store = StateStore(Path("/tmp/state.jsonl"), "abc")  # doctest: +SKIP
-        Return: <StateStore>
+        >>> base = BaseState(Path("/tmp/state.jsonl"), "abc")  # doctest: +SKIP
+        Return: <BaseState>
     """
 
     def __init__(
@@ -2063,474 +2076,6 @@ state[code_files][tests_revised] = []
         """
         self.set("tasks", tasks)
 
-    # ── Created tasks (build workflow — tracks TaskCreate completions) ─
-
-    @property
-    def created_tasks(self) -> list[str]:
-        """
-        Task subjects already created via TaskCreate during build.
-
-        Returns:
-            list[str]: Subjects recorded after a successful TaskCreate.
-
-        Example:
-            >>> store.created_tasks  # doctest: +SKIP
-            Return: ['Write tests']
-        """
-        return self.load().get("created_tasks", [])
-
-    def add_created_task(self, subject: str) -> None:
-        """
-        Record *subject* as a created task (deduplicated).
-
-        Args:
-            subject (str): Subject of the just-created task.
-
-        Returns:
-            None: Side-effects only — duplicates silently ignored.
-
-        SideEffect:
-            Appends to state[created_tasks].
-
-        Example:
-            >>> store.add_created_task("Write tests")  # doctest: +SKIP
-            Return: None
-            SideEffect:
-                state[created_tasks] = [..., "Write tests"]
-        """
-        def _add(d: dict) -> None:
-            ct = d.get("created_tasks", [])
-            # Dedup — TaskCreate hooks may fire twice on retry.
-            if subject not in ct:
-                ct.append(subject)
-            d["created_tasks"] = ct
-
-        self.update(_add)
-
-    # ── Clarify phase fields (build workflow) ─────────────────────
-
-    def get_clarify_phase(self) -> dict | None:
-        """
-        Look up the clarify phase dict from ``state.phases``.
-
-        Returns:
-            dict | None: The phase entry whose ``name`` is ``"clarify"``,
-            or ``None`` when no clarify phase was added.
-
-        Example:
-            >>> store.get_clarify_phase()  # doctest: +SKIP
-            Return: {'name': 'clarify', 'status': 'in_progress'}
-        """
-        # Linear scan — phase lists are short.
-        for p in self.phases:
-            if p.get("name") == "clarify":
-                return p
-        return None
-
-    def set_clarify_session(self, headless_session_id: str) -> None:
-        """
-        Stamp the headless session id and zero the iteration counter.
-
-        Args:
-            headless_session_id (str): Session id returned by the initial
-                headless ``claude -p`` clarity check.
-
-        Returns:
-            None: Side-effects only — no-op when clarify phase is missing.
-
-        SideEffect:
-            Sets state[phases][clarify][headless_session_id]; resets iteration_count.
-
-        Example:
-            >>> store.set_clarify_session("sess_abc123")  # doctest: +SKIP
-            Return: None
-            SideEffect:
-                state[phases][clarify][headless_session_id] = "sess_abc123"
-        """
-        def _set(d: dict) -> None:
-            # Find the clarify phase entry; first match wins.
-            for p in d.get("phases", []):
-                if p.get("name") == "clarify":
-                    p["headless_session_id"] = headless_session_id
-                    # Reset iteration_count — caller is starting a fresh loop.
-                    p["iteration_count"] = 0
-                    break
-
-        self.update(_set)
-
-    def bump_clarify_iteration(self) -> None:
-        """
-        Increment ``iteration_count`` on the clarify phase by one.
-
-        No-op if the clarify phase is missing — the caller is expected to
-        verify it exists before incrementing.
-
-        Returns:
-            None: Side-effects only.
-
-        SideEffect:
-            Increments state[phases][clarify][iteration_count].
-
-        Example:
-            >>> store.bump_clarify_iteration()  # doctest: +SKIP
-            Return: None
-            SideEffect:
-                state[phases][clarify][iteration_count] = (previous + 1)
-        """
-        def _bump(d: dict) -> None:
-            # First clarify phase entry — unique per session by convention.
-            for p in d.get("phases", []):
-                if p.get("name") == "clarify":
-                    p["iteration_count"] = int(p.get("iteration_count", 0)) + 1
-                    break
-
-        self.update(_bump)
-
-    # ── Project tasks (implement workflow) ─────────────────────────
-
-    @property
-    def project_tasks(self) -> list[dict]:
-        """
-        Top-level project tasks for the implement workflow.
-
-        Returns:
-            list[dict]: Task records, each optionally carrying a ``subtasks`` list.
-
-        Example:
-            >>> store.project_tasks  # doctest: +SKIP
-            Return: [{'id': 'T1', 'subtasks': []}]
-        """
-        return self.load().get("project_tasks", [])
-
-    def set_project_tasks(self, tasks: list[dict]) -> None:
-        """
-        Replace the project-task list wholesale.
-
-        Args:
-            tasks (list[dict]): New project-task records.
-
-        Returns:
-            None: Side-effects only.
-
-        SideEffect:
-            Sets state[project_tasks].
-
-        Example:
-            >>> store.set_project_tasks([{"id": "T1"}])  # doctest: +SKIP
-            Return: None
-            SideEffect:
-                state[project_tasks] = [{"id": "T1"}]
-        """
-        self.set("project_tasks", tasks)
-
-    def add_subtask(self, parent_task_id: str, subtask: dict | str) -> None:
-        """
-        Append a subtask under the project task whose ``id`` matches.
-
-        Dedup logic depends on type: dict subtasks dedupe on ``task_id``,
-        string subtasks on the literal value. Mixed types in one parent are
-        legal but discouraged.
-
-        Args:
-            parent_task_id (str): ID of the project task to attach to.
-            subtask (dict | str): Subtask record or label.
-
-        Returns:
-            None: Side-effects only — no-op when parent is missing.
-
-        SideEffect:
-            Appends to state[project_tasks][i][subtasks].
-
-        Example:
-            >>> store.add_subtask("T1", {"task_id": "T1.1"})  # doctest: +SKIP
-            Return: None
-            SideEffect:
-                state[project_tasks][i][subtasks].append(subtask)
-        """
-        def _add(d: dict) -> None:
-            ptasks = d.get("project_tasks", [])
-            # Find the parent; skip if no match.
-            for pt in ptasks:
-                if pt.get("id") == parent_task_id:
-                    subs = pt.setdefault("subtasks", [])
-                    # Dedup key differs by shape: dicts use task_id, strings use value.
-                    if isinstance(subtask, dict):
-                        if not any(
-                            s.get("task_id") == subtask.get("task_id")
-                            for s in subs
-                            if isinstance(s, dict)
-                        ):
-                            subs.append(subtask)
-                    else:
-                        if subtask not in subs:
-                            subs.append(subtask)
-                    break
-
-        self.update(_add)
-
-    def set_subtask_completed(self, parent_task_id: str, task_id: str) -> None:
-        """
-        Mark a specific subtask under a parent task as completed.
-
-        Args:
-            parent_task_id (str): Parent project task ID.
-            task_id (str): Subtask task_id to mark completed.
-
-        Returns:
-            None: Side-effects only — no-op when either id is missing.
-
-        SideEffect:
-            Sets state[project_tasks][i][subtasks][j][status].
-
-        Example:
-            >>> store.set_subtask_completed("T1", "T1.1")  # doctest: +SKIP
-            Return: None
-            SideEffect:
-                state[project_tasks][i][subtasks][j][status] = "completed"
-        """
-        def _complete(d: dict) -> None:
-            ptasks = d.get("project_tasks", [])
-            # Find the parent task first …
-            for pt in ptasks:
-                if pt.get("id") == parent_task_id:
-                    # … then the matching subtask inside it.
-                    for sub in pt.get("subtasks", []):
-                        if isinstance(sub, dict) and sub.get("task_id") == task_id:
-                            sub["status"] = "completed"
-                            break
-                    break
-
-        self.update(_complete)
-
-    def set_project_task_completed(self, parent_task_id: str) -> None:
-        """
-        Mark a top-level project task as completed.
-
-        Args:
-            parent_task_id (str): Project task ID.
-
-        Returns:
-            None: Side-effects only — no-op when parent is missing.
-
-        SideEffect:
-            Sets state[project_tasks][i][status].
-
-        Example:
-            >>> store.set_project_task_completed("T1")  # doctest: +SKIP
-            Return: None
-            SideEffect:
-                state[project_tasks][i][status] = "completed"
-        """
-        def _complete(d: dict) -> None:
-            ptasks = d.get("project_tasks", [])
-            for pt in ptasks:
-                if pt.get("id") == parent_task_id:
-                    pt["status"] = "completed"
-                    break
-
-        self.update(_complete)
-
-    def get_parent_for_subtask(self, task_id: str) -> str | None:
-        """
-        Find the parent project-task ID that owns *task_id*.
-
-        Args:
-            task_id (str): Subtask task_id.
-
-        Returns:
-            str | None: Parent project-task ID, or ``None`` when not found.
-
-        Example:
-            >>> store.get_parent_for_subtask("T1.1")  # doctest: +SKIP
-            Return: 'T1'
-        """
-        # Two-level scan — project tasks and their subtasks.
-        for pt in self.project_tasks:
-            for sub in pt.get("subtasks", []):
-                if isinstance(sub, dict) and sub.get("task_id") == task_id:
-                    return pt.get("id")
-        return None
-
-    # ── Plan files to modify (implement workflow) ──────────────────
-
-    @property
-    def plan_files_to_modify(self) -> list[str]:
-        """
-        Files the plan declared the implement workflow should modify.
-
-        Returns:
-            list[str]: Planned target files.
-
-        Example:
-            >>> store.plan_files_to_modify  # doctest: +SKIP
-            Return: ['src/foo.py']
-        """
-        return self.load().get("plan_files_to_modify", [])
-
-    def set_plan_files_to_modify(self, files: list[str]) -> None:
-        """
-        Replace the plan-files-to-modify list.
-
-        Args:
-            files (list[str]): New target file paths.
-
-        Returns:
-            None: Side-effects only.
-
-        SideEffect:
-            Sets state[plan_files_to_modify].
-
-        Example:
-            >>> store.set_plan_files_to_modify(["src/foo.py"])  # doctest: +SKIP
-            Return: None
-            SideEffect:
-                state[plan_files_to_modify] = ["src/foo.py"]
-        """
-        self.set("plan_files_to_modify", files)
-
-    # ── Docs (specs workflow) ─────────────────────────────────────
-
-    @property
-    def docs(self) -> dict[str, Any]:
-        """
-        The docs sub-dict — tracks per-doc-key state for the specs workflow.
-
-        Returns:
-            dict[str, Any]: Doc state keyed by doc identifier.
-
-        Example:
-            >>> store.docs  # doctest: +SKIP
-            Return: {'architecture': {'written': True}}
-        """
-        return self.load().get("docs", {})
-
-    def set_doc_written(self, doc_key: str, written: bool) -> None:
-        """
-        Toggle the ``written`` flag for *doc_key*.
-
-        Args:
-            doc_key (str): Identifier of the doc entry.
-            written (bool): ``True`` once the doc is persisted.
-
-        Returns:
-            None: Side-effects only.
-
-        SideEffect:
-            Sets state[docs][doc_key][written].
-
-        Example:
-            >>> store.set_doc_written("architecture", True)  # doctest: +SKIP
-            Return: None
-            SideEffect:
-                state[docs]["architecture"][written] = True
-        """
-        def _set(d: dict) -> None:
-            # docs and per-key sub-dict created on demand.
-            docs = d.setdefault("docs", {})
-            docs.setdefault(doc_key, {})["written"] = written
-
-        self.update(_set)
-
-    def set_doc_path(self, doc_key: str, path: str) -> None:
-        """
-        Record the canonical path for *doc_key*.
-
-        Args:
-            doc_key (str): Identifier of the doc entry.
-            path (str): Absolute or workflow-relative path.
-
-        Returns:
-            None: Side-effects only.
-
-        SideEffect:
-            Sets state[docs][doc_key][path].
-
-        Example:
-            >>> store.set_doc_path("architecture", "/tmp/arch.md")  # doctest: +SKIP
-            Return: None
-            SideEffect:
-                state[docs]["architecture"][path] = "/tmp/arch.md"
-        """
-        def _set(d: dict) -> None:
-            docs = d.setdefault("docs", {})
-            docs.setdefault(doc_key, {})["path"] = path
-
-        self.update(_set)
-
-    def set_doc_md_path(self, doc_key: str, path: str) -> None:
-        """
-        Record the markdown path for *doc_key*.
-
-        Used when the doc is stored as an ``.md`` / ``.json`` pair — keeps
-        the two paths under a single doc entry.
-
-        Args:
-            doc_key (str): Identifier of the doc entry.
-            path (str): Path to the ``.md`` file.
-
-        Returns:
-            None: Side-effects only.
-
-        SideEffect:
-            Sets state[docs][doc_key][md_path].
-
-        Example:
-            >>> store.set_doc_md_path("architecture", "/tmp/arch.md")  # doctest: +SKIP
-            Return: None
-            SideEffect:
-                state[docs]["architecture"][md_path] = "/tmp/arch.md"
-        """
-        def _set(d: dict) -> None:
-            docs = d.setdefault("docs", {})
-            docs.setdefault(doc_key, {})["md_path"] = path
-
-        self.update(_set)
-
-    def set_doc_json_path(self, doc_key: str, path: str) -> None:
-        """
-        Record the JSON path for *doc_key*.
-
-        Used when the doc is stored as an ``.md`` / ``.json`` pair.
-
-        Args:
-            doc_key (str): Identifier of the doc entry.
-            path (str): Path to the ``.json`` file.
-
-        Returns:
-            None: Side-effects only.
-
-        SideEffect:
-            Sets state[docs][doc_key][json_path].
-
-        Example:
-            >>> store.set_doc_json_path("architecture", "/tmp/arch.json")  # doctest: +SKIP
-            Return: None
-            SideEffect:
-                state[docs]["architecture"][json_path] = "/tmp/arch.json"
-        """
-        def _set(d: dict) -> None:
-            docs = d.setdefault("docs", {})
-            docs.setdefault(doc_key, {})["json_path"] = path
-
-        self.update(_set)
-
-    def is_doc_written(self, doc_key: str) -> bool:
-        """
-        Check whether the ``written`` flag for *doc_key* has been set.
-
-        Args:
-            doc_key (str): Identifier of the doc entry.
-
-        Returns:
-            bool: ``True`` when the doc is marked written.
-
-        Example:
-            >>> store.is_doc_written("architecture")  # doctest: +SKIP
-            Return: True
-        """
-        # Defensive .get chain — docs/doc_key sub-dicts may not exist.
-        return self.docs.get(doc_key, {}).get("written", False)
-
     # ── Flat-API sinks (consume Recorder-built data classes) ──────
 
     def _replace_in_section(self, section: str, field: str, value: Any) -> None:
@@ -2643,36 +2188,6 @@ state[code_files][tests_revised] = []
         def _add(d: dict) -> None:
             # Dump to plain dict so the JSONL file stays schema-agnostic.
             d.setdefault("validations", []).append(validation.model_dump())
-
-        self.update(_add)
-
-    def add_project_task(self, task: Task) -> None:
-        """
-        Append a :class:`Task` to ``project_tasks`` (dedup by ``task_id``).
-
-        Dedup makes the Recorder safe to re-dispatch the same TaskCreate
-        without producing duplicate project_tasks entries.
-
-        Args:
-            task (Task): Pydantic task record.
-
-        Returns:
-            None: Side-effects only.
-
-        SideEffect:
-            Appends to state[project_tasks] (dedup by task_id).
-
-        Example:
-            >>> store.add_project_task(Task(task_id="T-1", subject="x"))  # doctest: +SKIP
-            Return: None
-            SideEffect:
-                state[project_tasks] = [..., task.model_dump(])
-        """
-        def _add(d: dict) -> None:
-            tasks = d.setdefault("project_tasks", [])
-            # Skip if any existing record already owns this task_id.
-            if not any(t.get("task_id") == task.task_id for t in tasks):
-                tasks.append(task.model_dump())
 
         self.update(_add)
 

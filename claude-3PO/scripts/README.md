@@ -96,9 +96,9 @@ After resolution, `auto_start_next()` advances through any `auto: true` phases, 
 
 A checkpoint on `plan-review` is honored: the resolver refuses to advance until `/plan-approved` is invoked (or review is exhausted), matching the `Hook.discontinue(...)` emitted by `subagent_stop.py`.
 
-## State (`lib/state_store.py`, `state.jsonl`)
+## State (`lib/state_store/`, `state.jsonl`)
 
-`StateStore` is session-scoped. Each line in `state.jsonl` is a complete state snapshot for one `session_id`; reads and writes filter by that id and use `filelock` to serialize concurrent hooks. Operations: `load`, `save`, `update(fn)`, `get/set`, and dozens of domain helpers (`add_phase`, `set_phase_completed`, `add_plan_review`, `add_subtask`, …).
+`StateStore` is session-scoped. Each line in `state.jsonl` is a complete state snapshot for one `session_id`; reads and writes filter by that id and use `filelock` to serialize concurrent hooks. The module is a package split by workflow concern: `base.py` (shared core — I/O, phases, agents, plan, tests, code, PR, CI, report), `build.py` / `implement.py` / `specs.py` (workflow-specific slices exposed as `state.build.*`, `state.implement.*`, `state.specs.*`), and `store.py` (the `StateStore` facade composing them). Operations: `load`, `save`, `update(fn)`, `get/set`, and dozens of domain helpers (`add_phase`, `set_phase_completed`, `add_plan_review`, `state.implement.add_subtask`, …).
 
 Schema lives in `models/state.py` as Pydantic models: `State`, `PhaseEntry`, `Agent`, `Plan`, `PlanReview`, `Tests`, `CodeFiles`, `CodeReview`, `PR`, `CI`. `utils/initializer.py` builds the initial state for `build`, `implement`, or `specs` from CLI args (`--tdd`, `--test`, `--skip-clarify`, `--skip-*`, story id, free-form instructions) and handles duplicate-story guard, `--reset`, and `--takeover`. For build workflows, the initializer also runs the headless-Claude clarity review (unless `--skip-clarify`) and seeds the `clarify` auto-phase as either `skipped` (verdict=clear) or `in_progress` with the captured `headless_session_id` (verdict=vague).
 
@@ -140,7 +140,7 @@ Specs grammar (shared by `utils/validator.py` — these are invariants of the ma
 | Module           | Role                                                                                                                  |
 | ---------------- | --------------------------------------------------------------------------------------------------------------------- |
 | `hook.py`        | `Hook` — stdin reader and stdout emitters (`block`, `advanced_block`, `system_message`, `discontinue`, `send_context`). |
-| `state_store.py` | Session-scoped JSONL state with filelock (see above).                                                                   |
+| `state_store/`   | Session-scoped JSONL state with filelock; `BaseState` + per-workflow slices (`build`/`implement`/`specs`) composed via `StateStore` (see above). |
 | `extractors.py`  | Pure parsers: skill name, agent name, scores, verdicts, markdown sections/tables/bullets, plan sections, contract names, build instructions. |
 | `parser.py`      | CLI-arg parsers for `initializer.py` and frontmatter reader.                                                            |
 | `archiver.py`    | Moves `latest-plan.md` to `archive/` at workflow start.                                                                  |
