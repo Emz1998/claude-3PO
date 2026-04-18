@@ -416,7 +416,7 @@ class PhaseGuard:
         """
         if self.current != "clarify":
             return "allow", "AskUserQuestion allowed"
-        phase = self.state.get_clarify_phase() or {}
+        phase = self.state.build.get_clarify_phase() or {}
         count = int(phase.get("iteration_count", 0))
         cap = self.config.clarify_max_iterations
         if count >= cap:

@@ -27,7 +27,7 @@ def _new_state(tmp_path: Path) -> tuple[Path, StateStore]:
 
 
 def _clarify_phase(store: StateStore) -> dict | None:
-    return store.get_clarify_phase()
+    return store.build.get_clarify_phase()
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -181,10 +181,10 @@ class TestClarifyMaxIterations:
     def test_blocks_ask_user_question_at_ceiling(self, config, state):
         state.set("workflow_type", "build")
         state.add_phase("clarify")
-        state.set_clarify_session("sess_x")
+        state.build.set_clarify_session("sess_x")
         max_iter = config.clarify_max_iterations
         for _ in range(max_iter):
-            state.bump_clarify_iteration()
+            state.build.bump_clarify_iteration()
         from helpers import make_hook_input
 
         hook = make_hook_input(
@@ -198,7 +198,7 @@ class TestClarifyMaxIterations:
     def test_allows_ask_user_question_below_ceiling(self, config, state):
         state.set("workflow_type", "build")
         state.add_phase("clarify")
-        state.set_clarify_session("sess_x")
+        state.build.set_clarify_session("sess_x")
         from helpers import make_hook_input
 
         hook = make_hook_input(

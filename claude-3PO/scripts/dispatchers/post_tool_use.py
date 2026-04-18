@@ -84,7 +84,7 @@ def handle_clarify_resume(hook_input: dict, state: StateStore) -> None:
     Example:
         >>> handle_clarify_resume(hook_input, state)  # doctest: +SKIP
     """
-    phase = state.get_clarify_phase()
+    phase = state.build.get_clarify_phase()
     if not phase or phase.get("status") != "in_progress":
         return
     sid = phase.get("headless_session_id", "")
@@ -92,9 +92,10 @@ def handle_clarify_resume(hook_input: dict, state: StateStore) -> None:
         return
     qa = _build_qa_payload(hook_input)
     verdict = clarity_check.run_resume(sid, qa)
-    state.bump_clarify_iteration()
+    state.build.bump_clarify_iteration()
     if verdict == "clear":
         state.set_phase_completed("clarify")
+
 
 
 def main() -> None:

@@ -280,28 +280,28 @@ class TestQualityCheck:
 
 class TestClarifyPhaseFields:
     def test_get_clarify_phase_returns_none_initially(self, state):
-        assert state.get_clarify_phase() is None
+        assert state.build.get_clarify_phase() is None
 
     def test_get_clarify_phase_returns_dict_after_add(self, state):
         state.add_phase("clarify")
-        phase = state.get_clarify_phase()
+        phase = state.build.get_clarify_phase()
         assert phase is not None
         assert phase["name"] == "clarify"
         assert phase["status"] == "in_progress"
 
     def test_set_clarify_session_persists_id(self, state):
         state.add_phase("clarify")
-        state.set_clarify_session("sess_abc123")
-        phase = state.get_clarify_phase()
+        state.build.set_clarify_session("sess_abc123")
+        phase = state.build.get_clarify_phase()
         assert phase["headless_session_id"] == "sess_abc123"
         assert phase["iteration_count"] == 0
 
     def test_bump_clarify_iteration(self, state):
         state.add_phase("clarify")
-        state.set_clarify_session("sess_abc123")
-        state.bump_clarify_iteration()
-        state.bump_clarify_iteration()
-        phase = state.get_clarify_phase()
+        state.build.set_clarify_session("sess_abc123")
+        state.build.bump_clarify_iteration()
+        state.build.bump_clarify_iteration()
+        phase = state.build.get_clarify_phase()
         assert phase["iteration_count"] == 2
 
 

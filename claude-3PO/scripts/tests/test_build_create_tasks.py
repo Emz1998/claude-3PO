@@ -1,7 +1,7 @@
 """Tests for create-tasks auto-phase in build workflow.
 
 Build: tasks come from plan ## Tasks bullets (state.tasks).
-Phase completes when all planned tasks have a matching entry in state.created_tasks.
+Phase completes when all planned tasks have a matching entry in state.build.created_tasks.
 """
 
 import pytest
@@ -15,30 +15,30 @@ class TestBuildCreatedTasks:
     def test_add_created_task(self, state):
         state.set("workflow_type", "build")
         state.set_tasks(["Build login", "Create schema"])
-        state.add_created_task("Build login")
-        assert "Build login" in state.created_tasks
+        state.build.add_created_task("Build login")
+        assert "Build login" in state.build.created_tasks
 
     def test_add_created_task_dedup(self, state):
         state.set("workflow_type", "build")
-        state.add_created_task("Build login")
-        state.add_created_task("Build login")
-        assert state.created_tasks.count("Build login") == 1
+        state.build.add_created_task("Build login")
+        state.build.add_created_task("Build login")
+        assert state.build.created_tasks.count("Build login") == 1
 
     def test_task_tracking_lists(self, state):
         state.set("workflow_type", "build")
         state.set_tasks(["Build login", "Create schema"])
-        state.add_created_task("Build login")
-        assert set(state.created_tasks) == {"Build login"}
-        state.add_created_task("Create schema")
-        assert set(state.created_tasks) == {"Build login", "Create schema"}
+        state.build.add_created_task("Build login")
+        assert set(state.build.created_tasks) == {"Build login"}
+        state.build.add_created_task("Create schema")
+        assert set(state.build.created_tasks) == {"Build login", "Create schema"}
 
     def test_no_tasks_default(self, state):
         state.set("workflow_type", "build")
         assert state.tasks == []
-        assert state.created_tasks == []
+        assert state.build.created_tasks == []
 
     def test_default_empty(self, state):
-        assert state.created_tasks == []
+        assert state.build.created_tasks == []
 
 
 class TestResolveCreateTasksBuild:
@@ -48,8 +48,8 @@ class TestResolveCreateTasksBuild:
         state.set("workflow_type", "build")
         state.add_phase("create-tasks")
         state.set_tasks(["Build login", "Create schema"])
-        state.add_created_task("Build login")
-        state.add_created_task("Create schema")
+        state.build.add_created_task("Build login")
+        state.build.add_created_task("Create schema")
         Resolver(config, state)._resolve_create_tasks()
         assert state.is_phase_completed("create-tasks")
 
@@ -57,7 +57,7 @@ class TestResolveCreateTasksBuild:
         state.set("workflow_type", "build")
         state.add_phase("create-tasks")
         state.set_tasks(["Build login", "Create schema"])
-        state.add_created_task("Build login")
+        state.build.add_created_task("Build login")
         Resolver(config, state)._resolve_create_tasks()
         assert not state.is_phase_completed("create-tasks")
 
@@ -65,7 +65,7 @@ class TestResolveCreateTasksBuild:
         state.set("workflow_type", "build")
         state.add_phase("create-tasks")
         state.set_tasks(["Build login"])
-        state.add_created_task("Build login")
+        state.build.add_created_task("Build login")
         resolve(config, state)
         assert state.is_phase_completed("create-tasks")
 

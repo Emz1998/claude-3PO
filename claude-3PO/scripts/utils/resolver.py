@@ -412,7 +412,7 @@ class Resolver:
             >>> Resolver(config, state)._all_tasks_created()  # doctest: +SKIP
         """
         planned = set(self.state.tasks)
-        created = set(self.state.created_tasks)
+        created = set(self.state.build.created_tasks)
         return bool(planned) and not (planned - created)
 
     def _all_project_tasks_have_subtasks(self) -> bool:

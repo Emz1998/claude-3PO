@@ -25,7 +25,7 @@ class TestAutoTransitionBuild:
         state.set("tdd", True)
         state.add_phase("create-tasks")
         state.set_tasks(["Build login"])
-        state.add_created_task("Build login")
+        state.build.add_created_task("Build login")
         resolve(config, state)
         assert state.is_phase_completed("create-tasks")
         assert state.current_phase == "write-tests"
@@ -44,7 +44,7 @@ class TestAutoTransitionBuild:
         state.set("tdd", False)
         state.add_phase("create-tasks")
         state.set_tasks(["Build login"])
-        state.add_created_task("Build login")
+        state.build.add_created_task("Build login")
         resolve(config, state)
         assert state.is_phase_completed("create-tasks")
         assert state.current_phase == "write-code"
