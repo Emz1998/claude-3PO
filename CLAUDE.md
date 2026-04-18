@@ -6,7 +6,7 @@
 
 ## Rules
 
-- **IMPORTANT**:If not in plan mode, present a miniplan first to the user before implementing changes.
+- **IMPORTANT**:If not in plan mode, present a miniplan first to the user before implementing changes. If the user specify no pla
 - **IMPORTANT**: Stop and ask the user first for plan approval.
 - **IMPORTANT**: Always do TDD when coding. Write/Revise tests first before implementing changes
 - **IMPORTANT** Plan should always be higher level.
@@ -32,24 +32,48 @@
 
 - Include a readable docstring with the structure below:
 - **IMPORTANT**: Docstrings must include context, Args, Returns, Raises and Examples. Any missing ones are not acceptable.
+- **IMPORTANT**: Add a result output in docstring's `Example`
+- If sideeffect is mutating json. Specify what part of the json was updated.
 
+```docstring without side effects
+        Count non-failed agent invocations with the given name.
+
+        Excluding failures lets retry logic check whether the name is "still
+        allowed" without tripping on historical failures.
+
+        Args:
+            name (str): Agent name to count.
+
+        Returns:
+            int: Number of matching non-failed invocations.
+
+        Example:
+            >>> store.count_agents("QASpecialist")  # doctest: +SKIP
+            Return: 1
 ```
+
+```docstring with side effects
     """
-    Process a list of integers and optionally normalize the values.
+        Replace the to-revise list and reset ``files_revised`` to empty.
 
-    Args:
-        data (list[int]): Input list of integers.
-        normalize (bool): Whether to normalize values between 0 and 1.
+        Resetting ``files_revised`` alongside makes the revision loop
+        restart-safe: each new review seeds a fresh to-do/done pair.
 
-    Returns:
-        list[float]: Processed list of floats.
+        Args:
+            files (list[str]): New to-revise file paths.
 
-    Raises:
-        ValueError: If `data` is empty.
+        Returns:
+            None: Side-effects only.
 
-    Example:
-        >>> process_data([1, 2, 3], normalize=True)
-        [0.0, 0.5, 1.0]
+        SideEffect:
+            Sets state[code_files][files_to_revise]; resets files_revised.
+
+        Example:
+            >>> store.set_files_to_revise(["src/foo.py"])  # doctest: +SKIP
+            Return: None
+            SideEffect:
+                state[code_files][files_to_revise] = ["src/foo.py"]
+                state[code_files][files_revised] = []
 
     """
 

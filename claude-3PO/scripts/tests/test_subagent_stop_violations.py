@@ -99,7 +99,11 @@ class TestSubagentStopRetryLoop:
         data_rows = [l for l in log.strip().splitlines() if l.startswith("| 2") or "SubagentStop" in l]
         assert sum(1 for l in log.splitlines() if "SubagentStop" in l) == 1
 
-    def test_cap_marks_agent_failed_for_retry(self, tmp_path: Path):
+    def test_cap_releases_without_marking_agent_failed(self, tmp_path: Path):
+        """After the flat-Recorder refactor, the cap no longer flips the agent
+        to ``failed`` — the feature was dropped together with specs-doc writing.
+        The agent remains in its last recorded state (``completed`` from the
+        agent-completion hook)."""
         state_path = tmp_path / "state.jsonl"
         violations_path = tmp_path / "violations.md"
         _write_state(state_path, _specs_state("sess-fail", "architect", "Architect"))
@@ -110,7 +114,7 @@ class TestSubagentStopRetryLoop:
 
         state = json.loads(state_path.read_text().splitlines()[-1])
         arch = next(a for a in state["agents"] if a["name"] == "Architect")
-        assert arch["status"] == "failed"
+        assert arch["status"] != "failed"
 
     def test_valid_backlog_does_not_log_violation(self, tmp_path: Path, monkeypatch):
         state_path = tmp_path / "state.jsonl"

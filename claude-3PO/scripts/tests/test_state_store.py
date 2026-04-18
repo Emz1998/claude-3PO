@@ -507,3 +507,55 @@ class TestAgentRejectionCounter:
     def test_bump_returns_new_count(self, state):
         assert state.bump_agent_rejection_count("a-1") == 1
         assert state.bump_agent_rejection_count("a-1") == 2
+
+
+class TestPhaseStatusHelpers:
+    def test_is_phase_done_completed(self, state):
+        state.add_phase("plan")
+        state.set_phase_completed("plan")
+        assert state.is_phase_done("plan") is True
+
+    def test_is_phase_done_skipped(self, state):
+        state.add_phase("plan", status="skipped")
+        assert state.is_phase_done("plan") is True
+
+    def test_is_phase_done_in_progress(self, state):
+        state.add_phase("plan")
+        assert state.is_phase_done("plan") is False
+
+    def test_is_phase_done_absent(self, state):
+        assert state.is_phase_done("plan") is False
+
+    def test_done_phase_names_preserves_order(self, state):
+        state.add_phase("explore")
+        state.set_phase_completed("explore")
+        state.add_phase("plan", status="skipped")
+        state.add_phase("write-code")
+        assert state.done_phase_names() == ["explore", "plan"]
+
+    def test_done_phase_names_empty(self, state):
+        assert state.done_phase_names() == []
+
+
+class TestSetMany:
+    def test_set_many_writes_all_fields(self, state):
+        state.set_many({"status": "completed", "workflow_active": False})
+        assert state.get("status") == "completed"
+        assert state.get("workflow_active") is False
+
+    def test_set_many_single_lock_acquire(self, state, tmp_path, monkeypatch):
+        """Batched write should invoke update() exactly once, not per field."""
+        call_count = {"n": 0}
+        original = state.update
+
+        def counting(fn):
+            call_count["n"] += 1
+            return original(fn)
+
+        monkeypatch.setattr(state, "update", counting)
+        state.set_many({"a": 1, "b": 2, "c": 3})
+        assert call_count["n"] == 1
+
+    def test_set_many_empty_dict_noop(self, state):
+        state.set_many({})
+        assert state.get("status") == "in_progress"

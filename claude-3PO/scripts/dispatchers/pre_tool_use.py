@@ -31,8 +31,6 @@ from lib.hook import Hook
 from lib.state_store import StateStore
 from lib.violations import log_violation, extract_action
 from config import Config
-from utils.recorder import Recorder
-from utils.resolver import Resolver
 
 
 PRE_WORKFLOW_PHASE = "pre-workflow"
@@ -72,7 +70,6 @@ def resolve_violation_phase(
     if state.current_phase:
         return state.current_phase
     if tool_name == "Skill":
-        from lib.extractors import extract_skill_name
         skill = extract_skill_name(hook_input)
         if skill:
             return skill
@@ -121,47 +118,7 @@ def main() -> None:
         )
         Hook.advanced_block("PreToolUse", message)
     else:
-        if tool_name == "Skill":
-            _apply_phase_skill_effects(hook_input, config, state)
         Hook.system_message(message)
-
-
-def _apply_phase_skill_effects(hook_input: dict, config: Config, state: StateStore) -> None:
-    """Apply state mutations + auto-advance for the meta-skills.
-
-    Runs only after PhaseGuard returns Allow for one of the three meta-skills
-    that mutate workflow state rather than enter a phase:
-
-    - ``/continue`` — record the user's intent to keep going on the current
-      phase, then auto-start the next phase (respecting checkpoints).
-    - ``/plan-approved`` — same record + auto-start, but ``skip_checkpoint=True``
-      because plan approval IS the checkpoint.
-    - ``/revise-plan`` — record only; the user will re-enter the plan phase
-      manually so no auto-advance fires.
-
-    This logic used to live inside ``PhaseGuard``; extracting it here keeps the
-    guard a pure validator and concentrates the post-Allow side effects in the
-    dispatcher (recent SRP refactor).
-
-    Args:
-        hook_input (dict): Raw PreToolUse hook payload (used to read the skill name).
-        config (Config): Workflow configuration passed through to ``Resolver``.
-        state (StateStore): Live workflow state; mutated by ``Recorder`` and
-            possibly advanced by ``Resolver``.
-
-    Example:
-        >>> _apply_phase_skill_effects(hook_input, config, state)  # doctest: +SKIP
-    """
-    skill = extract_skill_name(hook_input)
-    if skill not in ("continue", "plan-approved", "revise-plan"):
-        return
-    current = state.current_phase
-    status = state.get_phase_status(current) if current else ""
-    Recorder(state).apply_phase_skill(skill, current or "", status or "")
-    if skill == "plan-approved":
-        Resolver(config, state).auto_start_next(skip_checkpoint=True)
-    elif skill == "continue":
-        Resolver(config, state).auto_start_next()
 
 
 if __name__ == "__main__":

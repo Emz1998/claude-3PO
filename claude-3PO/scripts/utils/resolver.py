@@ -15,6 +15,7 @@ from typing import Literal
 
 from lib.state_store import StateStore
 from lib.paths import basenames
+from models.state import DONE_STATUSES, TDD_PHASES
 from config import Config
 
 
@@ -44,6 +45,10 @@ class Resolver:
         self.config = config
         self.state = state
         self.phase = state.current_phase
+        self.workflow_type = state.get("workflow_type", "build")
+        self.phases_ordered = (
+            config.get_phases(self.workflow_type) or config.main_phases
+        )
 
     # ══════════════════════════════════════════════════════════════
     # Phase resolvers (reviews, agents)
@@ -196,42 +201,66 @@ class Resolver:
 
         The current phase may be either ``test-review`` or its alias
         ``tests-review`` — both are accepted so older configs keep working.
-        Falls back to closing the canonical ``test-review`` name when the
-        current phase is something else (defensive).
 
         Example:
             >>> Resolver(config, state)._resolve_test_review()  # doctest: +SKIP
         """
         last = self.state.last_test_review
-        if not last:
+        if not last or last.get("verdict") != "Pass":
             return
-        verdict = last.get("verdict")
-        if verdict == "Pass":
-            phase = self.phase
-            if phase in ("test-review", "tests-review"):
-                self.state.set_phase_completed(phase)
-            else:
-                self.state.set_phase_completed("test-review")
+        phase = self.phase if self.phase in ("test-review", "tests-review") else "test-review"
+        self.state.set_phase_completed(phase)
+
+    def _complete_on_quality_pass(self, phase_name: str) -> None:
+        """Mark *phase_name* completed iff ``quality_check_result`` is ``Pass``.
+
+        Example:
+            >>> Resolver(config, state)._complete_on_quality_pass("validate")  # doctest: +SKIP
+        """
+        if self.state.quality_check_result == "Pass":
+            self.state.set_phase_completed(phase_name)
 
     def _resolve_quality_check(self) -> None:
-        """Complete the ``quality-check`` phase when its result is ``Pass``.
+        """Complete the ``quality-check`` phase on a ``Pass`` verdict.
 
         Example:
             >>> Resolver(config, state)._resolve_quality_check()  # doctest: +SKIP
         """
-        if self.state.quality_check_result == "Pass":
-            self.state.set_phase_completed("quality-check")
+        self._complete_on_quality_pass("quality-check")
 
     def _resolve_validate(self) -> None:
-        """Complete the ``validate`` phase when the quality result is ``Pass``.
+        """Complete the ``validate`` phase on a ``Pass`` verdict.
 
         Example:
             >>> Resolver(config, state)._resolve_validate()  # doctest: +SKIP
         """
-        if self.state.quality_check_result == "Pass":
-            self.state.set_phase_completed("validate")
+        self._complete_on_quality_pass("validate")
 
     # ── Agent-based phases ────────────────────────────────────────
+
+    def _is_required_agent_done(self, phase_name: str) -> bool:
+        """True if the phase's required agent has run and every invocation completed.
+
+        Returns ``True`` when the phase has no required agent (no gate), or
+        when at least one invocation exists and all invocations have
+        ``status=completed``. Used as a gate by agent-only phases and by
+        ``_resolve_plan``, which adds its own file-written check on top.
+
+        Args:
+            phase_name (str): Phase whose required-agent slot to check.
+
+        Returns:
+            bool: True when the agent gate is satisfied.
+
+        Example:
+            >>> Resolver(config, state)._is_required_agent_done("plan")  # doctest: +SKIP
+            True
+        """
+        agent_name = self.config.get_required_agent(phase_name)
+        if not agent_name:
+            return True
+        agents = [a for a in self.state.agents if a.get("name") == agent_name]
+        return bool(agents) and all(a.get("status") == "completed" for a in agents)
 
     def _resolve_agent_phase(self, phase_name: str) -> None:
         """Complete a phase when all its required agents have ``status=completed``.
@@ -242,11 +271,9 @@ class Resolver:
         Example:
             >>> Resolver(config, state)._resolve_agent_phase("explore")  # doctest: +SKIP
         """
-        agent_name = self.config.get_required_agent(phase_name)
-        if not agent_name:
+        if not self.config.get_required_agent(phase_name):
             return
-        agents = [a for a in self.state.agents if a.get("name") == agent_name]
-        if agents and all(a.get("status") == "completed" for a in agents):
+        if self._is_required_agent_done(phase_name):
             self.state.set_phase_completed(phase_name)
 
     def _resolve_explore(self) -> None:
@@ -337,11 +364,8 @@ class Resolver:
         Example:
             >>> Resolver(config, state)._resolve_plan()  # doctest: +SKIP
         """
-        agent_name = self.config.get_required_agent("plan")
-        if agent_name:
-            agents = [a for a in self.state.agents if a.get("name") == agent_name]
-            if not agents or not all(a.get("status") == "completed" for a in agents):
-                return
+        if not self._is_required_agent_done("plan"):
+            return
         plan = self.state.plan
         if plan.get("written") and plan.get("file_path"):
             self.state.set_phase_completed("plan")
@@ -462,7 +486,7 @@ class Resolver:
             >>> Resolver(config, state)._is_phase_ready_to_advance(False)  # doctest: +SKIP
         """
         phase = self.state.current_phase
-        if not phase or self.state.get_phase_status(phase) not in ("completed", "skipped"):
+        if not phase or self.state.get_phase_status(phase) not in DONE_STATUSES:
             return False
         if phase == "plan-review" and not skip_checkpoint:
             return False
@@ -479,8 +503,7 @@ class Resolver:
             >>> Resolver(config, state)._get_next_auto_phase()  # doctest: +SKIP
         """
         phase = self.state.current_phase
-        workflow_type = self.state.get("workflow_type", "build")
-        phases = self.config.get_phases(workflow_type) or self.config.main_phases
+        phases = self.phases_ordered
 
         if phase not in phases:
             return None
@@ -518,12 +541,10 @@ class Resolver:
         if self.state.get("tdd", False) or next_phase != "write-tests":
             return next_phase
 
-        workflow_type = self.state.get("workflow_type", "build")
-        phases = self.config.get_phases(workflow_type) or self.config.main_phases
-        phase = self.state.current_phase
-        skip_idx = phases.index(phase) + 1
+        phases = self.phases_ordered
+        skip_idx = phases.index(self.state.current_phase) + 1
 
-        while skip_idx < len(phases) and phases[skip_idx] in ("write-tests", "test-review", "tests-review"):
+        while skip_idx < len(phases) and phases[skip_idx] in TDD_PHASES:
             skip_idx += 1
 
         if skip_idx < len(phases) and self.config.is_auto_phase(phases[skip_idx]):
@@ -569,26 +590,16 @@ class Resolver:
         if self.state.get("status") == "completed":
             return
 
-        workflow_type = self.state.get("workflow_type", "build")
-        phases = self.config.get_phases(workflow_type) or self.config.main_phases
         skip = self.state.get("skip", [])
         tdd = self.state.get("tdd", False)
 
-        required = [p for p in phases if p not in skip]
+        required = [p for p in self.phases_ordered if p not in skip]
         if not tdd:
-            required = [
-                p
-                for p in required
-                if p not in ("write-tests", "test-review", "tests-review")
-            ]
+            required = [p for p in required if p not in TDD_PHASES]
 
-        completed = {
-            p["name"] for p in self.state.phases
-            if p["status"] in ("completed", "skipped")
-        }
-        if all(p in completed for p in required):
-            self.state.set("status", "completed")
-            self.state.set("workflow_active", False)
+        done = set(self.state.done_phase_names())
+        if all(p in done for p in required):
+            self.state.set_many({"status": "completed", "workflow_active": False})
 
     # ══════════════════════════════════════════════════════════════
     # Main dispatch

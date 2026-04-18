@@ -201,14 +201,15 @@ class TestImplementTaskCreatedMatching:
         assert result.returncode == 2
 
     def test_records_subtask_in_state(self, implement_state_path):
+        """Flat storage: the subtask is appended to ``project_tasks`` with
+        ``parent_task_id`` pointing to the matched parent (T-001)."""
         from lib.state_store import StateStore
         _run_hook(_task_payload("Build login"), implement_state_path)
         state = StateStore(implement_state_path, session_id="test-session")
         ptasks = state.project_tasks
-        subs = ptasks[0]["subtasks"]
+        subs = [pt for pt in ptasks if pt.get("parent_task_id") == "T-001"]
         assert len(subs) == 1
         assert subs[0]["subject"] == "Build login"
-        assert subs[0]["status"] == "in_progress"
 
 
 class TestImplementNoProjectTasks:

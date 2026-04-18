@@ -1,57 +1,39 @@
-"""Recorder — Records state changes after successful tool use.
+"""Recorder — flat 19-method API that wraps ``StateStore``.
 
-The Recorder is the *write-side* counterpart to the Resolver: guards
-decide whether a tool use is allowed, the recorder mutates state to
-reflect what was just done, and the resolver then evaluates whether the
-phase is complete.
+Each ``record_*`` method is a thin wrapper: it builds the appropriate
+data class (or nothing at all) and delegates to the matching
+:class:`StateStore` method. All mutation logic lives on the store; this
+class only chooses which store method to call for a given workflow
+concept.
 
-Dispatch is table-driven via ``TOOL_RECORDERS`` (one handler per Claude
-tool name) and ``_PHASE_SKILL_HANDLERS`` (one handler per state-mutating
-meta-skill). Adding a new tool or skill is a one-line table edit plus a
-small handler — keeping recording logic out of long if/elif chains.
+A ``record(hook_input, config)`` facade keeps ``post_tool_use.py`` on a
+single entry point by routing Skill / Write / Edit / Bash events onto
+the 19 methods.
 """
 
-import json
-import re
-from pathlib import Path
+from typing import Literal
 
-from constants import TEST_RUN_PATTERNS
-from lib.extractors import (
-    extract_skill_name,
-    extract_scores,
-    extract_verdict,
-    extract_plan_tasks,
-    extract_plan_files_to_modify,
-)
-from lib.parallel_check import is_parallel_explore_research
-from lib.scoring import scores_valid, verdict_valid
+from lib.extractors import extract_skill_name
 from lib.state_store import StateStore
-from lib.paths import basenames
+from models.state import CodeReview, Task, TestReview, Validation
 from config import Config
 
 
-_NO_TRANSITION_SKILLS = (
-    "continue",
-    "revise-plan",
-    "plan-approved",
-    "reset-plan-review",
-)
+ListOp = tuple[Literal["add", "replace"], list[str]]
 
 
 class Recorder:
-    """Records state changes after guards allow a tool use.
+    """Thin wrapper over :class:`StateStore` exposing 19 ``record_*`` methods.
 
-    Methods are grouped by what triggers them: phase transitions, bash
-    commands, file writes, file edits, agent reports, and skill side
-    effects. The terminal ``record()`` is the entry point used by the
-    PostToolUse hook — everything else is callable individually so unit
-    tests can exercise each branch without staging full hook payloads.
+    Every method builds a small data class (or nothing) and forwards to a
+    matching state-store method. There is no mutation logic here — that
+    lives on the store.
 
     Example:
-        >>> Recorder(state)  # doctest: +SKIP
+        >>> Recorder(state).record_command("pytest")  # doctest: +SKIP
     """
 
-    def __init__(self, state: StateStore):
+    def __init__(self, state: StateStore) -> None:
         """Bind the recorder to a session state store.
 
         Args:
@@ -62,626 +44,414 @@ class Recorder:
         """
         self.state = state
 
-    def _is_session_file(self, file_path: str) -> bool:
-        """Return True iff ``file_path``'s basename is a tracked code/test file.
-
-        Comparison is by basename so paths from different working directories
-        (Edits sometimes report absolute, sometimes repo-relative) still match
-        the entries written by Write events.
+    def _apply_op(self, op: ListOp | None, add_fn, set_fn) -> None:
+        """Route a ``ListOp`` to the matching store add/replace method.
 
         Args:
-            file_path (str): Path from a tool_input payload.
-
-        Returns:
-            bool: True if the file is one we track in this session.
-
-        Example:
-            >>> Recorder(state)._is_session_file("src/foo.py")  # doctest: +SKIP
-        """
-        code_files = self.state.code_files.get("file_paths", [])
-        test_files = self.state.tests.get("file_paths", [])
-        all_files = basenames(code_files + test_files)
-        basename = file_path.rsplit("/", 1)[-1]
-        return basename in all_files
-
-    # ── Phase transition ──────────────────────────────────────────
-
-    def record_phase_transition(
-        self, current: str, next_phase: str, parallel: bool = False
-    ) -> None:
-        """Mark the current phase complete (if any) and start ``next_phase``.
-
-        Skipped entirely for meta-skills in ``_NO_TRANSITION_SKILLS`` (e.g.
-        ``/continue``) — those mutate state via different handlers and
-        should not show up as their own phases. ``parallel=True`` keeps
-        the current phase open so an in-flight phase (e.g. ``explore``)
-        can run alongside the new one (e.g. ``research``).
-
-        Args:
-            current (str): Currently active phase name, or ``""`` if none.
-            next_phase (str): Skill name that's starting.
-            parallel (bool): If True, do not auto-complete ``current``.
+            op (ListOp | None): ``("add", xs)`` or ``("replace", xs)``; noop if None.
+            add_fn: Callable taking a single value — invoked per item on add.
+            set_fn: Callable taking the full list — invoked on replace.
 
         Example:
-            >>> Recorder(state).record_phase_transition("plan", "write-code")  # doctest: +SKIP
+            >>> self._apply_op(("add", ["a"]), self.state.add_test_file, self.state.set_test_file_paths)  # doctest: +SKIP
         """
-        if next_phase in _NO_TRANSITION_SKILLS:
+        if op is None:
             return
-        if current and not parallel:
-            self.state.set_phase_completed(current)
-        self.state.add_phase(next_phase)
-
-    # ── Command ───────────────────────────────────────────────────
-
-    def record_test_execution(self, phase: str, command: str) -> None:
-        """Flag tests as executed when a test-run command fires in a test phase.
-
-        Args:
-            phase (str): Currently active phase.
-            command (str): The bash command that just ran.
-
-        Example:
-            >>> Recorder(state).record_test_execution("write-tests", "pytest")  # doctest: +SKIP
-        """
-        if phase in ("write-tests", "test-review"):
-            if any(re.search(p, command) for p in TEST_RUN_PATTERNS):
-                self.state.set_tests_executed(True)
-
-    def record_pr_create(self, output: str) -> None:
-        """Persist PR number/status from a ``gh pr create`` JSON output.
-
-        Args:
-            output (str): Raw stdout from ``gh pr create --json``.
-
-        Raises:
-            ValueError: If output isn't valid JSON or lacks a ``"number"`` field.
-
-        Example:
-            >>> Recorder(state).record_pr_create('{"number": 42}')  # doctest: +SKIP
-        """
-        try:
-            data = json.loads(output)
-        except json.JSONDecodeError:
-            raise ValueError(f"Failed to parse PR create output as JSON: {output}")
-        number = data.get("number")
-        if number is None:
-            raise ValueError("PR create output missing 'number' field")
-        self.state.set_pr_number(number)
-        self.state.set_pr_status("created")
-
-    def record_ci_check(self, output: str) -> None:
-        """Persist CI results from a ``gh pr checks`` JSON output.
-
-        Aggregates the per-check ``conclusion`` field into a single status:
-        any ``FAILURE`` → failed; all ``SUCCESS`` → passed; otherwise pending.
-        Pending is the default so a partially-reported run isn't prematurely
-        treated as green.
-
-        Args:
-            output (str): Raw stdout from ``gh pr checks --json``. May be
-                a top-level array or an object with a ``"checks"`` array.
-
-        Raises:
-            ValueError: If output isn't valid JSON.
-
-        Example:
-            >>> Recorder(state).record_ci_check('[{"conclusion": "SUCCESS"}]')  # doctest: +SKIP
-        """
-        try:
-            data = json.loads(output)
-        except json.JSONDecodeError:
-            raise ValueError(f"Failed to parse CI check output as JSON: {output}")
-        results = data if isinstance(data, list) else data.get("checks", [])
-        self.state.set_ci_results(results)
-        if any(r.get("conclusion") == "FAILURE" for r in results):
-            self.state.set_ci_status("failed")
-        elif all(r.get("conclusion") == "SUCCESS" for r in results):
-            self.state.set_ci_status("passed")
+        action, values = op
+        if action == "replace":
+            set_fn(list(values))
         else:
-            self.state.set_ci_status("pending")
+            for v in values:
+                add_fn(v)
 
-    # ── File write ────────────────────────────────────────────────
+    # ── Artifacts ─────────────────────────────────────────────────
 
-    _SPECS_DOC_PHASES: dict[str, str] = {"vision": "product_vision", "decision": "decisions"}
-
-    def record_write(self, phase: str, file_path: str, is_plan_file: bool) -> None:
-        """Route a Write tool event to the right phase-specific recorder.
-
-        Args:
-            phase (str): Currently active phase.
-            file_path (str): Path that was written.
-            is_plan_file (bool): True if ``file_path`` matches the configured
-                plan path (computed by the caller).
-
-        Example:
-            >>> Recorder(state).record_write("write-code", "src/foo.py", False)  # doctest: +SKIP
-        """
-        if phase == "plan":
-            self.record_plan_write(file_path, is_plan_file)
-        elif phase == "write-tests":
-            self.state.add_test_file(file_path)
-        elif phase == "write-code":
-            self.state.add_code_file(file_path)
-        elif phase == "write-report":
-            self.state.set_report_written(True)
-        elif phase in self._SPECS_DOC_PHASES:
-            self._record_specs_doc(self._SPECS_DOC_PHASES[phase], file_path)
-
-    def record_plan_write(self, file_path: str, is_plan_file: bool) -> None:
-        """Record a plan-file write only when the path matches the plan target.
-
-        Example:
-            >>> Recorder(state)._record_plan_write("plan.md", True)  # doctest: +SKIP
-        """
-        if is_plan_file:
-            self.state.set_plan_file_path(file_path)
-            self.state.set_plan_written(True)
-
-    def _record_specs_doc(self, doc_key: str, file_path: str) -> None:
-        """Mark a specs doc written and record its path under ``state.docs[doc_key]``.
-
-        Example:
-            >>> Recorder(state)._record_specs_doc("product_vision", "vision.md")  # doctest: +SKIP
-        """
-        self.state.set_doc_written(doc_key, True)
-        self.state.set_doc_path(doc_key, file_path)
-
-    def record_plan_metadata(self, file_path: str) -> None:
-        """Inject auto-derived metadata (story id, dates, …) into the plan file.
-
-        Args:
-            file_path (str): Path to the just-written plan markdown.
-
-        Example:
-            >>> Recorder(state).record_plan_metadata("plan.md")  # doctest: +SKIP
-        """
-        from lib.injector import inject_plan_metadata
-        inject_plan_metadata(file_path, self.state)
-
-    def record_plan_sections(self, file_path: str) -> None:
-        """Auto-parse Tasks and Files-to-Modify out of the plan.
-
-        Reading both sections at once amortizes the file read; doing it as
-        part of the plan-write recorder means downstream phases
-        (create-tasks, write-code) can rely on these lists being populated
-        without an extra parse step.
-
-        Args:
-            file_path (str): Path to the just-written plan markdown.
-
-        Example:
-            >>> Recorder(state).record_plan_sections("plan.md")  # doctest: +SKIP
-        """
-        path = Path(file_path)
-        if not path.exists():
-            return
-
-        content = path.read_text()
-        self.state.set_tasks(extract_plan_tasks(content))
-
-        for f in extract_plan_files_to_modify(content):
-            self.state.add_code_file_to_write(f)
-
-    # ── File edit ─────────────────────────────────────────────────
-
-    def record_edit(self, phase: str, file_path: str) -> None:
-        """Record an Edit tool event as a revision in the relevant phase.
-
-        For ``code-review``, files split into two buckets: those flagged for
-        revision in the latest review (``code_tests_to_revise``) record as
-        test revisions, others as code revisions — but only if they're
-        already part of the session's tracked file set, to avoid recording
-        unrelated edits Claude makes during review.
-
-        Args:
-            phase (str): Currently active phase.
-            file_path (str): Path that was edited.
-
-        Example:
-            >>> Recorder(state).record_edit("plan-review", "plan.md")  # doctest: +SKIP
-        """
-        if phase == "plan-review":
-            self.state.set_plan_revised(True)
-        elif phase == "test-review" and file_path:
-            self.state.add_test_file_revised(file_path)
-        elif phase == "code-review" and file_path:
-            basename = file_path.rsplit("/", 1)[-1]
-            to_revise_basenames = basenames(self.state.code_tests_to_revise)
-            if basename in to_revise_basenames:
-                self.state.add_code_test_revised(file_path)
-            elif self._is_session_file(file_path):
-                self.state.add_file_revised(file_path)
-
-    # ── Agent report ──────────────────────────────────────────────
-
-    def record_scores(self, phase: str, content: str) -> None:
-        """Pull confidence/quality scores out of a review report and append.
-
-        Args:
-            phase (str): One of ``plan-review`` / ``code-review``; ignored otherwise.
-            content (str): Raw agent report text containing the score block.
-
-        Example:
-            >>> Recorder(state).record_scores("plan-review", "...scores...")  # doctest: +SKIP
-        """
-        if phase in ("plan-review", "code-review"):
-            _, extracted = scores_valid(content, extract_scores)
-            if phase == "plan-review":
-                self.state.add_plan_review(extracted)
-            else:
-                self.state.add_code_review(extracted)
-
-    def record_verdict(self, phase: str, content: str) -> None:
-        """Pull a Pass/Fail verdict out of a review or check report.
-
-        Args:
-            phase (str): ``test-review``, ``quality-check``, or ``validate``;
-                other phases are ignored.
-            content (str): Raw agent report text containing the verdict line.
-
-        Example:
-            >>> Recorder(state).record_verdict("test-review", "Verdict: Pass")  # doctest: +SKIP
-        """
-        if phase == "test-review":
-            _, verdict = verdict_valid(content, extract_verdict)
-            self.state.add_test_review(verdict)
-
-        if phase in ("quality-check", "validate"):
-            _, verdict = verdict_valid(content, extract_verdict)
-            self.state.set_quality_check_result(verdict)
-
-    def record_revision_files(
-        self, phase: str, files: list[str], tests: list[str]
+    def record_plan(
+        self,
+        file_path: str | None = None,
+        written: bool | None = None,
+        revised: bool | None = None,
+        reviews: list[dict] | None = None,
     ) -> None:
-        """Record which files a review flagged for revision.
+        """Partial-update the plan artifact via store setters.
 
         Args:
-            phase (str): ``code-review`` or ``test-review`` (others ignored).
-            files (list[str]): Files to revise.
-            tests (list[str]): Tests to revise (only used by code-review).
+            file_path (str | None): Where the plan was written.
+            written (bool | None): Plan-written flag.
+            revised (bool | None): Plan-revised flag.
+            reviews (list[dict] | None): Replacement plan-review records.
 
         Example:
-            >>> Recorder(state).record_revision_files("code-review", ["a.py"], [])  # doctest: +SKIP
+            >>> Recorder(state).record_plan(written=True)  # doctest: +SKIP
         """
-        if phase == "code-review" and files:
-            self.state.set_files_to_revise(files)
-            self.state.set_code_tests_to_revise(tests)
-        elif phase == "test-review" and files:
-            self.state.set_test_files_to_revise(files)
+        if file_path is not None:
+            self.state.set_plan_file_path(file_path)
+        if written is not None:
+            self.state.set_plan_written(written)
+        if revised is not None:
+            self.state.set_plan_revised(revised)
+        if reviews is not None:
+            self.state.set_plan_reviews(reviews)
 
-    # ── Specs report side-effects (moved from AgentReportGuard) ───
-
-    _SPECS_AGENT_BY_PHASE = {"architect": "Architect", "backlog": "ProductOwner"}
-
-    def write_specs_doc(self, phase: str, content: str, config: Config) -> None:
-        """Write architect or backlog content to disk and record paths in state.
+    def record_tests(
+        self,
+        file_paths: ListOp | None = None,
+        executed: bool | None = None,
+        reviews: list[dict] | None = None,
+        files_to_revise: ListOp | None = None,
+        files_revised: ListOp | None = None,
+    ) -> None:
+        """Partial-update the tests artifact via store setters.
 
         Args:
-            phase (str): ``architect`` or ``backlog``; other phases are no-ops.
-            content (str): Markdown body produced by the agent.
-            config (Config): Runtime config supplying destination paths.
+            file_paths (ListOp | None): Add/replace op for ``tests.file_paths``.
+            executed (bool | None): Tests-executed flag.
+            reviews (list[dict] | None): Replacement test-review records.
+            files_to_revise (ListOp | None): Add/replace op for the to-revise list.
+            files_revised (ListOp | None): Add/replace op for the revised list.
 
         Example:
-            >>> Recorder(state).write_specs_doc("architect", "# Arch", config)  # doctest: +SKIP
+            >>> Recorder(state).record_tests(executed=True)  # doctest: +SKIP
         """
-        if phase == "architect":
-            self._write_architecture(content, config)
-        elif phase == "backlog":
-            self._write_backlog(content, config)
+        self._apply_op(file_paths, self.state.add_test_file, self.state.set_test_file_paths)
+        if executed is not None:
+            self.state.set_tests_executed(executed)
+        if reviews is not None:
+            self.state.set_test_reviews(reviews)
+        self._apply_op(files_to_revise, self.state.add_test_file_to_revise, self.state.set_test_files_to_revise)
+        self._apply_op(files_revised, self.state.add_test_file_revised, self.state.set_test_files_revised)
 
-    def _write_architecture(self, content: str, config: Config) -> None:
-        """Persist architecture markdown and update ``state.docs.architecture``.
-
-        Example:
-            >>> Recorder(state)._write_architecture("# Arch", config)  # doctest: +SKIP
-        """
-        from utils.specs_writer import write_doc
-
-        path = config.architecture_file_path
-        write_doc(content, path)
-        self.state.set_doc_written("architecture", True)
-        self.state.set_doc_path("architecture", path)
-
-    def _write_backlog(self, content: str, config: Config) -> None:
-        """Persist backlog markdown + JSON and update ``state.docs.backlog``.
-
-        Example:
-            >>> Recorder(state)._write_backlog("# Backlog", config)  # doctest: +SKIP
-        """
-        from utils.specs_writer import write_backlog
-
-        md_path = config.backlog_md_file_path
-        json_path = config.backlog_json_file_path
-        write_backlog(content, md_path, json_path)
-        self.state.set_doc_written("backlog", True)
-        self.state.set_doc_md_path("backlog", md_path)
-        self.state.set_doc_json_path("backlog", json_path)
-
-    def mark_specs_agent_failed(self, phase: str) -> None:
-        """Mark the latest agent record for ``phase`` as failed.
+    def record_code_files(
+        self,
+        file_paths: ListOp | None = None,
+        reviews: list[dict] | None = None,
+        files_to_revise: ListOp | None = None,
+        files_revised: ListOp | None = None,
+    ) -> None:
+        """Partial-update the code_files artifact via store setters.
 
         Args:
-            phase (str): Specs phase whose agent should be flagged
-                (architect → Architect; backlog → ProductOwner).
+            file_paths (ListOp | None): Add/replace op for ``code_files.file_paths``.
+            reviews (list[dict] | None): Replacement code-review records.
+            files_to_revise (ListOp | None): Add/replace op for the to-revise list.
+            files_revised (ListOp | None): Add/replace op for the revised list.
 
         Example:
-            >>> Recorder(state).mark_specs_agent_failed("architect")  # doctest: +SKIP
+            >>> Recorder(state).record_code_files(file_paths=("add", ["a.py"]))  # doctest: +SKIP
         """
-        agent_name = self._SPECS_AGENT_BY_PHASE.get(phase)
-        if agent_name:
-            self.state.mark_last_agent_failed(agent_name)
+        self._apply_op(file_paths, self.state.add_code_file, self.state.set_code_file_paths)
+        if reviews is not None:
+            self.state.set_code_reviews(reviews)
+        self._apply_op(files_to_revise, self.state.add_code_file_to_revise, self.state.set_files_to_revise)
+        self._apply_op(files_revised, self.state.add_file_revised, self.state.set_code_files_revised)
 
-    # ── TaskCreated side-effects (moved from TaskCreatedGuard) ────
-
-    def record_created_task(self, matched_subject: str) -> None:
-        """Append a freshly-created task subject to the created-tasks list.
-
-        Example:
-            >>> Recorder(state).record_created_task("Implement login")  # doctest: +SKIP
-        """
-        self.state.add_created_task(matched_subject)
-
-    def record_subtask(self, parent_id: str, payload: dict) -> None:
-        """Attach a subtask payload under its parent project task.
+    def record_report_written(
+        self, file_path: str | None = None, written: bool | None = None
+    ) -> None:
+        """Partial-update report_file_path and/or report_written.
 
         Args:
-            parent_id (str): Project-task id that owns the subtask.
-            payload (dict): Subtask data as recorded on the parent.
+            file_path (str | None): Path of the final workflow report.
+            written (bool | None): Report-written flag.
 
         Example:
-            >>> Recorder(state).record_subtask("PT-1", {"title": "x"})  # doctest: +SKIP
+            >>> Recorder(state).record_report_written(written=True)  # doctest: +SKIP
         """
-        self.state.add_subtask(parent_id, payload)
+        if file_path is not None:
+            self.state.set_report_file_path(file_path)
+        if written is not None:
+            self.state.set_report_written(written)
 
-    # ── Skill side-effects (moved from PhaseGuard) ────────────────
+    # ── Session / workflow metadata ───────────────────────────────
 
-    def apply_phase_skill(self, skill: str, current: str, status: str) -> None:
-        """Mutate state for the meta-skills /continue, /plan-approved, /revise-plan.
-
-        These three skills don't open their own phase entries — they
-        instead nudge an existing phase (close it, re-open it, or jump
-        the plan-review checkpoint). The dispatch table keeps the
-        per-skill behaviour grouped at the bottom of the class for easy
-        extension.
+    def record_command(self, command: str) -> None:
+        """Append ``command`` to ``state.commands``.
 
         Args:
-            skill (str): Skill name from the SkillStart event.
-            current (str): Currently active phase.
-            status (str): Status of ``current`` (``in_progress`` or ``completed``).
+            command (str): Bash command that just ran.
 
         Example:
-            >>> Recorder(state).apply_phase_skill("continue", "plan", "in_progress")  # doctest: +SKIP
+            >>> Recorder(state).record_command("pytest")  # doctest: +SKIP
         """
-        handler = self._PHASE_SKILL_HANDLERS.get(skill)
-        if handler is not None:
-            handler(self, current, status)
+        self.state.add_command(command)
 
-    def _apply_continue(self, current: str, status: str) -> None:
-        """``/continue`` — close the current in-progress phase.
-
-        Example:
-            >>> Recorder(state)._apply_continue("plan", "in_progress")  # doctest: +SKIP
-        """
-        if status == "in_progress":
-            self.state.set_phase_completed(current)
-
-    def _apply_plan_approved(self, current: str, status: str) -> None:
-        """``/plan-approved`` — close ``plan-review`` even if not the current phase.
-
-        Example:
-            >>> Recorder(state)._apply_plan_approved("plan-review", "in_progress")  # doctest: +SKIP
-        """
-        if status == "in_progress":
-            self.state.set_phase_completed("plan-review")
-
-    def _apply_revise_plan(self, current: str, status: str) -> None:
-        """``/revise-plan`` — re-open plan-review and clear prior reviews.
-
-        Used when the user wants a fresh review pass after editing the
-        plan. The reviews list is wiped (not just appended to) so the
-        scoring resolver starts from a clean slate.
+    def record_session_id(self, session_id: str) -> None:
+        """Set ``state.session_id``.
 
         Args:
-            current (str): Currently active phase (unused — included for
-                handler-signature uniformity).
-            status (str): Phase status (unused, same reason).
+            session_id (str): Session identifier.
 
         Example:
-            >>> Recorder(state)._apply_revise_plan("plan-review", "completed")  # doctest: +SKIP
+            >>> Recorder(state).record_session_id("sess-1")  # doctest: +SKIP
         """
-        def _reopen(d: dict) -> None:
-            for p in d.get("phases", []):
-                if p["name"] == "plan-review":
-                    p["status"] = "in_progress"
-                    break
-            plan = d.setdefault("plan", {})
-            plan["revised"] = False
-            plan["reviews"] = []
+        self.state.set("session_id", session_id)
 
-        self.state.update(_reopen)
+    def record_story_id(self, story_id: str) -> None:
+        """Set ``state.story_id``.
 
-    _PHASE_SKILL_HANDLERS: dict = {
-        "continue": _apply_continue,
-        "plan-approved": _apply_plan_approved,
-        "revise-plan": _apply_revise_plan,
-    }
-
-    # ── Dispatch ──────────────────────────────────────────────────
-
-    def _dispatch_edit(self, hook_input: dict, config: Config, phase: str) -> None:
-        """Dispatch an Edit tool event to :meth:`record_edit`.
+        Args:
+            story_id (str): Story identifier.
 
         Example:
-            >>> Recorder(state)._dispatch_edit({"tool_input": {}}, config, "plan-review")  # doctest: +SKIP
+            >>> Recorder(state).record_story_id("US-1")  # doctest: +SKIP
         """
-        self.record_edit(phase, hook_input.get("tool_input", {}).get("file_path", ""))
+        self.state.set("story_id", story_id)
 
-    def _dispatch_bash(self, hook_input: dict, config: Config, phase: str) -> None:
-        """Dispatch a Bash tool event to the bash recorder.
+    def record_workflow_type(self, workflow_type: str) -> None:
+        """Set ``state.workflow_type``.
+
+        Args:
+            workflow_type (str): One of ``build``/``implement``/``specs``/``ship``.
 
         Example:
-            >>> Recorder(state)._dispatch_bash({}, config, "write-tests")  # doctest: +SKIP
+            >>> Recorder(state).record_workflow_type("implement")  # doctest: +SKIP
         """
-        self._record_bash(
-            hook_input.get("tool_input", {}), hook_input.get("tool_result", ""), phase
+        self.state.set("workflow_type", workflow_type)
+
+    def record_workflow_active(self, active: bool) -> None:
+        """Set ``state.workflow_active``.
+
+        Args:
+            active (bool): Whether the workflow is live.
+
+        Example:
+            >>> Recorder(state).record_workflow_active(False)  # doctest: +SKIP
+        """
+        self.state.set("workflow_active", active)
+
+    def record_workflow_status(
+        self, status: Literal["in_progress", "completed"]
+    ) -> None:
+        """Set ``state.status``.
+
+        Args:
+            status (Literal): ``in_progress`` or ``completed``.
+
+        Example:
+            >>> Recorder(state).record_workflow_status("completed")  # doctest: +SKIP
+        """
+        self.state.set("status", status)
+
+    def record_workflow(
+        self,
+        type: str | None = None,
+        active: bool | None = None,
+        status: Literal["in_progress", "completed"] | None = None,
+    ) -> None:
+        """Convenience: partial-update any of type/active/status.
+
+        Args:
+            type (str | None): Workflow type.
+            active (bool | None): Active flag.
+            status (Literal | None): Workflow status.
+
+        Example:
+            >>> Recorder(state).record_workflow(status="completed")  # doctest: +SKIP
+        """
+        if type is not None:
+            self.record_workflow_type(type)
+        if active is not None:
+            self.record_workflow_active(active)
+        if status is not None:
+            self.record_workflow_status(status)
+
+    # ── Lifecycle / flags ─────────────────────────────────────────
+
+    def record_test_mode(self, test_mode: str) -> None:
+        """Set ``state.test_mode``.
+
+        Args:
+            test_mode (str): Test-mode identifier.
+
+        Example:
+            >>> Recorder(state).record_test_mode("e2e")  # doctest: +SKIP
+        """
+        self.state.set_test_mode(test_mode)
+
+    def record_phase(
+        self,
+        name: str,
+        status: Literal["in_progress", "completed", "skipped"] = "in_progress",
+    ) -> None:
+        """Append a new phase entry to ``state.phases``.
+
+        Args:
+            name (str): Phase name.
+            status (Literal): Phase status; defaults to ``in_progress``.
+
+        Example:
+            >>> Recorder(state).record_phase("plan")  # doctest: +SKIP
+        """
+        self.state.add_phase(name, status=status)
+
+    def record_tdd(self, tdd: bool) -> None:
+        """Set ``state.tdd``.
+
+        Args:
+            tdd (bool): TDD flag.
+
+        Example:
+            >>> Recorder(state).record_tdd(True)  # doctest: +SKIP
+        """
+        self.state.set_tdd(tdd)
+
+    def record_validation_result(self, result: Literal["pass", "fail"]) -> None:
+        """Append a :class:`Validation` record to ``state.validations``.
+
+        Args:
+            result (Literal): ``"pass"`` or ``"fail"``.
+
+        Example:
+            >>> Recorder(state).record_validation_result("pass")  # doctest: +SKIP
+        """
+        self.state.add_validation(Validation(result=result))
+
+    # ── Agents / reviews / tasks ──────────────────────────────────
+
+    def record_agent(
+        self,
+        name: str,
+        status: Literal["in_progress", "completed", "failed"],
+        tool_use_id: str,
+    ) -> None:
+        """Append an :class:`Agent` to ``state.agents``.
+
+        Args:
+            name (str): Subagent name.
+            status (Literal): Current status.
+            tool_use_id (str): Correlation id.
+
+        Example:
+            >>> Recorder(state).record_agent("Plan", "in_progress", "tu_1")  # doctest: +SKIP
+        """
+        from models.state import Agent
+        self.state.add_agent(
+            Agent(name=name, status=status, tool_use_id=tool_use_id)
         )
 
-    def _dispatch_skill(self, hook_input: dict, config: Config, phase: str) -> None:
-        """Dispatch a Skill tool event to the skill recorder.
+    def record_code_review(
+        self,
+        iteration: int,
+        scores: dict,
+        status=None,
+    ) -> None:
+        """Append a :class:`CodeReview` to ``code_files.reviews``.
+
+        Args:
+            iteration (int): Review iteration index.
+            scores (dict): Score block.
+            status (ReviewResult | None): Pass/Fail verdict if known.
 
         Example:
-            >>> Recorder(state)._dispatch_skill({}, config, "plan")  # doctest: +SKIP
+            >>> Recorder(state).record_code_review(1, {"c": 95}, "Pass")  # doctest: +SKIP
         """
-        self._record_skill(hook_input.get("tool_input", {}), phase)
+        self.state.add_code_review_record(
+            CodeReview(iteration=iteration, scores=scores, status=status)
+        )
 
-    def _dispatch_write(self, hook_input: dict, config: Config, phase: str) -> None:
-        """Dispatch a Write tool event to the file-write recorder.
+    def record_test_review(
+        self,
+        iteration: int,
+        verdict,
+        status=None,
+    ) -> None:
+        """Append a :class:`TestReview` to ``tests.reviews``.
+
+        Args:
+            iteration (int): Review iteration index.
+            verdict (ReviewResult): Pass/Fail verdict.
+            status (ReviewResult | None): Optional status label.
 
         Example:
-            >>> Recorder(state)._dispatch_write({}, config, "write-code")  # doctest: +SKIP
+            >>> Recorder(state).record_test_review(1, "Pass")  # doctest: +SKIP
         """
-        self._record_file_write(hook_input.get("tool_input", {}), config, phase)
+        self.state.add_test_review_record(
+            TestReview(iteration=iteration, verdict=verdict, status=status)
+        )
 
-    TOOL_RECORDERS: dict = {
+    def record_task(
+        self,
+        task_id: str,
+        subject: str,
+        description: str,
+        parent_task_id: str | None = None,
+    ) -> None:
+        """Append a :class:`Task` to ``state.project_tasks`` (dedup by task_id).
+
+        Args:
+            task_id (str): Task identifier.
+            subject (str): Task subject.
+            description (str): Task description.
+            parent_task_id (str | None): Parent id if this is a subtask.
+
+        Example:
+            >>> Recorder(state).record_task("T-1", "s", "d")  # doctest: +SKIP
+        """
+        self.state.add_project_task(
+            Task(task_id=task_id, subject=subject,
+                 description=description, parent_task_id=parent_task_id)
+        )
+
+    # ── Facade (not counted toward the 19) ────────────────────────
+
+    def record(self, hook_input: dict, config: Config) -> None:
+        """Thin PostToolUse dispatch onto the 19-method API.
+
+        Skill → :meth:`record_phase`; Write/Edit → artifact methods keyed
+        by the current phase; Bash → :meth:`record_command`. Unknown tools
+        are ignored so the recorder never blocks a session.
+
+        Args:
+            hook_input (dict): PostToolUse payload.
+            config (Config): Runtime configuration.
+
+        Example:
+            >>> Recorder(state).record({"tool_name": "Skill"}, config)  # doctest: +SKIP
+        """
+        handler = self._TOOL_RECORDERS.get(hook_input.get("tool_name", ""))
+        if handler:
+            handler(self, hook_input, config)
+
+    def _dispatch_skill(self, hook_input: dict, _config: Config) -> None:
+        """Route a Skill event to :meth:`record_phase`."""
+        skill = extract_skill_name(hook_input)
+        if skill:
+            self.record_phase(skill)
+
+    def _dispatch_write(self, hook_input: dict, config: Config) -> None:
+        """Route a Write event to the artifact method for the current phase."""
+        file_path = hook_input.get("tool_input", {}).get("file_path", "")
+        phase = self.state.current_phase
+        if phase == "plan":
+            if file_path and file_path.endswith(config.plan_file_path):
+                self.record_plan(file_path=file_path, written=True)
+        elif phase == "write-tests":
+            self.record_tests(file_paths=("add", [file_path]))
+        elif phase == "write-code":
+            self.record_code_files(file_paths=("add", [file_path]))
+        elif phase == "write-report":
+            self.record_report_written(file_path=file_path, written=True)
+
+    def _dispatch_edit(self, hook_input: dict, _config: Config) -> None:
+        """Route an Edit event to the revision method for the current phase."""
+        file_path = hook_input.get("tool_input", {}).get("file_path", "")
+        phase = self.state.current_phase
+        if phase == "plan-review":
+            self.record_plan(revised=True)
+        elif phase == "test-review" and file_path:
+            self.record_tests(files_revised=("add", [file_path]))
+        elif phase == "code-review" and file_path:
+            self.record_code_files(files_revised=("add", [file_path]))
+
+    def _dispatch_bash(self, hook_input: dict, _config: Config) -> None:
+        """Route a Bash event to :meth:`record_command`."""
+        command = hook_input.get("tool_input", {}).get("command", "")
+        if command:
+            self.record_command(command)
+
+    _TOOL_RECORDERS: dict = {
         "Skill": _dispatch_skill,
         "Write": _dispatch_write,
         "Edit": _dispatch_edit,
         "Bash": _dispatch_bash,
     }
-
-    def record(self, hook_input: dict, config: Config) -> None:
-        """Record state changes for a completed tool use.
-
-        Looks up the dispatch handler for ``hook_input["tool_name"]``;
-        unknown tools are silently ignored so the recorder never blocks
-        the session on a tool it doesn't model.
-
-        Args:
-            hook_input (dict): PostToolUse payload from the hook stdin.
-            config (Config): Runtime configuration.
-
-        Raises:
-            ValueError: Propagated from inner recorders that explicitly
-                raise on parse failures (e.g. malformed PR-create JSON).
-
-        Example:
-            >>> Recorder(state).record({"tool_name": "Write"}, config)  # doctest: +SKIP
-        """
-        handler = self.TOOL_RECORDERS.get(hook_input.get("tool_name", ""))
-        if handler is None:
-            return
-        handler(self, hook_input, config, self.state.current_phase)
-
-    def _record_skill(self, tool_input: dict, phase: str) -> None:
-        """Record a Skill invocation as a phase transition.
-
-        Detects the parallel ``explore``↔``research`` case so research
-        can launch without prematurely closing an in-flight explore.
-
-        Args:
-            tool_input (dict): Raw ``tool_input`` from the hook payload.
-            phase (str): Currently active phase (unused — passed for
-                dispatch-signature uniformity).
-
-        Example:
-            >>> Recorder(state)._record_skill({"command": "/plan"}, "")  # doctest: +SKIP
-        """
-        skill = extract_skill_name({"tool_input": tool_input})
-        current = self.state.current_phase
-        parallel = is_parallel_explore_research(
-            current, self.state.get_phase_status(current) if current else None, skill
-        )
-        self.record_phase_transition(current, skill, parallel=parallel)
-
-    def _record_file_write(self, tool_input: dict, config: Config, phase: str) -> None:
-        """Record a Write tool event, with specs-phase path canonicalization.
-
-        Specs writes (vision/decision) get their path normalized to the
-        config-relative form before recording so all docs entries in
-        state.jsonl share one path format. Mismatched paths are dropped
-        rather than recorded under the wrong key.
-
-        Args:
-            tool_input (dict): Raw ``tool_input`` from the hook payload.
-            config (Config): Runtime configuration.
-            phase (str): Currently active phase.
-
-        Example:
-            >>> Recorder(state)._record_file_write({"file_path": "x"}, config, "write-code")  # doctest: +SKIP
-        """
-        file_path = tool_input.get("file_path", "")
-        is_plan = bool(file_path and file_path.endswith(config.plan_file_path))
-        if self._is_specs_phase_mismatch(phase, file_path, config):
-            return
-        record_path = self._canonicalize_specs_path(phase, file_path, config)
-        self.record_write(phase, record_path, is_plan)
-        if is_plan:
-            self.record_plan_metadata(file_path)
-            self.record_plan_sections(file_path)
-
-    @staticmethod
-    def _canonicalize_specs_path(phase: str, file_path: str, config: Config) -> str:
-        """Store vision/decision docs under their config-relative path so all
-        specs doc entries in state.jsonl use the same format (matches architecture/backlog).
-
-        Args:
-            phase (str): Currently active phase.
-            file_path (str): Raw path from the Write event.
-            config (Config): Runtime configuration.
-
-        Returns:
-            str: Canonical config-relative path for vision/decision; the
-            original ``file_path`` for any other phase.
-
-        Example:
-            >>> Recorder._canonicalize_specs_path("vision", "/abs/v.md", config)  # doctest: +SKIP
-        """
-        canonical = {
-            "vision": config.product_vision_file_path,
-            "decision": config.decisions_file_path,
-        }.get(phase)
-        return canonical if canonical else file_path
-
-    @staticmethod
-    def _is_specs_phase_mismatch(phase: str, file_path: str, config: Config) -> bool:
-        """True when the write path doesn't match the specs phase's canonical doc path.
-
-        Args:
-            phase (str): Currently active phase.
-            file_path (str): Raw path from the Write event.
-            config (Config): Runtime configuration.
-
-        Returns:
-            bool: True if the phase expects a specific doc path and
-            ``file_path`` doesn't end with it.
-
-        Example:
-            >>> Recorder._is_specs_phase_mismatch("vision", "/abs/x.md", config)  # doctest: +SKIP
-        """
-        expected = {
-            "vision": config.product_vision_file_path,
-            "decision": config.decisions_file_path,
-        }.get(phase)
-        if not expected:
-            return False
-        return not (file_path and file_path.endswith(expected))
-
-    def _record_bash(self, tool_input: dict, tool_output: str, phase: str) -> None:
-        """Record a Bash tool event — fans out to test/deps/PR/CI recorders.
-
-        Args:
-            tool_input (dict): Raw ``tool_input`` (must include ``"command"``).
-            tool_output (str): Raw stdout from the command.
-            phase (str): Currently active phase.
-
-        Example:
-            >>> Recorder(state)._record_bash({"command": "pytest"}, "", "write-tests")  # doctest: +SKIP
-        """
-        command = tool_input.get("command", "")
-
-        self.record_test_execution(phase, command)
-
-        if phase == "pr-create" and command.startswith("gh pr create"):
-            self.record_pr_create(tool_output)
-        if phase == "ci-check" and command.startswith("gh pr checks"):
-            self.record_ci_check(tool_output)

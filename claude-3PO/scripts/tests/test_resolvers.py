@@ -190,6 +190,33 @@ class TestResolveQualityCheck:
         assert not state.is_phase_completed("quality-check")
 
 
+class TestResolveValidate:
+    def test_pass_completes(self, config, state):
+        state.add_phase("validate")
+        state.set_quality_check_result("Pass")
+        Resolver(config, state)._resolve_validate()
+        assert state.is_phase_completed("validate")
+
+    def test_fail_does_not_complete(self, config, state):
+        state.add_phase("validate")
+        state.set_quality_check_result("Fail")
+        Resolver(config, state)._resolve_validate()
+        assert not state.is_phase_completed("validate")
+
+
+class TestAutoAdvanceOnSkipped:
+    """Auto-advance should treat a "skipped" current phase as finished."""
+
+    def test_skipped_phase_advances(self, config, state):
+        state.set("workflow_type", "build")
+        state.set("tdd", True)
+        state.set("skip", [])
+        state.add_phase("plan-review", status="skipped")
+        Resolver(config, state).auto_start_next(skip_checkpoint=True)
+        assert state.current_phase == "create-tasks"
+        assert state.get_phase_status("plan-review") == "skipped"
+
+
 class TestResolvePrCreate:
     def test_completes_when_created(self, config, state):
         state.add_phase("pr-create")

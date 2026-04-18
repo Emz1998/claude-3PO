@@ -36,9 +36,10 @@ SCRIPTS_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(SCRIPTS_DIR))
 
 from constants.phases import REVIEW_PHASES
-from guardrails import STOP_GUARDS
 from guardrails.agent_report_guard import AgentReportGuard
+from lib.extractors import extract_scores, extract_verdict
 from lib.hook import Hook
+from lib.scoring import scores_valid, verdict_valid
 from lib.state_store import StateStore
 from lib.violations import log_violation
 from utils.recorder import Recorder
@@ -108,16 +109,15 @@ def _fail_agent_and_release(
     state: StateStore, config: Config, hook_input: dict,
     phase: str, errors: list[str], attempts: int, max_attempts: int,
 ) -> None:
-    """Cap reached — mark the specs agent failed, log once, release the subagent.
+    """Cap reached — log once and release the subagent so it can stop.
 
-    Called only when ``attempts >= max_attempts``. Writes the failure to state,
-    appends a single violation row, and emits a ``Hook.system_message`` (which
-    exits 0) so the subagent can stop. Without this the agent would loop on
-    ``exit 2`` blocks indefinitely.
+    Called only when ``attempts >= max_attempts``. Appends a single violation
+    row and emits a ``Hook.system_message`` (which exits 0) so the subagent
+    can stop. Without this the agent would loop on ``exit 2`` blocks
+    indefinitely.
 
     Args:
-        state (StateStore): Live workflow state; ``mark_specs_agent_failed``
-            mutates it.
+        state (StateStore): Live workflow state.
         config (Config): Workflow configuration (currently unused in the body
             but kept for signature symmetry with the retry-path helper).
         hook_input (dict): Raw SubagentStop payload, used by ``_log_report_block``.
@@ -131,14 +131,13 @@ def _fail_agent_and_release(
     Example:
         >>> _fail_agent_and_release(state, config, hook_input, "vision", ["bad"], 3, 3)  # doctest: +SKIP
     """
-    Recorder(state).mark_specs_agent_failed(phase)
     agent_name = AgentReportGuard.SPECS_AGENT_BY_PHASE.get(phase)
     message = AgentReportGuard.format_rejection_message(
         phase, errors or ["validation failed"], attempts, max_attempts
     )
     _log_report_block(state, hook_input, message.splitlines()[0])
     Hook.system_message(
-        f"{agent_name or 'agent'} marked failed after {attempts} rejected attempts. "
+        f"{agent_name or 'agent'} released after {attempts} rejected attempts. "
         f"Use /continue or re-invoke to proceed.\n\n{message}"
     )
 
@@ -194,35 +193,28 @@ def _validate_agent_report(state: StateStore, config: Config, hook_input: dict) 
 
 
 def _apply_report_allow(state: StateStore, config: Config, guard: AgentReportGuard) -> None:
-    """Apply the validated report to state, then resolve.
+    """Apply the validated review report to state, then resolve.
 
-    Two paths depending on phase:
-
-    - Specs phases (``vision`` / ``architecture`` / ``constitution`` / ``backlog``):
-      persist the agent's content as the canonical specs document.
-    - Review phases (``plan-review`` / ``code-review`` / ``test-review``): record
-      the parsed scores, verdict, and any review-flagged files / tests.
-
-    Mirrors the post-Allow side-effect pattern in ``pre_tool_use.py``: the guard
-    stays a pure validator; the dispatcher owns the mutations.
+    Handles only the review phases (``code-review`` / ``test-review``)
+    through the narrow 19-method Recorder API. Specs-doc writing and
+    plan-review recording are dropped as part of the Recorder refactor.
 
     Args:
         state (StateStore): Live workflow state, mutated by Recorder.
-        config (Config): Workflow configuration; passed to ``write_specs_doc``
-            and ``resolve``.
-        guard (AgentReportGuard): Already-validated guard exposing ``phase``,
-            ``content``, ``review_files``, and ``review_tests``.
+        config (Config): Workflow configuration; passed to ``resolve``.
+        guard (AgentReportGuard): Already-validated guard exposing ``phase``
+            and ``content``.
 
     Example:
         >>> _apply_report_allow(state, config, guard)  # doctest: +SKIP
     """
     recorder = Recorder(state)
-    if guard.phase in AgentReportGuard.SPECS_PHASES:
-        recorder.write_specs_doc(guard.phase, guard.content, config)
-    else:
-        recorder.record_scores(guard.phase, guard.content)
-        recorder.record_verdict(guard.phase, guard.content)
-        recorder.record_revision_files(guard.phase, guard.review_files, guard.review_tests)
+    if guard.phase == "code-review":
+        _, scores = scores_valid(guard.content, extract_scores)
+        recorder.record_code_review(state.code_review_count + 1, scores)
+    elif guard.phase == "test-review":
+        _, verdict = verdict_valid(guard.content, extract_verdict)
+        recorder.record_test_review(state.test_review_count + 1, verdict)
     try:
         resolve(config, state)
     except ValueError as e:

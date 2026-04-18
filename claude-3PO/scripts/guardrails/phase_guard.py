@@ -10,6 +10,7 @@ from typing import Literal
 
 from lib.state_store import StateStore
 from lib.extractors import extract_skill_name
+from models.state import DONE_STATUSES
 from config import Config
 
 
@@ -344,7 +345,7 @@ class PhaseGuard:
             >>> # Raises ValueError when leaving an unfinished phase:
             >>> guard._check_current_phase_done()  # doctest: +SKIP
         """
-        if self.next_phase and self.status not in ("completed", "skipped"):
+        if self.next_phase and self.status not in DONE_STATUSES:
             if self.next_phase == self.current:
                 raise ValueError(
                     f"Already in '{self.current}' phase. Complete the phase tasks instead of re-invoking the skill."
@@ -375,10 +376,7 @@ class PhaseGuard:
         skill_phases = [p for p in self.phases if not self.config.is_auto_phase(p)]
         if not self.config.is_auto_phase(self.current):
             return self.current
-        finished = [
-            p["name"] for p in self.state.phases
-            if p["status"] in ("completed", "skipped")
-        ]
+        finished = self.state.done_phase_names()
         for p in reversed(finished):
             if p in skill_phases:
                 return p

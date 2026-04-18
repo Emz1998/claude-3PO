@@ -20,4 +20,4 @@ revise @claude-3PO/scripts/utils/recorder.py . The Recorder class should only co
 16. record_agent(name:str, status:Literal["in_progress", "completed", "failed"], tool_use_id:str)
 17. record_code_review(iteration, scores, status)
 18. record_test_review(iteration, verdict, status)
-19. record_task(task_id:str, subject:str, description:str) Add a Task model in state.py
+19. record_task(task_id:str, subject:str, description:str, parent_task_id:str) Add a Task model in state.py. parent task id is optional

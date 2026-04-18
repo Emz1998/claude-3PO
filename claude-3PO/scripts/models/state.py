@@ -12,6 +12,12 @@ from typing import Literal
 
 ReviewResult = Literal["Pass", "Fail"]
 
+DONE_STATUSES: tuple[str, ...] = ("completed", "skipped")
+"""Phase statuses that count as finished for auto-advance and completion checks."""
+
+TDD_PHASES: tuple[str, ...] = ("write-tests", "test-review", "tests-review")
+"""Phases that are skipped from workflow progression when TDD is disabled."""
+
 
 class _Base(BaseModel):
     """Base model that tolerates unknown fields for forward-compat.
@@ -62,7 +68,38 @@ class TestReview(_Base):
         'Fail'
     """
 
+    iteration: int = 0
     verdict: ReviewResult | None = None
+    status: ReviewResult | None = None
+
+
+class Task(_Base):
+    """A project task tracked by the workflow.
+
+    Nesting is flat: a subtask carries its ``parent_task_id`` rather than
+    being stored inside its parent. That keeps state mutations local — any
+    task can be appended, looked up, or updated without walking a tree.
+
+    Example:
+        >>> Task(task_id="T-1", subject="Build login").task_id
+        'T-1'
+    """
+
+    task_id: str
+    subject: str
+    description: str | None = None
+    parent_task_id: str | None = None
+
+
+class Validation(_Base):
+    """One validation result (binary pass/fail).
+
+    Example:
+        >>> Validation(result="pass").result
+        'pass'
+    """
+
+    result: Literal["pass", "fail"]
 
 
 class Plan(_Base):
@@ -181,13 +218,14 @@ class State(_Base):
     workflow_type: str = "implement"
     phases: list[PhaseEntry] = []
     tdd: bool = False
+    test_mode: bool | str | None = None
     story_id: str | None = None
     skip: list[str] = []
     instructions: str = ""
     agents: list[Agent] = []
     plan: Plan = Plan()
     tasks: list[str] = []
-    project_tasks: list[dict] = []
+    project_tasks: list[Task] = []
     tests: Tests = Tests()
     code_files_to_write: list[str] = []
     code_files: CodeFiles = CodeFiles()
@@ -195,4 +233,7 @@ class State(_Base):
     pr: PR = PR()
     ci: CI = CI()
     report_written: bool = False
+    report_file_path: str | None = None
     plan_files_to_modify: list[str] = []
+    commands: list[str] = []
+    validations: list[Validation] = []

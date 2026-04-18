@@ -29,7 +29,6 @@ sys.path.insert(0, str(SCRIPTS_DIR))
 
 from lib.hook import Hook
 from lib.state_store import StateStore
-from utils.recorder import Recorder
 from utils.resolver import resolve
 from config import Config
 
@@ -55,12 +54,6 @@ def main() -> None:
         sys.exit(0)
 
     config = Config()
-    phase = state.current_phase
-    command = hook_input.get("tool_input", {}).get("command", "")
-
-    recorder = Recorder(state)
-    recorder.record_test_execution(phase, command)
-
     resolve(config, state)
     sys.exit(0)
 

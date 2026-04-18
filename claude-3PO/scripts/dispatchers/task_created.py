@@ -83,10 +83,12 @@ def _apply_task_effects(guard: TaskCreatedGuard, state: StateStore) -> None:
     Two independent effects, both gated on what the guard actually matched:
 
     - ``matched_build_subject`` — the new task corresponds to a planned build
-      task; record it as the active created task for the build flow.
+      task; record it as the active created task for the build flow (still
+      via :meth:`StateStore.add_created_task` since the flat Recorder API
+      tracks only project tasks, not build subjects).
     - ``matched_implement_parent_id`` + ``matched_implement_payload`` — the new
-      task is a subtask of an implement-workflow parent; attach it under that
-      parent so ``TaskCompleted`` can later cascade completion upward.
+      task is a subtask of an implement-workflow parent; append it to the
+      flat ``project_tasks`` list with its ``parent_task_id`` set.
 
     Args:
         guard (TaskCreatedGuard): Already-validated guard exposing the matched
@@ -96,12 +98,15 @@ def _apply_task_effects(guard: TaskCreatedGuard, state: StateStore) -> None:
     Example:
         >>> _apply_task_effects(guard, state)  # doctest: +SKIP
     """
-    recorder = Recorder(state)
     if guard.matched_build_subject:
-        recorder.record_created_task(guard.matched_build_subject)
+        state.add_created_task(guard.matched_build_subject)
     if guard.matched_implement_parent_id and guard.matched_implement_payload:
-        recorder.record_subtask(
-            guard.matched_implement_parent_id, guard.matched_implement_payload
+        payload = guard.matched_implement_payload
+        Recorder(state).record_task(
+            task_id=payload.get("task_id", ""),
+            subject=payload.get("subject", ""),
+            description=payload.get("description", ""),
+            parent_task_id=guard.matched_implement_parent_id,
         )
 
 
