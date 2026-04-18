@@ -263,7 +263,7 @@ class TestRecordTestReview:
 class TestRecordTask:
     def test_top_level(self, state):
         Recorder(state).record_task("T-1", "Build login", "Do the login bits")
-        ptasks = state.project_tasks
+        ptasks = state.implement.project_tasks
         assert len(ptasks) == 1
         assert ptasks[0]["task_id"] == "T-1"
         assert ptasks[0]["subject"] == "Build login"
@@ -274,7 +274,7 @@ class TestRecordTask:
         rec = Recorder(state)
         rec.record_task("T-1", "Parent", "parent body")
         rec.record_task("T-1.1", "Sub", "child body", parent_task_id="T-1")
-        ptasks = state.project_tasks
+        ptasks = state.implement.project_tasks
         assert len(ptasks) == 2
         assert ptasks[1]["parent_task_id"] == "T-1"
 
@@ -282,7 +282,7 @@ class TestRecordTask:
         rec = Recorder(state)
         rec.record_task("T-1", "Subject A", "desc")
         rec.record_task("T-1", "Subject B", "desc2")
-        assert len(state.project_tasks) == 1
+        assert len(state.implement.project_tasks) == 1
 
 
 # ── Facade dispatch ─────────────────────────────────────────────────

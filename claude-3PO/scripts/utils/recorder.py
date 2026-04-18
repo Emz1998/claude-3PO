@@ -376,7 +376,7 @@ class Recorder:
         description: str,
         parent_task_id: str | None = None,
     ) -> None:
-        """Append a :class:`Task` to ``state.project_tasks`` (dedup by task_id).
+        """Append a :class:`Task` to ``state.implement.project_tasks`` (dedup by task_id).
 
         Args:
             task_id (str): Task identifier.
@@ -387,7 +387,7 @@ class Recorder:
         Example:
             >>> Recorder(state).record_task("T-1", "s", "d")  # doctest: +SKIP
         """
-        self.state.add_project_task(
+        self.state.implement.add_project_task(
             Task(task_id=task_id, subject=subject,
                  description=description, parent_task_id=parent_task_id)
         )

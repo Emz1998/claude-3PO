@@ -113,7 +113,7 @@ class TaskCreateToolGuard:
             >>> # Raises ValueError when the parent ID is unknown:
             >>> guard._check_parent_exists("missing-id")  # doctest: +SKIP
         """
-        project_tasks = self.state.project_tasks
+        project_tasks = self.state.implement.project_tasks
         matched = any(pt.get("id") == parent_task_id for pt in project_tasks)
         if not matched:
             task_ids = [pt.get("id") for pt in project_tasks]

@@ -206,7 +206,7 @@ class TestImplementTaskCreatedMatching:
         from lib.state_store import StateStore
         _run_hook(_task_payload("Build login"), implement_state_path)
         state = StateStore(implement_state_path, session_id="test-session")
-        ptasks = state.project_tasks
+        ptasks = state.implement.project_tasks
         subs = [pt for pt in ptasks if pt.get("parent_task_id") == "T-001"]
         assert len(subs) == 1
         assert subs[0]["subject"] == "Build login"

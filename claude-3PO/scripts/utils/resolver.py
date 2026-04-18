@@ -421,7 +421,7 @@ class Resolver:
         Example:
             >>> Resolver(config, state)._all_project_tasks_have_subtasks()  # doctest: +SKIP
         """
-        ptasks = self.state.project_tasks
+        ptasks = self.state.implement.project_tasks
         if not ptasks:
             return False
         return all(len(pt.get("subtasks", [])) >= 1 for pt in ptasks)

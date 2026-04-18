@@ -11,7 +11,7 @@ class TestWriteCodeFileGuardImplement:
 
     def test_listed_file_allowed(self, config, state):
         state.set("workflow_type", "implement")
-        state.set_plan_files_to_modify(["src/app.py", "src/utils.py"])
+        state.implement.set_plan_files_to_modify(["src/app.py", "src/utils.py"])
         state.add_phase("write-code")
         hook = make_hook_input("Write", {"file_path": "src/app.py"})
         decision, _ = write_guard(hook, config, state)
@@ -19,7 +19,7 @@ class TestWriteCodeFileGuardImplement:
 
     def test_unlisted_file_blocked(self, config, state):
         state.set("workflow_type", "implement")
-        state.set_plan_files_to_modify(["src/app.py"])
+        state.implement.set_plan_files_to_modify(["src/app.py"])
         state.add_phase("write-code")
         hook = make_hook_input("Write", {"file_path": "src/other.py"})
         decision, msg = write_guard(hook, config, state)
@@ -28,7 +28,7 @@ class TestWriteCodeFileGuardImplement:
 
     def test_empty_file_list_blocks_all(self, config, state):
         state.set("workflow_type", "implement")
-        state.set_plan_files_to_modify([])
+        state.implement.set_plan_files_to_modify([])
         state.add_phase("write-code")
         hook = make_hook_input("Write", {"file_path": "src/app.py"})
         decision, msg = write_guard(hook, config, state)

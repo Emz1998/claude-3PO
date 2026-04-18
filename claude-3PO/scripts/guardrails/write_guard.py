@@ -319,7 +319,7 @@ class FileWriteGuard:
             >>> # Raises ValueError when path isn't in the plan's modify list:
             >>> guard._check_implement_code_path()  # doctest: +SKIP
         """
-        allowed = self.state.plan_files_to_modify
+        allowed = self.state.implement.plan_files_to_modify
         if self.file_path not in allowed:
             raise ValueError(
                 f"Writing '{self.file_path}' not in plan's ## Files to Create/Modify"

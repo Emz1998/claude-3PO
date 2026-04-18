@@ -19,35 +19,35 @@ from helpers import make_hook_input
 
 class TestSubtaskDictStructure:
     def test_add_subtask_as_dict(self, state):
-        state.set_project_tasks([
+        state.implement.set_project_tasks([
             {"id": "T-001", "title": "Build login", "status": "in_progress", "subtasks": []},
         ])
-        state.add_subtask("T-001", {"task_id": "ct-1", "subject": "Write form", "status": "in_progress"})
-        subs = state.project_tasks[0]["subtasks"]
+        state.implement.add_subtask("T-001", {"task_id": "ct-1", "subject": "Write form", "status": "in_progress"})
+        subs = state.implement.project_tasks[0]["subtasks"]
         assert len(subs) == 1
         assert subs[0]["task_id"] == "ct-1"
         assert subs[0]["status"] == "in_progress"
 
     def test_set_subtask_completed(self, state):
-        state.set_project_tasks([
+        state.implement.set_project_tasks([
             {"id": "T-001", "title": "Build login", "status": "in_progress", "subtasks": [
                 {"task_id": "ct-1", "subject": "Write form", "status": "in_progress"},
             ]},
         ])
-        state.set_subtask_completed("T-001", "ct-1")
-        subs = state.project_tasks[0]["subtasks"]
+        state.implement.set_subtask_completed("T-001", "ct-1")
+        subs = state.implement.project_tasks[0]["subtasks"]
         assert subs[0]["status"] == "completed"
 
     @staticmethod
     def _is_parent_complete(state, parent_id: str) -> bool:
-        parent = next((pt for pt in state.project_tasks if pt.get("id") == parent_id), None)
+        parent = next((pt for pt in state.implement.project_tasks if pt.get("id") == parent_id), None)
         subs = parent.get("subtasks", []) if parent else []
         return bool(subs) and all(
             (s.get("status") == "completed" if isinstance(s, dict) else False) for s in subs
         )
 
     def test_is_parent_complete(self, state):
-        state.set_project_tasks([
+        state.implement.set_project_tasks([
             {"id": "T-001", "title": "Build login", "status": "in_progress", "subtasks": [
                 {"task_id": "ct-1", "subject": "Write form", "status": "completed"},
                 {"task_id": "ct-2", "subject": "Add validation", "status": "completed"},
@@ -56,7 +56,7 @@ class TestSubtaskDictStructure:
         assert self._is_parent_complete(state, "T-001") is True
 
     def test_is_parent_not_complete(self, state):
-        state.set_project_tasks([
+        state.implement.set_project_tasks([
             {"id": "T-001", "title": "Build login", "status": "in_progress", "subtasks": [
                 {"task_id": "ct-1", "subject": "Write form", "status": "completed"},
                 {"task_id": "ct-2", "subject": "Add validation", "status": "in_progress"},
@@ -65,20 +65,20 @@ class TestSubtaskDictStructure:
         assert self._is_parent_complete(state, "T-001") is False
 
     def test_is_parent_no_subtasks_not_complete(self, state):
-        state.set_project_tasks([
+        state.implement.set_project_tasks([
             {"id": "T-001", "title": "Build login", "status": "in_progress", "subtasks": []},
         ])
         assert self._is_parent_complete(state, "T-001") is False
 
     def test_set_project_task_completed(self, state):
-        state.set_project_tasks([
+        state.implement.set_project_tasks([
             {"id": "T-001", "title": "Build login", "status": "in_progress", "subtasks": []},
         ])
-        state.set_project_task_completed("T-001")
-        assert state.project_tasks[0]["status"] == "completed"
+        state.implement.set_project_task_completed("T-001")
+        assert state.implement.project_tasks[0]["status"] == "completed"
 
     def test_get_parent_for_subtask(self, state):
-        state.set_project_tasks([
+        state.implement.set_project_tasks([
             {"id": "T-001", "title": "Build login", "status": "in_progress", "subtasks": [
                 {"task_id": "ct-1", "subject": "Write form", "status": "in_progress"},
             ]},
@@ -86,17 +86,17 @@ class TestSubtaskDictStructure:
                 {"task_id": "ct-2", "subject": "Create tables", "status": "in_progress"},
             ]},
         ])
-        assert state.get_parent_for_subtask("ct-1") == "T-001"
-        assert state.get_parent_for_subtask("ct-2") == "T-002"
-        assert state.get_parent_for_subtask("ct-999") is None
+        assert state.implement.get_parent_for_subtask("ct-1") == "T-001"
+        assert state.implement.get_parent_for_subtask("ct-2") == "T-002"
+        assert state.implement.get_parent_for_subtask("ct-999") is None
 
     def test_add_subtask_dedup_by_task_id(self, state):
-        state.set_project_tasks([
+        state.implement.set_project_tasks([
             {"id": "T-001", "title": "Build login", "status": "in_progress", "subtasks": []},
         ])
-        state.add_subtask("T-001", {"task_id": "ct-1", "subject": "Write form", "status": "in_progress"})
-        state.add_subtask("T-001", {"task_id": "ct-1", "subject": "Write form", "status": "in_progress"})
-        assert len(state.project_tasks[0]["subtasks"]) == 1
+        state.implement.add_subtask("T-001", {"task_id": "ct-1", "subject": "Write form", "status": "in_progress"})
+        state.implement.add_subtask("T-001", {"task_id": "ct-1", "subject": "Write form", "status": "in_progress"})
+        assert len(state.implement.project_tasks[0]["subtasks"]) == 1
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -109,7 +109,7 @@ class TestTaskCreateGuard:
         from guardrails import TOOL_GUARDS
         state.set("workflow_type", "implement")
         state.add_phase("create-tasks")
-        state.set_project_tasks([
+        state.implement.set_project_tasks([
             {"id": "T-001", "title": "Build login", "status": "in_progress", "subtasks": []},
         ])
         hook = make_hook_input("TaskCreate", {
@@ -127,7 +127,7 @@ class TestTaskCreateGuard:
         from guardrails import TOOL_GUARDS
         state.set("workflow_type", "implement")
         state.add_phase("create-tasks")
-        state.set_project_tasks([
+        state.implement.set_project_tasks([
             {"id": "T-001", "title": "Build login", "status": "in_progress", "subtasks": []},
         ])
         hook = make_hook_input("TaskCreate", {
@@ -144,7 +144,7 @@ class TestTaskCreateGuard:
         from guardrails import TOOL_GUARDS
         state.set("workflow_type", "implement")
         state.add_phase("create-tasks")
-        state.set_project_tasks([
+        state.implement.set_project_tasks([
             {"id": "T-001", "title": "Build login", "status": "in_progress", "subtasks": []},
         ])
         hook = make_hook_input("TaskCreate", {
@@ -161,7 +161,7 @@ class TestTaskCreateGuard:
         from guardrails import TOOL_GUARDS
         state.set("workflow_type", "implement")
         state.add_phase("create-tasks")
-        state.set_project_tasks([
+        state.implement.set_project_tasks([
             {"id": "T-001", "title": "Build login", "status": "in_progress", "subtasks": []},
         ])
         hook = make_hook_input("TaskCreate", {

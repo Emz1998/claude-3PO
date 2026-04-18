@@ -66,7 +66,7 @@ class TestAutoTransitionImplement:
         state.set("workflow_type", "implement")
         state.set("tdd", True)
         state.add_phase("create-tasks")
-        state.set_project_tasks([
+        state.implement.set_project_tasks([
             {"id": "T-001", "title": "Task", "subtasks": ["Sub"]},
         ])
         resolve(config, state)
@@ -86,7 +86,7 @@ class TestAutoTransitionImplement:
         state.set("workflow_type", "implement")
         state.set("tdd", False)
         state.add_phase("create-tasks")
-        state.set_project_tasks([
+        state.implement.set_project_tasks([
             {"id": "T-001", "title": "Task", "subtasks": ["Sub"]},
         ])
         resolve(config, state)

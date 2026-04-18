@@ -8,7 +8,7 @@ Flow:
        or the workflow isn't ``implement`` (only ``implement`` tracks
        parent/child task relationships).
     2. Look up the parent project task via
-       ``state.get_parent_for_subtask(task_id)``. No parent → exit; this task
+       ``state.implement.get_parent_for_subtask(task_id)``. No parent → exit; this task
        isn't part of a tracked project breakdown.
     3. Mark the child subtask completed in state.
     4. If every sibling subtask is now completed, mark the parent completed and
@@ -87,21 +87,21 @@ def main() -> None:
         sys.exit(0)
 
     # Find parent project task
-    parent_id = state.get_parent_for_subtask(task_id)
+    parent_id = state.implement.get_parent_for_subtask(task_id)
     if not parent_id:
         sys.exit(0)
 
     # Mark child as completed
-    state.set_subtask_completed(parent_id, task_id)
+    state.implement.set_subtask_completed(parent_id, task_id)
 
     # Check if all siblings are done → complete parent
-    parent = next((pt for pt in state.project_tasks if pt.get("id") == parent_id), None)
+    parent = next((pt for pt in state.implement.project_tasks if pt.get("id") == parent_id), None)
     subs = parent.get("subtasks", []) if parent else []
     all_done = subs and all(
         (s.get("status") == "completed" if isinstance(s, dict) else False) for s in subs
     )
     if all_done:
-        state.set_project_task_completed(parent_id)
+        state.implement.set_project_task_completed(parent_id)
         _update_project_task_status(parent_id, "Done")
 
     sys.exit(0)

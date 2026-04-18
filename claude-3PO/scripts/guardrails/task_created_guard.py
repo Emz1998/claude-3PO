@@ -167,7 +167,7 @@ class TaskCreatedGuard:
         Example:
             >>> message = guard._validate_implement_task("task-1", "Add login")  # doctest: +SKIP
         """
-        project_tasks = self.state.project_tasks
+        project_tasks = self.state.implement.project_tasks
         if not project_tasks:
             raise ValueError(
                 "No project tasks found in state. "

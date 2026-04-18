@@ -441,37 +441,37 @@ class TestProjectTasks:
             {"id": "T-001", "title": "Build login", "subtasks": []},
             {"id": "T-002", "title": "Create schema", "subtasks": []},
         ]
-        state.set_project_tasks(tasks)
-        assert len(state.project_tasks) == 2
-        assert state.project_tasks[0]["id"] == "T-001"
+        state.implement.set_project_tasks(tasks)
+        assert len(state.implement.project_tasks) == 2
+        assert state.implement.project_tasks[0]["id"] == "T-001"
 
     def test_add_subtask(self, state):
         tasks = [{"id": "T-001", "title": "Build login", "subtasks": []}]
-        state.set_project_tasks(tasks)
-        state.add_subtask("T-001", "Implement login form")
-        assert "Implement login form" in state.project_tasks[0]["subtasks"]
+        state.implement.set_project_tasks(tasks)
+        state.implement.add_subtask("T-001", "Implement login form")
+        assert "Implement login form" in state.implement.project_tasks[0]["subtasks"]
 
     def test_add_subtask_dedup(self, state):
         tasks = [{"id": "T-001", "title": "Build login", "subtasks": []}]
-        state.set_project_tasks(tasks)
-        state.add_subtask("T-001", "Implement login form")
-        state.add_subtask("T-001", "Implement login form")
-        assert state.project_tasks[0]["subtasks"].count("Implement login form") == 1
+        state.implement.set_project_tasks(tasks)
+        state.implement.add_subtask("T-001", "Implement login form")
+        state.implement.add_subtask("T-001", "Implement login form")
+        assert state.implement.project_tasks[0]["subtasks"].count("Implement login form") == 1
 
     def test_subtask_tracking_lists(self, state):
         tasks = [
             {"id": "T-001", "title": "Build login", "subtasks": []},
             {"id": "T-002", "title": "Create schema", "subtasks": []},
         ]
-        state.set_project_tasks(tasks)
-        assert len(state.project_tasks[0].get("subtasks", [])) == 0
+        state.implement.set_project_tasks(tasks)
+        assert len(state.implement.project_tasks[0].get("subtasks", [])) == 0
 
-        state.add_subtask("T-001", "Sub 1")
-        assert len(state.project_tasks[0].get("subtasks", [])) == 1
-        assert len(state.project_tasks[1].get("subtasks", [])) == 0
+        state.implement.add_subtask("T-001", "Sub 1")
+        assert len(state.implement.project_tasks[0].get("subtasks", [])) == 1
+        assert len(state.implement.project_tasks[1].get("subtasks", [])) == 0
 
-        state.add_subtask("T-002", "Sub 2")
-        assert len(state.project_tasks[1].get("subtasks", [])) == 1
+        state.implement.add_subtask("T-002", "Sub 2")
+        assert len(state.implement.project_tasks[1].get("subtasks", [])) == 1
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -481,11 +481,11 @@ class TestProjectTasks:
 
 class TestPlanFilesToModify:
     def test_set_plan_files_to_modify(self, state):
-        state.set_plan_files_to_modify(["src/app.py", "src/utils.py"])
-        assert state.plan_files_to_modify == ["src/app.py", "src/utils.py"]
+        state.implement.set_plan_files_to_modify(["src/app.py", "src/utils.py"])
+        assert state.implement.plan_files_to_modify == ["src/app.py", "src/utils.py"]
 
     def test_default_empty(self, state):
-        assert state.plan_files_to_modify == []
+        assert state.implement.plan_files_to_modify == []
 
 
 class TestAgentRejectionCounter:
