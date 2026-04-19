@@ -14,7 +14,7 @@ from lib.extractors import (
     extract_section_map,
     require_section,
 )
-from lib.scoring import scores_valid, verdict_valid
+from lib.validators import scores_valid, verdict_valid
 from lib.state_store import StateStore
 from config import Config
 
@@ -34,7 +34,7 @@ class AgentReportGuard:
       ``tests-review`` phases).
     - ``self.errors`` — accumulated structural-validation errors (specs phases),
       so dispatchers can render rich rejection messages via
-      :func:`lib.specs_validation.format_rejection_message`.
+      :func:`lib.validators.format_rejection_message`.
 
     Phase classes:
 
@@ -161,9 +161,9 @@ class AgentReportGuard:
         """
         Validate an architecture / backlog report against template-derived schemas.
 
-        Errors from ``lib.specs_validation`` are stored on ``self.errors`` so
+        Errors from ``lib.validators`` are stored on ``self.errors`` so
         dispatchers can build a rich rejection message via
-        :func:`lib.specs_validation.format_rejection_message`.
+        :func:`lib.validators.format_rejection_message`.
 
         Raises:
             ValueError: With the first validation error as its message; the
@@ -175,9 +175,9 @@ class AgentReportGuard:
         SideEffect:
             On failure, sets ``self.errors`` to the full list of validator errors.
         """
-        # Deferred import: specs_validation pulls in utils.validator which
+        # Deferred import: validators pulls in utils.validator which
         # transitively imports heavier modules the hot path shouldn't pay for.
-        from lib.specs_validation import (
+        from lib.validators import (
             validate_architecture_content,
             validate_backlog_content,
         )

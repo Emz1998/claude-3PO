@@ -5,7 +5,7 @@ only ``main()``. The clarify-phase resume path lives here because it's the
 only branch the dispatcher triggers before handing control to Recorder.
 """
 
-from lib import clarity_check
+from lib import subprocess_agents
 from lib.state_store import StateStore
 
 
@@ -69,7 +69,7 @@ def handle_clarify_resume(hook_input: dict, state: StateStore) -> None:
     if not sid:
         return
     qa = build_qa_payload(hook_input)
-    verdict = clarity_check.run_resume(sid, qa)
+    verdict = subprocess_agents.run_resume(sid, qa)
     state.build.bump_clarify_iteration()
     if verdict == "clear":
         state.set_phase_completed("clarify")

@@ -29,8 +29,8 @@ SCRIPTS_DIR = Path(__file__).resolve().parent.parent
 
 from constants.paths import COMMIT_BATCH_PATH, STALE_THRESHOLD_MINUTES
 from lib.hook import Hook
-from lib.file_manager import load_file, save_file
-from lib.shell import run_git, invoke_headless_agent
+from lib.json_store import load_file, save_file
+from lib.subprocess_agents import run_git, invoke_headless_agent
 
 # Patterns to exclude from auto-commits
 EXCLUDE_PATTERNS = [
@@ -54,7 +54,7 @@ def load_ledger(ledger_path: Path) -> dict:
 
     A missing or empty file yields an empty ledger (``{"batches": []}``)
     rather than raising — this hook runs async and must never crash the
-    main session. A ``ValueError`` from the file_manager (e.g. malformed
+    main session. A ``ValueError`` from json_store (e.g. malformed
     JSON) is treated the same as missing: start fresh rather than block
     every future commit on the broken file.
 

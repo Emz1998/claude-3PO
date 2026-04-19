@@ -10,18 +10,177 @@ Usage:
     python3 initializer.py build abc-123 --tdd build a login form
 """
 
+import re
+import shutil
 import sys
+from datetime import datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from lib.parser import parse_skip, parse_story_id, parse_instructions
-from lib.archiver import archive_plan
+from constants import STORY_ID_PATTERN
 from lib.state_store import StateStore
-from lib import clarity_check
+from lib import subprocess_agents
 from config import Config
 
 STATE_PATH = Path(__file__).resolve().parent.parent / "state.json"
+
+
+# ---------------------------------------------------------------------------
+# /build arg + frontmatter parsers (formerly lib/parser.py)
+# ---------------------------------------------------------------------------
+
+
+def parse_frontmatter(content: str) -> dict[str, str]:
+    """
+    Extract YAML frontmatter key-value pairs from a markdown string.
+
+    Only handles the simple ``key: value`` shape — nested YAML, lists, or
+    multi-line values are not supported because the workflow frontmatter
+    schema is intentionally flat. Missing or malformed frontmatter returns
+    ``{}`` so callers can blindly ``.get(...)`` without exception handling.
+
+    Args:
+        content (str): Markdown text potentially starting with a ``---`` block.
+
+    Returns:
+        dict[str, str]: Frontmatter keys → values; empty dict if absent.
+
+    Example:
+        >>> parse_frontmatter("---\\nsession_id: abc\\n---\\n# Title")
+        {'session_id': 'abc'}
+    """
+    if not content.startswith("---"):
+        return {}
+    parts = content.split("---", 2)
+    if len(parts) < 3:
+        return {}
+    fm = {}
+    for line in parts[1].strip().splitlines():
+        if ":" in line:
+            key, val = line.split(":", 1)
+            fm[key.strip()] = val.strip()
+    return fm
+
+
+def parse_skip(args: str) -> list[str]:
+    """
+    Translate ``--skip-*`` flags in a ``/build`` arg string into phase names.
+
+    ``--skip-all`` is shorthand for ``--skip-explore`` and ``--skip-research``
+    together; ``--skip-vision`` and ``--skip-clarify`` stand alone. Returns
+    the list rather than a set because downstream code occasionally cares
+    about insertion order.
+
+    Args:
+        args (str): Raw arg portion of a ``/build`` invocation.
+
+    Returns:
+        list[str]: Subset of ``["clarify", "explore", "research", "vision"]``.
+
+    Example:
+        >>> parse_skip("--skip-all --tdd")
+        ['explore', 'research']
+        >>> parse_skip("--skip-clarify build login")
+        ['clarify']
+    """
+    skip: list[str] = []
+    if "--skip-clarify" in args:
+        skip.append("clarify")
+    if "--skip-explore" in args or "--skip-all" in args:
+        skip.append("explore")
+    if "--skip-research" in args or "--skip-all" in args:
+        skip.append("research")
+    if "--skip-vision" in args:
+        skip.append("vision")
+    return skip
+
+
+def parse_story_id(args: str) -> str | None:
+    """
+    Pull the first story ID (e.g. ``US-001``) from a ``/build`` arg string.
+
+    Args:
+        args (str): Raw arg portion of a ``/build`` invocation.
+
+    Returns:
+        str | None: Matched story ID, or ``None`` if none is present.
+
+    Example:
+        >>> parse_story_id("US-001 add login")
+        'US-001'
+    """
+    match = re.search(STORY_ID_PATTERN, args)
+    return match.group(1) if match else None
+
+
+def parse_instructions(args: str) -> str:
+    """
+    Strip flags and story IDs from a ``/build`` arg string, returning the prose.
+
+    The whitelist of recognized flags is hard-coded here (rather than imported
+    from a constant) so adding a new ``/build`` flag must be a deliberate edit
+    in one obvious place.
+
+    Args:
+        args (str): Raw arg portion of a ``/build`` invocation.
+
+    Returns:
+        str: Cleaned instruction text with surrounding whitespace stripped.
+
+    Example:
+        >>> parse_instructions("US-001 --tdd add login")
+        'add login'
+    """
+    flags = [
+        "--skip-clarify", "--skip-explore", "--skip-research", "--skip-vision", "--skip-all",
+        "--tdd", "--reset", "--takeover", "--test",
+    ]
+    text = re.sub(STORY_ID_PATTERN, "", args)
+    for flag in flags:
+        text = text.replace(flag, "")
+    return text.strip()
+
+
+# ---------------------------------------------------------------------------
+# Plan archival (formerly lib/archiver.py)
+# ---------------------------------------------------------------------------
+
+
+def archive_plan(config: Config) -> None:
+    """
+    Archive the existing ``latest-plan.md`` before starting a new workflow.
+
+    The archive filename embeds today's date and the *previous* workflow's
+    ``session_id`` (read from the plan's frontmatter) so each archived plan is
+    traceable back to the run that produced it. If the plan file does not exist
+    the call is a no-op — first-ever runs have nothing to archive.
+
+    Args:
+        config (Config): Project config providing ``plan_file_path`` and
+            ``plan_archive_dir``.
+
+    Returns:
+        None: Side-effects only — copies the file and deletes the original.
+
+    Example:
+        >>> archive_plan(Config())  # doctest: +SKIP
+    """
+    plan_path = Path(config.plan_file_path)
+    if not plan_path.exists():
+        return
+
+    content = plan_path.read_text()
+    fm = parse_frontmatter(content)
+    session_id = fm.get("session_id", "unknown")
+    date = datetime.now().strftime("%Y-%m-%d")
+
+    archive_dir = Path(config.plan_archive_dir)
+    archive_dir.mkdir(parents=True, exist_ok=True)
+
+    archive_name = f"plan_{date}_{session_id}.md"
+    shutil.copy2(plan_path, archive_dir / archive_name)
+    plan_path.unlink()
 
 
 # ---------------------------------------------------------------------------
@@ -237,10 +396,10 @@ def _seed_clarify_phase(store: StateStore, args: str) -> None:
     """Add the ``clarify`` phase to fresh build state, gated by headless review.
 
     Skips the headless call entirely when ``--skip-clarify`` is in args
-    (clarify gets ``status="skipped"``). Otherwise runs ``clarity_check
-    .run_initial`` against the user's prompt and either marks clarify
-    skipped (verdict=clear) or in-progress with the captured headless
-    session id (verdict=vague).
+    (clarify gets ``status="skipped"``). Otherwise runs
+    ``subprocess_agents.run_initial`` against the user's prompt and either
+    marks clarify skipped (verdict=clear) or in-progress with the captured
+    headless session id (verdict=vague).
 
     Args:
         store (StateStore): The freshly-initialized state store.
@@ -254,7 +413,7 @@ def _seed_clarify_phase(store: StateStore, args: str) -> None:
         _add_clarify(store, status="skipped")
         return
     prompt = parse_instructions(args)
-    sid, verdict = clarity_check.run_initial(prompt)
+    sid, verdict = subprocess_agents.run_initial(prompt)
     if verdict == "clear":
         _add_clarify(store, status="skipped")
     else:

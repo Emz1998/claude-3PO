@@ -12,7 +12,7 @@ from lib.extractors import (
     extract_scores,
     extract_verdict,
 )
-from lib.scoring import scores_valid, verdict_valid
+from lib.validators import scores_valid, verdict_valid
 
 
 def make_hook_input(tool_name: str = "", tool_input: dict | None = None, **extra) -> dict:

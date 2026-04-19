@@ -35,7 +35,7 @@ def _clarify_phase(store: StateStore) -> dict | None:
 
 
 class TestInitializerClarifyKickoff:
-    @patch("utils.initializer.clarity_check.run_initial")
+    @patch("utils.initializer.subprocess_agents.run_initial")
     def test_clear_verdict_marks_clarify_skipped(self, mock_run, tmp_path):
         mock_run.return_value = ("sess_x", "clear")
         state_path, store = _new_state(tmp_path)
@@ -47,7 +47,7 @@ class TestInitializerClarifyKickoff:
         assert "headless_session_id" not in phase
         assert "iteration_count" not in phase
 
-    @patch("utils.initializer.clarity_check.run_initial")
+    @patch("utils.initializer.subprocess_agents.run_initial")
     def test_vague_verdict_seeds_in_progress_with_session(self, mock_run, tmp_path):
         mock_run.return_value = ("sess_x", "vague")
         state_path, store = _new_state(tmp_path)
@@ -59,7 +59,7 @@ class TestInitializerClarifyKickoff:
         assert phase["headless_session_id"] == "sess_x"
         assert phase["iteration_count"] == 0
 
-    @patch("utils.initializer.clarity_check.run_initial")
+    @patch("utils.initializer.subprocess_agents.run_initial")
     def test_skip_clarify_flag_bypasses_check(self, mock_run, tmp_path):
         state_path, store = _new_state(tmp_path)
         initialize("build", SESSION_ID, "--skip-clarify anything", state_path)
@@ -69,7 +69,7 @@ class TestInitializerClarifyKickoff:
         assert phase is not None
         assert phase["status"] == "skipped"
 
-    @patch("utils.initializer.clarity_check.run_initial")
+    @patch("utils.initializer.subprocess_agents.run_initial")
     def test_implement_workflow_does_not_run_clarity(self, mock_run, tmp_path):
         state_path, store = _new_state(tmp_path)
         initialize("implement", SESSION_ID, "SK-001 something", state_path)
@@ -89,12 +89,12 @@ class TestClarifyResumeOnAskUserQuestion:
 
     def _seed_in_progress(self, tmp_path):
         state_path, store = _new_state(tmp_path)
-        with patch("utils.initializer.clarity_check.run_initial") as mr:
+        with patch("utils.initializer.subprocess_agents.run_initial") as mr:
             mr.return_value = ("sess_x", "vague")
             initialize("build", SESSION_ID, "do the thing", state_path)
         return state_path, store
 
-    @patch("utils.hooks.post_tool_use.clarity_check.run_resume")
+    @patch("utils.hooks.post_tool_use.subprocess_agents.run_resume")
     def test_resume_increments_iteration(self, mock_resume, tmp_path):
         from utils.hooks import post_tool_use
 
@@ -113,7 +113,7 @@ class TestClarifyResumeOnAskUserQuestion:
         assert phase["iteration_count"] == 1
         assert phase["status"] == "in_progress"
 
-    @patch("utils.hooks.post_tool_use.clarity_check.run_resume")
+    @patch("utils.hooks.post_tool_use.subprocess_agents.run_resume")
     def test_resume_clear_completes_phase(self, mock_resume, tmp_path):
         from utils.hooks import post_tool_use
 
@@ -131,7 +131,7 @@ class TestClarifyResumeOnAskUserQuestion:
         phase = _clarify_phase(store)
         assert phase["status"] == "completed"
 
-    @patch("utils.hooks.post_tool_use.clarity_check.run_resume")
+    @patch("utils.hooks.post_tool_use.subprocess_agents.run_resume")
     def test_resume_uses_persisted_session_id(self, mock_resume, tmp_path):
         from utils.hooks import post_tool_use
 
@@ -149,7 +149,7 @@ class TestClarifyResumeOnAskUserQuestion:
         called_session = mock_resume.call_args.args[0]
         assert called_session == "sess_x"
 
-    @patch("utils.hooks.post_tool_use.clarity_check.run_resume")
+    @patch("utils.hooks.post_tool_use.subprocess_agents.run_resume")
     def test_no_resume_when_not_in_clarify(self, mock_resume, tmp_path):
         from utils.hooks import post_tool_use
 

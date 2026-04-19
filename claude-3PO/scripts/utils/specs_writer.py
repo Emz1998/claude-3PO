@@ -2,7 +2,7 @@
 
 Validates content before writing. Used by AgentReportGuard for
 auto-writing architect and backlog outputs. The bottom of this module
-re-exports two ``validate_*`` helpers from :mod:`lib.specs_validation`
+re-exports two ``validate_*`` helpers from :mod:`lib.validators`
 for back-compat — older guards imported them from here, and silently
 breaking those import paths would be an upgrade hazard.
 """
@@ -82,7 +82,7 @@ def write_backlog(content: str, md_path: str, json_path: str) -> None:
     )
 
 
-from lib.specs_validation import (  # noqa: F401  (re-exports for back-compat)
+from lib.validators import (  # noqa: F401  (re-exports for back-compat)
     validate_architecture_content,
     validate_backlog_content,
 )

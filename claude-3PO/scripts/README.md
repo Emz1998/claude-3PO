@@ -137,22 +137,17 @@ Specs grammar (shared by `utils/validator.py` — these are invariants of the ma
 
 ## Library (`lib/`)
 
-| Module           | Role                                                                                                                  |
-| ---------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `hook.py`        | `Hook` — stdin reader and stdout emitters (`block`, `advanced_block`, `system_message`, `discontinue`, `send_context`). |
-| `state_store/`   | Session-scoped JSONL state with filelock; `BaseState` + per-workflow slices (`build`/`implement`/`specs`) composed via `StateStore` (see above). |
-| `extractors.py`  | Pure parsers: skill name, agent name, scores, verdicts, markdown sections/tables/bullets, plan sections, contract names, build instructions. |
-| `parser.py`      | CLI-arg parsers for `initializer.py` and frontmatter reader.                                                            |
-| `archiver.py`    | Moves `latest-plan.md` to `archive/` at workflow start.                                                                  |
-| `clarity_check.py` | Headless-Claude wrapper used by the build initializer + post_tool_use hook to evaluate prompt clarity (`run_initial`, `run_resume`). |
-| `injector.py`    | Writes YAML frontmatter (session_id, workflow_type, story_id, date) into the plan after `Write`.                        |
-| `file_manager.py`| Locked JSON/JSONL helpers used by GitHub-project and tests. Also backs the `auto_commit` ledger.                        |
-| `violations.py`  | Append-only markdown log of every block (`logs/violations.md`). Fills in prompt summaries async.                        |
-| `paths.py`       | Pure path helpers (`basenames`, `path_matches`) shared by guards, recorder, and resolver.                                |
-| `shell.py`       | `run_git()`, `invoke_claude()`, and `invoke_codex()` subprocess wrappers; one place to mock for tests.                   |
-| `scoring.py`     | `scores_valid()` and `verdict_valid()` — pure validators reused by `AgentReportGuard` and `Recorder`.                    |
-| `parallel_check.py` | `is_parallel_explore_research()` predicate shared by the recorder, resolver, and guard.                              |
-| `specs_validation.py` | `validate_architecture_content` / `validate_backlog_content` — pure validators used by `AgentReportGuard`.          |
+| Module               | Role                                                                                                                      |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `hook.py`            | `Hook` — stdin reader and stdout emitters (`block`, `advanced_block`, `system_message`, `discontinue`, `send_context`).   |
+| `state_store/`       | Session-scoped JSONL state with filelock; `BaseState` + per-workflow slices (`build`/`implement`/`specs`) composed via `StateStore`. |
+| `extractors/`        | Package of pure parsers split by domain — `hooks` (skill/agent names), `review` (scores/verdicts), `markdown` (sections/tables/bullets/bold meta), `plans` (plan sections), `commands` (`/build` prompt, `gh pr checks`). Top-level `__init__` re-exports every public name. |
+| `validators.py`      | Pure validators: `scores_valid` / `verdict_valid` (reused by `AgentReportGuard` and the recorder) plus `validate_architecture_content` / `validate_backlog_content` / `format_rejection_message` for specs reports. |
+| `subprocess_agents.py` | Subprocess wrappers: `run_git`, `invoke_headless_agent` (claude/codex), and the clarity-review helpers (`run_initial`, `run_resume`) used by the build initializer and post_tool_use hook. |
+| `json_store.py`      | Locked JSON/JSONL helpers used by GitHub-project and tests. Also backs the `auto_commit` ledger.                          |
+| `violations.py`      | Append-only markdown log of every block (`logs/violations.md`). Fills in prompt summaries async.                          |
+| `paths.py`           | Pure path helpers (`basenames`, `path_matches`) shared by guards, recorder, and resolver.                                 |
+| `injector.py`        | Writes YAML frontmatter (session_id, workflow_type, story_id, date) into the plan after `Write`.                          |
 
 ### Violation `Phase` column — how it's derived
 
@@ -172,8 +167,8 @@ Specs grammar (shared by `utils/validator.py` — these are invariants of the ma
 | `validator.py`        | `SpecsValidator` — validates architecture / constitution / product-vision / backlog (md+json) and converts backlog markdown to JSON. Schemas come from `utils/template_schema.TemplateSchema` (parsed directly from `../templates/*.md`); grammar constants live in `constants.SPECS_*`. |
 | `template_schema.py`  | `TemplateSchema` — parses a spec template markdown file into a structural schema (metadata fields, enums, required sections/subsections/tables, backlog priorities + item types). The template file is the single source of truth; `SpecsValidator` caches one schema per doc type. |
 | `specs_writer.py`     | Thin wrapper over `SpecsValidator` that writes validated architect/backlog agent reports to `projects/docs/`. |
-| `auto_commit.py`      | Async. Claims dirty files per task-batch via `commit_batch.json`, invokes headless Claude for a message, commits. Ledger I/O routes through `lib/file_manager.py`; subprocess via `lib/shell.py`. |
-| `summarize_prompt.py` | Async. Summarizes `/build` instructions via headless Claude (`lib/shell.invoke_claude`) and writes `prompt_summary` to state.              |
+| `auto_commit.py`      | Async. Claims dirty files per task-batch via `commit_batch.json`, invokes headless Claude for a message, commits. Ledger I/O routes through `lib/json_store.py`; subprocess via `lib/subprocess_agents.py`. |
+| `summarize_prompt.py` | Async. Summarizes `/build` instructions via headless Claude (`lib/subprocess_agents.invoke_headless_agent`) and writes `prompt_summary` to state.              |
 
 ## Specs templates (`../templates/`)
 
@@ -189,14 +184,14 @@ Plain markdown + sample JSON consumed by the specs workflow commands. All specs 
 | `visionize-questions.md`   | `commands/vision.md` discovery questions   |
 | `plan.md`                  | build workflow plan template                |
 | `implement-plan.md`        | implement workflow plan template            |
-| `clarity-review.md`        | `lib/clarity_check.py` (headless-Claude prompt) |
+| `clarity-review.md`        | `lib/subprocess_agents.py` clarity helpers (headless-Claude prompt) |
 
 ## Adjacent packages
 
 - **`../project_manager/`** — local-first project manager (`cli.py` → `ProjectManager`) backed by `issues/{stories,backlog,metadata}.json`. Used by the implement workflow to load project tasks, record child subtasks, and mark tasks `Done` on completion. CLI subcommands: `list`, `view`, `summary`, `progress`, `update`, `add-task`, `add-story`, `sync`, `unblocked`.
 - **`headless_claude/claude.py`** — thin wrapper around `subprocess.run(["claude", "-p", …])` used by the async dispatchers to generate summaries and commit messages without blocking the live session.
-- **`headless/codex/`** — headless-Codex helpers that delegate the subprocess call to `lib/shell.invoke_codex()`. `codex_plan_review.py` loads the prompt template from `headless/prompts/codex/plan_review.md`, substitutes the build-phase plan body, and asks Codex to return a scored plan-review report (Confidence + Quality + `Pass`/`Fail`) matching `AgentReportGuard`'s plan-review format. Fail-open: returns `None` if the plan file or `codex` binary is missing.
-- **`headless/claude/`** — headless-Claude counterpart that delegates to `lib/shell.invoke_claude()`. `claude_plan_review.py` uses the same orchestration as the Codex version but loads its prompt from `headless/prompts/claude/plan_review.md`, letting the build phase fan out a second plan-review opinion without coupling to Codex. Fail-open on missing plan/binary.
+- **`headless/codex/`** — headless-Codex helpers that delegate the subprocess call to `lib/subprocess_agents.invoke_headless_agent("codex", ...)`. `codex_plan_review.py` loads the prompt template from `headless/prompts/codex/plan_review.md`, substitutes the build-phase plan body, and asks Codex to return a scored plan-review report (Confidence + Quality + `Pass`/`Fail`) matching `AgentReportGuard`'s plan-review format. Fail-open: returns `None` if the plan file or `codex` binary is missing.
+- **`headless/claude/`** — headless-Claude counterpart that delegates to `lib/subprocess_agents.invoke_headless_agent("claude", ...)`. `claude_plan_review.py` uses the same orchestration as the Codex version but loads its prompt from `headless/prompts/claude/plan_review.md`, letting the build phase fan out a second plan-review opinion without coupling to Codex. Fail-open on missing plan/binary.
 - **`tests/`** — pytest suite covering dispatchers, guardrails, recorder, resolver, extractors, state store, initializer, auto-commit, specs flow, task lifecycle, and more.
 
 ## Data flow summary

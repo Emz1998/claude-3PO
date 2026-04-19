@@ -9,8 +9,7 @@ from handlers.guardrails.agent_report_guard import AgentReportGuard
 from constants.phases import REVIEW_PHASES
 from lib.extractors import extract_scores, extract_verdict
 from lib.hook import Hook
-from lib.scoring import scores_valid, verdict_valid
-from lib.specs_validation import format_rejection_message
+from lib.validators import scores_valid, verdict_valid, format_rejection_message
 from lib.state_store import StateStore
 from lib.violations import log_violation
 from utils.recorder import Recorder

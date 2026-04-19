@@ -7,7 +7,7 @@ from unittest.mock import patch, MagicMock
 
 from handlers.guardrails import STOP_GUARDS
 from handlers.guardrails.agent_report_guard import AgentReportGuard
-from lib.specs_validation import format_rejection_message
+from lib.validators import format_rejection_message
 
 agent_report_guard = STOP_GUARDS["agent_report"]
 

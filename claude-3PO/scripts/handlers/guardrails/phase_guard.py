@@ -10,7 +10,6 @@ from typing import Literal
 
 from lib.state_store import StateStore
 from lib.extractors import extract_skill_name
-from lib.ordering import validate_order
 from models.state import DONE_STATUSES
 from config import Config
 
@@ -72,6 +71,68 @@ class PhaseGuard:
         workflow_type = self.state.get("workflow_type", "build")
         phases = self.config.get_phases(workflow_type)
         return phases if phases else self.config.main_phases
+
+    # ── Ordering (absorbed from former lib/ordering.py) ──────────
+
+    @staticmethod
+    def validate_order(prev: str | None, next_item: str, order: list[str]) -> str:
+        """
+        Enforce strict forward-by-one ordering of items against ``order``.
+
+        Used for both phase ordering (with current-phase as ``prev``) and
+        skill ordering. The first transition (``prev is None``) must hit
+        ``order[0]``; subsequent transitions must advance by exactly one
+        position — equal index means "already entered", lower index means
+        "going backwards", higher than +1 means "skipping items".
+
+        Args:
+            prev (str | None): Previous item, or ``None`` for the first
+                transition.
+            next_item (str): Item being transitioned to.
+            order (list[str]): Reference order.
+
+        Returns:
+            str: Success message describing the allowed transition.
+
+        Raises:
+            ValueError: If the transition violates the ordering invariants.
+
+        Example:
+            >>> PhaseGuard.validate_order(None, "plan", ["plan", "code"])
+            "Allowed to start with 'plan'"
+            >>> PhaseGuard.validate_order("plan", "code", ["plan", "code"])
+            "Phase is allowed to transition to 'code'"
+        """
+        # Next must exist in order before any index math runs.
+        if next_item not in order:
+            raise ValueError(f"Invalid next item '{next_item}'")
+
+        # First transition has no prev — force callers to hit the canonical start.
+        if prev is None:
+            if next_item != order[0]:
+                raise ValueError(f"Must start with '{order[0]}', not '{next_item}'")
+            return f"Allowed to start with '{order[0]}'"
+
+        if prev not in order:
+            raise ValueError(f"Invalid previous item '{prev}'")
+
+        prev_idx = order.index(prev)
+        next_idx = order.index(next_item)
+
+        # Three distinct error messages so the caller can tell whether the user
+        # is re-invoking, going backwards, or skipping ahead.
+        if next_idx == prev_idx:
+            raise ValueError(
+                f"Cannot re-invoke '{prev}'. The phase has already been entered — "
+                f"advance to the next phase, or complete its tasks instead of restarting it."
+            )
+        if next_idx < prev_idx:
+            raise ValueError(f"Cannot go backwards from '{prev}' to '{next_item}'")
+        if next_idx > prev_idx + 1:
+            skipped = order[prev_idx + 1 : next_idx]
+            raise ValueError(f"Must complete {skipped} before '{next_item}'")
+
+        return f"Phase is allowed to transition to '{next_item}'"
 
     # ── Review exhaustion ─────────────────────────────────────────
 
@@ -400,7 +461,7 @@ class PhaseGuard:
 
             # First-phase path: no `current` yet, so ordering check runs with prev=None.
             if not self.current:
-                message = validate_order(None, self.next_phase, self.phases)
+                message = self.validate_order(None, self.next_phase, self.phases)
                 return "allow", message
 
             # Parallel explore+research is allowed: Research launches alongside
@@ -416,7 +477,7 @@ class PhaseGuard:
 
             skill_phases = self.get_skill_phases()
             prev = self.resolve_prev_for_ordering()
-            message = validate_order(prev, self.next_phase, skill_phases)
+            message = self.validate_order(prev, self.next_phase, skill_phases)
             return "allow", message
         except ValueError as e:
             return "block", str(e)

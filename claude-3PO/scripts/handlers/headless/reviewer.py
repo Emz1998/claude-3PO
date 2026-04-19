@@ -2,7 +2,7 @@
 
 Loads the review prompt template from ``prompts/claude/plan_review.md``,
 substitutes the plan body, and delegates the subprocess call to
-:func:`lib.shell.invoke_claude`. Fail-open: a missing plan, missing binary,
+:func:`lib.subprocess_agents.invoke_headless_agent`. Fail-open: a missing plan, missing binary,
 or any subprocess failure returns ``None`` so the caller can treat the claude
 review as an optional second opinion rather than a control-flow gate.
 """
@@ -11,7 +11,7 @@ review as an optional second opinion rather than a control-flow gate.
 from pathlib import Path
 from typing import Literal
 
-from lib.shell import invoke_headless_agent
+from lib.subprocess_agents import invoke_headless_agent
 
 
 def invoke_reviewer(self, agent_name: Literal["claude", "codex"], review_type: Literal["plan", "code", "test"]) -> None:
