@@ -19,7 +19,7 @@ from pathlib import Path
 SCRIPTS_DIR = Path(__file__).resolve().parent.parent
 
 from lib.hook import Hook
-from lib.shell import invoke_claude
+from lib.shell import invoke_headless_agent
 from lib.state_store import StateStore
 from lib.extractors import extract_build_instructions
 from lib.violations import resolve_pending_summaries, VIOLATIONS_PATH
@@ -69,7 +69,7 @@ def summarize(instructions: str) -> str:
         >>> summarize("build a login form")  # doctest: +SKIP
     """
     prompt = _build_summary_prompt(instructions)
-    output = invoke_claude(prompt, timeout=30)
+    output = invoke_headless_agent("claude", prompt, timeout=30)
     return output[:80] if output else _truncate(instructions)
 
 

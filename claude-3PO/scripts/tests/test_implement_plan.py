@@ -2,7 +2,7 @@
 
 import pytest
 from models.state import Agent
-from guardrails import write_guard
+from handlers.guardrails import write_guard
 from lib.extractors import extract_plan_files_to_modify
 from helpers import make_hook_input
 

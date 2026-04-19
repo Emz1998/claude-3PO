@@ -5,8 +5,9 @@ import pytest
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 
-from guardrails import STOP_GUARDS
-from guardrails.agent_report_guard import AgentReportGuard
+from handlers.guardrails import STOP_GUARDS
+from handlers.guardrails.agent_report_guard import AgentReportGuard
+from lib.specs_validation import format_rejection_message
 
 agent_report_guard = STOP_GUARDS["agent_report"]
 
@@ -33,7 +34,7 @@ class TestArchitectPhaseValidation:
         hook = {"last_assistant_message": content}
 
         arch_path = str(tmp_path / "architecture.md")
-        with patch("guardrails.agent_report_guard.Config") as MockConfig:
+        with patch("handlers.guardrails.agent_report_guard.Config") as MockConfig:
             mock_config = MagicMock()
             mock_config.architecture_file_path = arch_path
             decision, msg = AgentReportGuard(
@@ -65,7 +66,7 @@ class TestBacklogPhaseValidation:
 
         md_path = str(tmp_path / "backlog.md")
         json_path = str(tmp_path / "backlog.json")
-        with patch("guardrails.agent_report_guard.Config") as MockConfig:
+        with patch("handlers.guardrails.agent_report_guard.Config") as MockConfig:
             mock_config = MagicMock()
             mock_config.backlog_md_file_path = md_path
             mock_config.backlog_json_file_path = json_path
@@ -134,7 +135,7 @@ class TestFormatRejectionMessage:
     """Rejection stderr must be actionable: phase, attempt count, template path, errors."""
 
     def test_message_includes_phase_and_attempt(self):
-        msg = AgentReportGuard.format_rejection_message(
+        msg = format_rejection_message(
             phase="architect",
             errors=["metadata: missing required field 'Project Name'"],
             attempt=1,
@@ -145,7 +146,7 @@ class TestFormatRejectionMessage:
         assert "Project Name" in msg
 
     def test_message_points_at_architect_template(self):
-        msg = AgentReportGuard.format_rejection_message(
+        msg = format_rejection_message(
             phase="architect",
             errors=["metadata: missing required field 'Project Name'"],
             attempt=2,
@@ -155,7 +156,7 @@ class TestFormatRejectionMessage:
         assert "templates/test/minimal-architecture.md" in msg
 
     def test_message_points_at_backlog_template(self):
-        msg = AgentReportGuard.format_rejection_message(
+        msg = format_rejection_message(
             phase="backlog",
             errors=["stories: no story sections found"],
             attempt=1,
@@ -165,7 +166,7 @@ class TestFormatRejectionMessage:
         assert "templates/test/minimal-backlog.md" in msg
 
     def test_message_lists_all_errors(self):
-        msg = AgentReportGuard.format_rejection_message(
+        msg = format_rejection_message(
             phase="architect",
             errors=["err one", "err two", "err three"],
             attempt=1,
@@ -176,7 +177,7 @@ class TestFormatRejectionMessage:
         assert "err three" in msg
 
     def test_message_includes_course_correct_hint(self):
-        msg = AgentReportGuard.format_rejection_message(
+        msg = format_rejection_message(
             phase="architect",
             errors=["foo"],
             attempt=1,

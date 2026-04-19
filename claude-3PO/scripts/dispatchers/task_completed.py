@@ -18,7 +18,6 @@ Flow:
 Always exits 0 — this hook is purely an observer; it never blocks.
 """
 
-import subprocess
 import sys
 from pathlib import Path
 
@@ -27,35 +26,9 @@ sys.path.insert(0, str(SCRIPTS_DIR))
 
 from lib.hook import Hook
 from lib.state_store import StateStore
+from utils.hooks.task_completed import update_project_task_status
 
 STATE_PATH = SCRIPTS_DIR / "state.jsonl"
-PLUGIN_ROOT = SCRIPTS_DIR.parent
-
-
-def _update_project_task_status(task_id: str, status: str) -> None:
-    """Fire-and-forget call to ``project_manager.cli`` to update task status.
-
-    Best-effort by design: state.jsonl is the source of truth, so any failure
-    here (CLI missing, timeout, OSError) is swallowed silently — the workflow
-    continues with state already correct.
-
-    Args:
-        task_id (str): Project task id to update.
-        status (str): New status string (e.g. ``"Done"``).
-
-    Example:
-        >>> _update_project_task_status("task-42", "Done")  # doctest: +SKIP
-    """
-    try:
-        subprocess.run(
-            [sys.executable, "-m", "project_manager.cli", "update", task_id, "--status", status],
-            cwd=str(PLUGIN_ROOT),
-            capture_output=True,
-            text=True,
-            timeout=15,
-        )
-    except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
-        pass  # Non-critical — state is the source of truth
 
 
 def main() -> None:
@@ -78,7 +51,7 @@ def main() -> None:
     if not state.get("workflow_active"):
         sys.exit(0)
 
-    # Only implement workflow tracks parent/child task relationships
+    # Only implement workflow tracks parent/child task relationships.
     if state.get("workflow_type") != "implement":
         sys.exit(0)
 
@@ -86,15 +59,12 @@ def main() -> None:
     if not task_id:
         sys.exit(0)
 
-    # Find parent project task
     parent_id = state.implement.get_parent_for_subtask(task_id)
     if not parent_id:
         sys.exit(0)
 
-    # Mark child as completed
     state.implement.set_subtask_completed(parent_id, task_id)
 
-    # Check if all siblings are done → complete parent
     parent = next((pt for pt in state.implement.project_tasks if pt.get("id") == parent_id), None)
     subs = parent.get("subtasks", []) if parent else []
     all_done = subs and all(
@@ -102,7 +72,7 @@ def main() -> None:
     )
     if all_done:
         state.implement.set_project_task_completed(parent_id)
-        _update_project_task_status(parent_id, "Done")
+        update_project_task_status(parent_id, "Done")
 
     sys.exit(0)
 

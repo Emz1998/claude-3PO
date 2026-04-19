@@ -12,7 +12,7 @@ The build phase order is:
 
 import pytest
 from models.state import Agent
-from guardrails import phase_guard
+from handlers.guardrails import phase_guard
 from utils.resolver import resolve
 from lib.state_store import StateStore
 

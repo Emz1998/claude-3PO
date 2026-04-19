@@ -1,6 +1,6 @@
 import pytest
 from models.state import Agent
-from guardrails import (
+from handlers.guardrails import (
     phase_guard,
     command_guard,
     write_guard,
@@ -8,7 +8,7 @@ from guardrails import (
     agent_guard,
     webfetch_guard,
 )
-from guardrails.agent_report_guard import AgentReportGuard
+from handlers.guardrails.agent_report_guard import AgentReportGuard
 from helpers import make_hook_input
 
 
@@ -394,101 +394,109 @@ class TestIsAgentReportValid:
         state.add_phase("plan-review")
         hook = {"last_assistant_message": "Confidence: 85\nQuality: 90"}
         guard = AgentReportGuard(hook, config, state)
-        msg = guard._validate_report()
-        assert "scores present" in msg
+        decision, msg = guard.validate()
+        assert decision == "allow"
+        assert "plan-review" in msg
 
     def test_test_review_with_verdict(self, config, state):
         state.add_phase("test-review")
-        hook = {"last_assistant_message": "Pass"}
+        hook = {
+            "last_assistant_message": "## Files to revise\n- test_app.py\n\nPass",
+        }
         guard = AgentReportGuard(hook, config, state)
-        msg = guard._validate_report()
-        assert "verdict present" in msg
+        decision, msg = guard.validate()
+        assert decision == "allow"
+        assert "test-review" in msg
 
     def test_empty_report(self, config, state):
         state.add_phase("plan-review")
         hook = {"last_assistant_message": ""}
         guard = AgentReportGuard(hook, config, state)
-        with pytest.raises(ValueError, match="empty"):
-            guard._validate_report()
+        decision, msg = guard.validate()
+        assert decision == "block"
+        assert "empty" in msg
 
     def test_non_review_phase(self, config, state):
         state.add_phase("explore")
         hook = {"last_assistant_message": "something"}
         guard = AgentReportGuard(hook, config, state)
-        with pytest.raises(ValueError, match="does not require"):
-            guard._validate_report()
+        decision, msg = guard.validate()
+        assert decision == "block"
+        assert "does not require" in msg
 
 
 class TestValidateReviewSections:
+    def _guard(self, state, phase: str, content: str) -> AgentReportGuard:
+        state.add_phase(phase)
+        # config is only consulted for specs phases, so a placeholder is safe here.
+        return AgentReportGuard({"last_assistant_message": content}, None, state)
+
     def test_code_review_fail_requires_files_to_revise(self, state):
-        state.add_phase("code-review")
-        content = "Confidence: 50\nQuality: 50\n\nSome feedback."
+        guard = self._guard(state, "code-review", "Confidence: 50\nQuality: 50\n\nSome feedback.")
         with pytest.raises(ValueError, match="Files to revise"):
-            AgentReportGuard.validate_review_sections(content, "code-review")
+            guard.validate_review_sections()
 
     def test_code_review_fail_requires_tests_to_revise(self, state):
-        state.add_phase("code-review")
         content = (
             "Confidence: 50\nQuality: 50\n\n"
             "## Files to revise\n- src/app.py\n"
         )
+        guard = self._guard(state, "code-review", content)
         with pytest.raises(ValueError, match="Tests to revise"):
-            AgentReportGuard.validate_review_sections(content, "code-review")
+            guard.validate_review_sections()
 
     def test_code_review_with_both_sections(self, state):
-        state.add_phase("code-review")
         content = (
             "Confidence: 50\nQuality: 50\n\n"
             "## Files to revise\n- src/app.py\n\n"
             "## Tests to revise\n- test_app.py\n"
         )
-        files, tests = AgentReportGuard.validate_review_sections(content, "code-review")
-        assert files == ["src/app.py"]
-        assert tests == ["test_app.py"]
+        guard = self._guard(state, "code-review", content)
+        guard.validate_review_sections()
+        assert guard.review_files == ["src/app.py"]
+        assert guard.review_tests == ["test_app.py"]
 
     def test_code_review_empty_files_section_blocked(self, state):
-        state.add_phase("code-review")
         content = (
             "Confidence: 50\nQuality: 50\n\n"
             "## Files to revise\n\n"
             "## Tests to revise\n- test_app.py\n"
         )
+        guard = self._guard(state, "code-review", content)
         with pytest.raises(ValueError, match="Files to revise.*empty"):
-            AgentReportGuard.validate_review_sections(content, "code-review")
+            guard.validate_review_sections()
 
     def test_code_review_empty_tests_section_blocked(self, state):
-        state.add_phase("code-review")
         content = (
             "Confidence: 50\nQuality: 50\n\n"
             "## Files to revise\n- src/app.py\n\n"
             "## Tests to revise\n\n"
         )
+        guard = self._guard(state, "code-review", content)
         with pytest.raises(ValueError, match="Tests to revise.*empty"):
-            AgentReportGuard.validate_review_sections(content, "code-review")
+            guard.validate_review_sections()
 
     def test_test_review_fail_requires_files_to_revise(self, state):
-        state.add_phase("test-review")
-        content = "Some feedback.\nFail"
+        guard = self._guard(state, "test-review", "Some feedback.\nFail")
         with pytest.raises(ValueError, match="Files to revise"):
-            AgentReportGuard.validate_review_sections(content, "test-review")
+            guard.validate_review_sections()
 
     def test_test_review_with_files_section(self, state):
-        state.add_phase("test-review")
         content = (
             "Some feedback.\n\n"
             "## Files to revise\n- test_app.py\n\n"
             "Fail"
         )
-        files, tests = AgentReportGuard.validate_review_sections(content, "test-review")
-        assert files == ["test_app.py"]
-        assert tests == []
+        guard = self._guard(state, "test-review", content)
+        guard.validate_review_sections()
+        assert guard.review_files == ["test_app.py"]
+        assert guard.review_tests == []
 
     def test_plan_review_no_sections_required(self, state):
-        state.add_phase("plan-review")
-        content = "Confidence: 50\nQuality: 50"
-        files, tests = AgentReportGuard.validate_review_sections(content, "plan-review")
-        assert files == []
-        assert tests == []
+        guard = self._guard(state, "plan-review", "Confidence: 50\nQuality: 50")
+        guard.validate_review_sections()
+        assert guard.review_files == []
+        assert guard.review_tests == []
 
 
 # ═══════════════════════════════════════════════════════════════════

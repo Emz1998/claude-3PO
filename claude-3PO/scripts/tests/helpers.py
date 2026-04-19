@@ -46,7 +46,7 @@ def invoke_phase_guard(hook: dict, config, state):
     On Allow for /continue, /plan-approved, /revise-plan: apply state mutations
     inline (no longer through Recorder) + auto-advance via Resolver.
     """
-    from guardrails import phase_guard
+    from handlers.guardrails import phase_guard
     from utils.resolver import Resolver
 
     decision, message = phase_guard(hook, config, state)
@@ -109,7 +109,7 @@ def _apply_specs_allow(state, phase: str, content: str, config) -> None:
 
 def invoke_agent_report_guard(hook: dict, config, state):
     """Run AgentReportGuard like dispatchers/subagent_stop does on Allow."""
-    from guardrails.agent_report_guard import AgentReportGuard
+    from handlers.guardrails.agent_report_guard import AgentReportGuard
     from utils.resolver import resolve
 
     guard = AgentReportGuard(hook, config, state)

@@ -9,14 +9,12 @@ Serves the Claude Code ``PreToolUse`` event. Flow:
     3. Run the guard. On ``"block"`` log the violation and call
        ``Hook.advanced_block`` — emits a ``permissionDecision: deny`` JSON
        payload so the Claude Code UI shows a structured denial reason.
-    4. On ``"allow"`` for ``Skill`` invocations, apply phase-skill side effects
-       (state mutations + auto-advance) via :func:`_apply_phase_skill_effects`.
-    5. Always finish with ``Hook.system_message`` so the optional guard message
-       reaches the model regardless of decision.
+    4. On ``"allow"`` finish with ``Hook.system_message`` so the optional guard
+       message reaches the model regardless of decision.
 
-The Skill side-effect pass at step 4 used to live inside ``PhaseGuard``; it was
-extracted so the guard stays a pure pass/fail validator and the dispatcher owns
-the post-Allow mutations (SRP refactor).
+The Skill side-effect pass used to live inside ``PhaseGuard``; it was extracted
+so the guard stays a pure pass/fail validator and the dispatcher owns the
+post-Allow mutations (SRP refactor).
 """
 
 import sys
@@ -25,55 +23,12 @@ from pathlib import Path
 SCRIPTS_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(SCRIPTS_DIR))
 
-from guardrails import TOOL_GUARDS
-from lib.extractors import extract_skill_name
+from handlers.guardrails import TOOL_GUARDS
 from lib.hook import Hook
 from lib.state_store import StateStore
 from lib.violations import log_violation, extract_action
+from utils.hooks.pre_tool_use import resolve_violation_phase
 from config import Config
-
-
-PRE_WORKFLOW_PHASE = "pre-workflow"
-
-
-def resolve_violation_phase(
-    state: StateStore, config: Config, tool_name: str, hook_input: dict
-) -> str:
-    """Pick the phase label written into a violation row.
-
-    Cascading priority:
-
-    1. ``state.current_phase`` — the phase the user was *in* when the block
-       fired. Most accurate signal.
-    2. For a ``Skill`` tool with no active phase: the attempted skill name.
-       Invoking a skill IS what establishes a phase, so its name is the most
-       meaningful label even though the phase isn't set yet.
-    3. Otherwise: the ``pre-workflow`` sentinel. We deliberately do NOT fall
-       back to the first workflow phase — labelling a pre-``/vision`` Write as
-       ``vision`` would misleadingly imply the user had entered that phase.
-
-    Args:
-        state (StateStore): Live workflow state for the current session.
-        config (Config): Workflow configuration (currently unused; kept in the
-            signature so future cascades can consult it without re-threading).
-        tool_name (str): The tool being attempted, e.g. ``"Skill"`` or ``"Write"``.
-        hook_input (dict): Raw PreToolUse hook payload, used only to extract the
-            attempted skill name when ``tool_name == "Skill"``.
-
-    Returns:
-        str: The phase label to record on the violation.
-
-    Example:
-        >>> resolve_violation_phase(state, config, "Skill", hook_input)  # doctest: +SKIP
-        'vision'
-    """
-    if state.current_phase:
-        return state.current_phase
-    if tool_name == "Skill":
-        skill = extract_skill_name(hook_input)
-        if skill:
-            return skill
-    return PRE_WORKFLOW_PHASE
 
 
 def main() -> None:

@@ -24,7 +24,7 @@ sys.path.insert(0, str(SCRIPTS_DIR))
 
 from lib.hook import Hook
 from lib.state_store import StateStore
-from guardrails.stop_guard import StopGuard
+from handlers.guardrails.stop_guard import StopGuard
 from config import Config
 
 

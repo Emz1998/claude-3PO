@@ -30,7 +30,7 @@ SCRIPTS_DIR = Path(__file__).resolve().parent.parent
 from constants.paths import COMMIT_BATCH_PATH, STALE_THRESHOLD_MINUTES
 from lib.hook import Hook
 from lib.file_manager import load_file, save_file
-from lib.shell import run_git, invoke_claude
+from lib.shell import run_git, invoke_headless_agent
 
 # Patterns to exclude from auto-commits
 EXCLUDE_PATTERNS = [
@@ -385,7 +385,7 @@ def generate_commit_message(
         >>> generate_commit_message(["a.py"], "task", "desc", Path("/repo"))  # doctest: +SKIP
     """
     prompt = _build_commit_prompt(files, task_subject, task_description)
-    output = invoke_claude(prompt, timeout=120, cwd=project_dir)
+    output = invoke_headless_agent("claude", prompt, timeout=120, cwd=project_dir)
     return output or f"chore: auto-commit after task ({task_subject})"
 
 

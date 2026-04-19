@@ -78,3 +78,14 @@
     """
 
 ```
+
+## Claude-3PO
+
+### Rules
+
+- `claude-3PO/scripts/dipatchers/` modules should only have `main()`
+- `claude-3PO/scripts/handlers/` modules shouldnt have helpers. All class methods inside every modules should be public.
+- Helpers should only live in either `claude-3PO/scripts/lib` or `claude-3PO/scripts/utils`
+- Models should only live in `claude-3PO/scripts/models`
+- `handlers/` handle all the business logic.
+- `dispatchers` is the hook entry point.

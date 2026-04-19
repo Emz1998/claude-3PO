@@ -6,11 +6,10 @@ from pathlib import Path
 import pytest
 
 SCRIPTS_DIR = Path(__file__).resolve().parent.parent
-DISPATCHERS = SCRIPTS_DIR / "dispatchers"
-if str(DISPATCHERS) not in sys.path:
-    sys.path.insert(0, str(DISPATCHERS))
+if str(SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS_DIR))
 
-from pre_tool_use import resolve_violation_phase  # noqa: E402
+from utils.hooks.pre_tool_use import resolve_violation_phase  # noqa: E402
 from helpers import make_hook_input  # noqa: E402
 
 

@@ -2,7 +2,7 @@
 
 import pytest
 from models.state import Agent
-from guardrails import write_guard, edit_guard
+from handlers.guardrails import write_guard, edit_guard
 from helpers import make_hook_input
 
 

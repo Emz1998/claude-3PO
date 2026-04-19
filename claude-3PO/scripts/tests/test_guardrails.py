@@ -1,6 +1,6 @@
 import pytest
 from models.state import Agent
-from guardrails import (
+from handlers.guardrails import (
     write_guard,
     edit_guard,
     command_guard,

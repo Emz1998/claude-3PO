@@ -257,6 +257,101 @@ def extract_bullet_items(content: str) -> list[str]:
     ]
 
 
+def match_substring(subject: str, candidates: list[str]) -> str | None:
+    """
+    Find a case-insensitive substring match between subject and any candidate.
+
+    Matches in either direction (subject ⊆ candidate OR candidate ⊆ subject)
+    plus equality, so partial titles like ``Add login`` will match the plan
+    task ``Add login flow with OTP`` and vice versa.
+
+    Args:
+        subject (str): Candidate text to locate.
+        candidates (list[str]): Allowed values to match against.
+
+    Returns:
+        str | None: The matched candidate (original casing/whitespace), or
+        ``None`` if no entry matches.
+
+    Example:
+        >>> match_substring("Add login", ["Add login flow"])
+        'Add login flow'
+        >>> match_substring("totally unrelated", ["a", "b"]) is None
+        True
+    """
+    # Normalize once; compare against each candidate's normalized form so
+    # trailing spaces / mixed case never defeat a real match.
+    normalized = subject.strip().lower()
+    for c in candidates:
+        c_lower = c.strip().lower()
+        if normalized == c_lower or c_lower in normalized or normalized in c_lower:
+            return c
+    return None
+
+
+def validate_bullet_section(section_name: str, body: str) -> None:
+    """
+    Enforce that a markdown section uses ``- item`` bullets (not ``###`` subsections).
+
+    Args:
+        section_name (str): Heading of the section being checked (for the error
+            message — not used to look up the body).
+        body (str): Markdown body of the section.
+
+    Raises:
+        ValueError: If ``###`` subsections appear in the body, or if no bullet
+            items are present.
+
+    Example:
+        >>> validate_bullet_section("Tasks", "- one\\n- two")
+        >>> # Raises ValueError when body has ### subsections or no bullets.
+    """
+    # Subsection + empty-bullets are separate authoring mistakes — two distinct
+    # error messages so the writer knows which rule to fix.
+    if "### " in body:
+        raise ValueError(
+            f"'{section_name}' must use bullet items (- item), not ### subsections. "
+            f"See the plan template for the correct format."
+        )
+    if not any(line.strip().startswith("- ") for line in body.splitlines()):
+        raise ValueError(
+            f"'{section_name}' must have at least one bullet item (- item). "
+            f"See the plan template for the correct format."
+        )
+
+
+def require_section(sections: dict[str, str], heading: str) -> list[str]:
+    """
+    Return non-empty bullet items from a required H2 section, or raise.
+
+    Missing *and* empty sections both raise — callers use this to enforce that
+    a review report actually lists file paths under a given heading.
+
+    Args:
+        sections (dict[str, str]): Section-map produced by
+            :func:`extract_section_map`.
+        heading (str): Required H2 heading text.
+
+    Returns:
+        list[str]: Bullet items found under the heading.
+
+    Raises:
+        ValueError: If the section is missing or contains no bullet items.
+
+    Example:
+        >>> require_section({"Files to revise": "- a.py"}, "Files to revise")
+        ['a.py']
+    """
+    # Missing section short-circuits before the bullet walk — distinct error message
+    # keeps the two failure modes diagnosable by the caller.
+    if heading not in sections:
+        raise ValueError(f"'{heading}' section is required")
+    items = extract_bullet_items(sections[heading])
+    if not items:
+        raise ValueError(f"'{heading}' section is empty — provide file paths")
+    return items
+
+
 def extract_section_map(content: str, level: int) -> dict[str, str]:
     """
     Return ``{heading.strip(): body}`` for every section at the given heading level.

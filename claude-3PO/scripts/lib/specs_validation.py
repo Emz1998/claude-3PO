@@ -9,6 +9,66 @@ from utils.validator import SpecsValidator
 from config import Config
 
 
+_TEMPLATE_HINTS = {
+    "architect": (
+        "${CLAUDE_PLUGIN_ROOT}/templates/architecture.md",
+        "${CLAUDE_PLUGIN_ROOT}/templates/test/minimal-architecture.md",
+    ),
+    "backlog": (
+        "${CLAUDE_PLUGIN_ROOT}/templates/backlog.md",
+        "${CLAUDE_PLUGIN_ROOT}/templates/test/minimal-backlog.md",
+    ),
+}
+
+
+def format_rejection_message(
+    phase: str,
+    errors: list[str],
+    attempt: int,
+    max_attempts: int,
+) -> str:
+    """
+    Build an actionable stderr payload so a specs agent can course-correct.
+
+    Bundles the full error list, canonical + minimal template paths, and the
+    remaining-attempts count so the agent knows the cap before the workflow
+    halts.
+
+    Args:
+        phase (str): Spec phase name (``architect`` or ``backlog``).
+        errors (list[str]): Structural validation errors.
+        attempt (int): The 1-based attempt number that just failed.
+        max_attempts (int): Maximum allowed attempts before halt.
+
+    Returns:
+        str: Formatted multi-line stderr payload.
+
+    Example:
+        >>> msg = format_rejection_message(
+        ...     "architect", ["missing section: Overview"], 1, 3
+        ... )
+        >>> "Re-emit the ENTIRE document" in msg
+        True
+    """
+    # Fallback strings keep the payload readable when an unknown phase sneaks in —
+    # never raises, because this runs on the error path.
+    template, minimal = _TEMPLATE_HINTS.get(
+        phase, ("(no template)", "(no minimal reference)")
+    )
+    bullets = "\n".join(f"  - {e}" for e in errors)
+    remaining = max(0, max_attempts - attempt)
+    return (
+        f"❌ {phase} validation FAILED (attempt {attempt}/{max_attempts}).\n\n"
+        f"Errors:\n{bullets}\n\n"
+        f"To course-correct:\n"
+        f"  1. Read the template: {template}\n"
+        f"  2. Re-emit the ENTIRE document with every required section + filled metadata (not a diff, not a summary).\n"
+        f"  3. Minimal valid reference: {minimal}\n\n"
+        f"{remaining} attempt(s) remaining. After {max_attempts} rejections the agent is marked failed "
+        "and the workflow halts so the operator can intervene."
+    )
+
+
 def _validator() -> SpecsValidator:
     """Construct a ``SpecsValidator`` bound to the default ``Config()``.
 

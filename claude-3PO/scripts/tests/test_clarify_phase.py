@@ -13,7 +13,7 @@ import pytest
 
 from utils.initializer import initialize
 from lib.state_store import StateStore
-from guardrails import phase_guard
+from handlers.guardrails import phase_guard
 
 
 SESSION_ID = "clarify-sess"
@@ -95,9 +95,9 @@ class TestClarifyResumeOnAskUserQuestion:
             initialize("build", SESSION_ID, "do the thing", state_path)
         return state_path, store
 
-    @patch("dispatchers.post_tool_use.clarity_check.run_resume")
+    @patch("utils.hooks.post_tool_use.clarity_check.run_resume")
     def test_resume_increments_iteration(self, mock_resume, tmp_path):
-        from dispatchers import post_tool_use
+        from utils.hooks import post_tool_use
 
         mock_resume.return_value = "vague"
         state_path, store = self._seed_in_progress(tmp_path)
@@ -114,9 +114,9 @@ class TestClarifyResumeOnAskUserQuestion:
         assert phase["iteration_count"] == 1
         assert phase["status"] == "in_progress"
 
-    @patch("dispatchers.post_tool_use.clarity_check.run_resume")
+    @patch("utils.hooks.post_tool_use.clarity_check.run_resume")
     def test_resume_clear_completes_phase(self, mock_resume, tmp_path):
-        from dispatchers import post_tool_use
+        from utils.hooks import post_tool_use
 
         mock_resume.return_value = "clear"
         state_path, store = self._seed_in_progress(tmp_path)
@@ -132,9 +132,9 @@ class TestClarifyResumeOnAskUserQuestion:
         phase = _clarify_phase(store)
         assert phase["status"] == "completed"
 
-    @patch("dispatchers.post_tool_use.clarity_check.run_resume")
+    @patch("utils.hooks.post_tool_use.clarity_check.run_resume")
     def test_resume_uses_persisted_session_id(self, mock_resume, tmp_path):
-        from dispatchers import post_tool_use
+        from utils.hooks import post_tool_use
 
         mock_resume.return_value = "vague"
         state_path, store = self._seed_in_progress(tmp_path)
@@ -150,9 +150,9 @@ class TestClarifyResumeOnAskUserQuestion:
         called_session = mock_resume.call_args.args[0]
         assert called_session == "sess_x"
 
-    @patch("dispatchers.post_tool_use.clarity_check.run_resume")
+    @patch("utils.hooks.post_tool_use.clarity_check.run_resume")
     def test_no_resume_when_not_in_clarify(self, mock_resume, tmp_path):
-        from dispatchers import post_tool_use
+        from utils.hooks import post_tool_use
 
         state_path, store = _new_state(tmp_path)
         # Set workflow to build with a different active phase (no clarify).

@@ -106,7 +106,7 @@ class TestSubtaskDictStructure:
 
 class TestTaskCreateGuard:
     def test_blocks_missing_parent_task_id(self, config, state):
-        from guardrails import TOOL_GUARDS
+        from handlers.guardrails import TOOL_GUARDS
         state.set("workflow_type", "implement")
         state.add_phase("create-tasks")
         state.implement.set_project_tasks([
@@ -124,7 +124,7 @@ class TestTaskCreateGuard:
         assert "parent_task_id" in msg
 
     def test_blocks_invalid_parent_task_id(self, config, state):
-        from guardrails import TOOL_GUARDS
+        from handlers.guardrails import TOOL_GUARDS
         state.set("workflow_type", "implement")
         state.add_phase("create-tasks")
         state.implement.set_project_tasks([
@@ -141,7 +141,7 @@ class TestTaskCreateGuard:
         assert "T-999" in msg
 
     def test_blocks_missing_parent_task_title(self, config, state):
-        from guardrails import TOOL_GUARDS
+        from handlers.guardrails import TOOL_GUARDS
         state.set("workflow_type", "implement")
         state.add_phase("create-tasks")
         state.implement.set_project_tasks([
@@ -158,7 +158,7 @@ class TestTaskCreateGuard:
         assert "parent_task_title" in msg
 
     def test_allows_valid_metadata(self, config, state):
-        from guardrails import TOOL_GUARDS
+        from handlers.guardrails import TOOL_GUARDS
         state.set("workflow_type", "implement")
         state.add_phase("create-tasks")
         state.implement.set_project_tasks([
@@ -174,7 +174,7 @@ class TestTaskCreateGuard:
         assert decision == "allow"
 
     def test_build_workflow_skips_metadata_check(self, config, state):
-        from guardrails import TOOL_GUARDS
+        from handlers.guardrails import TOOL_GUARDS
         state.set("workflow_type", "build")
         state.add_phase("write-tests")
         state.set_tasks(["Build login"])

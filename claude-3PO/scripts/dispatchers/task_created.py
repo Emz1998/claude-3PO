@@ -8,9 +8,10 @@ Serves the Claude Code ``TaskCreated`` event. Flow:
        build/implement task list.
     3. On ``"block"``: append a violations.md row and ``Hook.block`` (``exit 2``)
        so Claude sees the rejection and course-corrects.
-    4. On ``"allow"``: apply task effects via :func:`_apply_task_effects` —
-       record the matched build subject and/or attach the task as a subtask of
-       its matched implement-workflow parent.
+    4. On ``"allow"``: apply task effects via
+       :func:`utils.hooks.task_created.apply_task_effects` — record the matched
+       build subject and/or attach the task as a subtask of its matched
+       implement-workflow parent.
 
 Env override: ``TASK_CREATED_STATE_PATH`` redirects state.jsonl (used by tests).
 """
@@ -22,12 +23,12 @@ from pathlib import Path
 SCRIPTS_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(SCRIPTS_DIR))
 
+from handlers.guardrails.task_created_guard import TaskCreatedGuard
 from lib.hook import Hook
 from lib.state_store import StateStore
 from lib.violations import log_violation
+from utils.hooks.task_created import apply_task_effects
 from config import Config
-from guardrails.task_created_guard import TaskCreatedGuard
-from utils.recorder import Recorder
 
 STATE_PATH = Path(os.environ.get(
     "TASK_CREATED_STATE_PATH",
@@ -72,42 +73,9 @@ def main() -> None:
         )
         Hook.block(message)
     else:
-        _apply_task_effects(guard, state)
+        apply_task_effects(guard, state)
 
     sys.exit(0)
-
-
-def _apply_task_effects(guard: TaskCreatedGuard, state: StateStore) -> None:
-    """Record the matched task data exposed by an allowed ``TaskCreatedGuard``.
-
-    Two independent effects, both gated on what the guard actually matched:
-
-    - ``matched_build_subject`` — the new task corresponds to a planned build
-      task; record it as the active created task for the build flow (still
-      via :meth:`BuildState.add_created_task` since the flat Recorder API
-      tracks only project tasks, not build subjects).
-    - ``matched_implement_parent_id`` + ``matched_implement_payload`` — the new
-      task is a subtask of an implement-workflow parent; append it to the
-      flat ``project_tasks`` list with its ``parent_task_id`` set.
-
-    Args:
-        guard (TaskCreatedGuard): Already-validated guard exposing the matched
-            build/implement metadata.
-        state (StateStore): Live workflow state, mutated by Recorder.
-
-    Example:
-        >>> _apply_task_effects(guard, state)  # doctest: +SKIP
-    """
-    if guard.matched_build_subject:
-        state.build.add_created_task(guard.matched_build_subject)
-    if guard.matched_implement_parent_id and guard.matched_implement_payload:
-        payload = guard.matched_implement_payload
-        Recorder(state).record_task(
-            task_id=payload.get("task_id", ""),
-            subject=payload.get("subject", ""),
-            description=payload.get("description", ""),
-            parent_task_id=guard.matched_implement_parent_id,
-        )
 
 
 if __name__ == "__main__":
