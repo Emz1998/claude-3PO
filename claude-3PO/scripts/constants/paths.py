@@ -11,6 +11,10 @@ from pathlib import Path
 # Absolute path to the ``scripts/`` directory (parent of ``constants/``).
 SCRIPTS_DIR = Path(__file__).resolve().parent.parent
 
+# Absolute path to the plugin root (one level above ``scripts/``); used by
+# violations logging and post-task commit hooks.
+PLUGIN_ROOT = SCRIPTS_DIR.parent
+
 # Ledger file consumed by the auto-commit batcher; rows are ``BatchEntry`` shapes.
 COMMIT_BATCH_PATH = SCRIPTS_DIR / "commit_batch.json"
 

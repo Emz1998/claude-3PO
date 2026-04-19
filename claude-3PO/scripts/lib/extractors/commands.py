@@ -7,33 +7,35 @@ command the guardrails need to read.
 
 import re
 
+from constants import BUILD_FLAGS, STORY_ID_PATTERN
+
 
 # ---------------------------------------------------------------------------
 # /build prompt extraction
 # ---------------------------------------------------------------------------
 
 _BUILD_PATTERN = re.compile(r"^/(?:\w+:)?build\s+(.*)", re.DOTALL)
-_STORY_ID_PATTERN = r"\b([A-Z]{2,}-\d+)\b"
-_BUILD_FLAGS = [
-    "--skip-clarify",
-    "--skip-explore",
-    "--skip-research",
-    "--skip-all",
-    "--tdd",
-    "--reset",
-    "--takeover",
-]
 
 
-def _strip_flags_and_ids(text: str) -> str:
+def strip_flags_and_ids(text: str) -> str:
     """Strip recognized ``--flag`` tokens and ``ABC-123`` story IDs from *text*.
 
+    Shared with :mod:`utils.initializer` so both the ``/build`` prompt
+    extractor and the CLI arg parser use one canonical flag list.
+
+    Args:
+        text (str): Raw prompt/arg fragment.
+
+    Returns:
+        str: Text with story IDs and build flags removed, outer whitespace
+        stripped.
+
     Example:
-        >>> _strip_flags_and_ids("US-001 --tdd add login")
+        >>> strip_flags_and_ids("US-001 --tdd add login")
         'add login'
     """
-    text = re.sub(_STORY_ID_PATTERN, "", text)
-    for flag in _BUILD_FLAGS:
+    text = re.sub(STORY_ID_PATTERN, "", text)
+    for flag in BUILD_FLAGS:
         text = text.replace(flag, "")
     return text.strip()
 
@@ -63,7 +65,7 @@ def extract_build_instructions(prompt: str) -> str | None:
     match = _BUILD_PATTERN.match(prompt.strip())
     if not match:
         return None
-    return _strip_flags_and_ids(match.group(1)) or None
+    return strip_flags_and_ids(match.group(1)) or None
 
 
 # ---------------------------------------------------------------------------

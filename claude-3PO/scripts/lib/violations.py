@@ -12,9 +12,10 @@ from datetime import datetime
 from pathlib import Path
 from filelock import FileLock
 
-_PLUGIN_ROOT = Path(__file__).resolve().parent.parent.parent
+from constants.paths import PLUGIN_ROOT
+
 VIOLATIONS_PATH = Path(
-    os.environ.get("VIOLATIONS_PATH", str(_PLUGIN_ROOT / "logs" / "violations.md"))
+    os.environ.get("VIOLATIONS_PATH", str(PLUGIN_ROOT / "logs" / "violations.md"))
 )
 
 HEADER = "| Timestamp | Session | Workflow | Story ID | Prompt Summary | Phase | Tool | Action | Reason |"

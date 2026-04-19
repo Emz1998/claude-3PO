@@ -1,18 +1,13 @@
-"""json_store.py — JSON / JSONL file I/O with optional cross-process locking.
+"""json_store.py — JSON / JSONL file I/O helpers.
 
-Provides both a free-function API (``create_file`` / ``load_file`` /
-``save_file`` / ``update_file``) and a stateful ``FileManager`` wrapper. The
-class adds a ``filelock``-based mutex on read/update so two concurrent hooks
-writing to the same state file don't trample each other. Callers that don't
-need locking (e.g. tests, single-process tools) can pass ``lock=False``.
+Provides a free-function API (``create_file`` / ``load_file`` /
+``save_file`` / ``update_file``) used by the state store and other callers
+that need to read/write small JSON payloads with consistent error handling.
 """
 
 import json
-import os
 from pathlib import Path
-from typing import Any, Callable, cast, Literal
-from filelock import FileLock, BaseFileLock
-import sys
+from typing import Any, Callable, Literal
 
 JSON_SUFFIXES = {".json", ".jsonl"}
 
@@ -137,85 +132,3 @@ def update_file(path: Path, fn: Callable[[Any], None]) -> None:
     data = load_file(path)
     fn(data)
     save_file(data, "w", path)
-
-
-class FileManager:
-    """
-    Stateful wrapper around the file I/O helpers, optionally with a file lock.
-
-    Use this when several processes (e.g. concurrent Claude hooks) may touch
-    the same JSON file. The lock guards ``load_file`` and any callers that
-    chain through it; ``save_file`` / ``delete_file`` are intentionally
-    *not* locked because the typical pattern is locked-read followed by
-    unlocked-write inside the same critical section already established by
-    the caller.
-
-    Example:
-        >>> fm = FileManager(Path("/tmp/state.json"), lock=False)  # doctest: +SKIP
-        >>> fm.save_file({"k": 1})  # doctest: +SKIP
-    """
-
-    def __init__(self, path: Path, lock: bool = True):
-        """
-        Bind a manager to *path*, creating a sibling ``.lock`` file if locking is on.
-
-        Args:
-            path (Path): Target JSON file.
-            lock (bool): When ``True``, use a ``filelock.FileLock`` on
-                ``path.with_suffix(".lock")``.
-
-        Example:
-            >>> FileManager(Path("/tmp/state.json"), lock=False)  # doctest: +SKIP
-        """
-        self._path = path
-        self._lock = FileLock(path.with_suffix(".lock")) if lock else None
-
-    def create_file(self, default: Any | None = None) -> None:
-        """Delegate to :func:`create_file` for this manager's path.
-
-        Example:
-            >>> fm.create_file({"k": 1})  # doctest: +SKIP
-        """
-        create_file(self._path, default)
-
-    def load_file(self) -> Any:
-        """
-        Read JSON from the managed path, holding the lock when enabled.
-
-        Returns:
-            Any: Parsed JSON content (``{}`` for empty files).
-
-        Example:
-            >>> fm.load_file()  # doctest: +SKIP
-            {}
-        """
-        if self._lock is None:
-            return load_file(self._path)
-        with self._lock:
-            return load_file(self._path)
-
-    def save_file(self, data: Any, mode: Literal["w", "a", "x"] = "w") -> None:
-        """Write *data* to the managed path. See :func:`save_file` for arg semantics.
-
-        Example:
-            >>> fm.save_file({"k": 1})  # doctest: +SKIP
-        """
-        save_file(data, mode, self._path)
-
-    def update_file(self, fn: Callable[[Any], None]) -> None:
-        """Read-mutate-write cycle on the managed path. See :func:`update_file`.
-
-        Example:
-            >>> fm.update_file(lambda d: d.update({"k": 2}))  # doctest: +SKIP
-        """
-        data = load_file(self._path)
-        fn(data)
-        save_file(data, "w", self._path)
-
-    def delete_file(self) -> None:
-        """Remove the managed file (raises if it doesn't exist).
-
-        Example:
-            >>> fm.delete_file()  # doctest: +SKIP
-        """
-        self._path.unlink()

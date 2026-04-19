@@ -205,7 +205,16 @@ class BaseState:
             # Nothing persisted yet → seed from default before the mutator runs.
             if data is None:
                 data = dict(self._default_state)
+            # Snapshot the pre-mutation shape so we can skip the write when
+            # the mutator is a no-op (e.g. dedup branch that didn't append,
+            # phase transition that was already completed). Skipping avoids
+            # redundant full-file rewrites that would re-trigger filesystem
+            # watchers like the auto-resolver.
+            before = json.dumps(data, separators=(",", ":"), sort_keys=True)
             fn(data)
+            after = json.dumps(data, separators=(",", ":"), sort_keys=True)
+            if before == after and self._path.exists():
+                return
             self._write(data)
 
     # ── Pydantic boundary ─────────────────────────────────────────
@@ -618,13 +627,7 @@ class BaseState:
             SideEffect:
                 state[code_files][files_to_revise] = ["src/foo.py"], state[code_files][files_revised] = []
         """
-        def _set(d: dict) -> None:
-            # Ensure code_files exists, then overwrite both lists together.
-            cf = d.setdefault("code_files", {})
-            cf["files_to_revise"] = files
-            cf["files_revised"] = []
-
-        self.update(_set)
+        self._reset_revision_pair("code_files", "files_to_revise", "files_revised", files)
 
     @property
     def files_revised(self) -> list[str]:
@@ -659,14 +662,7 @@ class BaseState:
             SideEffect:
                 state[code_files][files_revised] = [..., "src/foo.py"]
         """
-        def _add(d: dict) -> None:
-            cf = d.setdefault("code_files", {})
-            revised = cf.setdefault("files_revised", [])
-            # Dedup keeps the list idempotent under retries.
-            if file_path not in revised:
-                revised.append(file_path)
-
-        self.update(_add)
+        self._append_unique_in_section("code_files", "files_revised", file_path)
 
     # ── Code review: test revision tracking (TDD) ─────────────────
 
@@ -705,15 +701,9 @@ class BaseState:
             Return: None
             SideEffect:
                 state[code_files][tests_to_revise] = ["tests/test_foo.py"]
-state[code_files][tests_revised] = []
+                state[code_files][tests_revised] = []
         """
-        def _set(d: dict) -> None:
-            # Overwrite both lists together so the revision loop restarts cleanly.
-            cf = d.setdefault("code_files", {})
-            cf["tests_to_revise"] = files
-            cf["tests_revised"] = []
-
-        self.update(_set)
+        self._reset_revision_pair("code_files", "tests_to_revise", "tests_revised", files)
 
     @property
     def code_tests_revised(self) -> list[str]:
@@ -748,14 +738,7 @@ state[code_files][tests_revised] = []
             SideEffect:
                 state[code_files][tests_revised] = [..., "tests/test_foo.py"]
         """
-        def _add(d: dict) -> None:
-            cf = d.setdefault("code_files", {})
-            revised = cf.setdefault("tests_revised", [])
-            # Dedup — retried dispatches must not double-count.
-            if file_path not in revised:
-                revised.append(file_path)
-
-        self.update(_add)
+        self._append_unique_in_section("code_files", "tests_revised", file_path)
 
     # ── Agents ─────────────────────────────────────────────────────
 
@@ -1306,13 +1289,7 @@ state[code_files][tests_revised] = []
                 state[tests][files_to_revise] = ["tests/test_foo.py"]
                 state[tests][files_revised] = []
         """
-        def _set(d: dict) -> None:
-            # Overwrite both lists together — same pattern as set_files_to_revise.
-            tests = d.setdefault("tests", {})
-            tests["files_to_revise"] = files
-            tests["files_revised"] = []
-
-        self.update(_set)
+        self._reset_revision_pair("tests", "files_to_revise", "files_revised", files)
 
     @property
     def test_files_revised(self) -> list[str]:
@@ -1347,14 +1324,7 @@ state[code_files][tests_revised] = []
             SideEffect:
                 state[tests][files_revised] = [..., "tests/test_foo.py"]
         """
-        def _add(d: dict) -> None:
-            tests = d.setdefault("tests", {})
-            revised = tests.setdefault("files_revised", [])
-            # Dedup — retried dispatches must not double-count.
-            if file_path not in revised:
-                revised.append(file_path)
-
-        self.update(_add)
+        self._append_unique_in_section("tests", "files_revised", file_path)
 
     # ── Code files to write ──────────────────────────────────────────
 
@@ -1886,6 +1856,49 @@ state[code_files][tests_revised] = []
         def _set(d: dict) -> None:
             # setdefault guarantees the section dict exists before we assign.
             d.setdefault(section, {})[field] = value
+
+        self.update(_set)
+
+    def _reset_revision_pair(
+        self, section: str, todo_field: str, done_field: str, files: list[str]
+    ) -> None:
+        """
+        Replace ``section[todo_field]`` with *files* and reset ``section[done_field]`` to ``[]``.
+
+        Shared backend for the three ``set_*_to_revise`` sinks — each of them
+        owns a matched to-do/done pair (``files_to_revise``/``files_revised``
+        for code, ``tests_to_revise``/``tests_revised`` for code's TDD loop,
+        and the parallel pair under ``tests``) and needs to overwrite both
+        atomically so a restarted review cycle doesn't carry stale "done"
+        entries.
+
+        Args:
+            section (str): Top-level key (``code_files`` or ``tests``).
+            todo_field (str): Sub-key receiving *files*.
+            done_field (str): Sub-key reset to ``[]``.
+            files (list[str]): New to-revise list.
+
+        Returns:
+            None: Side-effects only.
+
+        SideEffect:
+            Sets state[section][todo_field] = files and
+            state[section][done_field] = [] in one lock window.
+
+        Example:
+            >>> store._reset_revision_pair(
+            ...     "code_files", "files_to_revise", "files_revised", ["src/a.py"]
+            ... )  # doctest: +SKIP
+            Return: None
+            SideEffect:
+                state["code_files"]["files_to_revise"] = ["src/a.py"]
+                state["code_files"]["files_revised"] = []
+        """
+        def _set(d: dict) -> None:
+            # Both writes happen inside one update so the pair is always consistent.
+            s = d.setdefault(section, {})
+            s[todo_field] = files
+            s[done_field] = []
 
         self.update(_set)
 

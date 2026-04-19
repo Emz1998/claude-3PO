@@ -16,7 +16,7 @@ raising.
 import sys
 from pathlib import Path
 
-SCRIPTS_DIR = Path(__file__).resolve().parent.parent
+from constants.paths import SCRIPTS_DIR
 
 from lib.hook import Hook
 from lib.subprocess_agents import invoke_headless_agent

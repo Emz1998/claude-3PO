@@ -19,11 +19,14 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from constants import STORY_ID_PATTERN
+from constants.paths import SCRIPTS_DIR
+from lib.extractors import extract_frontmatter
+from lib.extractors.commands import strip_flags_and_ids
 from lib.state_store import StateStore
 from lib import subprocess_agents
 from config import Config
 
-STATE_PATH = Path(__file__).resolve().parent.parent / "state.json"
+STATE_PATH = SCRIPTS_DIR / "state.json"
 
 
 # ---------------------------------------------------------------------------
@@ -31,36 +34,7 @@ STATE_PATH = Path(__file__).resolve().parent.parent / "state.json"
 # ---------------------------------------------------------------------------
 
 
-def parse_frontmatter(content: str) -> dict[str, str]:
-    """
-    Extract YAML frontmatter key-value pairs from a markdown string.
-
-    Only handles the simple ``key: value`` shape — nested YAML, lists, or
-    multi-line values are not supported because the workflow frontmatter
-    schema is intentionally flat. Missing or malformed frontmatter returns
-    ``{}`` so callers can blindly ``.get(...)`` without exception handling.
-
-    Args:
-        content (str): Markdown text potentially starting with a ``---`` block.
-
-    Returns:
-        dict[str, str]: Frontmatter keys → values; empty dict if absent.
-
-    Example:
-        >>> parse_frontmatter("---\\nsession_id: abc\\n---\\n# Title")
-        {'session_id': 'abc'}
-    """
-    if not content.startswith("---"):
-        return {}
-    parts = content.split("---", 2)
-    if len(parts) < 3:
-        return {}
-    fm = {}
-    for line in parts[1].strip().splitlines():
-        if ":" in line:
-            key, val = line.split(":", 1)
-            fm[key.strip()] = val.strip()
-    return fm
+parse_frontmatter = extract_frontmatter
 
 
 def parse_skip(args: str) -> list[str]:
@@ -114,32 +88,7 @@ def parse_story_id(args: str) -> str | None:
     return match.group(1) if match else None
 
 
-def parse_instructions(args: str) -> str:
-    """
-    Strip flags and story IDs from a ``/build`` arg string, returning the prose.
-
-    The whitelist of recognized flags is hard-coded here (rather than imported
-    from a constant) so adding a new ``/build`` flag must be a deliberate edit
-    in one obvious place.
-
-    Args:
-        args (str): Raw arg portion of a ``/build`` invocation.
-
-    Returns:
-        str: Cleaned instruction text with surrounding whitespace stripped.
-
-    Example:
-        >>> parse_instructions("US-001 --tdd add login")
-        'add login'
-    """
-    flags = [
-        "--skip-clarify", "--skip-explore", "--skip-research", "--skip-vision", "--skip-all",
-        "--tdd", "--reset", "--takeover", "--test",
-    ]
-    text = re.sub(STORY_ID_PATTERN, "", args)
-    for flag in flags:
-        text = text.replace(flag, "")
-    return text.strip()
+parse_instructions = strip_flags_and_ids
 
 
 # ---------------------------------------------------------------------------

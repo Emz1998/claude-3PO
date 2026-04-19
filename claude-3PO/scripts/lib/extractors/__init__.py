@@ -30,6 +30,7 @@ from .markdown import (
     require_section,
     extract_section_map,
     extract_md_body,
+    extract_frontmatter,
     extract_bold_metadata,
 )
 from .plans import (
@@ -59,6 +60,7 @@ __all__ = [
     "require_section",
     "extract_section_map",
     "extract_md_body",
+    "extract_frontmatter",
     "extract_bold_metadata",
     # plans
     "extract_plan_dependencies",

@@ -20,13 +20,13 @@ class TestDecisionPhaseInBuildWorkflow:
         state.set("workflow_type", "build")
         state.add_phase("decision")
         state.specs.set_doc_written("decisions", True)
-        Resolver(config, state)._resolve_decision()
+        Resolver(config, state)._resolve_doc_phase("decision", "decisions")
         assert state.is_phase_completed("decision")
 
     def test_decision_does_not_complete_without_doc(self, config, state):
         state.set("workflow_type", "build")
         state.add_phase("decision")
-        Resolver(config, state)._resolve_decision()
+        Resolver(config, state)._resolve_doc_phase("decision", "decisions")
         assert not state.is_phase_completed("decision")
 
 

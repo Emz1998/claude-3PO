@@ -25,8 +25,6 @@ import uuid
 from datetime import datetime, timedelta
 from pathlib import Path
 
-SCRIPTS_DIR = Path(__file__).resolve().parent.parent
-
 from constants.paths import COMMIT_BATCH_PATH, STALE_THRESHOLD_MINUTES
 from lib.hook import Hook
 from lib.json_store import load_file, save_file

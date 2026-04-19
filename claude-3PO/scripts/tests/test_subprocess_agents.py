@@ -33,6 +33,18 @@ class TestRunGit:
             result = run_git(["status"], cwd=tmp_path)
         assert result.returncode == 128
 
+    def test_passes_timeout_to_subprocess(self, tmp_path):
+        fake = MagicMock(returncode=0, stdout="", stderr="")
+        with patch("lib.subprocess_agents.subprocess.run", return_value=fake) as run:
+            run_git(["status"], cwd=tmp_path)
+        assert run.call_args.kwargs.get("timeout") is not None
+
+    def test_returns_nonzero_on_timeout(self, tmp_path):
+        err = subprocess.TimeoutExpired(cmd=["git", "status"], timeout=1)
+        with patch("lib.subprocess_agents.subprocess.run", side_effect=err):
+            result = run_git(["status"], cwd=tmp_path)
+        assert result.returncode != 0
+
 
 # ══════════════════════════════════════════════════════════════════
 # invoke_headless_agent — claude

@@ -7,4 +7,5 @@ __all__ = [
     "TEST_RUN_PATTERNS",
     "CI_CHECK_PATTERNS",
     "STORY_ID_PATTERN",
+    "BUILD_FLAGS",
 ]

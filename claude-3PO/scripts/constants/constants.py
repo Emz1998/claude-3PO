@@ -51,6 +51,19 @@ CI_CHECK_PATTERNS = [r"\bgh\s+pr\s+checks\b", r"\bgh\s+run\s+view\b"]
 # ---------------------------------------------------------------------------
 STORY_ID_PATTERN = r"\b([A-Z]{2,}-\d+)\b"
 
+# All ``/build`` CLI flags; used by arg/prompt parsers to strip non-prose tokens.
+BUILD_FLAGS = [
+    "--skip-clarify",
+    "--skip-explore",
+    "--skip-research",
+    "--skip-vision",
+    "--skip-all",
+    "--tdd",
+    "--reset",
+    "--takeover",
+    "--test",
+]
+
 SCORE_PATTERNS = [
     r"{label}\s*(?:score|rating)?\s*(?:\*\*)?\s*[:=\-]?\s*(?:\*\*)?\s*(\d+)(?:\s*/\s*100)?",
     r"{label}\s*(?:score|rating)?\s+(?:is\s+)?(?:\*\*)?\s*(\d+)(?:\s*/\s*100)?",

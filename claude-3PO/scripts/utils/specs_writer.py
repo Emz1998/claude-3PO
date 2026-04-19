@@ -10,17 +10,7 @@ breaking those import paths would be an upgrade hazard.
 import json
 from pathlib import Path
 
-from config import Config
-from utils.validator import SpecsValidator
-
-
-def _validator() -> SpecsValidator:
-    """Construct a fresh SpecsValidator bound to the default Config.
-
-    Example:
-        >>> _validator()  # doctest: +SKIP
-    """
-    return SpecsValidator(Config())
+from lib.validators import _validator
 
 
 def write_doc(content: str, file_path: str) -> None:

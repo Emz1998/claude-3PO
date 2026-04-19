@@ -276,22 +276,6 @@ class Resolver:
         if self._is_required_agent_done(phase_name):
             self.state.set_phase_completed(phase_name)
 
-    def _resolve_explore(self) -> None:
-        """Resolve the ``explore`` phase via :meth:`_resolve_agent_phase`.
-
-        Example:
-            >>> Resolver(config, state)._resolve_explore()  # doctest: +SKIP
-        """
-        self._resolve_agent_phase("explore")
-
-    def _resolve_research(self) -> None:
-        """Resolve the ``research`` phase via :meth:`_resolve_agent_phase`.
-
-        Example:
-            >>> Resolver(config, state)._resolve_research()  # doctest: +SKIP
-        """
-        self._resolve_agent_phase("research")
-
     # ── Specs doc-based phases ───────────────────────────────────
 
     def _resolve_doc_phase(self, phase_name: str, doc_key: str) -> None:
@@ -306,46 +290,6 @@ class Resolver:
         """
         if self.state.specs.is_doc_written(doc_key):
             self.state.set_phase_completed(phase_name)
-
-    def _resolve_vision(self) -> None:
-        """Complete ``vision`` once ``state.docs.product_vision`` is written.
-
-        Example:
-            >>> Resolver(config, state)._resolve_vision()  # doctest: +SKIP
-        """
-        self._resolve_doc_phase("vision", "product_vision")
-
-    def _resolve_decision(self) -> None:
-        """Complete ``decision`` once ``state.docs.decisions`` is written.
-
-        Example:
-            >>> Resolver(config, state)._resolve_decision()  # doctest: +SKIP
-        """
-        self._resolve_doc_phase("decision", "decisions")
-
-    def _resolve_architect(self) -> None:
-        """Complete ``architect`` once ``state.docs.architecture`` is written.
-
-        Example:
-            >>> Resolver(config, state)._resolve_architect()  # doctest: +SKIP
-        """
-        self._resolve_doc_phase("architect", "architecture")
-
-    def _resolve_backlog(self) -> None:
-        """Complete ``backlog`` once ``state.docs.backlog`` is written.
-
-        Example:
-            >>> Resolver(config, state)._resolve_backlog()  # doctest: +SKIP
-        """
-        self._resolve_doc_phase("backlog", "backlog")
-
-    def _resolve_strategy(self) -> None:
-        """Resolve the ``strategy`` phase via :meth:`_resolve_agent_phase`.
-
-        Example:
-            >>> Resolver(config, state)._resolve_strategy()  # doctest: +SKIP
-        """
-        self._resolve_agent_phase("strategy")
 
     # ══════════════════════════════════════════════════════════════
     # Tool resolvers (file writes, bash, tasks)
@@ -605,20 +549,25 @@ class Resolver:
     # Main dispatch
     # ══════════════════════════════════════════════════════════════
 
+    # Phases that resolve when their required agent has run.
+    _AGENT_PHASES: frozenset[str] = frozenset({"explore", "research", "strategy"})
+
+    # Specs phases that resolve when a specific state.docs entry is written.
+    _DOC_PHASE_MAP: dict[str, str] = {
+        "vision": "product_vision",
+        "decision": "decisions",
+        "architect": "architecture",
+        "backlog": "backlog",
+    }
+
+    # Phases with bespoke resolution logic (not agent- or doc-gated).
     _PHASE_RESOLVER_MAP: dict[str, str] = {
-        "explore": "_resolve_explore",
-        "research": "_resolve_research",
         "plan-review": "_resolve_plan_review",
         "test-review": "_resolve_test_review",
         "tests-review": "_resolve_test_review",
         "code-review": "_resolve_code_review",
         "quality-check": "_resolve_quality_check",
         "validate": "_resolve_validate",
-        "vision": "_resolve_vision",
-        "strategy": "_resolve_strategy",
-        "decision": "_resolve_decision",
-        "architect": "_resolve_architect",
-        "backlog": "_resolve_backlog",
     }
 
     _TOOL_RESOLVER_MAP: dict[str, str] = {
@@ -644,11 +593,29 @@ class Resolver:
         Example:
             >>> Resolver(config, state).resolve()  # doctest: +SKIP
         """
-        self._dispatch_resolver(self._PHASE_RESOLVER_MAP)
+        self._dispatch_phase_resolver()
         self._dispatch_resolver(self._TOOL_RESOLVER_MAP)
         self._maybe_resolve_parallel_explore()
         self.auto_start_next()
         self._check_workflow_complete()
+
+    def _dispatch_phase_resolver(self) -> None:
+        """Route the current phase to its agent / doc / bespoke resolver.
+
+        Three-way routing replaces the ex-stubs (``_resolve_explore``,
+        ``_resolve_vision`` et al) — the shared ``_resolve_agent_phase`` /
+        ``_resolve_doc_phase`` helpers are invoked directly from the
+        data tables.
+
+        Example:
+            >>> Resolver(config, state)._dispatch_phase_resolver()  # doctest: +SKIP
+        """
+        if self.phase in self._AGENT_PHASES:
+            self._resolve_agent_phase(self.phase)
+        elif self.phase in self._DOC_PHASE_MAP:
+            self._resolve_doc_phase(self.phase, self._DOC_PHASE_MAP[self.phase])
+        else:
+            self._dispatch_resolver(self._PHASE_RESOLVER_MAP)
 
     def _dispatch_resolver(self, mapping: dict[str, str]) -> None:
         """Look up the resolver method for the current phase and invoke it.
@@ -675,7 +642,7 @@ class Resolver:
             self.phase == "research"
             and self.state.get_phase_status("explore") == "in_progress"
         ):
-            self._resolve_explore()
+            self._resolve_agent_phase("explore")
 
 
 # ══════════════════════════════════════════════════════════════════

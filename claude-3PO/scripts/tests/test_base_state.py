@@ -102,3 +102,32 @@ class TestSharedFileAndLock:
         store.set("b", 2)
         payload = json.loads(path.read_text())
         assert payload["a"] == 1 and payload["b"] == 2
+
+
+class TestNoOpWriteDetection:
+    """``update`` should skip the disk write when the mutator doesn't change the state."""
+
+    def _instrument_writes(self, base: BaseState) -> list[dict]:
+        writes: list[dict] = []
+        original = base._write
+
+        def _recording(data: dict) -> None:
+            writes.append(dict(data))
+            original(data)
+
+        base._write = _recording  # type: ignore[method-assign]
+        return writes
+
+    def test_noop_update_does_not_rewrite_file(self, tmp_path: Path):
+        base = BaseState(tmp_path / "state.json", default_state={"k": 1})
+        base.update(lambda d: d.setdefault("k", 1))
+        writes = self._instrument_writes(base)
+        base.update(lambda d: d.setdefault("k", 1))
+        assert writes == []
+
+    def test_real_change_does_rewrite_file(self, tmp_path: Path):
+        base = BaseState(tmp_path / "state.json", default_state={"k": 1})
+        base.update(lambda d: d.update({"k": 1}))
+        writes = self._instrument_writes(base)
+        base.update(lambda d: d.update({"k": 2}))
+        assert len(writes) == 1 and writes[0]["k"] == 2

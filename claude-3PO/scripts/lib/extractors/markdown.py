@@ -237,10 +237,6 @@ def extract_section_map(content: str, level: int) -> dict[str, str]:
     return {name.strip(): body for name, body in extract_md_sections(content, level)}
 
 
-# Back-compat alias retained for callers that imported the private name.
-_extract_bullet_items = extract_bullet_items
-
-
 def extract_md_body(content: str) -> str:
     """
     Strip a YAML frontmatter block (``---ed ... ---``) and return the markdown body.
@@ -261,6 +257,38 @@ def extract_md_body(content: str) -> str:
         if len(parts) >= 3:
             return parts[2].lstrip("\n")
     return content
+
+
+def extract_frontmatter(content: str) -> dict[str, str]:
+    """
+    Extract flat ``key: value`` pairs from a YAML frontmatter block.
+
+    Only handles the simple ``key: value`` shape — nested YAML, lists, or
+    multi-line values aren't supported because the workflow frontmatter
+    schema is intentionally flat. Missing or malformed frontmatter returns
+    ``{}`` so callers can ``.get(...)`` without exception handling.
+
+    Args:
+        content (str): Markdown text potentially starting with ``---``.
+
+    Returns:
+        dict[str, str]: Frontmatter keys to values; empty when absent.
+
+    Example:
+        >>> extract_frontmatter("---\\nsession_id: abc\\n---\\n# Title")
+        {'session_id': 'abc'}
+    """
+    if not content.startswith("---"):
+        return {}
+    parts = content.split("---", 2)
+    if len(parts) < 3:
+        return {}
+    fm: dict[str, str] = {}
+    for line in parts[1].strip().splitlines():
+        if ":" in line:
+            key, val = line.split(":", 1)
+            fm[key.strip()] = val.strip()
+    return fm
 
 
 _BOLD_METADATA_PATTERN = re.compile(r"^\*\*([^*:]+?):\*\*\s*(.*)$")

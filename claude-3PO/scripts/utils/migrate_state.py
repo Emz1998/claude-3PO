@@ -11,7 +11,8 @@ import json
 import sys
 from pathlib import Path
 
-SCRIPTS_DIR = Path(__file__).resolve().parent.parent
+from constants.paths import SCRIPTS_DIR
+
 DEFAULT_JSONL = SCRIPTS_DIR / "state.jsonl"
 DEFAULT_JSON = SCRIPTS_DIR / "state.json"
 

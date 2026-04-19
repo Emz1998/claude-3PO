@@ -7,18 +7,18 @@ class TestResolveExplore:
     def test_completes_when_agents_done(self, config, state):
         state.add_phase("explore")
         state.add_agent(Agent(name="Explore", status="completed"))
-        Resolver(config, state)._resolve_explore()
+        Resolver(config, state)._resolve_agent_phase("explore")
         assert state.is_phase_completed("explore")
 
     def test_does_not_complete_when_agent_in_progress(self, config, state):
         state.add_phase("explore")
         state.add_agent(Agent(name="Explore", status="in_progress"))
-        Resolver(config, state)._resolve_explore()
+        Resolver(config, state)._resolve_agent_phase("explore")
         assert not state.is_phase_completed("explore")
 
     def test_does_not_complete_when_no_agents(self, config, state):
         state.add_phase("explore")
-        Resolver(config, state)._resolve_explore()
+        Resolver(config, state)._resolve_agent_phase("explore")
         assert not state.is_phase_completed("explore")
 
 
@@ -26,7 +26,7 @@ class TestResolveResearch:
     def test_completes_when_agents_done(self, config, state):
         state.add_phase("research")
         state.add_agent(Agent(name="Research", status="completed"))
-        Resolver(config, state)._resolve_research()
+        Resolver(config, state)._resolve_agent_phase("research")
         assert state.is_phase_completed("research")
 
 

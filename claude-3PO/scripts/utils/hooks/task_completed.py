@@ -6,11 +6,8 @@ only ``main()``. The helper here is the fire-and-forget project_manager sync.
 
 import subprocess
 import sys
-from pathlib import Path
 
-
-SCRIPTS_DIR = Path(__file__).resolve().parent.parent.parent
-PLUGIN_ROOT = SCRIPTS_DIR.parent
+from constants.paths import PLUGIN_ROOT
 
 
 def update_project_task_status(task_id: str, status: str) -> None:
