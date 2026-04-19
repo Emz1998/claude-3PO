@@ -236,25 +236,25 @@ class TestStateFileEditInTestMode:
     def test_allows_state_edit_in_test_mode(self, config, state):
         state.set("test_mode", True)
         state.add_phase("vision")
-        hook = make_hook_input("Edit", {"file_path": "scripts/state.jsonl"})
+        hook = make_hook_input("Edit", {"file_path": "scripts/state.json"})
         decision, _ = edit_guard(hook, config, state)
         assert decision == "allow"
 
     def test_blocks_state_edit_outside_test_mode(self, config, state):
         state.add_phase("vision")
-        hook = make_hook_input("Edit", {"file_path": "scripts/state.jsonl"})
+        hook = make_hook_input("Edit", {"file_path": "scripts/state.json"})
         decision, _ = edit_guard(hook, config, state)
         assert decision == "block"
 
     def test_allows_state_write_in_test_mode(self, config, state):
         state.set("test_mode", True)
         state.add_phase("strategy")
-        hook = make_hook_input("Write", {"file_path": "scripts/state.jsonl"})
+        hook = make_hook_input("Write", {"file_path": "scripts/state.json"})
         decision, _ = write_guard(hook, config, state)
         assert decision == "allow"
 
     def test_blocks_state_write_outside_test_mode(self, config, state):
         state.add_phase("strategy")
-        hook = make_hook_input("Write", {"file_path": "scripts/state.jsonl"})
+        hook = make_hook_input("Write", {"file_path": "scripts/state.json"})
         decision, _ = write_guard(hook, config, state)
         assert decision == "block"

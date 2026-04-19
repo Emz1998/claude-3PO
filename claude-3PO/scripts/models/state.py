@@ -1,7 +1,7 @@
 """Pydantic v2 schema for the workflow's persisted state.
 
 Every model inherits from :class:`_Base`, which sets ``extra="allow"`` so that
-older snapshots stored on disk in ``state.jsonl`` keep round-tripping after the
+older snapshots stored on disk in ``state.json`` keep round-tripping after the
 schema gains new fields. ``State`` is the top-level model — every other class
 in this module is a nested sub-component referenced from one of its fields.
 """
@@ -23,7 +23,7 @@ class _Base(BaseModel):
     """Base model that tolerates unknown fields for forward-compat.
 
     All state models accept unknown keys so :func:`load` stays resilient to
-    live ``state.jsonl`` snapshots that pre-date schema additions — adding a
+    live ``state.json`` snapshots that pre-date schema additions — adding a
     new field never invalidates the operator's existing on-disk state.
 
     Example:
@@ -201,7 +201,7 @@ class CI(_Base):
 
 
 class State(_Base):
-    """Top-level workflow state persisted to ``state.jsonl``.
+    """Top-level workflow state persisted to ``state.json``.
 
     A new line is appended each time any guard, hook, or agent mutates state;
     the latest line is the live snapshot. All sub-fields are nested ``_Base``

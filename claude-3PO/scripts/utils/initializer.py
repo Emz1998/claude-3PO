@@ -21,7 +21,7 @@ from lib.state_store import StateStore
 from lib import clarity_check
 from config import Config
 
-STATE_PATH = Path(__file__).resolve().parent.parent / "state.jsonl"
+STATE_PATH = Path(__file__).resolve().parent.parent / "state.json"
 
 
 # ---------------------------------------------------------------------------
@@ -174,67 +174,63 @@ def initialize(
     args: str,
     state_path: Path = STATE_PATH,
 ) -> None:
-    """Initialize state for a new workflow session.
+    """Initialize state for a new workflow session in single-file ``state.json``.
 
-    For non-specs workflows, also archives the previous plan and contracts
-    files (if any) so the new session starts clean. The duplicate-story
-    guard prevents two concurrent sessions from racing on the same story
-    unless the caller explicitly opts in via ``--reset`` (start fresh)
-    or ``--takeover`` (resume the prior session's state).
+    For non-specs workflows, also archives the previous plan so the fresh
+    session starts clean. ``--takeover`` short-circuits when the file already
+    has content (the existing state is preserved verbatim); every other path
+    overwrites with a fresh dict from :func:`build_initial_state`.
 
     Args:
         workflow_type (str): ``"specs"``, ``"build"``, or ``"implement"``.
-        session_id (str): Hook session id, becomes the state owner.
+        session_id (str): Hook session id; recorded inside the state body.
         args (str): Joined command-line args (flags + story id + instructions).
-        state_path (Path): Path to the state.jsonl store. Defaults to the
-            module-level STATE_PATH; overridable for tests.
-
-    Raises:
-        ValueError: If a story id is already active in another session and
-            neither ``--reset`` nor ``--takeover`` is supplied.
+        state_path (Path): Path to the single state.json store. Defaults to
+            the module-level STATE_PATH; overridable for tests.
 
     Example:
         >>> initialize("specs", "sess-abc", "--test")  # doctest: +SKIP
     """
-    store = StateStore(state_path, session_id=session_id)
-    store.cleanup_inactive()
+    # --takeover with existing content: preserve in place, no reinit.
+    if "--takeover" in args and _has_existing_state(state_path):
+        return
+
+    store = StateStore(state_path)
 
     if workflow_type == "specs":
         state = build_initial_state(workflow_type, session_id, args)
         store.reinitialize(state)
         return
 
-    config = Config()
-    archive_plan(config)
-
-    story_id = parse_story_id(args)
-    reset = "--reset" in args
-    takeover = "--takeover" in args
-
-    # Duplicate story guard
-    if story_id:
-        active = store.find_active_by_story(story_id)
-        if active and not reset and not takeover:
-            active_ids = [s.get("session_id") for s in active]
-            raise ValueError(
-                f"Story '{story_id}' already active in session(s): {active_ids}. "
-                f"Use --reset to start fresh or --takeover to continue."
-            )
-
-        if active and (reset or takeover):
-            store.deactivate_by_story(story_id)
-
-        # Takeover: copy existing session state
-        if takeover and active:
-            copied = dict(active[-1])
-            copied["session_id"] = session_id
-            store.reinitialize(copied)
-            return
+    # Non-specs workflows: archive the prior plan before overwriting.
+    archive_plan(Config())
 
     state = build_initial_state(workflow_type, session_id, args)
     store.reinitialize(state)
     if workflow_type == "build":
         _seed_clarify_phase(store, args)
+
+
+def _has_existing_state(state_path: Path) -> bool:
+    """Return True iff *state_path* exists and has non-empty body content.
+
+    Used by ``--takeover`` to decide whether to preserve the file or fall
+    through to a fresh init. Empty files are treated as "no state".
+
+    Args:
+        state_path (Path): The single-file state.json path.
+
+    Returns:
+        bool: True when the file exists and has at least one non-whitespace char.
+
+    Example:
+        >>> _has_existing_state(Path("/tmp/state.json"))  # doctest: +SKIP
+        Return: False
+    """
+    # Existence + non-empty body — both required so --takeover doesn't preserve nothing.
+    if not state_path.exists():
+        return False
+    return bool(state_path.read_text(encoding="utf-8").strip())
 
 
 def _seed_clarify_phase(store: StateStore, args: str) -> None:

@@ -29,7 +29,7 @@ class FileWriteGuard:
       ``## Files to Create/Modify`` (implement).
     - ``write-report`` — only the configured report file path.
 
-    Test-mode shortcut: writes to the E2E test report or ``state.jsonl`` are
+    Test-mode shortcut: writes to the E2E test report or ``state.json`` are
     always allowed when ``state.test_mode`` is set.
 
     Example:
@@ -70,13 +70,13 @@ class FileWriteGuard:
         return bool(self.state.get("test_mode")) and is_e2e_report_path(self.file_path)
 
     def is_state_file(self) -> bool:
-        """True iff in test mode and the path ends with ``state.jsonl``.
+        """True iff in test mode and the path ends with ``state.json``.
 
         Example:
             >>> guard.is_state_file()  # doctest: +SKIP
             True
         """
-        return self.state.get("test_mode") and self.file_path.endswith("state.jsonl")
+        return self.state.get("test_mode") and self.file_path.endswith("state.json")
 
     # ── Phase check ───────────────────────────────────────────────
 
@@ -318,7 +318,7 @@ class FileWriteGuard:
         """
         try:
             # Test-mode short-circuits run before phase checks so fixtures can
-            # seed E2E reports / state.jsonl regardless of workflow state.
+            # seed E2E reports / state.json regardless of workflow state.
             if self.is_test_report():
                 return "allow", "E2E test report write allowed (test mode)"
 

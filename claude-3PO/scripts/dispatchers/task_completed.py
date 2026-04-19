@@ -28,7 +28,7 @@ from lib.hook import Hook
 from lib.state_store import StateStore
 from utils.hooks.task_completed import update_project_task_status
 
-STATE_PATH = SCRIPTS_DIR / "state.jsonl"
+STATE_PATH = SCRIPTS_DIR / "state.json"
 
 
 def main() -> None:
@@ -47,7 +47,7 @@ def main() -> None:
     if not session_id:
         sys.exit(0)
 
-    state = StateStore(STATE_PATH, session_id=session_id)
+    state = StateStore(STATE_PATH)
     if not state.get("workflow_active"):
         sys.exit(0)
 

@@ -69,7 +69,7 @@ def log_report_block(state: StateStore, hook_input: dict, reason: str) -> None:
     """
     agent_type = hook_input.get("agent_type", "") or ""
     log_violation(
-        session_id=state.session_id,
+        session_id=state.get("session_id", ""),
         workflow_type=state.get("workflow_type", "build"),
         story_id=state.get("story_id"),
         prompt_summary=state.get("prompt_summary"),

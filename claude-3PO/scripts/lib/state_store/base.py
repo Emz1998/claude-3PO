@@ -1,10 +1,8 @@
 """base.py — Shared core for :class:`StateStore` (BaseState).
 
-Each line in the underlying JSONL file is a complete state snapshot for one
-session, identified by ``session_id``. Operations always filter by that ID so
-concurrent workflows on the same machine don't collide. A ``filelock``-backed
-mutex on a sibling ``.lock`` file serializes read-modify-write cycles across
-processes.
+The underlying ``state.json`` file holds exactly one JSON object — the state
+for the current workflow session. A ``filelock``-backed mutex on a sibling
+``.lock`` file serializes read-modify-write cycles across processes.
 
 :class:`BaseState` owns every accessor that is meaningful across all workflows
 — core I/O, phases, plan / test / code review tracking, agents, PR/CI/report,
@@ -21,7 +19,6 @@ exactly one named place per concept.
 """
 
 import json
-import time
 from pathlib import Path
 from typing import Any, Callable, Literal
 
@@ -34,7 +31,7 @@ from filelock import FileLock
 
 class BaseState:
     """
-    Session-scoped JSONL state store with cross-process locking.
+    Single-session JSON state store with cross-process locking.
 
     Shared core for every workflow: core I/O, phases, plan/test/code review
     tracking, agents, PR/CI/report, flat-API sinks. Workflow-specific slices
@@ -42,174 +39,120 @@ class BaseState:
     :mod:`specs` and reference a :class:`BaseState` instance through composition
     on :class:`StateStore`, so every workflow shares a single file and lock.
 
-    Each session occupies one JSON object on its own line in the file; reads
-    and writes always filter by ``session_id`` so multiple sessions can share
-    a single state file without collision. Most callers want the high-level
-    properties (``current_phase``, ``plan``, ``code_files`` …) rather than
-    the raw ``load`` / ``save`` API.
+    The backing file is a flat JSON object (``state.json``); the
+    ``session_id`` is recorded **inside** the object for log correlation
+    but the store does not filter or index on it.
 
     Example:
-        >>> base = BaseState(Path("/tmp/state.jsonl"), "abc")  # doctest: +SKIP
+        >>> base = BaseState(Path("/tmp/state.json"))  # doctest: +SKIP
         Return: <BaseState>
     """
 
     def __init__(
         self,
         state_path: Path,
-        session_id: str,
         default_state: dict[str, Any] | None = None,
     ):
         """
-        Bind a store to a path and session.
+        Bind a store to the single-session ``state.json`` file.
 
         Args:
-            state_path (Path): JSONL file backing the store. Created on first write.
-            session_id (str): Unique session identifier; every operation is
-                scoped to this ID.
+            state_path (Path): JSON file backing the store. Created on first write.
             default_state (dict[str, Any] | None): Initial dict returned when
-                the session has no entry yet. Defaults to ``{}``.
+                the file is missing or empty. Defaults to ``{}``.
 
         Returns:
             None: Constructor — stores the inputs on ``self``.
 
         Example:
-            >>> StateStore(Path("/tmp/state.jsonl"), "abc")  # doctest: +SKIP
+            >>> StateStore(Path("/tmp/state.json"))  # doctest: +SKIP
             Return: <StateStore>
         """
         # Store inputs on self so every method can reach them without reloading.
         self._path = state_path
-        self._session_id = session_id
         # `or {}` keeps the attribute as a real dict even when caller passed None.
         self._default_state = default_state or {}
         # Sibling `.lock` file serializes cross-process writes.
         self._lock = FileLock(self._path.with_suffix(".lock"))
 
-    @property
-    def session_id(self) -> str:
-        """
-        The session ID this store is scoped to.
-
-        Returns:
-            str: The immutable session identifier passed to ``__init__``.
-
-        Example:
-            >>> store.session_id  # doctest: +SKIP
-            Return: 'abc'
-        """
-        # Expose the private attribute read-only — no setter.
-        return self._session_id
-
     # ── Core I/O ───────────────────────────────────────────────────
 
-    def _read_all_lines(self) -> list[dict[str, Any]]:
+    def _read(self) -> dict[str, Any] | None:
         """
-        Read every session entry from the JSONL file.
+        Read and parse the backing ``state.json`` file.
 
-        Malformed lines are silently skipped so one corrupt entry can't
-        poison reads for every other session sharing the file. Missing or
-        empty file returns ``[]``.
+        Missing / empty / unparseable files return ``None`` so callers can
+        distinguish "no persisted state yet" from "empty dict persisted".
 
         Returns:
-            list[dict[str, Any]]: All parseable session entries in file order.
+            dict[str, Any] | None: Parsed dict, or ``None`` when no state exists.
 
         Example:
-            >>> store._read_all_lines()  # doctest: +SKIP
-            Return: []
+            >>> store._read()  # doctest: +SKIP
+            Return: None
         """
         # Missing file is a valid empty state — no error.
         if not self._path.exists():
-            return []
+            return None
         content = self._path.read_text(encoding="utf-8").strip()
         # Empty file is also a valid empty state.
         if not content:
-            return []
-        entries = []
-        # One JSON object per line; skip malformed lines to stay resilient.
-        for line in content.splitlines():
-            line = line.strip()
-            if line:
-                try:
-                    entries.append(json.loads(line))
-                except json.JSONDecodeError:
-                    # Preserve other sessions even when one entry is corrupt.
-                    continue
-        return entries
+            return None
+        try:
+            return json.loads(content)
+        except json.JSONDecodeError:
+            # Corrupt file → treat as absent; a rewrite will overwrite it.
+            return None
 
-    def _write_all_lines(self, entries: list[dict[str, Any]]) -> None:
+    def _write(self, data: dict[str, Any]) -> None:
         """
-        Write *entries* back as JSONL, creating parent dirs as needed.
+        Persist *data* as the full ``state.json`` body (creates parent dirs).
 
         Args:
-            entries (list[dict[str, Any]]): Full set of session entries to persist.
+            data (dict[str, Any]): Full snapshot to persist.
 
         Returns:
             None: Side-effects only.
 
         SideEffect:
-            Writes all session entries to the JSONL file on disk.
+            Overwrites state.json on disk with *data*.
 
         Example:
-            >>> store._write_all_lines([{"session_id": "abc"}])  # doctest: +SKIP
+            >>> store._write({"session_id": "abc"})  # doctest: +SKIP
             Return: None
             SideEffect:
-                state.jsonl file written with all sessions
+                state.json written with the single dict body
         """
         # Ensure the target directory exists before writing.
         self._path.parent.mkdir(parents=True, exist_ok=True)
-        # Compact JSON (no whitespace) keeps each session on one line.
-        lines = [json.dumps(e, separators=(",", ":")) for e in entries]
-        # Trailing newline when any entries; empty string when none.
+        # Compact JSON — single line, no pretty-print indent.
         self._path.write_text(
-            "\n".join(lines) + "\n" if lines else "", encoding="utf-8"
+            json.dumps(data, separators=(",", ":")), encoding="utf-8"
         )
-
-    def _find_session(self, entries: list[dict[str, Any]]) -> int:
-        """
-        Return the index of the entry matching this session, or ``-1``.
-
-        Args:
-            entries (list[dict[str, Any]]): Session entries to scan.
-
-        Returns:
-            int: Index of the matching entry, or ``-1`` if not found.
-
-        Example:
-            >>> store._find_session([{"session_id": "abc"}])  # doctest: +SKIP
-            Return: 0
-        """
-        # Linear scan — session counts are small (tens, not thousands).
-        for i, entry in enumerate(entries):
-            if entry.get("session_id") == self._session_id:
-                return i
-        return -1
 
     def load(self) -> dict[str, Any]:
         """
-        Load this session's snapshot, returning ``default_state`` if absent.
+        Load the snapshot, returning a copy of ``default_state`` if absent.
 
         Returns:
-            dict[str, Any]: The session dict (a copy of ``default_state`` if
-            this session has never been persisted).
+            dict[str, Any]: The state dict (a copy of ``default_state`` if
+            nothing has been persisted yet).
 
         Example:
             >>> store.load()  # doctest: +SKIP
-            Return: {'session_id': 'abc'}
+            Return: {}
         """
         # Lock ensures a stable snapshot across a concurrent writer.
         with self._lock:
-            entries = self._read_all_lines()
-            idx = self._find_session(entries)
-            # Session not yet persisted → hand back a copy of the default.
-            if idx == -1:
+            data = self._read()
+            # Nothing persisted → hand back a copy of the default.
+            if data is None:
                 return dict(self._default_state)
-            return entries[idx]
+            return data
 
     def save(self, state: dict[str, Any] | None = None) -> None:
         """
-        Persist *state* (or ``{}``) as this session's snapshot.
-
-        ``session_id`` is always re-stamped onto the saved dict so callers
-        can't accidentally orphan a session by writing without it.
+        Persist *state* (or ``{}``) as the full snapshot body.
 
         Args:
             state (dict[str, Any] | None): New snapshot. ``None`` writes ``{}``.
@@ -218,68 +161,52 @@ class BaseState:
             None: Side-effects only.
 
         SideEffect:
-            Replaces this session's entire snapshot in the JSONL file.
+            Replaces the entire state.json body with *state*.
 
         Example:
             >>> store.save({"plan": {"written": True}})  # doctest: +SKIP
             Return: None
             SideEffect:
-                state replaced and persisted
+                state.json body replaced with the provided dict
         """
         # Exclusive lock for the full read-modify-write.
         with self._lock:
-            entries = self._read_all_lines()
-            idx = self._find_session(entries)
             data = state if state is not None else {}
-            # Re-stamp id so callers can never orphan the entry.
-            data["session_id"] = self._session_id
-            if idx == -1:
-                # First write for this session — append.
-                entries.append(data)
-            else:
-                # Existing entry — overwrite in place.
-                entries[idx] = data
-            self._write_all_lines(entries)
+            self._write(data)
 
     def update(self, fn: Callable[[dict[str, Any]], None]) -> None:
         """
-        Atomically read-mutate-write this session's snapshot under the lock.
+        Atomically read-mutate-write the snapshot under the lock.
 
         *fn* receives the current dict (or a fresh ``default_state`` if the
-        session is brand new) and is expected to mutate it in place. Holding
-        the lock across read + mutate + write is what makes concurrent updates
-        safe — callers should not call ``load`` then ``save`` separately for
-        mutations.
+        file is empty) and is expected to mutate it in place. Holding the
+        lock across read + mutate + write is what makes concurrent updates
+        safe — callers should not call ``load`` then ``save`` separately
+        for mutations.
 
         Args:
             fn (Callable[[dict[str, Any]], None]): Mutator invoked with the
-                session dict. Return value is ignored.
+                state dict. Return value is ignored.
 
         Returns:
             None: Side-effects only.
 
         SideEffect:
-            Reads, mutates, and writes the session snapshot under lock.
+            Reads, mutates, and writes state.json under lock.
 
         Example:
             >>> store.update(lambda d: d.update({"k": 1}))  # doctest: +SKIP
             Return: None
             SideEffect:
-                state mutated and persisted
+                state.json mutated and persisted
         """
         with self._lock:
-            entries = self._read_all_lines()
-            idx = self._find_session(entries)
-            if idx == -1:
-                # Brand-new session: seed from default, stamp id, mutate, append.
+            data = self._read()
+            # Nothing persisted yet → seed from default before the mutator runs.
+            if data is None:
                 data = dict(self._default_state)
-                data["session_id"] = self._session_id
-                fn(data)
-                entries.append(data)
-            else:
-                # Mutate in place on the existing entry.
-                fn(entries[idx])
-            self._write_all_lines(entries)
+            fn(data)
+            self._write(data)
 
     # ── Pydantic boundary ─────────────────────────────────────────
 
@@ -317,7 +244,7 @@ class BaseState:
             None: Side-effects only.
 
         SideEffect:
-            Persists the full Pydantic State model to the JSONL file.
+            Persists the full Pydantic State model to state.json.
 
         Example:
             >>> store.save_model(model)  # doctest: +SKIP
@@ -362,7 +289,7 @@ class BaseState:
             None: Side-effects only.
 
         SideEffect:
-            Sets state[key] and persists to JSONL.
+            Sets state[key] and persists to state.json.
 
         Example:
             >>> store.set("workflow_type", "build")  # doctest: +SKIP
@@ -406,9 +333,6 @@ class BaseState:
         """
         Replace the snapshot entirely with *initial_state*.
 
-        Session id is re-stamped so callers can pass a raw dict without
-        remembering to include it themselves.
-
         Args:
             initial_state (dict[str, Any]): New snapshot body.
 
@@ -416,7 +340,7 @@ class BaseState:
             None: Side-effects only.
 
         SideEffect:
-            Replaces this session's entire snapshot in the JSONL file.
+            Replaces the entire state.json body with *initial_state*.
 
         Example:
             >>> store.reinitialize({"workflow_type": "build"})  # doctest: +SKIP
@@ -424,151 +348,8 @@ class BaseState:
             SideEffect:
                 state = {"workflow_type": "build"}
         """
-        # Stamp session id before save so the entry is routable.
-        initial_state["session_id"] = self._session_id
+        # Single-file store — nothing to re-stamp; caller owns the body.
         self.save(initial_state)
-
-    def delete(self) -> None:
-        """
-        Remove this session's entry from the JSONL file.
-
-        Other sessions in the same file are untouched. No-op if the session
-        isn't present.
-
-        Returns:
-            None: Side-effects only.
-
-        SideEffect:
-            Removes this session's entry from the JSONL file.
-
-        Example:
-            >>> store.delete()  # doctest: +SKIP
-            Return: None
-            SideEffect:
-                session removed from JSONL
-        """
-        with self._lock:
-            entries = self._read_all_lines()
-            # Filter out this session; everyone else survives untouched.
-            entries = [e for e in entries if e.get("session_id") != self._session_id]
-            self._write_all_lines(entries)
-
-    @staticmethod
-    def _is_active_for_story(entry: dict, story_id: str) -> bool:
-        """
-        Check whether *entry* is an active workflow for *story_id*.
-
-        Args:
-            entry (dict): Raw session entry loaded from the JSONL file.
-            story_id (str): Story ID to match against.
-
-        Returns:
-            bool: ``True`` when both the story id matches and the
-            ``workflow_active`` flag is set; ``False`` otherwise.
-
-        Example:
-            >>> StateStore._is_active_for_story({"story_id": "US-1", "workflow_active": True}, "US-1")
-            Return: True
-        """
-        # Both conditions must hold — inactive sessions belong to history.
-        return (
-            entry.get("story_id") == story_id and entry.get("workflow_active") is True
-        )
-
-    def find_active_by_story(self, story_id: str) -> list[dict[str, Any]]:
-        """
-        Return every active session-entry whose ``story_id`` matches.
-
-        Args:
-            story_id (str): Story ID to filter by.
-
-        Returns:
-            list[dict[str, Any]]: All entries with matching ``story_id`` and
-            ``workflow_active is True``.
-
-        Example:
-            >>> store.find_active_by_story("US-1")  # doctest: +SKIP
-            Return: []
-        """
-        with self._lock:
-            entries = self._read_all_lines()
-            # Filter delegates to the shared active-session predicate.
-            return [e for e in entries if self._is_active_for_story(e, story_id)]
-
-    def deactivate_by_story(self, story_id: str) -> int:
-        """
-        Mark every active session for *story_id* as inactive.
-
-        Used when starting a new workflow on a story whose prior workflows
-        haven't been cleanly closed — flips the flag without deleting so the
-        old session history stays available for debugging.
-
-        Args:
-            story_id (str): Story ID to deactivate.
-
-        Returns:
-            int: Number of sessions toggled to inactive.
-
-        SideEffect:
-            Flips ``workflow_active`` to ``False`` for matching entries in the JSONL file.
-
-        Example:
-            >>> store.deactivate_by_story("US-1")  # doctest: +SKIP
-            Return: 0
-            SideEffect:
-                state[workflow_active] = False (matching sessions)
-        """
-        with self._lock:
-            entries = self._read_all_lines()
-            count = 0
-            # Flip flag in place; don't delete so history survives.
-            for entry in entries:
-                if self._is_active_for_story(entry, story_id):
-                    entry["workflow_active"] = False
-                    count += 1
-            self._write_all_lines(entries)
-            return count
-
-    def cleanup_inactive(self, max_age_hours: int = 24) -> int:
-        """
-        Remove session entries whose ``_last_updated`` is older than *max_age_hours*.
-
-        Entries without a timestamp are kept (conservative — the field may be
-        missing on hand-edited sessions). Run periodically to keep the JSONL
-        file from growing unbounded.
-
-        Args:
-            max_age_hours (int): Cutoff age in hours; defaults to 24.
-
-        Returns:
-            int: Number of entries removed.
-
-        SideEffect:
-            Removes stale entries from the JSONL file.
-
-        Example:
-            >>> store.cleanup_inactive(max_age_hours=24)  # doctest: +SKIP
-            Return: 0
-            SideEffect:
-                stale entries removed from JSONL
-        """
-        with self._lock:
-            entries = self._read_all_lines()
-            # Cutoff = current wall time minus the retention window.
-            cutoff = time.time() - (max_age_hours * 3600)
-
-            kept = []
-            removed = 0
-            for entry in entries:
-                ts = entry.get("_last_updated", 0)
-                # Only drop entries with a real timestamp older than cutoff.
-                if ts and ts < cutoff:
-                    removed += 1
-                else:
-                    kept.append(entry)
-
-            self._write_all_lines(kept)
-            return removed
 
     # ── Phases ─────────────────────────────────────────────────────
 

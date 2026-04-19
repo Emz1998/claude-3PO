@@ -63,13 +63,13 @@ class FileEditGuard:
         return bool(self.state.get("test_mode")) and is_e2e_report_path(self.file_path)
 
     def is_state_file(self) -> bool:
-        """True iff in test mode and the path ends with ``state.jsonl``.
+        """True iff in test mode and the path ends with ``state.json``.
 
         Example:
             >>> guard.is_state_file()  # doctest: +SKIP
             True
         """
-        return self.state.get("test_mode") and self.file_path.endswith("state.jsonl")
+        return self.state.get("test_mode") and self.file_path.endswith("state.json")
 
     @property
     def phase_label(self) -> str:

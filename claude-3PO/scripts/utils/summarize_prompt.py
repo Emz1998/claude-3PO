@@ -24,7 +24,7 @@ from lib.state_store import StateStore
 from lib.extractors import extract_build_instructions
 from lib.violations import resolve_pending_summaries, VIOLATIONS_PATH
 
-STATE_PATH = SCRIPTS_DIR / "state.jsonl"
+STATE_PATH = SCRIPTS_DIR / "state.json"
 
 
 # ---------------------------------------------------------------------------
@@ -103,7 +103,7 @@ def main() -> None:
     if not instructions:
         sys.exit(0)
 
-    state = StateStore(STATE_PATH, session_id=session_id)
+    state = StateStore(STATE_PATH)
     if not state.get("workflow_active"):
         sys.exit(0)
     if state.get("workflow_type") != "build":

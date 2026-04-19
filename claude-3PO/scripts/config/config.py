@@ -485,14 +485,14 @@ class Config:
         return self._paths().get("debug_log_file", "")
 
     @property
-    def default_state_jsonl(self) -> str:
-        """Default path to the persisted ``state.jsonl`` snapshot stream.
+    def default_state_json(self) -> str:
+        """Default path to the persisted single-session ``state.json`` snapshot.
 
         Example:
-            >>> get_config().default_state_jsonl  # doctest: +SKIP
-            '.claude/state.jsonl'
+            >>> get_config().default_state_json  # doctest: +SKIP
+            '.claude/state.json'
         """
-        return self._paths().get("state_jsonl", "")
+        return self._paths().get("state_json", "")
 
     # ── Clarify safety ceiling ────────────────────────────────────
 

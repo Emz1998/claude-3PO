@@ -43,7 +43,7 @@ def main() -> None:
     if not session_id:
         sys.exit(0)
 
-    state = StateStore(SCRIPTS_DIR / "state.jsonl", session_id=session_id)
+    state = StateStore(SCRIPTS_DIR / "state.json")
     if not state.get("workflow_active"):
         sys.exit(0)
 

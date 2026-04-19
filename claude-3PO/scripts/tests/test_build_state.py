@@ -3,7 +3,7 @@
 Exercises the five build-only accessors (created_tasks, add_created_task,
 get_clarify_phase, set_clarify_session, bump_clarify_iteration) and
 confirms they delegate through the shared :class:`BaseState` so reads from
-the facade see the same JSONL line that the slice wrote.
+the facade see the same JSON document that the slice wrote.
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ from lib.state_store import StateStore
 @pytest.fixture
 def store(tmp_path: Path) -> StateStore:
     # Fresh StateStore per test; no default state so we start empty.
-    return StateStore(tmp_path / "state.jsonl", session_id="s")
+    return StateStore(tmp_path / "state.json")
 
 
 class TestBuildCreatedTasks:
@@ -28,7 +28,7 @@ class TestBuildCreatedTasks:
         assert store.build.created_tasks == []
 
     def test_add_persists_through_base(self, store: StateStore):
-        # Write via the slice, confirm it landed on the shared JSONL line.
+        # Write via the slice, confirm it landed on the shared JSON document.
         store.build.add_created_task("Build login")
         assert store.build.created_tasks == ["Build login"]
         assert store.load()["created_tasks"] == ["Build login"]
@@ -71,5 +71,5 @@ class TestBuildSliceSharesBase:
 
     def test_slice_write_visible_through_facade(self, store: StateStore):
         store.build.add_created_task("alpha")
-        # Same JSONL line — facade sees what the slice wrote.
+        # Same JSON document — facade sees what the slice wrote.
         assert "alpha" in store.load()["created_tasks"]

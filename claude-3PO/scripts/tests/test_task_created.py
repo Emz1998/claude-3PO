@@ -60,9 +60,9 @@ def _task_payload(subject: str, description: str = "A valid description") -> dic
 
 @pytest.fixture
 def state_path(tmp_path: Path) -> Path:
-    p = tmp_path / "state.jsonl"
-    line = json.dumps(DEFAULT_STATE, separators=(",", ":"))
-    p.write_text(line + "\n")
+    # Single-session state.json — body is one JSON dict, no JSONL wrapping.
+    p = tmp_path / "state.json"
+    p.write_text(json.dumps(DEFAULT_STATE, separators=(",", ":")))
     return p
 
 
@@ -117,16 +117,9 @@ class TestTaskCreatedWorkflowInactive:
     def test_inactive_workflow_allows_all(self, tmp_path):
         inactive_state = dict(DEFAULT_STATE)
         inactive_state["workflow_active"] = False
-        state_path = tmp_path / "state.jsonl"
-        line = json.dumps(inactive_state, separators=(",", ":"))
-        state_path.write_text(line + "\n")
+        state_path = tmp_path / "state.json"
+        state_path.write_text(json.dumps(inactive_state, separators=(",", ":")))
         result = _run_hook(_task_payload("Anything goes"), state_path)
-        assert result.returncode == 0
-
-    def test_session_mismatch_allows_all(self, state_path):
-        payload = _task_payload("Anything goes")
-        payload["session_id"] = "different-session"
-        result = _run_hook(payload, state_path)
         assert result.returncode == 0
 
 
@@ -134,9 +127,8 @@ class TestTaskCreatedNoPlannedTasks:
     def test_no_tasks_in_state_blocks(self, tmp_path):
         state = dict(DEFAULT_STATE)
         state["tasks"] = []
-        state_path = tmp_path / "state.jsonl"
-        line = json.dumps(state, separators=(",", ":"))
-        state_path.write_text(line + "\n")
+        state_path = tmp_path / "state.json"
+        state_path.write_text(json.dumps(state, separators=(",", ":")))
         result = _run_hook(_task_payload("Some task"), state_path)
         assert result.returncode == 2
 
@@ -177,9 +169,8 @@ IMPLEMENT_STATE = {
 
 @pytest.fixture
 def implement_state_path(tmp_path: Path) -> Path:
-    p = tmp_path / "state.jsonl"
-    line = json.dumps(IMPLEMENT_STATE, separators=(",", ":"))
-    p.write_text(line + "\n")
+    p = tmp_path / "state.json"
+    p.write_text(json.dumps(IMPLEMENT_STATE, separators=(",", ":")))
     return p
 
 
@@ -205,7 +196,7 @@ class TestImplementTaskCreatedMatching:
         ``parent_task_id`` pointing to the matched parent (T-001)."""
         from lib.state_store import StateStore
         _run_hook(_task_payload("Build login"), implement_state_path)
-        state = StateStore(implement_state_path, session_id="test-session")
+        state = StateStore(implement_state_path)
         ptasks = state.implement.project_tasks
         subs = [pt for pt in ptasks if pt.get("parent_task_id") == "T-001"]
         assert len(subs) == 1
@@ -216,8 +207,7 @@ class TestImplementNoProjectTasks:
     def test_no_project_tasks_blocks(self, tmp_path):
         state = dict(IMPLEMENT_STATE)
         state["project_tasks"] = []
-        state_path = tmp_path / "state.jsonl"
-        line = json.dumps(state, separators=(",", ":"))
-        state_path.write_text(line + "\n")
+        state_path = tmp_path / "state.json"
+        state_path.write_text(json.dumps(state, separators=(",", ":")))
         result = _run_hook(_task_payload("Some task"), state_path)
         assert result.returncode == 2

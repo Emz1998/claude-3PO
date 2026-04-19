@@ -20,9 +20,8 @@ SESSION_ID = "clarify-sess"
 
 
 def _new_state(tmp_path: Path) -> tuple[Path, StateStore]:
-    state_path = tmp_path / "state.jsonl"
-    state_path.write_text("")
-    store = StateStore(state_path, session_id=SESSION_ID)
+    state_path = tmp_path / "state.json"
+    store = StateStore(state_path)
     return state_path, store
 
 

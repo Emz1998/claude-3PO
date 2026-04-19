@@ -1,5 +1,4 @@
 import json
-import time
 
 import pytest
 from models.state import Agent
@@ -327,107 +326,31 @@ class TestTasksBulkSetter:
 
 
 # ═══════════════════════════════════════════════════════════════════
-# JSONL — session isolation
+# Single-file — default-state fallbacks
 # ═══════════════════════════════════════════════════════════════════
 
 
-class TestSessionIsolation:
-    def test_two_sessions_isolated(self, tmp_path):
-        p = tmp_path / "state.jsonl"
-        s1 = StateStore(p, session_id="session-1")
-        s2 = StateStore(p, session_id="session-2")
-
-        s1.add_phase("explore")
-        s2.add_phase("plan")
-
-        assert s1.current_phase == "explore"
-        assert s2.current_phase == "plan"
-
-    def test_session_delete_preserves_others(self, tmp_path):
-        p = tmp_path / "state.jsonl"
-        s1 = StateStore(p, session_id="session-1")
-        s2 = StateStore(p, session_id="session-2")
-
-        s1.add_phase("explore")
-        s2.add_phase("plan")
-
-        s1.delete()
-
-        assert s1.current_phase == ""
-        assert s2.current_phase == "plan"
-
-    def test_reinitialize_replaces_session(self, tmp_path):
-        p = tmp_path / "state.jsonl"
-        s1 = StateStore(p, session_id="session-1")
-        s1.add_phase("explore")
-        s1.reinitialize({"phases": [{"name": "plan", "status": "in_progress"}]})
-        assert s1.current_phase == "plan"
+class TestSingleFileDefaults:
+    def test_reinitialize_replaces_state(self, tmp_path):
+        p = tmp_path / "state.json"
+        s = StateStore(p)
+        s.add_phase("explore")
+        s.reinitialize({"phases": [{"name": "plan", "status": "in_progress"}]})
+        assert s.current_phase == "plan"
 
     def test_empty_file_returns_default(self, tmp_path):
-        p = tmp_path / "state.jsonl"
+        p = tmp_path / "state.json"
         p.write_text("")
         default = {"session_id": "s1", "workflow_active": True}
-        s = StateStore(p, session_id="s1", default_state=default)
+        s = StateStore(p, default_state=default)
         data = s.load()
         assert data.get("workflow_active") is True
 
     def test_nonexistent_file_returns_default(self, tmp_path):
-        p = tmp_path / "state.jsonl"
+        p = tmp_path / "state.json"
         default = {"session_id": "s1", "value": 42}
-        s = StateStore(p, session_id="s1", default_state=default)
+        s = StateStore(p, default_state=default)
         assert s.get("value") == 42
-
-
-# ═══════════════════════════════════════════════════════════════════
-# JSONL — cleanup_inactive
-# ═══════════════════════════════════════════════════════════════════
-
-
-class TestCleanupInactive:
-    def test_removes_stale_sessions(self, tmp_path):
-        p = tmp_path / "state.jsonl"
-        old_ts = time.time() - 25 * 3600  # 25 hours ago
-        recent_ts = time.time()
-
-        lines = [
-            json.dumps({"session_id": "old", "_last_updated": old_ts}),
-            json.dumps({"session_id": "recent", "_last_updated": recent_ts}),
-        ]
-        p.write_text("\n".join(lines) + "\n")
-
-        store = StateStore(p, session_id="any")
-        removed = store.cleanup_inactive(max_age_hours=24)
-        assert removed == 1
-
-        s = StateStore(p, session_id="recent")
-        assert s.get("session_id") == "recent"
-
-        s_old = StateStore(p, session_id="old")
-        assert s_old.get("session_id") is None
-
-    def test_keeps_sessions_without_timestamp(self, tmp_path):
-        p = tmp_path / "state.jsonl"
-        lines = [
-            json.dumps({"session_id": "no-ts"}),
-        ]
-        p.write_text("\n".join(lines) + "\n")
-
-        store = StateStore(p, session_id="any")
-        removed = store.cleanup_inactive(max_age_hours=24)
-        assert removed == 0
-
-    def test_empty_file_returns_zero(self, tmp_path):
-        p = tmp_path / "state.jsonl"
-        p.write_text("")
-        store = StateStore(p, session_id="any")
-        removed = store.cleanup_inactive(max_age_hours=24)
-        assert removed == 0
-
-    def test_nonexistent_file_returns_zero(self, tmp_path):
-        p = tmp_path / "nonexistent.jsonl"
-        store = StateStore(p, session_id="any")
-        removed = store.cleanup_inactive(max_age_hours=24)
-        assert removed == 0
 
 
 # ═══════════════════════════════════════════════════════════════════

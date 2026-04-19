@@ -65,7 +65,7 @@ class TestSubagentStopRetryLoop:
     BAD = "# Bad Backlog\n\nNo stories."
 
     def test_first_rejection_blocks_with_actionable_message(self, tmp_path: Path):
-        state_path = tmp_path / "state.jsonl"
+        state_path = tmp_path / "state.json"
         violations_path = tmp_path / "violations.md"
         _write_state(state_path, _specs_state("sess-1", "backlog", "ProductOwner"))
 
@@ -78,7 +78,7 @@ class TestSubagentStopRetryLoop:
         assert not violations_path.exists()
 
     def test_cap_reached_releases_subagent_and_logs_once(self, tmp_path: Path):
-        state_path = tmp_path / "state.jsonl"
+        state_path = tmp_path / "state.json"
         violations_path = tmp_path / "violations.md"
         _write_state(state_path, _specs_state("sess-cap", "backlog", "ProductOwner"))
 
@@ -104,7 +104,7 @@ class TestSubagentStopRetryLoop:
         to ``failed`` — the feature was dropped together with specs-doc writing.
         The agent remains in its last recorded state (``completed`` from the
         agent-completion hook)."""
-        state_path = tmp_path / "state.jsonl"
+        state_path = tmp_path / "state.json"
         violations_path = tmp_path / "violations.md"
         _write_state(state_path, _specs_state("sess-fail", "architect", "Architect"))
 
@@ -112,12 +112,12 @@ class TestSubagentStopRetryLoop:
             _run(_payload("sess-fail", "# Bad Architecture\n\nNo structure.", "Architect"),
                  state_path, violations_path)
 
-        state = json.loads(state_path.read_text().splitlines()[-1])
+        state = json.loads(state_path.read_text())
         arch = next(a for a in state["agents"] if a["name"] == "Architect")
         assert arch["status"] != "failed"
 
     def test_valid_backlog_does_not_log_violation(self, tmp_path: Path, monkeypatch):
-        state_path = tmp_path / "state.jsonl"
+        state_path = tmp_path / "state.json"
         violations_path = tmp_path / "violations.md"
         _write_state(state_path, _specs_state("sess-good", "backlog", "ProductOwner"))
 
@@ -142,7 +142,7 @@ class TestSubagentStopRetryLoop:
             assert not violations_path.exists()
 
     def test_non_review_phase_does_not_log(self, tmp_path: Path):
-        state_path = tmp_path / "state.jsonl"
+        state_path = tmp_path / "state.json"
         violations_path = tmp_path / "violations.md"
         state = _specs_state("sess-x", "vision", "Research")
         _write_state(state_path, state)

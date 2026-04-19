@@ -17,7 +17,7 @@ from lib.state_store import StateStore
 @pytest.fixture
 def store(tmp_path: Path) -> StateStore:
     # Fresh StateStore per test; no default state so we start empty.
-    return StateStore(tmp_path / "state.jsonl", session_id="s")
+    return StateStore(tmp_path / "state.json")
 
 
 class TestSpecsDocs:
@@ -28,7 +28,7 @@ class TestSpecsDocs:
 
     def test_set_doc_written_persists(self, store: StateStore):
         store.specs.set_doc_written("arch", True)
-        # Slice reads flow back through the shared JSONL line.
+        # Slice reads flow back through the shared JSON document.
         assert store.specs.docs["arch"]["written"] is True
         assert store.load()["docs"]["arch"]["written"] is True
 
@@ -59,5 +59,5 @@ class TestSpecsSliceSharesBase:
 
     def test_slice_write_visible_through_facade(self, store: StateStore):
         store.specs.set_doc_written("vision", True)
-        # Same JSONL line — facade sees what the slice wrote.
+        # Same JSON document — facade sees what the slice wrote.
         assert store.load()["docs"]["vision"]["written"] is True

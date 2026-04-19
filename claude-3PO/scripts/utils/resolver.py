@@ -693,6 +693,6 @@ def resolve(config: Config, state: StateStore) -> None:
     Example:
         >>> from config import Config
         >>> from lib.state_store import StateStore
-        >>> resolve(Config(), StateStore("/tmp/state.jsonl"))  # doctest: +SKIP
+        >>> resolve(Config(), StateStore("/tmp/state.json"))  # doctest: +SKIP
     """
     Resolver(config, state).resolve()

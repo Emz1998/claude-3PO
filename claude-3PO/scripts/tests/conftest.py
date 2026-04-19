@@ -59,16 +59,15 @@ SESSION_ID = "test-session"
 
 @pytest.fixture
 def state_path(tmp_path: Path) -> Path:
-    p = tmp_path / "state.jsonl"
-    # Write as JSONL: one line per session
-    line = json.dumps(DEFAULT_STATE, separators=(",", ":"))
-    p.write_text(line + "\n")
+    # Single JSON object, no JSONL wrapping — the new single-session layout.
+    p = tmp_path / "state.json"
+    p.write_text(json.dumps(DEFAULT_STATE, separators=(",", ":")))
     return p
 
 
 @pytest.fixture
 def state(state_path: Path) -> StateStore:
-    return StateStore(state_path, session_id=SESSION_ID)
+    return StateStore(state_path)
 
 
 @pytest.fixture

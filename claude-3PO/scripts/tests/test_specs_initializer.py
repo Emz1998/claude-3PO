@@ -71,12 +71,10 @@ class TestSpecsInitialState:
 
 class TestSpecsInitialize:
     def test_skips_archive_and_story_guard(self, tmp_path: Path):
-        state_path = tmp_path / "state.jsonl"
-        state_path.write_text("")
+        state_path = tmp_path / "state.json"
         # Should not raise even though there's no plan to archive
         initialize("specs", "sess-1", "create specs", state_path)
-        content = state_path.read_text().strip()
-        entry = json.loads(content.splitlines()[0])
+        entry = json.loads(state_path.read_text())
         assert entry["workflow_type"] == "specs"
         assert "docs" in entry
         assert "plan" not in entry

@@ -96,11 +96,11 @@ After resolution, `auto_start_next()` advances through any `auto: true` phases, 
 
 A checkpoint on `plan-review` is honored: the resolver refuses to advance until `/plan-approved` is invoked (or review is exhausted), matching the `Hook.discontinue(...)` emitted by `subagent_stop.py`.
 
-## State (`lib/state_store/`, `state.jsonl`)
+## State (`lib/state_store/`, `state.json`)
 
-`StateStore` is session-scoped. Each line in `state.jsonl` is a complete state snapshot for one `session_id`; reads and writes filter by that id and use `filelock` to serialize concurrent hooks. The module is a package split by workflow concern: `base.py` (shared core — I/O, phases, agents, plan, tests, code, PR, CI, report), `build.py` / `implement.py` / `specs.py` (workflow-specific slices exposed as `state.build.*`, `state.implement.*`, `state.specs.*`), and `store.py` (the `StateStore` facade composing them). Operations: `load`, `save`, `update(fn)`, `get/set`, and dozens of domain helpers (`add_phase`, `set_phase_completed`, `add_plan_review`, `state.implement.add_subtask`, …).
+`StateStore` is single-session. The backing `state.json` file holds exactly one JSON object — the state for the current workflow session — and `filelock` on a sibling `.lock` file serializes concurrent hooks. The module is a package split by workflow concern: `base.py` (shared core — I/O, phases, agents, plan, tests, code, PR, CI, report), `build.py` / `implement.py` / `specs.py` (workflow-specific slices exposed as `state.build.*`, `state.implement.*`, `state.specs.*`), and `store.py` (the `StateStore` facade composing them). Operations: `load`, `save`, `update(fn)`, `get/set`, and dozens of domain helpers (`add_phase`, `set_phase_completed`, `add_plan_review`, `state.implement.add_subtask`, …).
 
-Schema lives in `models/state.py` as Pydantic models: `State`, `PhaseEntry`, `Agent`, `Plan`, `PlanReview`, `Tests`, `CodeFiles`, `CodeReview`, `PR`, `CI`. `utils/initializer.py` builds the initial state for `build`, `implement`, or `specs` from CLI args (`--tdd`, `--test`, `--skip-clarify`, `--skip-*`, story id, free-form instructions) and handles duplicate-story guard, `--reset`, and `--takeover`. For build workflows, the initializer also runs the headless-Claude clarity review (unless `--skip-clarify`) and seeds the `clarify` auto-phase as either `skipped` (verdict=clear) or `in_progress` with the captured `headless_session_id` (verdict=vague).
+Schema lives in `models/state.py` as Pydantic models: `State`, `PhaseEntry`, `Agent`, `Plan`, `PlanReview`, `Tests`, `CodeFiles`, `CodeReview`, `PR`, `CI`. `utils/initializer.py` builds the initial state for `build`, `implement`, or `specs` from CLI args (`--tdd`, `--test`, `--skip-clarify`, `--skip-*`, story id, free-form instructions). `--reset` always rewrites `state.json` with a fresh body; `--takeover` short-circuits when `state.json` already has content (preserving the prior session) and otherwise falls through to a fresh init. For build workflows, the initializer also runs the headless-Claude clarity review (unless `--skip-clarify`) and seeds the `clarify` auto-phase as either `skipped` (verdict=clear) or `in_progress` with the captured `headless_session_id` (verdict=vague).
 
 ## Config (`config/config.json`)
 
@@ -110,7 +110,7 @@ Single source of truth, loaded by `config/config.py`. Declares:
 - **`plan_templates`** — required sections and bullet sections per workflow type.
 - **`score_thresholds`** — plan / tests / code confidence & quality thresholds.
 - **`safe_domains`** — whitelist for `WebFetchGuard`.
-- **`paths`** — `state_jsonl`, plan/tests/code/report paths, specs doc paths, archive directories, log files, `clarity_review_prompt_file`.
+- **`paths`** — `state_json`, plan/tests/code/report paths, specs doc paths, archive directories, log files, `clarity_review_prompt_file`.
 - **`clarify.max_iterations`** — safety ceiling on `AskUserQuestion` rounds during the clarify auto-phase; default 10.
 - **`specs_phases.max_report_retries`** — how many times the SubagentStop retry loop rejects an agent report before giving up. Defaults to 3. `config.specs_max_report_retries` is the accessor.
 
@@ -236,12 +236,12 @@ Stop                StopGuard.validate()
 - **Specs SubagentStop retry cap** — For architect/backlog (and the other review phases), invalid agent output triggers the SubagentStop block (`exit 2`), which is Claude Code's native "subagent, try again" signal. The stderr includes the template path and list of validation errors so the agent can course-correct. After `specs_phases.max_report_retries` (default 3) rejections on the same `agent_id`, the dispatcher marks the agent `status="failed"`, logs a single violation, and releases the subagent cleanly (`exit 0`) so the workflow halts for operator intervention instead of looping forever. `agents[].status == "failed"` is excluded from `count_agents`, so an operator or a `/continue` can immediately retry with a fresh Architect / ProductOwner agent.
 - **Sub-phases / revisions** — failed reviews (`plan-review`, `test-review`/`tests-review`, `code-review`) keep the phase `in_progress`; the next agent invocation is blocked until the revision files listed by the reviewer have been edited. After 3 failures the review is "exhausted" and `/plan-approved` is allowed.
 - **TDD toggle** — `--tdd` on `/build` or `/implement` opts into `write-tests` and `test-review`/`tests-review`; without it, those phases are skipped in both the resolver and `StopGuard`.
-- **Test mode** — `--test` bypasses live-test / CI checks in `StopGuard`, allows writes to `state.jsonl` and `.claude/reports/E2E_TEST_REPORT.md`, and unlocks `/reset-plan-review`.
+- **Test mode** — `--test` bypasses live-test / CI checks in `StopGuard`, allows writes to `state.json` and `.claude/reports/E2E_TEST_REPORT.md`, and unlocks `/reset-plan-review`.
 - **Parallel explore+research** — while `explore` is `in_progress`, `Research` agents and the `research` skill are allowed; recorder tracks the parallel transition.
 
 ## State file
 
-Default: `scripts/state.jsonl`. One JSON object per line per session. Lock file: `scripts/state.lock`. Violations: `logs/violations.md` + `logs/violations.lock`.
+Default: `scripts/state.json`. A single JSON object holding the current session's state. Lock file: `scripts/state.lock`. Violations: `logs/violations.md` + `logs/violations.lock`.
 
 ### Environment overrides (tests)
 

@@ -19,7 +19,7 @@ from .specs import SpecsState
 
 class StateStore(BaseState):
     """
-    Session-scoped state facade composing the three workflow slices.
+    Single-session state facade composing the three workflow slices.
 
     ``self`` carries every shared :class:`BaseState` method directly, while
     ``self.build``, ``self.implement`` and ``self.specs`` hold the workflow
@@ -27,24 +27,22 @@ class StateStore(BaseState):
     was constructed against ``self``.
 
     Example:
-        >>> state = StateStore(Path("/tmp/state.jsonl"), "abc")  # doctest: +SKIP
+        >>> state = StateStore(Path("/tmp/state.json"))  # doctest: +SKIP
         Return: <StateStore>
     """
 
     def __init__(
         self,
         state_path: Path,
-        session_id: str,
         default_state: dict[str, Any] | None = None,
     ) -> None:
         """
-        Bind the store to a path/session and attach the workflow slices.
+        Bind the store to ``state.json`` and attach the workflow slices.
 
         Args:
-            state_path (Path): JSONL file backing the store.
-            session_id (str): Unique session identifier.
-            default_state (dict[str, Any] | None): Initial dict for a
-                previously-unseen session. Defaults to ``{}``.
+            state_path (Path): JSON file backing the store.
+            default_state (dict[str, Any] | None): Initial dict used when
+                ``state.json`` is missing or empty. Defaults to ``{}``.
 
         Returns:
             None: Constructor — wires up the sub-slices.
@@ -54,15 +52,15 @@ class StateStore(BaseState):
             workflow slices bound to ``self``.
 
         Example:
-            >>> StateStore(Path("/tmp/state.jsonl"), "abc")  # doctest: +SKIP
+            >>> StateStore(Path("/tmp/state.json"))  # doctest: +SKIP
             Return: <StateStore>
             SideEffect:
                 self.build = <BuildState>
                 self.implement = <ImplementState>
                 self.specs = <SpecsState>
         """
-        # Base initializer sets the path, session, lock — everything I/O-bound.
-        super().__init__(state_path, session_id, default_state)
+        # Base initializer sets the path, lock — everything I/O-bound.
+        super().__init__(state_path, default_state)
         # Named sub-attributes; ownership is visible at call sites.
         self.build = BuildState(self)
         self.implement = ImplementState(self)

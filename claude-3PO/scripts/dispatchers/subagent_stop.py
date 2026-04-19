@@ -26,7 +26,7 @@ marked failed and released — preventing an infinite reject/retry loop.
 other agent events), which is why score / verdict extraction lives in the
 orchestration module.
 
-Env override: ``SUBAGENT_STOP_STATE_PATH`` redirects state.jsonl (used by tests).
+Env override: ``SUBAGENT_STOP_STATE_PATH`` redirects state.json (used by tests).
 """
 
 import os
@@ -43,7 +43,7 @@ from config import Config
 
 STATE_PATH = Path(os.environ.get(
     "SUBAGENT_STOP_STATE_PATH",
-    str(SCRIPTS_DIR / "state.jsonl"),
+    str(SCRIPTS_DIR / "state.json"),
 ))
 
 
@@ -64,7 +64,7 @@ def main() -> None:
     if not session_id:
         sys.exit(0)
 
-    state = StateStore(STATE_PATH, session_id=session_id)
+    state = StateStore(STATE_PATH)
     if not state.get("workflow_active"):
         sys.exit(0)
 

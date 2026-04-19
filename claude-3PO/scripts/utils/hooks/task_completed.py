@@ -16,7 +16,7 @@ PLUGIN_ROOT = SCRIPTS_DIR.parent
 def update_project_task_status(task_id: str, status: str) -> None:
     """Fire-and-forget call to ``project_manager.cli`` to update task status.
 
-    Best-effort by design: state.jsonl is the source of truth, so any failure
+    Best-effort by design: state.json is the source of truth, so any failure
     here (CLI missing, timeout, OSError) is swallowed silently — the workflow
     continues with state already correct.
 

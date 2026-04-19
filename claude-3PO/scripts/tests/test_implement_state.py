@@ -19,7 +19,7 @@ from models.state import Task
 @pytest.fixture
 def store(tmp_path: Path) -> StateStore:
     # Fresh StateStore per test; no default state so we start empty.
-    return StateStore(tmp_path / "state.jsonl", session_id="s")
+    return StateStore(tmp_path / "state.json")
 
 
 class TestImplementProjectTasks:
@@ -30,7 +30,7 @@ class TestImplementProjectTasks:
 
     def test_set_and_read(self, store: StateStore):
         store.implement.set_project_tasks([{"id": "T-1", "title": "x"}])
-        # Slice reads flow back through the shared JSONL line.
+        # Slice reads flow back through the shared JSON document.
         assert store.implement.project_tasks[0]["id"] == "T-1"
         assert store.load()["project_tasks"][0]["id"] == "T-1"
 
@@ -97,5 +97,5 @@ class TestImplementSliceSharesBase:
 
     def test_slice_write_visible_through_facade(self, store: StateStore):
         store.implement.set_plan_files_to_modify(["x.py"])
-        # Same JSONL line — facade sees what the slice wrote.
+        # Same JSON document — facade sees what the slice wrote.
         assert store.load()["plan_files_to_modify"] == ["x.py"]

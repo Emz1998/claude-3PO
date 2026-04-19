@@ -127,8 +127,8 @@ class TestRecordCommand:
 class TestRecordSessionId:
     def test_sets(self, state):
         Recorder(state).record_session_id("sess-42")
-        entries = state._read_all_lines()
-        assert any(e.get("session_id") == "sess-42" for e in entries)
+        # Single-file store: session_id lives inside the loaded dict.
+        assert state.load().get("session_id") == "sess-42"
 
 
 class TestRecordStoryId:

@@ -13,7 +13,7 @@ Serves the Claude Code ``TaskCreated`` event. Flow:
        build subject and/or attach the task as a subtask of its matched
        implement-workflow parent.
 
-Env override: ``TASK_CREATED_STATE_PATH`` redirects state.jsonl (used by tests).
+Env override: ``TASK_CREATED_STATE_PATH`` redirects state.json (used by tests).
 """
 
 import os
@@ -32,7 +32,7 @@ from config import Config
 
 STATE_PATH = Path(os.environ.get(
     "TASK_CREATED_STATE_PATH",
-    str(SCRIPTS_DIR / "state.jsonl"),
+    str(SCRIPTS_DIR / "state.json"),
 ))
 
 
@@ -52,7 +52,7 @@ def main() -> None:
     if not session_id:
         sys.exit(0)
 
-    state = StateStore(STATE_PATH, session_id=session_id)
+    state = StateStore(STATE_PATH)
     if not state.get("workflow_active"):
         sys.exit(0)
 

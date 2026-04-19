@@ -198,7 +198,7 @@
   },
 
   "paths": {
-    "state_jsonl": ".claude/state.jsonl",
+    "state_json": ".claude/state.json",
     "log_file": "build.log",
     "debug_log_file": "debug.log",
     "plan_file": ".claude/plans/latest-plan.md",
