@@ -1,0 +1,78 @@
+import sys
+import json
+from pathlib import Path
+
+import pytest
+
+# Add scripts/ and tests/ to path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from lib.state_store import StateStore
+from config import Config, get_config
+
+
+DEFAULT_STATE: dict = {
+    "session_id": "test-session",
+    "workflow_active": True,
+    "status": "in_progress",
+    "workflow_type": "implement",
+    "phases": [],
+    "tdd": False,
+    "story_id": "TEST-001",
+    "skip": [],
+    "instructions": "",
+    "agents": [],
+    "plan": {
+        "file_path": None,
+        "written": False,
+        "revised": None,
+        "reviews": [],
+    },
+    "tasks": [],
+    "project_tasks": [],
+    "tests": {
+        "file_paths": [],
+        "executed": False,
+        "reviews": [],
+        "files_to_revise": [],
+        "files_revised": [],
+    },
+    "code_files_to_write": [],
+    "code_files": {
+        "file_paths": [],
+        "reviews": [],
+        "tests_to_revise": [],
+        "tests_revised": [],
+        "files_to_revise": [],
+        "files_revised": [],
+    },
+    "quality_check_result": None,
+    "pr": {"status": "pending", "number": None},
+    "ci": {"status": "pending", "results": None},
+    "report_written": False,
+    "plan_files_to_modify": [],
+}
+
+SESSION_ID = "test-session"
+
+
+@pytest.fixture
+def state_path(tmp_path: Path) -> Path:
+    # Single JSON object, no JSONL wrapping — the new single-session layout.
+    p = tmp_path / "state.json"
+    p.write_text(json.dumps(DEFAULT_STATE, separators=(",", ":")))
+    return p
+
+
+@pytest.fixture
+def state(state_path: Path) -> StateStore:
+    return StateStore(state_path)
+
+
+@pytest.fixture
+def config() -> Config:
+    get_config.cache_clear()
+    cfg = get_config()
+    yield cfg
+    get_config.cache_clear()

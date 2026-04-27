@@ -1,0 +1,104 @@
+{
+  "phases": [
+    {
+      "name": "explore",
+      "workflows": ["implement"],
+      "read_only": true,
+      "agent": "Explore",
+      "agent_count": 3
+    },
+    {
+      "name": "research",
+      "workflows": ["implement"],
+      "read_only": true,
+      "agent": "Research",
+      "agent_count": 2
+    },
+    {
+      "name": "plan",
+      "workflows": ["implement"],
+      "docs_write": true,
+      "docs_edit": true,
+      "agent": "Plan",
+      "agent_count": 1,
+      "checkpoint": true
+    },
+    {
+      "name": "create-tasks",
+      "workflows": ["implement"],
+      "auto": true
+    },
+    {
+      "name": "write-tests",
+      "workflows": ["implement"],
+      "code_write": true,
+      "auto": true
+    },
+    {
+      "name": "write-code",
+      "workflows": ["implement"],
+      "code_write": true,
+      "auto": true
+    },
+    {
+      "name": "write-report",
+      "workflows": ["implement"],
+      "docs_write": true
+    },
+    {
+      "name": "refactor",
+      "workflows": [],
+      "code_write": true,
+      "code_edit": true
+    },
+    { "name": "plan-revision", "workflows": [], "code_edit": true }
+  ],
+
+  "plan_templates": {
+    "implement": {
+      "required_sections": [
+        "## Context",
+        "## Approach",
+        "## Files to Create/Modify",
+        "## Verification"
+      ]
+    }
+  },
+
+  "safe_domains": [
+    "docs.python.org",
+    "docs.anthropic.com",
+    "developer.mozilla.org",
+    "reactjs.org",
+    "react.dev",
+    "nextjs.org",
+    "tailwindcss.com",
+    "github.com",
+    "stackoverflow.com",
+    "pypi.org",
+    "npmjs.com",
+    "typescriptlang.org",
+    "nodejs.org",
+    "firebase.google.com",
+    "supabase.com",
+    "expo.dev",
+    "reactnative.dev",
+    "code.claude.com",
+    "vercel.com",
+    "medium.com",
+    "web.dev",
+    "developers.google.com",
+    "css-tricks.com"
+  ],
+
+  "paths": {
+    "state_json": ".claude/state.json",
+    "log_file": "build.log",
+    "debug_log_file": "debug.log",
+    "plan_file": ".claude/plans/latest-plan.md",
+    "plan_archive_dir": ".claude/plans/archive",
+    "test_file": ".claude/tests/test.md",
+    "code_file": ".claude/code/code.md",
+    "report_file": ".claude/reports/report.md"
+  }
+}

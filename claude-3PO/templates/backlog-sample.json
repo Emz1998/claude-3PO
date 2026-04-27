@@ -1,0 +1,92 @@
+{
+  "project": "Avaris",
+  "goal": "Establish foundational infrastructure and ML pipeline for NBA prediction model",
+  "dates": {
+    "start": "2026-02-17",
+    "end": "2026-03-02"
+  },
+  "totalPoints": 23,
+  "stories": [
+    {
+      "id": "SK-001",
+      "type": "Spike",
+      "title": "Which NBA stats features yield best XGBoost accuracy",
+      "description": "Research and analyze which NBA statistics features provide the best accuracy improvement for XGBoost model predictions",
+      "status": "Backlog",
+      "priority": "P0",
+      "is_blocking": [
+        "TS-002"
+      ],
+      "blocked_by": [],
+      "acceptance_criteria": [
+        "Feature importance analysis completed and documented",
+        "Top 10 features identified and ranked by importance",
+        "Feature set recommendations provided with pros/cons",
+        "Expected accuracy impact assessed for each feature"
+      ],
+      "item_type": "story",
+      "milestone": "v.0.1.0",
+      "start_date": "2026-02-17",
+      "target_date": "2026-02-21"
+    },
+    {
+      "id": "US-002",
+      "type": "User Story",
+      "title": "Timing decision for predictions",
+      "description": "Decide on the best time to generate predictions",
+      "status": "In Progress",
+      "priority": "P0",
+      "is_blocking": [],
+      "blocked_by": [],
+      "acceptance_criteria": [
+        "Firebase project created and configured",
+        "Firestore collections initialized with schemas",
+        "Security rules configured and tested"
+      ],
+      "item_type": "story",
+      "milestone": "v.0.1.0",
+      "start_date": "2026-02-17",
+      "target_date": "2026-02-28"
+    },
+    {
+      "id": "TS-002",
+      "type": "Technical Story",
+      "title": "Model training pipeline",
+      "description": "Implement end-to-end model training pipeline with reproducible runs",
+      "status": "Done",
+      "priority": "P1",
+      "is_blocking": [],
+      "blocked_by": [
+        "SK-001"
+      ],
+      "acceptance_criteria": [
+        "Pipeline runs end-to-end without manual intervention",
+        "Each run is versioned and reproducible"
+      ],
+      "item_type": "story",
+      "milestone": "v.0.1.0",
+      "start_date": "2026-02-22",
+      "target_date": "2026-02-28"
+    },
+    {
+      "id": "BG-001",
+      "type": "Bug",
+      "title": "Stale predictions shown after model refresh",
+      "description": "Predictions cache is not invalidated when the underlying model is refreshed",
+      "status": "Blocked",
+      "priority": "P1",
+      "is_blocking": [],
+      "blocked_by": [
+        "TS-002"
+      ],
+      "acceptance_criteria": [
+        "Predictions cache invalidates on new model deployment",
+        "Regression test added"
+      ],
+      "item_type": "story",
+      "milestone": "v.0.1.0",
+      "start_date": "",
+      "target_date": ""
+    }
+  ]
+}

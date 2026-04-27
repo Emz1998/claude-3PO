@@ -1,0 +1,50 @@
+{
+  "project": "TestProject",
+  "goal": "Ship the MVP",
+  "dates": {
+    "start": "",
+    "end": ""
+  },
+  "totalPoints": 0,
+  "stories": [
+    {
+      "id": "US-001",
+      "type": "User Story",
+      "title": "Login flow",
+      "description": "Enable users to authenticate via email and password.",
+      "status": "Backlog",
+      "priority": "P0",
+      "is_blocking": [],
+      "blocked_by": [],
+      "acceptance_criteria": [
+        "User can register with email + password",
+        "User can log in with existing credentials",
+        "User sees an error on invalid credentials"
+      ],
+      "item_type": "story",
+      "milestone": "MVP",
+      "start_date": "",
+      "target_date": ""
+    },
+    {
+      "id": "BG-001",
+      "type": "Bug",
+      "title": "Logout crash",
+      "description": "Crash on logout leaves the session inconsistent.",
+      "status": "Backlog",
+      "priority": "P1",
+      "is_blocking": [],
+      "blocked_by": [
+        "US-001"
+      ],
+      "acceptance_criteria": [
+        "No crash on logout",
+        "Session is cleared server-side"
+      ],
+      "item_type": "story",
+      "milestone": "MVP",
+      "start_date": "",
+      "target_date": ""
+    }
+  ]
+}

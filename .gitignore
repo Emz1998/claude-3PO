@@ -16,5 +16,10 @@ worktrees/
 .git/objects
 .git/refs
 
-# State Json
-.claude/hooks/workflow/state.json
+
+# CLaude Settings
+.claude/settings.local.json
+
+# Local credentials helper — references a per-machine OAuth token path.
+anthropic_key.py
+

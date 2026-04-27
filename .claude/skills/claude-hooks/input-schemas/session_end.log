@@ -1,7 +1,0 @@
-{
-    "session_id": "9e127b6f-d67f-49a2-bafe-96c127765603",
-    "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/9e127b6f-d67f-49a2-bafe-96c127765603.jsonl",
-    "cwd": "/home/emhar/avaris-ai",
-    "hook_event_name": "SessionEnd",
-    "reason": "prompt_input_exit"
-}

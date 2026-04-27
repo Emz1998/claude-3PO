@@ -1,0 +1,70 @@
+{
+  "project": "Avaris",
+  "goal": "Establish foundational infrastructure and ML pipeline for NBA prediction model",
+  "dates": {
+    "start": "2026-02-17",
+    "end": "2026-03-02"
+  },
+  "totalPoints": 23,
+  "stories": [
+    {
+      "id": "SK-001",
+      "type": "Spike",
+      "milestone": "v.0.1.0",
+      "labels": ["spike", "research", "ml-features", "analysis"],
+      "title": "Which NBA stats features yield best XGBoost accuracy",
+      "description": "Research and analyze which NBA statistics features provide the best accuracy improvement for XGBoost model predictions",
+      "points": 2,
+      "status": "In Progress",
+      "tdd": false,
+      "priority": "P0",
+      "is_blocking": ["TS-002"],
+      "blocked_by": [],
+      "acceptance_criteria": [
+        "Feature importance analysis completed and documented",
+        "Top 10 features identified and ranked by importance",
+        "Feature set recommendations provided with pros/cons",
+        "Expected accuracy impact assessed for each feature"
+      ],
+      "start_date": "2026-02-17",
+      "target_date": "2026-02-21",
+      "tasks": [
+        {
+          "id": "T-017",
+          "type": "task",
+          "labels": ["analysis", "documentation", "feature-selection"],
+          "title": "Feature importance analysis documented in decisions.md with top 10 features ranked",
+          "description": "Perform feature importance analysis and document findings",
+          "status": "Backlog",
+          "priority": "P1",
+          "complexity": "M",
+          "is_blocking": ["T-018"],
+          "blocked_by": [],
+          "acceptance_criteria": [
+            "Feature importance analysis completed",
+            "Top 10 features documented in decisions.md",
+            "Importance scores calculated"
+          ],
+          "item_type": "task"
+        },
+        {
+          "id": "T-018",
+          "type": "task",
+          "labels": ["recommendation", "documentation", "feature-selection"],
+          "title": "Recommendation includes feature set with pros/cons and expected accuracy impact",
+          "description": "Develop feature set recommendations with trade-offs",
+          "status": "Ready",
+          "priority": "P1",
+          "complexity": "M",
+          "is_blocking": ["T-019"],
+          "blocked_by": ["T-017"],
+          "acceptance_criteria": [
+            "Feature set recommendations documented",
+            "Pros and cons listed for each recommendation",
+            "Expected accuracy impact assessed"
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,8 +1,0 @@
-{
-  "session_id": "58859241-fc2f-41f0-b829-9baac891dd31",
-  "transcript_path": "/home/emhar/.claude/projects/-home-emhar-avaris-ai/55e03575-bd44-43b2-bcb2-2214bad7a612.jsonl",
-  "cwd": "/home/emhar/avaris-ai",
-  "permission_mode": "bypassPermissions",
-  "hook_event_name": "UserPromptSubmit",
-  "prompt": "/review 287"
-}
