@@ -54,35 +54,6 @@ class TestResolvePlan:
         assert not state.is_phase_completed("plan")
 
 
-class TestResolvePlanReview:
-    def test_pass_completes_phase(self, config, state):
-        state.add_phase("plan-review")
-        state.add_plan_review({"confidence_score": 95, "quality_score": 95})
-        Resolver(config, state)._resolve_plan_review()
-        assert state.is_phase_completed("plan-review")
-        assert state.last_plan_review["status"] == "Pass"
-
-    def test_fail_requires_revision(self, config, state):
-        state.add_phase("plan-review")
-        state.add_plan_review({"confidence_score": 50, "quality_score": 50})
-        Resolver(config, state)._resolve_plan_review()
-        assert not state.is_phase_completed("plan-review")
-        assert state.last_plan_review["status"] == "Fail"
-        assert state.plan_revised is False
-
-    def test_third_fail_does_not_raise(self, config, state):
-        """3rd failed review sets status without raising — agent max prevents 4th."""
-        state.add_phase("plan-review")
-        state.add_plan_review({"confidence_score": 50, "quality_score": 50})
-        state.set_last_plan_review_status("Fail")
-        state.add_plan_review({"confidence_score": 60, "quality_score": 60})
-        state.set_last_plan_review_status("Fail")
-        state.add_plan_review({"confidence_score": 70, "quality_score": 70})
-        Resolver(config, state)._resolve_plan_review()
-        assert state.last_plan_review["status"] == "Fail"
-        assert not state.is_phase_completed("plan-review")
-
-
 class TestResolveWriteTests:
     def test_completes_when_written_and_executed(self, config, state):
         state.add_phase("write-tests")
@@ -96,35 +67,6 @@ class TestResolveWriteTests:
         state.add_test_file("test_app.py")
         Resolver(config, state)._resolve_write_tests()
         assert not state.is_phase_completed("write-tests")
-
-
-class TestResolveTestReview:
-    def test_pass_completes_phase(self, config, state):
-        state.add_phase("test-review")
-        state.add_test_review("Pass")
-        Resolver(config, state)._resolve_test_review()
-        assert state.is_phase_completed("test-review")
-
-    def test_fail_does_not_complete(self, config, state):
-        state.add_phase("test-review")
-        state.add_test_review("Fail")
-        Resolver(config, state)._resolve_test_review()
-        assert not state.is_phase_completed("test-review")
-
-    def test_no_review_does_nothing(self, config, state):
-        state.add_phase("test-review")
-        Resolver(config, state)._resolve_test_review()
-        assert not state.is_phase_completed("test-review")
-
-    def test_third_fail_does_not_raise(self, config, state):
-        """3rd failed review sets verdict without raising — agent max prevents 4th."""
-        state.add_phase("test-review")
-        state.add_test_review("Fail")
-        state.add_test_review("Fail")
-        state.add_test_review("Fail")
-        Resolver(config, state)._resolve_test_review()
-        assert state.last_test_review["verdict"] == "Fail"
-        assert not state.is_phase_completed("test-review")
 
 
 class TestResolveWriteCode:
@@ -146,91 +88,17 @@ class TestResolveWriteCode:
         assert not state.is_phase_completed("write-code")
 
 
-class TestResolveCodeReview:
-    def test_pass_completes_phase(self, config, state):
-        state.add_phase("code-review")
-        state.add_code_review({"confidence_score": 95, "quality_score": 95})
-        Resolver(config, state)._resolve_code_review()
-        assert state.is_phase_completed("code-review")
-        assert state.last_code_review["status"] == "Pass"
-
-    def test_fail_requires_revision(self, config, state):
-        state.add_phase("code-review")
-        state.add_code_review({"confidence_score": 50, "quality_score": 50})
-        Resolver(config, state)._resolve_code_review()
-        assert not state.is_phase_completed("code-review")
-        assert state.last_code_review["status"] == "Fail"
-        assert state.files_to_revise == []
-        assert state.files_revised == []
-
-    def test_third_fail_does_not_raise(self, config, state):
-        """3rd failed review sets status without raising — agent max prevents 4th."""
-        state.add_phase("code-review")
-        state.add_code_review({"confidence_score": 50, "quality_score": 50})
-        state.set_last_code_review_status("Fail")
-        state.add_code_review({"confidence_score": 60, "quality_score": 60})
-        state.set_last_code_review_status("Fail")
-        state.add_code_review({"confidence_score": 70, "quality_score": 70})
-        Resolver(config, state)._resolve_code_review()
-        assert state.last_code_review["status"] == "Fail"
-        assert not state.is_phase_completed("code-review")
-
-
-class TestResolveQualityCheck:
-    def test_pass_completes(self, config, state):
-        state.add_phase("quality-check")
-        state.set_quality_check_result("Pass")
-        Resolver(config, state)._resolve_quality_check()
-        assert state.is_phase_completed("quality-check")
-
-    def test_fail_does_not_complete(self, config, state):
-        state.add_phase("quality-check")
-        state.set_quality_check_result("Fail")
-        Resolver(config, state)._resolve_quality_check()
-        assert not state.is_phase_completed("quality-check")
-
-
-class TestResolveValidate:
-    def test_pass_completes(self, config, state):
-        state.add_phase("validate")
-        state.set_quality_check_result("Pass")
-        Resolver(config, state)._resolve_validate()
-        assert state.is_phase_completed("validate")
-
-    def test_fail_does_not_complete(self, config, state):
-        state.add_phase("validate")
-        state.set_quality_check_result("Fail")
-        Resolver(config, state)._resolve_validate()
-        assert not state.is_phase_completed("validate")
-
-
 class TestAutoAdvanceOnSkipped:
     """Auto-advance should treat a "skipped" current phase as finished."""
 
     def test_skipped_phase_advances(self, config, state):
-        state.set("workflow_type", "build")
+        state.set("workflow_type", "implement")
         state.set("tdd", True)
         state.set("skip", [])
-        state.add_phase("plan-review", status="skipped")
+        state.add_phase("create-tasks", status="skipped")
         Resolver(config, state).auto_start_next(skip_checkpoint=True)
-        assert state.current_phase == "create-tasks"
-        assert state.get_phase_status("plan-review") == "skipped"
-
-
-class TestResolvePrCreate:
-    def test_completes_when_created(self, config, state):
-        state.add_phase("pr-create")
-        state.set_pr_status("created")
-        Resolver(config, state)._resolve_pr_create()
-        assert state.is_phase_completed("pr-create")
-
-
-class TestResolveCiCheck:
-    def test_completes_when_passed(self, config, state):
-        state.add_phase("ci-check")
-        state.set_ci_status("passed")
-        Resolver(config, state)._resolve_ci_check()
-        assert state.is_phase_completed("ci-check")
+        assert state.current_phase == "write-tests"
+        assert state.get_phase_status("create-tasks") == "skipped"
 
 
 class TestResolveReport:

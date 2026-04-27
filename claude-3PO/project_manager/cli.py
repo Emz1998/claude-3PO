@@ -23,9 +23,9 @@ examples:
   python -m project_manager.cli add-story --type Spike --title "Research X"
   python -m project_manager.cli summary -g priority
   python -m project_manager.cli unblocked
-  python -m project_manager.cli unblocked --promote
   python -m project_manager.cli sync --dry-run
   python -m project_manager.cli sync --delete-all
+  python -m project_manager.cli watch
 """
 
 
@@ -128,12 +128,8 @@ def _add_sync_override_flags(p: argparse.ArgumentParser) -> None:
 
 
 def _add_sync_parser(sub: Any) -> None:
-    p = sub.add_parser("sync", help="Sync issues to GitHub Projects")
+    p = sub.add_parser("sync", help="Sync stories to GitHub Projects")
     p.add_argument("--dry-run", action="store_true", help="Preview without modifying")
-    p.add_argument(
-        "--sync-scope", choices=["all", "stories", "tasks"], default="all",
-        help="Which items to sync: all (default), stories only, or tasks only",
-    )
     p.add_argument(
         "--delete-all", action="store_true",
         help="Close all issues and remove them from the project",
@@ -142,10 +138,23 @@ def _add_sync_parser(sub: Any) -> None:
 
 
 def _add_unblocked_parser(sub: Any) -> None:
-    p = sub.add_parser("unblocked", help="List items whose dependencies are Done")
+    p = sub.add_parser(
+        "unblocked", help="List stories whose dependencies are Done"
+    )
     p.add_argument("--story", help="Filter to a single story ID (e.g. SK-001)")
-    p.add_argument("--promote", action="store_true", help="Promote unblocked Backlog items to Ready")
+    p.add_argument(
+        "--promote", action="store_true",
+        help="Promote unblocked Backlog stories to Ready",
+    )
     p.add_argument("--json", action="store_true", help="Output results as JSON")
+
+
+def _add_watch_parser(sub: Any) -> None:
+    p = sub.add_parser(
+        "watch", help="Watch project.json and auto-resolve+sync on every edit"
+    )
+    p.add_argument("--backlog-path", help="Override project.json path")
+    _add_sync_override_flags(p)
 
 
 def _register_subparsers(sub: Any) -> None:
@@ -158,6 +167,7 @@ def _register_subparsers(sub: Any) -> None:
     sub.add_parser("progress", help="Show backlog completion stats")
     _add_sync_parser(sub)
     _add_unblocked_parser(sub)
+    _add_watch_parser(sub)
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -178,6 +188,10 @@ def _args_to_kwargs(args: argparse.Namespace) -> tuple[str, dict]:
 
 def main(argv: list[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
+    if args.command == "watch":
+        # watch is a long-running process, not a ProjectManager.run command.
+        from .watcher import main_from_args
+        return main_from_args(args)
     command, kwargs = _args_to_kwargs(args)
     return ProjectManager().run(command, **kwargs)
 

@@ -1,6 +1,6 @@
 # project_manager
 
-Local JSON-based backlog management with optional GitHub Projects (v2) sync. Day-to-day work reads and writes a single file — `issues/backlog.json` — with no GitHub API calls. Sync is a separate subcommand that pushes data to GitHub when needed.
+Local JSON-based backlog management with optional GitHub Projects (v2) sync. Day-to-day work reads and writes a single file — `project.json` — with no GitHub API calls. Sync is a separate subcommand that pushes data to GitHub when needed.
 
 ## Layout
 
@@ -9,10 +9,11 @@ project_manager/
 ├── __init__.py              # Exposes ProjectManager, Syncer
 ├── cli.py                   # argparse wrapper — entry point
 ├── manager.py               # ProjectManager: list/view/update/add/progress/unblocked
-├── sync.py                  # Syncer: push backlog.json → GitHub Issues & Projects v2
+├── resolver.py              # Pure rule engine: derived status resolution
+├── watcher.py               # Foreground watcher: auto-resolve + auto-sync on file edit
+├── sync.py                  # Syncer: push project.json → GitHub Issues & Projects v2
 ├── config.py                # Project, repo, owner, project number, data paths
-├── issues/
-│   └── backlog.json         # Single backlog file (stories with nested tasks)
+├── project.json             # Single backlog file (stories with nested tasks)
 ├── templates/
 │   └── issue_view.txt       # Default template for `view` command
 ├── utils/
@@ -153,16 +154,16 @@ Shows overall task completion, status distribution, story completion, and per-st
 
 ### unblocked
 
-Lists items whose `blocked_by` dependencies are all `Done` (or have no dependencies). Only considers items with status `Backlog` or `Ready`.
+Lists **stories** whose `blocked_by` dependencies are all `Done` (or have no dependencies). Only considers stories with status `Backlog` or `Ready`. Tasks are local-only sub-items and are not surfaced here.
 
 ```bash
-# All unblocked items
+# All unblocked stories
 python -m project_manager.cli unblocked
 
 # Narrow to one story
 python -m project_manager.cli unblocked --story SK-001
 
-# Promote unblocked Backlog items to Ready
+# Promote unblocked Backlog stories to Ready
 python -m project_manager.cli unblocked --promote
 
 # JSON output
@@ -171,18 +172,14 @@ python -m project_manager.cli unblocked --json
 
 ### sync
 
-Syncs `backlog.json` to GitHub Issues and GitHub Projects (v2). Requires the `gh` CLI authenticated. Defaults come from `config.py`.
+Syncs **stories** in `project.json` to GitHub Issues and GitHub Projects (v2). Requires the `gh` CLI authenticated. Defaults come from `config.py`. Tasks live only in the local file and are never registered as GitHub issues.
 
 ```bash
-# Sync everything
+# Sync stories
 python -m project_manager.cli sync
 
 # Preview without writing
 python -m project_manager.cli sync --dry-run
-
-# Sync only stories or only tasks
-python -m project_manager.cli sync --sync-scope stories
-python -m project_manager.cli sync --sync-scope tasks
 
 # Override config values
 python -m project_manager.cli sync --repo owner/repo --project 5 --owner owner
@@ -192,7 +189,46 @@ python -m project_manager.cli sync --delete-all
 python -m project_manager.cli sync --delete-all --dry-run
 ```
 
-The sync runs in passes: resolve/create issues, add to project, batch field updates, set parent-child relationships, and set blocking relationships (via `addBlockedBy` GraphQL mutations).
+The sync runs in passes: resolve/create issues, add to project, batch field updates, and set blocking relationships (via `addBlockedBy` GraphQL mutations).
+
+Pass 2 diffs the in-memory values against the remote snapshot before
+mutating. Pass 2 skips field writes (Status / Priority / Points /
+Complexity / Start date / Target date) and the per-issue milestone edit
+when the remote value already matches. A no-op re-sync — the common
+case when the watcher echoes its own writeback — issues **zero field
+mutations and zero `gh issue edit` subprocesses**. The pre-pass
+snapshots reuse the existing `gh project item-list`, `gh issue list`,
+and node-ID GraphQL calls, so no extra round-trips are added.
+
+### watch
+
+Runs a foreground watcher that makes `project.json` authoritative end-to-end. On every edit — manual, CLI, or programmatic — the watcher debounces for 500 ms, applies the resolver rules, and pushes the result to GitHub Projects via the same pipeline as `sync`.
+
+```bash
+# Watch the default project.json in this package
+python -m project_manager.cli watch
+
+# Watch a different file (e.g. during smoke tests)
+python -m project_manager.cli watch --backlog-path /tmp/project.json
+
+# Override GitHub targets — same semantics as `sync`
+python -m project_manager.cli watch --repo owner/repo --project 5 --owner owner
+```
+
+The watcher runs in the foreground; stop it with `Ctrl-C`. Self-writes (the watcher saving the file after the resolver mutates it) are deduped by SHA-256, so the push-to-GitHub cycle does not loop.
+
+On launch, the watcher runs one full resolve + sync cycle before blocking on file events. This converges any drift that accrued while the watcher was off (e.g. `project.json` edits made between runs, or a prior sync that crashed mid-cycle). The Pass 2 diff means the no-op case is cheap — two reads, zero writes.
+
+## Auto-resolve & sync
+
+Two rules drive derived statuses. Both are applied to a fixed point on every edit, so cascades resolve in one watcher cycle.
+
+| Rule | Effect |
+|------|--------|
+| Unblocked & parent Ready+ → Ready | A story in `Backlog` moves to `Ready` when its `blocked_by` are all `Done`. Tasks no longer carry blockers — they auto-promote `Backlog → Ready` once their parent story leaves `Backlog` (i.e. parent is `Ready`, `In progress`, `In review`, or `Done`). Children of a still-`Backlog` story are not advertised as workable. |
+| All tasks Done → In review | A story in `In progress` whose every child task is `Done` moves to `In review`. Stories with no tasks are left alone. |
+
+Neither rule can produce a transition that is not in the `VALID_TRANSITIONS` table (e.g. `Ready → In review` never fires automatically). Run the rules without the watcher via `unblocked --promote` for Rule A; Rule B is only applied by `watch`.
 
 ---
 
@@ -207,7 +243,7 @@ OWNER = "Emz1998"
 PROJECT_NUMBER = 4
 
 DATA_PATHS = {
-    "backlog": str(_BASE / "issues" / "backlog.json"),
+    "backlog": str(_BASE / "project.json"),
 }
 ```
 
@@ -217,7 +253,7 @@ Override per-invocation with `--repo`, `--project`, and `--owner` on the `sync` 
 
 ## Data structure
 
-All data lives in a single `issues/backlog.json` file. Stories sit at the top level; tasks are nested under each story.
+All data lives in a single `project.json` file. Stories sit at the top level; tasks are nested under each story.
 
 ```json
 {
@@ -253,11 +289,8 @@ All data lives in a single `issues/backlog.json` file. Stories sit at the top le
           "status": "In progress",
           "priority": "P0",
           "complexity": "M",
-          "is_blocking": ["T-002"],
-          "blocked_by": [],
           "acceptance_criteria": ["…"],
-          "milestone": "v0.1.0",
-          "issue_number": 433
+          "milestone": "v0.1.0"
         }
       ]
     }
@@ -265,7 +298,7 @@ All data lives in a single `issues/backlog.json` file. Stories sit at the top le
 }
 ```
 
-`issue_number` is populated by `sync` after the corresponding GitHub issue is created, and is reused on subsequent syncs.
+`issue_number` is populated on **stories** by `sync` after the corresponding GitHub issue is created, and is reused on subsequent syncs. Tasks never receive an `issue_number` — they are local-only sub-items.
 
 #### Statuses: `Backlog` · `Ready` · `In progress` · `In review` · `Done`
 #### Priorities: `P0` · `P1` · `P2` · `P3`

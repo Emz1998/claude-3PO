@@ -51,11 +51,8 @@ SAMPLE_BACKLOG: dict = {
                     "status": "Done",
                     "priority": "P0",
                     "complexity": "S",
-                    "is_blocking": [],
-                    "blocked_by": [],
                     "acceptance_criteria": [],
                     "item_type": "task",
-                    "issue_number": 1,
                     "start_date": "2026-01-01",
                     "target_date": "2026-01-15",
                 },
@@ -68,11 +65,8 @@ SAMPLE_BACKLOG: dict = {
                     "status": "In progress",
                     "priority": "P1",
                     "complexity": "M",
-                    "is_blocking": [],
-                    "blocked_by": [],
                     "acceptance_criteria": [],
                     "item_type": "task",
-                    "issue_number": 2,
                     "start_date": "",
                     "target_date": "",
                 },
@@ -105,11 +99,8 @@ SAMPLE_BACKLOG: dict = {
                     "status": "Ready",
                     "priority": "P0",
                     "complexity": "S",
-                    "is_blocking": [],
-                    "blocked_by": [],
                     "acceptance_criteria": [],
                     "item_type": "task",
-                    "issue_number": 3,
                     "start_date": "2026-01-02",
                     "target_date": "2026-01-05",
                 },
@@ -611,12 +602,9 @@ SAMPLE_BACKLOG_UNBLOCKED: dict = {
             "id": "SK-001", "type": "Spike", "title": "Story A", "status": "Done",
             "blocked_by": [], "is_blocking": [],
             "tasks": [
-                {"id": "T-001", "title": "Task A", "status": "Backlog",
-                 "blocked_by": [], "type": "task"},
-                {"id": "T-002", "title": "Task B", "status": "Backlog",
-                 "blocked_by": ["SK-001"], "type": "task"},
-                {"id": "T-003", "title": "Task C", "status": "Done",
-                 "blocked_by": [], "type": "task"},
+                {"id": "T-001", "title": "Task A", "status": "Backlog", "type": "task"},
+                {"id": "T-002", "title": "Task B", "status": "Backlog", "type": "task"},
+                {"id": "T-003", "title": "Task C", "status": "Done", "type": "task"},
             ],
         },
         {
@@ -645,12 +633,13 @@ def unblocked_pm(unblocked_backlog_file):
 
 class TestUnblocked:
     def test_correct_items(self, unblocked_pm, capsys):
+        # `unblocked` lists stories only — tasks no longer carry blockers.
         assert unblocked_pm.unblocked() == 0
         out = capsys.readouterr().out
-        assert "T-001" in out
-        assert "T-002" in out
         assert "SK-002" in out
-        assert "T-003" not in out  # Done
+        assert "T-001" not in out  # tasks excluded entirely
+        assert "T-002" not in out
+        assert "T-003" not in out
         assert "SK-001" not in out  # Done
         assert "SK-003" not in out  # blocked by non-Done
 
@@ -658,21 +647,17 @@ class TestUnblocked:
         pm_inst = ProjectManager(unblocked_backlog_file)
         assert pm_inst.unblocked(promote=True) == 0
         data = json.loads(unblocked_backlog_file.read_text(encoding="utf-8"))
-        t001 = data["stories"][0]["tasks"][0]
         sk002 = data["stories"][1]
-        t003 = data["stories"][0]["tasks"][2]
-        assert t001["status"] == "Ready"
+        # Only the unblocked story is promoted; tasks are untouched.
         assert sk002["status"] == "Ready"
-        assert t003["status"] == "Done"
+        assert data["stories"][0]["tasks"][0]["status"] == "Backlog"
+        assert data["stories"][0]["tasks"][2]["status"] == "Done"
         assert "Promoted" in capsys.readouterr().out
 
     def test_promote_skips_already_ready(self, tmp_path, capsys):
         data = {
             "stories": [
-                {"id": "SK-001", "status": "Done", "blocked_by": [], "tasks": [
-                    {"id": "T-001", "title": "Task A", "status": "Ready",
-                     "blocked_by": [], "type": "task"},
-                ]},
+                {"id": "SK-001", "status": "Ready", "blocked_by": [], "tasks": []},
             ],
         }
         backlog = tmp_path / "backlog.json"
@@ -680,21 +665,18 @@ class TestUnblocked:
         ProjectManager(backlog).unblocked(promote=True)
         assert "Promoted 0" in capsys.readouterr().out
         saved = json.loads(backlog.read_text(encoding="utf-8"))
-        assert saved["stories"][0]["tasks"][0]["status"] == "Ready"
+        assert saved["stories"][0]["status"] == "Ready"
 
     def test_filter_by_story(self, unblocked_pm, capsys):
+        # Filtering to a Done parent yields no story matches (stories-only).
         unblocked_pm.unblocked(story="SK-001")
         out = capsys.readouterr().out
-        assert "T-001" in out
-        assert "T-002" in out
-        assert "SK-002" not in out
+        assert "No unblocked items found." in out
 
     def test_no_items(self, tmp_path, capsys):
         data = {
             "stories": [
-                {"id": "SK-001", "status": "Done", "tasks": [
-                    {"id": "T-001", "title": "A", "status": "Done", "blocked_by": []},
-                ]},
+                {"id": "SK-001", "status": "Done", "blocked_by": [], "tasks": []},
             ],
         }
         backlog = tmp_path / "backlog.json"
@@ -706,15 +688,36 @@ class TestUnblocked:
         assert unblocked_pm.unblocked(json=True) == 0
         parsed = json.loads(capsys.readouterr().out)
         ids = [item["id"] for item in parsed]
-        assert "T-001" in ids
-        assert "T-002" in ids
-        assert "SK-002" in ids
-        assert "T-003" not in ids
+        # Only stories appear; tasks are excluded from `unblocked`.
+        assert ids == ["SK-002"]
+        # `type` is the story type (Spike/Tech/User Story/Bug) — never "task".
+        assert all(item["type"] != "task" for item in parsed)
         for item in parsed:
             for req in ("id", "type", "status", "title", "description", "blocked_by"):
                 assert req in item
-        for t in [i for i in parsed if i["type"] == "task"]:
-            assert "parent_story_id" in t
+
+    def test_tasks_excluded_from_listing(self, tmp_path, capsys):
+        # Tasks never appear in `unblocked` output — only stories do.
+        data = {
+            "stories": [
+                {"id": "SK-001", "type": "Spike", "title": "Parent",
+                 "status": "Ready", "blocked_by": [], "is_blocking": [],
+                 "tasks": [
+                     {"id": "T-001", "title": "Child", "status": "Backlog",
+                      "type": "task"},
+                 ]},
+            ],
+        }
+        backlog = tmp_path / "backlog.json"
+        backlog.write_text(json.dumps(data), encoding="utf-8")
+        pm_inst = ProjectManager(backlog)
+        assert pm_inst.unblocked() == 0
+        out = capsys.readouterr().out
+        assert "T-001" not in out
+        # Promote leaves tasks alone (no task promotions occur).
+        assert pm_inst.unblocked(promote=True) == 0
+        saved = json.loads(backlog.read_text(encoding="utf-8"))
+        assert saved["stories"][0]["tasks"][0]["status"] == "Backlog"
 
 
 # ---------------------------------------------------------------------------

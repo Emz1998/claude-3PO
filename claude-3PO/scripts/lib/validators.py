@@ -1,25 +1,18 @@
-"""validators.py — Pure validators for review scores, verdicts, and specs docs.
+"""validators.py — Pure validators for review scores and verdicts.
 
-Consolidates two previously separate validators:
-
-* **Score / verdict** (``scores_valid``, ``verdict_valid``) — used by
+* :func:`scores_valid` and :func:`verdict_valid` are used by
   :class:`AgentReportGuard` (validate-then-block) and the recorder
   (extract-and-store) to check reviewer report content.
-* **Specs content** (``validate_architecture_content``,
-  ``validate_backlog_content``, ``format_rejection_message``) — thin wrappers
-  over :class:`utils.validator.SpecsValidator` that let guardrails validate a
-  specs report without pulling in the heavier ``utils/`` package directly.
 
-Lives in ``lib/`` so guard scripts can validate without importing the heavier
-``utils/`` package (which handles writing those reports too).
+Lives in ``lib/`` so guard scripts can validate without importing the
+heavier ``utils/`` package.
 """
 
-from functools import lru_cache
+from lib.extractors.markdown import trees_identical, build_md_tree  # type: ignore
+from pathlib import Path
 from typing import Callable, Literal, cast
 
-from utils.validator import SpecsValidator
-from config import Config
-
+_DIFF_SEPARATOR = "\n\n------------------------------------\n\n"
 
 # ---------------------------------------------------------------------------
 # Score / verdict validation
@@ -30,7 +23,9 @@ ScoreDict = dict[Literal["confidence_score", "quality_score"], int]
 
 def scores_valid(
     content: str,
-    extractor: Callable[[str], dict[Literal["confidence_score", "quality_score"], int | None]],
+    extractor: Callable[
+        [str], dict[Literal["confidence_score", "quality_score"], int | None]
+    ],
 ) -> tuple[bool, ScoreDict]:
     """
     Validate that *extractor* finds both scores and that they're in 1-100.
@@ -98,120 +93,73 @@ def verdict_valid(
     return True, cast(Literal["Pass", "Fail"], verdict)
 
 
-# ---------------------------------------------------------------------------
-# Specs content validation
-# ---------------------------------------------------------------------------
-
-_TEMPLATE_HINTS = {
-    "architect": (
-        "${CLAUDE_PLUGIN_ROOT}/templates/architecture.md",
-        "${CLAUDE_PLUGIN_ROOT}/templates/test/minimal-architecture.md",
-    ),
-    "backlog": (
-        "${CLAUDE_PLUGIN_ROOT}/templates/backlog.md",
-        "${CLAUDE_PLUGIN_ROOT}/templates/test/minimal-backlog.md",
-    ),
-}
-
-
-def format_rejection_message(
-    phase: str,
-    errors: list[str],
-    attempt: int,
-    max_attempts: int,
-) -> str:
+def template_conformance_check(actual_content: str, template: Path) -> tuple[bool, str]:
     """
-    Build an actionable stderr payload so a specs agent can course-correct.
+    Build a ConformanceCheck that matches responses against *template*'s md tree.
 
-    Bundles the full error list, canonical + minimal template paths, and the
-    remaining-attempts count so the agent knows the cap before the workflow
-    halts.
+    The returned callable reads *template* each invocation so callers can
+    edit the template mid-session and pick up the new structure without
+    rebuilding the check.
 
     Args:
-        phase (str): Spec phase name (``architect`` or ``backlog``).
-        errors (list[str]): Structural validation errors.
-        attempt (int): The 1-based attempt number that just failed.
-        max_attempts (int): Maximum allowed attempts before halt.
+        template (Path): Path to the markdown template file.
 
     Returns:
-        str: Formatted multi-line stderr payload.
+        ConformanceCheck: ``(response) -> (is_ok, stitched_diff_str)``.
+
+    Raises:
+        FileNotFoundError: When the check is *called* and *template* is missing.
 
     Example:
-        >>> msg = format_rejection_message(
-        ...     "architect", ["missing section: Overview"], 1, 3
-        ... )
-        >>> "Re-emit the ENTIRE document" in msg
-        True
+        >>> check = template_tree_check(Path("plan.md"))  # doctest: +SKIP
+        >>> check("# Wrong")  # doctest: +SKIP
+        (False, '...')
+        Return: (False, '...')
     """
-    # Fallback strings keep the payload readable when an unknown phase sneaks in —
-    # never raises, because this runs on the error path.
-    template, minimal = _TEMPLATE_HINTS.get(
-        phase, ("(no template)", "(no minimal reference)")
-    )
-    bullets = "\n".join(f"  - {e}" for e in errors)
-    remaining = max(0, max_attempts - attempt)
-    return (
-        f"[FAIL] {phase} validation FAILED (attempt {attempt}/{max_attempts}).\n\n"
-        f"Errors:\n{bullets}\n\n"
-        f"To course-correct:\n"
-        f"  1. Read the template: {template}\n"
-        f"  2. Re-emit the ENTIRE document with every required section + filled metadata (not a diff, not a summary).\n"
-        f"  3. Minimal valid reference: {minimal}\n\n"
-        f"{remaining} attempt(s) remaining. After {max_attempts} rejections the agent is marked failed "
-        "and the workflow halts so the operator can intervene."
-    )
+
+    template_tree = build_md_tree(template.read_text())
+    response_tree = build_md_tree(actual_content)
+    ok, diff = trees_identical(template_tree, response_tree)
+
+    return ok, _DIFF_SEPARATOR.join(diff)
 
 
-@lru_cache(maxsize=1)
-def _validator() -> SpecsValidator:
-    """Return a process-cached ``SpecsValidator`` bound to ``Config()``.
-
-    Cached because ``SpecsValidator``'s template-schema cache is per-instance —
-    rebuilding on each call re-parses ``templates/architecture.md`` /
-    ``templates/backlog.md`` from disk, which compounds on the PostToolUse hot
-    path (one validation per architect/backlog Task finish).
-
-    Returns:
-        SpecsValidator: Singleton validator instance.
-
-    Example:
-        >>> _validator() is _validator()  # doctest: +SKIP
-        True
+def scores_present(actual_content: str) -> tuple[bool, dict[str, str]]:
     """
-    return SpecsValidator(Config())
-
-
-def validate_architecture_content(content: str) -> list[str]:
+    Check if the actual content contains scores.
     """
-    Validate architecture markdown against the template-derived schema.
 
-    Args:
-        content (str): Architecture markdown to validate.
+    lines = actual_content.splitlines()
 
-    Returns:
-        list[str]: Human-readable error messages, empty if validation passed.
+    confidence_score = ""
+    quality_score = ""
 
-    Example:
-        >>> errors = validate_architecture_content("# bad doc")  # doctest: +SKIP
-        >>> isinstance(errors, list)
-        True
+    for line in lines:
+        if line.startswith("Confidence Score:"):
+            confidence_score = line.split(":")[1].strip()
+        if line.startswith("Quality Score:"):
+            quality_score = line.split(":")[1].strip()
+
+    if not confidence_score or not quality_score:
+        return False, {}
+
+    return True, {
+        "confidence_score": confidence_score,
+        "quality_score": quality_score,
+    }
+
+
+def verdict_present(actual_content: str) -> tuple[bool, str]:
     """
-    return _validator().validate_architecture(content)
-
-
-def validate_backlog_content(content: str) -> list[str]:
+    Check if the actual content contains a verdict.
     """
-    Validate backlog markdown against the template-derived schema.
+    lines = actual_content.splitlines()
+    verdict = ""
+    for line in lines:
+        if line.startswith("Verdict:"):
+            verdict = line.split(":")[1].strip()
 
-    Args:
-        content (str): Backlog markdown to validate.
+    if verdict not in ["Pass", "Fail"]:
+        return False, ""
 
-    Returns:
-        list[str]: Human-readable error messages, empty if validation passed.
-
-    Example:
-        >>> errors = validate_backlog_content("# bad doc")  # doctest: +SKIP
-        >>> isinstance(errors, list)
-        True
-    """
-    return _validator().validate_backlog_md(content)
+    return True, verdict

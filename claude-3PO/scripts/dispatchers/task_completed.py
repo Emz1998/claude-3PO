@@ -24,9 +24,9 @@ from pathlib import Path
 SCRIPTS_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(SCRIPTS_DIR))
 
-from lib.hook import Hook
-from lib.state_store import StateStore
-from utils.hooks.task_completed import update_project_task_status
+from lib.hook import Hook  # type: ignore
+from lib.state_store import StateStore  # type: ignore
+from utils.hooks.task_completed import update_project_task_status  # type: ignore
 
 STATE_PATH = SCRIPTS_DIR / "state.json"
 
@@ -65,7 +65,9 @@ def main() -> None:
 
     state.implement.set_subtask_completed(parent_id, task_id)
 
-    parent = next((pt for pt in state.implement.project_tasks if pt.get("id") == parent_id), None)
+    parent = next(
+        (pt for pt in state.implement.project_tasks if pt.get("id") == parent_id), None
+    )
     subs = parent.get("subtasks", []) if parent else []
     all_done = subs and all(
         (s.get("status") == "completed" if isinstance(s, dict) else False) for s in subs

@@ -10,5 +10,5 @@ PROJECT_NUMBER = 4
 _BASE = Path(__file__).parent
 
 DATA_PATHS = {
-    "backlog": str(_BASE / "issues" / "backlog.json"),
+    "backlog": str(_BASE / "project.json"),
 }

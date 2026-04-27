@@ -1,0 +1,62 @@
+name: Code Review (scripts_v2)
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+    inputs:
+      test_mode:
+        description: "Run in test mode (skip agents, post mock review)"
+        type: boolean
+        default: true
+
+jobs:
+  code-review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: read
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install agent CLIs
+        # claude + codex are not on ubuntu-latest; typing_extensions is imported by agent_cli_v2.
+        run: |
+          npm install -g @anthropic-ai/claude-code @openai/codex
+          pip install typing_extensions
+
+      - name: Stub hardcoded settings path
+        # agent_cli_v2.py:31 hardcodes /home/emhar/claude-3PO/settings.json.
+        run: |
+          sudo mkdir -p /home/emhar/claude-3PO
+          echo '{}' | sudo tee /home/emhar/claude-3PO/settings.json > /dev/null
+
+      - name: Prepare runtime directories
+        run: mkdir -p projects/code-review projects/claude-3PO
+
+      - name: Checkout PR branch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh pr checkout ${{ github.event.pull_request.number }}
+
+      - name: Run code review
+        env:
+          PYTHONPATH: ${{ github.workspace }}/claude-3PO/scripts_v2
+          # Default ON for pull_request runs while we're still wiring this up.
+          # Set CODE_REVIEW_TEST_MODE=0 (or flip the workflow_dispatch input) to run for real.
+          CODE_REVIEW_TEST_MODE: ${{ github.event_name == 'workflow_dispatch' && (inputs.test_mode && '1' || '0') || '1' }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 claude-3PO/scripts_v2/code_review.py
+
+      - name: Upload review reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: code-review-reports
+          path: projects/code-review/
+          if-no-files-found: ignore

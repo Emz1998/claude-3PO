@@ -83,5 +83,7 @@ def extract_plan_files_to_modify(content: str) -> list[str]:
             if len(table) < 2:  # header + at least 1 data row
                 return []
             # Skip header row, extract Path column (index 1)
-            return [row[1].strip() for row in table[1:] if len(row) > 1 and row[1].strip()]
+            return [
+                row[1].strip() for row in table[1:] if len(row) > 1 and row[1].strip()
+            ]
     return []

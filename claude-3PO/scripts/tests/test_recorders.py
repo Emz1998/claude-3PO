@@ -158,10 +158,10 @@ class TestRecordWorkflowStatus:
 class TestRecordWorkflowConvenience:
     def test_all_three(self, state):
         Recorder(state).record_workflow(
-            type="build", active=False, status="completed"
+            type="implement", active=False, status="completed"
         )
         d = state.load()
-        assert d["workflow_type"] == "build"
+        assert d["workflow_type"] == "implement"
         assert d["workflow_active"] is False
         assert d["status"] == "completed"
 
@@ -227,37 +227,6 @@ class TestRecordAgent:
         assert a is not None
         assert a["tool_use_id"] == "tu_1"
         assert a["status"] == "in_progress"
-
-
-class TestRecordCodeReview:
-    def test_appends_with_status(self, state):
-        Recorder(state).record_code_review(
-            iteration=1, scores={"confidence_score": 95, "quality_score": 90},
-            status="Pass",
-        )
-        last = state.last_code_review
-        assert last["iteration"] == 1
-        assert last["scores"]["confidence_score"] == 95
-        assert last["status"] == "Pass"
-
-    def test_appends_without_status(self, state):
-        Recorder(state).record_code_review(iteration=2, scores={"c": 50})
-        assert state.last_code_review["status"] is None
-
-
-class TestRecordTestReview:
-    def test_appends_with_status(self, state):
-        Recorder(state).record_test_review(
-            iteration=1, verdict="Pass", status="Pass"
-        )
-        last = state.last_test_review
-        assert last["iteration"] == 1
-        assert last["verdict"] == "Pass"
-        assert last["status"] == "Pass"
-
-    def test_appends_without_status(self, state):
-        Recorder(state).record_test_review(iteration=1, verdict="Fail")
-        assert state.last_test_review["status"] is None
 
 
 class TestRecordTask:
@@ -331,22 +300,3 @@ class TestRecordFacade:
         Recorder(state).record(hook, config)
         assert state.report_written is True
         assert state.load().get("report_file_path") == "r.md"
-
-    def test_edit_in_plan_review_marks_plan_revised(self, state, config):
-        state.add_phase("plan-review")
-        hook = make_hook_input("Edit", {"file_path": "anything.md"})
-        Recorder(state).record(hook, config)
-        assert state.plan_revised is True
-
-    def test_edit_in_test_review_records_test_revision(self, state, config):
-        state.add_phase("test-review")
-        hook = make_hook_input("Edit", {"file_path": "tests/test_a.py"})
-        Recorder(state).record(hook, config)
-        assert "tests/test_a.py" in state.test_files_revised
-
-    def test_edit_in_code_review_records_file_revision(self, state, config):
-        state.add_phase("code-review")
-        state.add_code_file("src/app.py")
-        hook = make_hook_input("Edit", {"file_path": "src/app.py"})
-        Recorder(state).record(hook, config)
-        assert "src/app.py" in state.files_revised

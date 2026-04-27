@@ -201,7 +201,7 @@ class Recorder:
         """Set ``state.workflow_type``.
 
         Args:
-            workflow_type (str): One of ``build``/``implement``/``specs``/``ship``.
+            workflow_type (str): Workflow identifier (currently ``"implement"``).
 
         Example:
             >>> Recorder(state).record_workflow_type("implement")  # doctest: +SKIP
@@ -432,16 +432,14 @@ class Recorder:
         elif phase == "write-report":
             self.record_report_written(file_path=file_path, written=True)
 
-    def _dispatch_edit(self, hook_input: dict, _config: Config) -> None:
-        """Route an Edit event to the revision method for the current phase."""
-        file_path = hook_input.get("tool_input", {}).get("file_path", "")
-        phase = self.state.current_phase
-        if phase == "plan-review":
+    def _dispatch_edit(self, _hook_input: dict, _config: Config) -> None:
+        """Route an Edit event to the revision method for the current phase.
+
+        In the trimmed 7-phase MVP, only the ``plan`` phase has a meaningful
+        Edit revision flow — author tweaks to the plan file mark it revised.
+        """
+        if self.state.current_phase == "plan":
             self.record_plan(revised=True)
-        elif phase == "test-review" and file_path:
-            self.record_tests(files_revised=("add", [file_path]))
-        elif phase == "code-review" and file_path:
-            self.record_code_files(files_revised=("add", [file_path]))
 
     def _dispatch_bash(self, hook_input: dict, _config: Config) -> None:
         """Route a Bash event to :meth:`record_command`."""

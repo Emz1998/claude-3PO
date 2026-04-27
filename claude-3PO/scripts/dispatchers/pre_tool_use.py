@@ -63,7 +63,7 @@ def main() -> None:
     if decision == "block":
         log_violation(
             session_id=session_id,
-            workflow_type=state.get("workflow_type", "build"),
+            workflow_type=state.get("workflow_type", "implement"),
             story_id=state.get("story_id"),
             prompt_summary=state.get("prompt_summary"),
             phase=resolve_violation_phase(state, config, tool_name, hook_input),

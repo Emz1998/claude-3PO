@@ -3,15 +3,13 @@
 After a recorder writes raw data to state, the resolver checks completion
 conditions for the current phase and auto-starts the next phase if needed.
 
-Two parallel dispatch tables — ``_PHASE_RESOLVER_MAP`` and
-``_TOOL_RESOLVER_MAP`` — keep the per-phase resolution logic table-driven
-rather than buried in long if/elif chains. ``auto_start_next`` and
-``_skip_tdd_phases`` together implement the auto-advance machinery,
-including the ``--tdd``-off optimization that hops over the
-``write-tests`` / ``test-review`` phases when TDD is disabled.
+A single dispatch table — ``_TOOL_RESOLVER_MAP`` — keeps per-phase resolution
+table-driven. ``auto_start_next`` and ``_skip_tdd_phases`` together implement
+the auto-advance machinery, including the ``--tdd``-off optimization that
+hops over the ``write-tests`` phase when TDD is disabled. Phases flagged
+``checkpoint: true`` (currently ``plan``) pause auto-advance so a human can
+review before continuing.
 """
-
-from typing import Literal
 
 from lib.state_store import StateStore
 from lib.paths import basenames
@@ -23,10 +21,9 @@ class Resolver:
     """Resolve phase completion based on current state.
 
     A fresh Resolver is constructed per hook call: it captures the
-    current phase at construction time and runs both dispatch maps
-    against it. The maps split phase-driven resolvers (e.g. score-based
-    review checks) from tool-driven resolvers (e.g. plan-file written)
-    so each can be edited independently.
+    current phase at construction time and dispatches to either an
+    agent-phase resolver or a tool-phase resolver. Checkpoint phases
+    (e.g. ``plan``) pause auto-advance so a human can intervene.
 
     Example:
         >>> Resolver(config, state)  # doctest: +SKIP
@@ -36,7 +33,7 @@ class Resolver:
         """Bind the resolver to a config + state pair.
 
         Args:
-            config (Config): Workflow configuration (phase order, thresholds).
+            config (Config): Workflow configuration (phase order, checkpoint flags).
             state (StateStore): Session state to read and mutate.
 
         Example:
@@ -45,198 +42,14 @@ class Resolver:
         self.config = config
         self.state = state
         self.phase = state.current_phase
-        self.workflow_type = state.get("workflow_type", "build")
+        self.workflow_type = state.get("workflow_type", "implement")
         self.phases_ordered = (
             config.get_phases(self.workflow_type) or config.main_phases
         )
 
     # ══════════════════════════════════════════════════════════════
-    # Phase resolvers (reviews, agents)
+    # Agent-based phases
     # ══════════════════════════════════════════════════════════════
-
-    # ── Score-based reviews ───────────────────────────────────────
-
-    def _is_revision_needed(
-        self,
-        file_type: Literal["plan", "report", "tests", "code"],
-        confidence: int,
-        quality: int,
-    ) -> bool:
-        """Raise unless both confidence and quality clear their thresholds.
-
-        Returning ``True`` means *no* revision is needed (the review passed).
-        Failure is signalled by ``ValueError`` rather than a return value
-        so the caller can short-circuit cleanly with a try/except — it's
-        the cleanest way to surface *which* threshold failed without
-        returning a tuple of booleans.
-
-        Args:
-            file_type (Literal): Which threshold set to consult.
-            confidence (int): Reviewer's confidence score.
-            quality (int): Reviewer's quality score.
-
-        Returns:
-            bool: Always ``True`` on success (raises otherwise).
-
-        Raises:
-            ValueError: When either threshold is unmet, with a message
-                naming the failing dimension.
-
-        Example:
-            >>> Resolver(config, state)._is_revision_needed("plan", 9, 9)  # doctest: +SKIP
-        """
-        conf_threshold = self.config.get_score_threshold(file_type, "confidence_score")
-        qual_threshold = self.config.get_score_threshold(file_type, "quality")
-
-        if confidence < conf_threshold and quality < qual_threshold:
-            raise ValueError(f"Scores are below the threshold for {file_type}")
-        if confidence < conf_threshold:
-            raise ValueError(f"Confidence score is below the threshold for {file_type}")
-        if quality < qual_threshold:
-            raise ValueError(f"Quality score is below the threshold for {file_type}")
-        return True
-
-    def _get_pending_scores(self, last_getter: str) -> tuple[int, int] | None:
-        """Get scores from the latest review if it hasn't been resolved yet.
-
-        Returns ``None`` when the review is missing, already has a status,
-        or both scores are zero (treated as "not yet scored" to avoid a
-        spurious failure on a stub review).
-
-        Args:
-            last_getter (str): Name of the StateStore property holding the
-                latest review (e.g. ``"last_plan_review"``).
-
-        Returns:
-            tuple[int, int] | None: ``(confidence, quality)`` or ``None``
-            if there's nothing to resolve.
-
-        Example:
-            >>> Resolver(config, state)._get_pending_scores("last_plan_review")  # doctest: +SKIP
-        """
-        last = getattr(self.state, last_getter)
-        if not last or last.get("status"):
-            return None
-        scores = last.get("scores", {})
-        confidence = scores.get("confidence_score", 0)
-        quality = scores.get("quality_score", 0)
-        if confidence == 0 and quality == 0:
-            return None
-        return confidence, quality
-
-    def _mark_review_failed(self, file_type: str, status_setter: str) -> None:
-        """Stamp the latest review ``Fail`` and reopen plan revision if needed.
-
-        Example:
-            >>> Resolver(config, state)._mark_review_failed("plan", "set_last_plan_review_status")  # doctest: +SKIP
-        """
-        getattr(self.state, status_setter)("Fail")
-        if file_type == "plan":
-            self.state.set_plan_revised(False)
-
-    def _mark_review_passed(self, status_setter: str, phase_name: str) -> None:
-        """Stamp the latest review ``Pass`` and complete the phase.
-
-        Example:
-            >>> Resolver(config, state)._mark_review_passed("set_last_plan_review_status", "plan-review")  # doctest: +SKIP
-        """
-        getattr(self.state, status_setter)("Pass")
-        self.state.set_phase_completed(phase_name)
-
-    def _resolve_score_review(
-        self,
-        file_type: Literal["plan", "code"],
-        last_getter: str,
-        status_setter: str,
-        phase_name: str,
-    ) -> None:
-        """Generic score-based review resolver shared by plan and code reviews.
-
-        Args:
-            file_type (Literal): Threshold bucket — ``"plan"`` or ``"code"``.
-            last_getter (str): StateStore property name for the latest review.
-            status_setter (str): StateStore method name to stamp the verdict.
-            phase_name (str): Phase to complete on a Pass.
-
-        Example:
-            >>> Resolver(config, state)._resolve_score_review("plan", "last_plan_review", "set_last_plan_review_status", "plan-review")  # doctest: +SKIP
-        """
-        pending = self._get_pending_scores(last_getter)
-        if pending is None:
-            return
-
-        confidence, quality = pending
-        try:
-            self._is_revision_needed(file_type, confidence, quality)
-        except ValueError:
-            self._mark_review_failed(file_type, status_setter)
-            return
-
-        self._mark_review_passed(status_setter, phase_name)
-
-    def _resolve_plan_review(self) -> None:
-        """Resolve the ``plan-review`` phase against plan score thresholds.
-
-        Example:
-            >>> Resolver(config, state)._resolve_plan_review()  # doctest: +SKIP
-        """
-        self._resolve_score_review(
-            "plan", "last_plan_review", "set_last_plan_review_status", "plan-review"
-        )
-
-    def _resolve_code_review(self) -> None:
-        """Resolve the ``code-review`` phase against code score thresholds.
-
-        Example:
-            >>> Resolver(config, state)._resolve_code_review()  # doctest: +SKIP
-        """
-        self._resolve_score_review(
-            "code", "last_code_review", "set_last_code_review_status", "code-review"
-        )
-
-    # ── Verdict-based reviews ─────────────────────────────────────
-
-    def _resolve_test_review(self) -> None:
-        """Complete a test-review phase when its latest verdict is ``Pass``.
-
-        The current phase may be either ``test-review`` or its alias
-        ``tests-review`` — both are accepted so older configs keep working.
-
-        Example:
-            >>> Resolver(config, state)._resolve_test_review()  # doctest: +SKIP
-        """
-        last = self.state.last_test_review
-        if not last or last.get("verdict") != "Pass":
-            return
-        phase = self.phase if self.phase in ("test-review", "tests-review") else "test-review"
-        self.state.set_phase_completed(phase)
-
-    def _complete_on_quality_pass(self, phase_name: str) -> None:
-        """Mark *phase_name* completed iff ``quality_check_result`` is ``Pass``.
-
-        Example:
-            >>> Resolver(config, state)._complete_on_quality_pass("validate")  # doctest: +SKIP
-        """
-        if self.state.quality_check_result == "Pass":
-            self.state.set_phase_completed(phase_name)
-
-    def _resolve_quality_check(self) -> None:
-        """Complete the ``quality-check`` phase on a ``Pass`` verdict.
-
-        Example:
-            >>> Resolver(config, state)._resolve_quality_check()  # doctest: +SKIP
-        """
-        self._complete_on_quality_pass("quality-check")
-
-    def _resolve_validate(self) -> None:
-        """Complete the ``validate`` phase on a ``Pass`` verdict.
-
-        Example:
-            >>> Resolver(config, state)._resolve_validate()  # doctest: +SKIP
-        """
-        self._complete_on_quality_pass("validate")
-
-    # ── Agent-based phases ────────────────────────────────────────
 
     def _is_required_agent_done(self, phase_name: str) -> bool:
         """True if the phase's required agent has run and every invocation completed.
@@ -274,21 +87,6 @@ class Resolver:
         if not self.config.get_required_agent(phase_name):
             return
         if self._is_required_agent_done(phase_name):
-            self.state.set_phase_completed(phase_name)
-
-    # ── Specs doc-based phases ───────────────────────────────────
-
-    def _resolve_doc_phase(self, phase_name: str, doc_key: str) -> None:
-        """Generic doc-phase resolver: complete iff the doc was written.
-
-        Args:
-            phase_name (str): Phase to complete.
-            doc_key (str): Key under ``state.docs`` to inspect.
-
-        Example:
-            >>> Resolver(config, state)._resolve_doc_phase("vision", "product_vision")  # doctest: +SKIP
-        """
-        if self.state.specs.is_doc_written(doc_key):
             self.state.set_phase_completed(phase_name)
 
     # ══════════════════════════════════════════════════════════════
@@ -349,16 +147,6 @@ class Resolver:
 
     # ── Tasks ─────────────────────────────────────────────────────
 
-    def _all_tasks_created(self) -> bool:
-        """Return True when every planned task subject has a created counterpart.
-
-        Example:
-            >>> Resolver(config, state)._all_tasks_created()  # doctest: +SKIP
-        """
-        planned = set(self.state.tasks)
-        created = set(self.state.build.created_tasks)
-        return bool(planned) and not (planned - created)
-
     def _all_project_tasks_have_subtasks(self) -> bool:
         """Return True when every project task has at least one subtask.
 
@@ -371,43 +159,13 @@ class Resolver:
         return all(len(pt.get("subtasks", [])) >= 1 for pt in ptasks)
 
     def _resolve_create_tasks(self) -> None:
-        """Resolve ``create-tasks`` differently for ``implement`` vs ``build``.
-
-        ``implement`` workflows decompose project tasks into subtasks, so
-        completion means every project task has at least one subtask.
-        ``build`` workflows track flat tasks, so completion means every
-        planned task subject has been created.
+        """Complete ``create-tasks`` once every project task has a subtask.
 
         Example:
             >>> Resolver(config, state)._resolve_create_tasks()  # doctest: +SKIP
         """
-        workflow_type = self.state.get("workflow_type", "build")
-        if workflow_type == "implement":
-            if self._all_project_tasks_have_subtasks():
-                self.state.set_phase_completed("create-tasks")
-        else:
-            if self._all_tasks_created():
-                self.state.set_phase_completed("create-tasks")
-
-    # ── Delivery ──────────────────────────────────────────────────
-
-    def _resolve_pr_create(self) -> None:
-        """Complete ``pr-create`` once a PR number has been recorded.
-
-        Example:
-            >>> Resolver(config, state)._resolve_pr_create()  # doctest: +SKIP
-        """
-        if self.state.pr_status == "created":
-            self.state.set_phase_completed("pr-create")
-
-    def _resolve_ci_check(self) -> None:
-        """Complete ``ci-check`` once CI is flagged passed.
-
-        Example:
-            >>> Resolver(config, state)._resolve_ci_check()  # doctest: +SKIP
-        """
-        if self.state.ci_status == "passed":
-            self.state.set_phase_completed("ci-check")
+        if self._all_project_tasks_have_subtasks():
+            self.state.set_phase_completed("create-tasks")
 
     # ══════════════════════════════════════════════════════════════
     # Auto-start & workflow completion
@@ -416,12 +174,12 @@ class Resolver:
     def _is_phase_ready_to_advance(self, skip_checkpoint: bool) -> bool:
         """Return True if the current phase is finished (completed/skipped) and may auto-advance.
 
-        ``plan-review`` is special — it's a human checkpoint and never
-        auto-advances unless the caller explicitly opts in via
-        ``skip_checkpoint``.
+        Phases flagged ``checkpoint: true`` in ``config.json`` (currently
+        ``plan``) are human checkpoints and never auto-advance unless the
+        caller explicitly opts in via ``skip_checkpoint``.
 
         Args:
-            skip_checkpoint (bool): If True, bypass the plan-review pause.
+            skip_checkpoint (bool): If True, bypass the checkpoint pause.
 
         Returns:
             bool: True if ``auto_start_next`` should proceed.
@@ -432,7 +190,7 @@ class Resolver:
         phase = self.state.current_phase
         if not phase or self.state.get_phase_status(phase) not in DONE_STATUSES:
             return False
-        if phase == "plan-review" and not skip_checkpoint:
+        if self.config.is_checkpoint_phase(phase) and not skip_checkpoint:
             return False
         return True
 
@@ -465,11 +223,10 @@ class Resolver:
     def _skip_tdd_phases(self, next_phase: str) -> str | None:
         """Hop past test-related phases when TDD is disabled.
 
-        When ``state.tdd`` is False, ``write-tests`` and the various
-        ``*-review`` aliases that follow it are skipped — there's no test
-        scaffolding to write or review, so resolving them would block the
-        workflow forever. Returns ``None`` if the next eligible phase
-        isn't auto-advanceable, leaving the user to advance manually.
+        When ``state.tdd`` is False, ``write-tests`` is skipped — there's no
+        test scaffolding to write, so resolving it would block the workflow
+        forever. Returns ``None`` if the next eligible phase isn't
+        auto-advanceable, leaving the user to advance manually.
 
         Args:
             next_phase (str): Phase name returned by :meth:`_get_next_auto_phase`.
@@ -488,6 +245,7 @@ class Resolver:
         phases = self.phases_ordered
         skip_idx = phases.index(self.state.current_phase) + 1
 
+        # Hop past consecutive TDD-only phases.
         while skip_idx < len(phases) and phases[skip_idx] in TDD_PHASES:
             skip_idx += 1
 
@@ -502,7 +260,7 @@ class Resolver:
         into one entry point used by the main resolve cycle.
 
         Args:
-            skip_checkpoint (bool): Skip the plan-review human checkpoint.
+            skip_checkpoint (bool): Skip the checkpoint pause (e.g. plan).
 
         Example:
             >>> Resolver(config, state).auto_start_next()  # doctest: +SKIP
@@ -550,40 +308,20 @@ class Resolver:
     # ══════════════════════════════════════════════════════════════
 
     # Phases that resolve when their required agent has run.
-    _AGENT_PHASES: frozenset[str] = frozenset({"explore", "research", "strategy"})
-
-    # Specs phases that resolve when a specific state.docs entry is written.
-    _DOC_PHASE_MAP: dict[str, str] = {
-        "vision": "product_vision",
-        "decision": "decisions",
-        "architect": "architecture",
-        "backlog": "backlog",
-    }
-
-    # Phases with bespoke resolution logic (not agent- or doc-gated).
-    _PHASE_RESOLVER_MAP: dict[str, str] = {
-        "plan-review": "_resolve_plan_review",
-        "test-review": "_resolve_test_review",
-        "tests-review": "_resolve_test_review",
-        "code-review": "_resolve_code_review",
-        "quality-check": "_resolve_quality_check",
-        "validate": "_resolve_validate",
-    }
+    _AGENT_PHASES: frozenset[str] = frozenset({"explore", "research"})
 
     _TOOL_RESOLVER_MAP: dict[str, str] = {
         "plan": "_resolve_plan",
         "create-tasks": "_resolve_create_tasks",
         "write-tests": "_resolve_write_tests",
         "write-code": "_resolve_write_code",
-        "pr-create": "_resolve_pr_create",
-        "ci-check": "_resolve_ci_check",
         "write-report": "_resolve_report",
     }
 
     def resolve(self) -> None:
-        """Main resolver — dispatch phase + tool resolvers, then auto-advance.
+        """Main resolver — dispatch tool resolvers, then auto-advance.
 
-        Order matters: phase resolvers run before tool resolvers (some
+        Order matters: agent gate runs before tool resolvers (some
         phases depend on agent records the tool resolvers don't touch),
         the parallel-explore special case fixes up explore status when
         ``research`` resolves first, and the workflow-complete check
@@ -600,22 +338,17 @@ class Resolver:
         self._check_workflow_complete()
 
     def _dispatch_phase_resolver(self) -> None:
-        """Route the current phase to its agent / doc / bespoke resolver.
+        """Route the current phase to its agent-completion resolver.
 
-        Three-way routing replaces the ex-stubs (``_resolve_explore``,
-        ``_resolve_vision`` et al) — the shared ``_resolve_agent_phase`` /
-        ``_resolve_doc_phase`` helpers are invoked directly from the
-        data tables.
+        Tool-phase resolvers run separately via ``_TOOL_RESOLVER_MAP``;
+        this method only handles the agent-gated phases (``explore`` /
+        ``research``).
 
         Example:
             >>> Resolver(config, state)._dispatch_phase_resolver()  # doctest: +SKIP
         """
         if self.phase in self._AGENT_PHASES:
             self._resolve_agent_phase(self.phase)
-        elif self.phase in self._DOC_PHASE_MAP:
-            self._resolve_doc_phase(self.phase, self._DOC_PHASE_MAP[self.phase])
-        else:
-            self._dispatch_resolver(self._PHASE_RESOLVER_MAP)
 
     def _dispatch_resolver(self, mapping: dict[str, str]) -> None:
         """Look up the resolver method for the current phase and invoke it.

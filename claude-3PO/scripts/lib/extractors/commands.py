@@ -1,4 +1,4 @@
-"""commands.py — Parsers for ``/build`` prompts and ``gh pr checks`` output.
+"""commands.py — Parsers for slash-command args and ``gh pr checks`` output.
 
 Both concerns parse free-form command text into structured values. Keeping
 them co-located avoids spawning single-caller sibling modules for each
@@ -11,16 +11,14 @@ from constants import BUILD_FLAGS, STORY_ID_PATTERN
 
 
 # ---------------------------------------------------------------------------
-# /build prompt extraction
+# Slash-command arg cleanup
 # ---------------------------------------------------------------------------
-
-_BUILD_PATTERN = re.compile(r"^/(?:\w+:)?build\s+(.*)", re.DOTALL)
 
 
 def strip_flags_and_ids(text: str) -> str:
     """Strip recognized ``--flag`` tokens and ``ABC-123`` story IDs from *text*.
 
-    Shared with :mod:`utils.initializer` so both the ``/build`` prompt
+    Shared with :mod:`utils.initializer` so both the slash-command prompt
     extractor and the CLI arg parser use one canonical flag list.
 
     Args:
@@ -38,34 +36,6 @@ def strip_flags_and_ids(text: str) -> str:
     for flag in BUILD_FLAGS:
         text = text.replace(flag, "")
     return text.strip()
-
-
-def extract_build_instructions(prompt: str) -> str | None:
-    """
-    Extract the free-text instructions from a ``/build`` slash-command prompt.
-
-    Story IDs and known flags are stripped so the remainder is just the user's
-    actual instruction text. Returns ``None`` (not ``""``) when the prompt
-    isn't a ``/build`` command, so callers can branch on "is this a build?"
-    independent of "are there instructions?".
-
-    Args:
-        prompt (str): Raw user prompt.
-
-    Returns:
-        str | None: Cleaned instruction text, or ``None`` if not a build prompt
-        or if the instruction is empty after stripping flags/IDs.
-
-    Example:
-        >>> extract_build_instructions("/build US-001 --tdd add login")
-        'add login'
-        >>> extract_build_instructions("hello") is None
-        True
-    """
-    match = _BUILD_PATTERN.match(prompt.strip())
-    if not match:
-        return None
-    return strip_flags_and_ids(match.group(1)) or None
 
 
 # ---------------------------------------------------------------------------

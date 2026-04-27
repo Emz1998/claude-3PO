@@ -74,11 +74,6 @@ class TestParser:
         assert args.promote is True
         assert args.json is True
 
-    def test_sync_scope_choices(self):
-        for scope in ("all", "stories", "tasks"):
-            args = cli._build_parser().parse_args(["sync", "--sync-scope", scope])
-            assert args.sync_scope == scope
-
     def test_sync_accepts_overrides(self):
         args = cli._build_parser().parse_args(
             ["sync", "--repo", "me/r", "--project", "7", "--owner", "me"]
@@ -171,11 +166,11 @@ class TestMain:
         assert kwargs["promote"] is True
 
     def test_sync_dry_run(self, fake_pm):
-        cli.main(["sync", "--dry-run", "--sync-scope", "stories"])
+        cli.main(["sync", "--dry-run"])
         command, kwargs = fake_pm.calls[0]
         assert command == "sync"
         assert kwargs["dry_run"] is True
-        assert kwargs["sync_scope"] == "stories"
+        assert "sync_scope" not in kwargs
 
     def test_sync_overrides(self, fake_pm):
         cli.main(["sync", "--repo", "o/r", "--project", "5", "--owner", "me"])
@@ -183,3 +178,24 @@ class TestMain:
         assert kwargs["repo"] == "o/r"
         assert kwargs["project"] == 5
         assert kwargs["owner"] == "me"
+
+
+class TestWatchDispatch:
+    def test_watch_routes_to_watcher_main(self, monkeypatch, fake_pm):
+        # The `watch` subcommand must bypass ProjectManager.run and invoke
+        # watcher.main_from_args directly — it's a long-running foreground
+        # process, not a one-shot command.
+        from project_manager import watcher
+
+        captured: dict = {}
+
+        def fake(args):
+            captured["backlog_path"] = args.backlog_path
+            captured["repo"] = args.repo
+            return 0
+
+        monkeypatch.setattr(watcher, "main_from_args", fake)
+        rc = cli.main(["watch", "--backlog-path", "/tmp/p.json", "--repo", "o/r"])
+        assert rc == 0
+        assert captured == {"backlog_path": "/tmp/p.json", "repo": "o/r"}
+        assert fake_pm.calls == []  # ProjectManager must not be touched

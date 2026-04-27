@@ -11,8 +11,6 @@ Layout overview:
       ``COMMANDS_MAP`` to gate which shell commands a phase may run.
     * File patterns (``TEST_FILE_PATTERNS``) — heuristics for locating
       test files.
-    * Specs grammar (``SPECS_*``) — markdown markers, ID regex template, and
-      blockquote patterns the SpecsValidator uses to parse backlog.md.
 """
 
 
@@ -51,12 +49,10 @@ CI_CHECK_PATTERNS = [r"\bgh\s+pr\s+checks\b", r"\bgh\s+run\s+view\b"]
 # ---------------------------------------------------------------------------
 STORY_ID_PATTERN = r"\b([A-Z]{2,}-\d+)\b"
 
-# All ``/build`` CLI flags; used by arg/prompt parsers to strip non-prose tokens.
+# All ``/implement`` CLI flags; used by arg/prompt parsers to strip non-prose tokens.
 BUILD_FLAGS = [
-    "--skip-clarify",
     "--skip-explore",
     "--skip-research",
-    "--skip-vision",
     "--skip-all",
     "--tdd",
     "--reset",
@@ -150,9 +146,6 @@ READ_ONLY_COMMANDS = [
 COMMANDS_MAP = {
     "write-tests": TEST_COMMANDS,
     "write-code": TEST_COMMANDS,
-    "test-review": TEST_COMMANDS,
-    "pr-create": PR_COMMANDS,
-    "ci-check": CI_COMMANDS,
 }
 
 TEST_FILE_PATTERNS = [
@@ -181,43 +174,3 @@ WRITE_COMMANDS = [
     "mv",
     "rm",
 ]
-
-
-# ---------------------------------------------------------------------------
-# Specs document grammar (shared across all specs validators)
-# ---------------------------------------------------------------------------
-
-# Markdown bold-label markers for story/task fields.
-SPECS_FIELD_MARKERS = {
-    "description": "**Description:**",
-    "priority": "**Priority:**",
-    "milestone": "**Milestone:**",
-    "is_blocking": "**Is Blocking:**",
-    "blocked_by": "**Blocked By:**",
-    "status": "**Status:**",
-    "complexity": "**Complexity:**",
-    "depends_on": "**Depends on:**",
-}
-
-# Story/task ID regex; the prefix list lives in config.specs_valid_item_types.
-SPECS_ID_REGEX_TEMPLATE = r"^{prefix}-\d+$"
-
-# Blockquote format regexes keyed by backlog item type prefix (US/TS/SK/BG).
-# Each value is the regex that the blockquote body of a story of that type
-# must match — e.g. user stories must contain "**As a**", spikes must contain
-# "**Investigate:**". Keys must align with config.specs_valid_item_types.
-SPECS_BLOCKQUOTE_PATTERNS = {
-    "US": r"\*\*As a\*\*",
-    "TS": r"\*\*As a\*\*",
-    "SK": r"\*\*Investigate:\*\*",
-    "BG": r"\*\*What['\u2019]s broken:\*\*",
-}
-
-# Acceptance-criteria checkbox markers.
-SPECS_AC_MARKERS = ("- [ ]", "- [x]")
-
-# Prefixes used to detect unfilled template placeholders in metadata values.
-SPECS_PLACEHOLDER_PREFIXES = ("[", "<")
-
-# Heading that introduces the story/task list block in backlog.md.
-SPECS_STORIES_HEADING = "Stories"

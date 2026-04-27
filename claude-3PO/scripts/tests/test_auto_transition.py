@@ -1,13 +1,11 @@
 """Tests for auto-transition phases.
 
-Auto phases (clarify, create-tasks, write-tests, write-code) are started
+Auto phases (create-tasks, write-tests, write-code) are started
 automatically by the resolver / initializer after the previous phase completes.
 
-The build phase order is:
-    clarify (auto) → explore → research → decision → plan → plan-review →
-    create-tasks (auto) → write-tests (auto, TDD) → test-review (TDD) →
-    write-code (auto) → quality-check → code-review → pr-create → ci-check →
-    write-report
+The trimmed 7-phase implement order is:
+    explore → research → plan (checkpoint) → create-tasks (auto) →
+    write-tests (auto, TDD) → write-code (auto) → write-report
 """
 
 import pytest
@@ -17,50 +15,19 @@ from utils.resolver import resolve
 from lib.state_store import StateStore
 
 
-class TestAutoTransitionBuild:
-    """Build workflow auto-transitions after clarify removal."""
-
-    def test_write_tests_auto_starts_after_create_tasks_tdd(self, config, state):
-        state.set("workflow_type", "build")
-        state.set("tdd", True)
-        state.add_phase("create-tasks")
-        state.set_tasks(["Build login"])
-        state.build.add_created_task("Build login")
-        resolve(config, state)
-        assert state.is_phase_completed("create-tasks")
-        assert state.current_phase == "write-tests"
-
-    def test_write_code_auto_starts_after_test_review_pass(self, config, state):
-        state.set("workflow_type", "build")
-        state.set("tdd", True)
-        state.add_phase("test-review")
-        state.add_test_review("Pass")
-        resolve(config, state)
-        assert state.is_phase_completed("test-review")
-        assert state.current_phase == "write-code"
-
-    def test_write_code_auto_starts_after_create_tasks_non_tdd(self, config, state):
-        state.set("workflow_type", "build")
-        state.set("tdd", False)
-        state.add_phase("create-tasks")
-        state.set_tasks(["Build login"])
-        state.build.add_created_task("Build login")
-        resolve(config, state)
-        assert state.is_phase_completed("create-tasks")
-        assert state.current_phase == "write-code"
-
-
 class TestAutoTransitionImplement:
-    """Implement workflow: create-tasks auto-starts after plan-review pass."""
+    """Implement workflow: plan completion is a checkpoint, write-tests auto-starts."""
 
-    def test_plan_review_pass_does_not_auto_start_create_tasks(self, config, state):
-        """plan-review pass is a checkpoint — does not auto-start next phase."""
+    def test_plan_completion_does_not_auto_start_create_tasks(self, config, state):
+        """plan completion is a checkpoint — does not auto-start next phase."""
         state.set("workflow_type", "implement")
-        state.add_phase("plan-review")
-        state.add_plan_review({"confidence_score": 95, "quality_score": 95})
+        state.add_phase("plan")
+        state.add_agent(Agent(name="Plan", status="completed", tool_use_id="p-1"))
+        state.set_plan_file_path(".claude/plans/latest-plan.md")
+        state.set_plan_written(True)
         resolve(config, state)
-        assert state.is_phase_completed("plan-review")
-        assert state.current_phase == "plan-review"  # checkpoint pause
+        assert state.is_phase_completed("plan")
+        assert state.current_phase == "plan"  # checkpoint pause
 
     def test_write_tests_auto_starts_after_create_tasks(self, config, state):
         state.set("workflow_type", "implement")
@@ -72,15 +39,6 @@ class TestAutoTransitionImplement:
         resolve(config, state)
         assert state.is_phase_completed("create-tasks")
         assert state.current_phase == "write-tests"
-
-    def test_write_code_auto_starts_after_tests_review(self, config, state):
-        state.set("workflow_type", "implement")
-        state.set("tdd", True)
-        state.add_phase("tests-review")
-        state.add_test_review("Pass")
-        resolve(config, state)
-        assert state.is_phase_completed("tests-review")
-        assert state.current_phase == "write-code"
 
     def test_write_code_auto_starts_after_create_tasks_non_tdd(self, config, state):
         state.set("workflow_type", "implement")
@@ -101,8 +59,8 @@ class TestAutoPhaseNotSkillInvoked:
         from helpers import make_hook_input
 
         state.set("workflow_type", "implement")
-        state.add_phase("plan-review")
-        state.set_phase_completed("plan-review")
+        state.add_phase("plan")
+        state.set_phase_completed("plan")
         hook = make_hook_input("Skill", {"skill": "create-tasks"})
         decision, _ = phase_guard(hook, config, state)
         assert decision == "block"
@@ -110,9 +68,9 @@ class TestAutoPhaseNotSkillInvoked:
     def test_write_tests_blocks_as_skill(self, config, state):
         from helpers import make_hook_input
 
-        state.set("workflow_type", "build")
-        state.add_phase("test-review")
-        state.set_phase_completed("test-review")
+        state.set("workflow_type", "implement")
+        state.add_phase("create-tasks")
+        state.set_phase_completed("create-tasks")
         hook = make_hook_input("Skill", {"skill": "write-tests"})
         decision, _ = phase_guard(hook, config, state)
         assert decision == "block"
@@ -120,20 +78,9 @@ class TestAutoPhaseNotSkillInvoked:
     def test_write_code_blocks_as_skill(self, config, state):
         from helpers import make_hook_input
 
-        state.set("workflow_type", "build")
-        state.add_phase("test-review")
-        state.set_phase_completed("test-review")
+        state.set("workflow_type", "implement")
+        state.add_phase("write-tests")
+        state.set_phase_completed("write-tests")
         hook = make_hook_input("Skill", {"skill": "write-code"})
         decision, _ = phase_guard(hook, config, state)
         assert decision == "block"
-
-    def test_clarify_blocks_as_skill(self, config, state):
-        from helpers import make_hook_input
-
-        state.set("workflow_type", "build")
-        # clarify is the first phase; even with no phases active, invoking it
-        # as a skill should block since it's an auto-phase.
-        hook = make_hook_input("Skill", {"skill": "clarify"})
-        decision, msg = phase_guard(hook, config, state)
-        assert decision == "block"
-        assert "auto-phase" in msg.lower()

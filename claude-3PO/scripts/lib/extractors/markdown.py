@@ -6,8 +6,9 @@ iterate without guarding every call.
 """
 
 import re
-
+from typing import Literal
 from constants import TABLE_PATTERN
+from markdown_it import MarkdownIt as _md
 
 
 def extract_md_sections(md: str, level: int) -> list[tuple[str, str]]:
@@ -45,6 +46,72 @@ def extract_md_sections(md: str, level: int) -> list[tuple[str, str]]:
     )
 
     return [(m.group(1), m.group(2).strip()) for m in pattern.finditer(md)]
+
+
+def extract_section(md: str, heading: str) -> tuple[str, str]:
+    """
+    Extract the section from a markdown string.
+    """
+    all_heading_levels = get_all_heading_levels(md)
+    return next(
+        (
+            section
+            for level in all_heading_levels
+            for section in extract_md_sections(md, level)
+            if section[0] == heading
+        ),
+        (heading, ""),
+    )
+
+
+def get_all_heading_levels(md: str) -> tuple[int, ...]:
+    """
+    Check the heading levels in a markdown string.
+    """
+
+    import re
+
+    _HEADING_RE = re.compile(r"^(#{1,6})\s", re.MULTILINE)
+
+    def _heading_levels(md: str) -> tuple[int, ...]:
+        """Return a sorted tuple of ATX heading levels present in `md`."""
+        levels = {len(hashes) for hashes in _HEADING_RE.findall(md)}
+        return tuple(sorted(levels))
+
+    return _heading_levels(md)
+
+
+def extract_headings(md: str, levels: tuple[int, ...] | None = None) -> list[str]:
+    """
+    Extract the headings from a markdown string.
+    """
+    if levels is None:
+        levels = get_all_heading_levels(md)
+    headings = []
+    for level in levels:
+        headings.extend([heading for heading, _ in extract_md_sections(md, level)])
+    return headings
+
+
+def extract_section_body(md: str, heading: str) -> str:
+    """
+    Extract the body from a markdown string.
+    """
+    import re
+
+    _comment_pattern = re.compile(r"<!--[\s\S]*?-->")
+
+    def _extract_comments(md: str) -> list[str]:
+        return [m.strip() for m in _comment_pattern.findall(md)]
+
+    section = extract_section(md, heading)
+
+    heading, body = section
+
+    for comment in _extract_comments(body):
+        body = body.replace(comment, "").strip()
+
+    return body
 
 
 _TABLE_PATTERN = re.compile(TABLE_PATTERN, re.MULTILINE)
@@ -101,6 +168,51 @@ def extract_table(
     return [header] + [_parse_table_row(line, cols) for line in body_lines]
 
 
+def check_list_type(
+    list_type: Literal["bullet", "numbered", "checklist"], body: str
+) -> bool:
+    """
+    Check if the content is a bullet item.
+    """
+    list_type_map = {
+        "bullet": "- ",
+        "numbered": "1. ",
+        "checklist": "- [ ] ",
+    }
+    prefix = list_type_map[list_type]
+    return all(line.strip().startswith(prefix) for line in body.splitlines())
+
+
+def get_bullet_items_section(body: str) -> list[str]:
+    """
+    Get the bullet items section from a markdown string.
+    """
+    return [
+        line.strip().removeprefix("- ").strip()
+        for line in body.splitlines()
+        if line.strip().startswith("- ")
+    ]
+
+
+def extract_list(
+    list_type: Literal["bullet", "numbered", "checklist"], content: str
+) -> list[str]:
+    """
+    Extract the list from a markdown string.
+    """
+    list_type_map = {
+        "bullet": "- ",
+        "numbered": "1. ",
+        "checklist": "- [ ] ",
+    }
+    prefix = list_type_map[list_type]
+    return [
+        line.strip().removeprefix(prefix).strip()
+        for line in content.splitlines()
+        if line.strip().startswith(prefix)
+    ]
+
+
 def extract_bullet_items(content: str) -> list[str]:
     """
     Extract ``- item`` bullet items from a markdown blob.
@@ -115,11 +227,26 @@ def extract_bullet_items(content: str) -> list[str]:
         >>> extract_bullet_items("- foo\\n- bar\\nplain line")
         ['foo', 'bar']
     """
-    return [
-        line.lstrip("- ").strip()
-        for line in content.splitlines()
-        if line.strip().startswith("- ")
-    ]
+    return extract_list("bullet", content)
+
+
+def extract_numbered_items(content: str) -> list[str]:
+    """
+    Extract ``1. item`` numbered items from a markdown blob.
+    """
+    return extract_list("numbered", content)
+
+
+def extract_checklist_items(content: str) -> list[str]:
+    """
+    Extract ``- [ ] item`` checklist items from a markdown blob.
+    """
+    bullet_items = extract_bullet_items(content)
+    if not bullet_items:
+        return []
+    if all(item.startswith("[ ] ") for item in bullet_items):
+        return [item.removeprefix("[ ] ").strip() for item in bullet_items]
+    return []
 
 
 def match_substring(subject: str, candidates: list[str]) -> str | None:
@@ -320,3 +447,323 @@ def extract_bold_metadata(content: str) -> dict[str, str]:
             value = match.group(2).strip().strip("`")
             meta[key] = value
     return meta
+
+
+_TYPE_MAP = {
+    "paragraph_open": "text",
+    "bullet_list_open": "bullet",
+    "ordered_list_open": "ordered_list",
+    "fence": "code",
+    "code_block": "code",
+    "blockquote_open": "blockquote",
+    "hr": "hr",
+    "table_open": "table",
+}
+
+
+def _collect_body_blocks(tokens, start, end, source_lines):
+    """Collect (type, content) for each top-level body token in the range."""
+    blocks = []
+    for i in range(start, end):
+        t = tokens[i]
+        if t.level != 0:  # skip nested tokens (inside lists, quotes, etc.)
+            continue
+        if t.type in _TYPE_MAP:
+            # token.map is [start_line, end_line) in 0-indexed source lines
+            content = "\n".join(source_lines[t.map[0] : t.map[1]]) if t.map else ""
+            blocks.append({"type": _TYPE_MAP[t.type], "content": content})
+    return blocks
+
+
+def build_md_tree(markdown_text):
+    # enable("table") because the default CommonMark preset doesn't recognize
+    # GFM pipe tables — without this, tables parse as plain paragraphs.
+    tokens = _md().enable("table").parse(markdown_text)
+    source_lines = markdown_text.splitlines()
+    heading_idxs = [i for i, t in enumerate(tokens) if t.type == "heading_open"]
+
+    # capture orphan body before the first heading (or all of it if no headings)
+    # so callers can diff "stuff written outside any section"
+    pre_end = heading_idxs[0] if heading_idxs else len(tokens)
+    pre_blocks = _collect_body_blocks(tokens, 0, pre_end, source_lines)
+
+    sections = []
+    for n, idx in enumerate(heading_idxs):
+        body_start = idx + 3
+        body_end = heading_idxs[n + 1] if n + 1 < len(heading_idxs) else len(tokens)
+        blocks = _collect_body_blocks(tokens, body_start, body_end, source_lines)
+        sections.append(
+            {
+                "level": int(tokens[idx].tag[1]),
+                "text": tokens[idx + 1].content,
+                "body_types": [b["type"] for b in blocks],
+                "body_content": [b["content"] for b in blocks],
+            }
+        )
+
+    root = {
+        "level": 0,
+        "text": "ROOT",
+        "body_types": [b["type"] for b in pre_blocks],
+        "body_content": [b["content"] for b in pre_blocks],
+        "children": [],
+    }
+    stack = [root]
+    for s in sections:
+        node = {**s, "children": []}
+        while stack[-1]["level"] >= node["level"]:
+            stack.pop()
+        stack[-1]["children"].append(node)
+        stack.append(node)
+    return root
+
+
+def _format_kv_diff(label, template_val, actual_val):
+    """Format a single-line template/actual diff."""
+    return f"{label}\n  template: {template_val}\n  actual:   {actual_val}"
+
+
+def _indent_block(text, prefix="    "):
+    """Indent each line of text; return ``(empty)`` placeholder for empty input."""
+    return (
+        "".join(prefix + line for line in text.splitlines(keepends=True))
+        if text
+        else f"{prefix}(empty)"
+    )
+
+
+def _format_body_diff(
+    section_name,
+    template_types,
+    actual_types,
+    template_content,
+    actual_content,
+    path,
+):
+    """Format a body-mismatch report with type lines and raw template/actual content."""
+    # Comma-join types so multi-block sections (e.g. ['text', 'bullet']) read cleanly
+    t_types = ", ".join(template_types) or "(none)"
+    a_types = ", ".join(actual_types) or "(none)"
+    return (
+        f"Section '{section_name}' not matching\n\n"
+        f"Template received type: {t_types}\n"
+        f"Actual received type: {a_types}\n\n"
+        f"Template:\n{_indent_block(template_content)}\n\n"
+        f"Actual:\n{_indent_block(actual_content)}\n\n"
+        f"Path: {path}"
+    )
+
+
+_PLACEHOLDER_RE = re.compile(r"^\{[^}]+\}$")
+
+
+def _is_placeholder(text):
+    """True when heading text is a wildcard placeholder like ``{Plan Title}``."""
+    return bool(_PLACEHOLDER_RE.match((text or "").strip()))
+
+
+def _pair_sections(template_list, actual_list):
+    """
+    Pair template sections with actual sections.
+
+    Pass 1 matches by exact heading text. Pass 2 lets any ``{placeholder}``
+    template heading consume the next still-unpaired actual heading in order.
+    Returns (paired, missing_in_actual, extra_in_actual).
+    """
+    a_remaining = list(actual_list)
+    paired, t_unpaired = [], []
+    # Pass 1: exact-name match consumes from actual on first hit
+    for t in template_list:
+        match_idx = next(
+            (i for i, a in enumerate(a_remaining) if a.get("text") == t.get("text")),
+            None,
+        )
+        if match_idx is not None:
+            paired.append((t, a_remaining.pop(match_idx)))
+        else:
+            t_unpaired.append(t)
+    # Pass 2: placeholder templates wildcard-match remaining actuals in order
+    missing = []
+    for t in t_unpaired:
+        if _is_placeholder(t.get("text", "")) and a_remaining:
+            paired.append((t, a_remaining.pop(0)))
+        else:
+            missing.append(t)
+    return paired, missing, a_remaining
+
+
+def _dump_node(node):
+    """Render a section node + its body + children back into markdown text."""
+    # rebuild the ATX heading marker from level so nested sections stay nested
+    parts = [f"{'#' * node['level']} {node.get('text', '?')}"]
+    parts.extend(c for c in node.get("body_content", []) if c)
+    for child in node.get("children", []):
+        parts.append(_dump_node(child))
+    # join with blank line so heading/body/children get markdown's block separator;
+    # strip trailing newlines per part so token slices that include them don't double up
+    return "\n\n".join(p.rstrip("\n") for p in parts)
+
+
+def _format_presence_diff(section_label, name, side, content):
+    """Format a missing/extra section diff with the dumped body content."""
+    # ``side`` is "missing" (present in template only) or "extra" (actual only)
+    source = "expected" if side == "missing" else "actual"
+    return (
+        f"{section_label}: section '{name}' {side} in actual\n"
+        f"{source.capitalize()} content:\n{_indent_block(content)}"
+    )
+
+
+def _diff_table_block(t_content, a_content, label):
+    """Compare two markdown tables for column count, row count, and header text."""
+    t_table = extract_table(t_content)
+    a_table = extract_table(a_content)
+    if not t_table or not a_table:
+        # extract_table returns [] when the pattern doesn't match — skip silently
+        # rather than spam diffs on something we can't parse on either side
+        return []
+    t_header, *t_body = t_table
+    a_header, *a_body = a_table
+    diffs = []
+    if len(t_header) != len(a_header):
+        diffs.append(
+            _format_kv_diff(
+                f"{label}: column count differs", len(t_header), len(a_header)
+            )
+        )
+    if len(t_body) != len(a_body):
+        diffs.append(
+            _format_kv_diff(f"{label}: row count differs", len(t_body), len(a_body))
+        )
+    if t_header != a_header:
+        diffs.append(_format_kv_diff(f"{label}: headers differ", t_header, a_header))
+    return diffs
+
+
+def _normalize_blocks(types, contents):
+    """
+    Collapse consecutive same-type blocks (e.g. two paragraphs become one).
+    Adjacent ``text``/``text`` blocks differ only because of an authoring blank
+    line — semantically they're one block, so treat them as such for comparison.
+    Returns ``(merged_types, merged_contents)``.
+    """
+    out_types, out_contents = [], []
+    for t, c in zip(types, contents):
+        if out_types and out_types[-1] == t:
+            out_contents[-1] = f"{out_contents[-1]}\n\n{c}"
+        else:
+            out_types.append(t)
+            out_contents.append(c)
+    return out_types, out_contents
+
+
+def _diff_typed_blocks(types, t_contents, a_contents, here):
+    """Per-block deep checks for matching body types (currently: tables)."""
+    diffs = []
+    for i, btype in enumerate(types):
+        if btype == "table":
+            label = (
+                f"{here}: table block {i + 1}" if len(types) > 1 else f"{here}: table"
+            )
+            diffs.extend(_diff_table_block(t_contents[i], a_contents[i], label))
+    return diffs
+
+
+def _diff_matched_section(t, a, here):
+    """Diff a template/actual pair already matched by heading name."""
+    diffs = []
+    if t["level"] != a["level"]:
+        diffs.append(_format_kv_diff(f"{here}: level differs", t["level"], a["level"]))
+    # normalize first so consecutive same-type blocks (typically paragraphs)
+    # don't trigger spurious mismatches over blank-line authoring choices
+    t_types, t_contents = _normalize_blocks(
+        t.get("body_types", []), t.get("body_content", [])
+    )
+    a_types, a_contents = _normalize_blocks(
+        a.get("body_types", []), a.get("body_content", [])
+    )
+    if t_types != a_types:
+        diffs.append(
+            _format_body_diff(
+                t.get("text", "?"),
+                t_types,
+                a_types,
+                "\n".join(t_contents),
+                "\n".join(a_contents),
+                here,
+            )
+        )
+    else:
+        # types align — run type-aware deep checks (table shape, etc.)
+        diffs.extend(_diff_typed_blocks(t_types, t_contents, a_contents, here))
+    diffs.extend(_compare_children(t["children"], a["children"], here))
+    return diffs
+
+
+def _compare_children(template_list, actual_list, path="root"):
+    """
+    Compare two lists of sibling sections.
+    Sections are paired by exact heading text first, then ``{placeholder}``
+    template headings consume any remaining unpaired actuals in order.
+    """
+    diffs = []
+    section_label = "Top-level" if path == "root" else path
+    paired, missing, extra = _pair_sections(template_list, actual_list)
+
+    # missing/extra dumped with full body so the reader sees what's gone / new
+    for node in missing:
+        diffs.append(
+            _format_presence_diff(
+                section_label, node.get("text", "?"), "missing", _dump_node(node)
+            )
+        )
+    for node in extra:
+        diffs.append(
+            _format_presence_diff(
+                section_label, node.get("text", "?"), "extra", _dump_node(node)
+            )
+        )
+
+    # for placeholder pairs, show the actual heading in the breadcrumb so paths
+    # read like "Mock Feature Plan > Tasks" not "{Plan Title} > Tasks"
+    for t, a in paired:
+        display = (
+            a.get("text", "?")
+            if _is_placeholder(t.get("text", ""))
+            else t.get("text", "?")
+        )
+        here = display if path == "root" else f"{path} > {display}"
+        diffs.extend(_diff_matched_section(t, a, here))
+
+    return diffs
+
+
+def _compare_md_trees(template, actual) -> tuple[bool, list[str]]:
+    """
+    Compare two root nodes from build_md_tree (orphan body + heading tree).
+    Returns (is_identical, list_of_differences).
+    """
+    diffs = []
+    # diff orphan body that lives BEFORE any heading (or all of it if no headings)
+    if template.get("body_types") != actual.get("body_types"):
+        diffs.append(
+            _format_body_diff(
+                "Pre-heading content",
+                template.get("body_types", []),
+                actual.get("body_types", []),
+                "\n".join(template.get("body_content", [])),
+                "\n".join(actual.get("body_content", [])),
+                "Top-level",
+            )
+        )
+    diffs.extend(
+        _compare_children(
+            template.get("children", []), actual.get("children", []), "root"
+        )
+    )
+    return (len(diffs) == 0, diffs)
+
+
+def trees_identical(template, actual) -> tuple[bool, list[str]]:
+    """Convenience wrapper: just returns True/False."""
+    return _compare_md_trees(template, actual)

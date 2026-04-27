@@ -1,30 +1,27 @@
-"""store.py — :class:`StateStore` facade over the workflow slices.
+"""store.py — :class:`StateStore` facade over the implement workflow slice.
 
 :class:`StateStore` is the single public entry-point callers import. It
 inherits :class:`BaseState` so every shared accessor (``load``, ``phases``,
 ``add_agent`` …) remains reachable as ``state.<method>`` with zero churn.
-Three named sub-attributes — ``state.build``, ``state.implement``,
-``state.specs`` — expose the workflow-specific slices with explicit
-ownership at every call site (no ``__getattr__`` magic).
+A single named sub-attribute — ``state.implement`` — exposes the
+implement-specific slice with explicit ownership at every call site
+(no ``__getattr__`` magic).
 """
 
 from pathlib import Path
 from typing import Any
 
 from .base import BaseState
-from .build import BuildState
 from .implement import ImplementState
-from .specs import SpecsState
 
 
 class StateStore(BaseState):
     """
-    Single-session state facade composing the three workflow slices.
+    Single-session state facade composing the implement workflow slice.
 
     ``self`` carries every shared :class:`BaseState` method directly, while
-    ``self.build``, ``self.implement`` and ``self.specs`` hold the workflow
-    slices. All four objects share the same file + lock because every slice
-    was constructed against ``self``.
+    ``self.implement`` holds the implement-workflow slice. Both objects share
+    the same file + lock because the slice was constructed against ``self``.
 
     Example:
         >>> state = StateStore(Path("/tmp/state.json"))  # doctest: +SKIP
@@ -37,7 +34,7 @@ class StateStore(BaseState):
         default_state: dict[str, Any] | None = None,
     ) -> None:
         """
-        Bind the store to ``state.json`` and attach the workflow slices.
+        Bind the store to ``state.json`` and attach the implement slice.
 
         Args:
             state_path (Path): JSON file backing the store.
@@ -45,23 +42,18 @@ class StateStore(BaseState):
                 ``state.json`` is missing or empty. Defaults to ``{}``.
 
         Returns:
-            None: Constructor — wires up the sub-slices.
+            None: Constructor — wires up the sub-slice.
 
         SideEffect:
-            Sets ``self.build``, ``self.implement``, ``self.specs`` to
-            workflow slices bound to ``self``.
+            Sets ``self.implement`` to an ImplementState slice bound to ``self``.
 
         Example:
             >>> StateStore(Path("/tmp/state.json"))  # doctest: +SKIP
             Return: <StateStore>
             SideEffect:
-                self.build = <BuildState>
                 self.implement = <ImplementState>
-                self.specs = <SpecsState>
         """
         # Base initializer sets the path, lock — everything I/O-bound.
         super().__init__(state_path, default_state)
-        # Named sub-attributes; ownership is visible at call sites.
-        self.build = BuildState(self)
+        # Named sub-attribute; ownership is visible at call sites.
         self.implement = ImplementState(self)
-        self.specs = SpecsState(self)

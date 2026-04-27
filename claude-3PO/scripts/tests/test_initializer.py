@@ -135,8 +135,7 @@ class TestBuildInitialState:
             "session_id", "workflow_active", "status", "workflow_type", "test_mode", "phases",
             "tdd", "story_id", "skip", "instructions",
             "agents", "plan", "tasks",
-            "tests", "code_files_to_write",
-            "code_files", "quality_check_result", "pr", "ci-check",
+            "validation_result",
             "report_written",
         }
         assert set(state.keys()) == expected_keys
@@ -150,10 +149,11 @@ class TestBuildInitialState:
         state = build_initial_state("implement", "sess-1", "")
         assert state["plan"]["written"] is False
         assert state["plan"]["reviews"] == []
-        assert state["tests"]["executed"] is False
-        assert state["code_files"]["file_paths"] == []
-        assert state["pr"]["status"] == "pending"
-        assert state["ci-check"]["status"] == "pending"
+        assert state["plan"]["file_path"] is None
+        assert state["plan"]["revised"] is None
+        assert state["agents"] == []
+        assert state["tasks"] == []
+        assert state["validation_result"] is None
         assert state["report_written"] is False
 
 
@@ -229,15 +229,6 @@ class TestInitialize:
         state = json.loads(state_path.read_text())
         assert state["session_id"] == "new-sess"
         assert state["story_id"] == "SK-001"
-
-    def test_build_without_story_id_initializes(self, tmp_path: Path):
-        # The legacy duplicate-story guard is gone — this always initializes.
-        state_path = tmp_path / "state.json"
-
-        initialize("build", "new-sess", "--skip-clarify build a login form", state_path)
-        store = StateStore(state_path)
-        assert store.get("workflow_active") is True
-
 
 # ═══════════════════════════════════════════════════════════════════
 # parse_frontmatter

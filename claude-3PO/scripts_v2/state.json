@@ -1,0 +1,15 @@
+{
+  "session_id": "",
+  "workflow_active": true,
+  "workflow_type": "",
+  "status": null,
+  "story_id": null,
+  "test_mode": null,
+  "path": "",
+  "review": {
+    "confidence_score": null,
+    "quality_score": null,
+    "status": null,
+    "verdict": null
+  }
+}

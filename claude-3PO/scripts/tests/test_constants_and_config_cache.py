@@ -3,26 +3,10 @@
 import pytest
 
 
-def test_review_phases_includes_dispatcher_set():
+def test_review_phases_is_empty_stub():
     from constants.phases import REVIEW_PHASES
 
-    expected = {
-        "plan-review",
-        "test-review",
-        "tests-review",
-        "code-review",
-        "quality-check",
-        "validate",
-        "architect",
-        "backlog",
-    }
-    assert expected.issubset(set(REVIEW_PHASES))
-
-
-def test_specifications_marker_is_string():
-    from constants.markers import SPECIFICATIONS_MARKER
-
-    assert SPECIFICATIONS_MARKER == "## Specifications"
+    assert REVIEW_PHASES == frozenset()
 
 
 def test_e2e_test_report_path():

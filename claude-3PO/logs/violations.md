@@ -995,3 +995,63 @@ Planned tasks: ['Build authentication module', 'Create user database schema', 'W
 | 2026-04-19T19:06:51 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Deploy to production | Task 'Deploy to production' does not match any project task.
 Project tasks: ['Build login', 'Create schema'] |
 | 2026-04-19T19:06:52 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Some task | No project tasks found in state. The create-tasks phase must load tasks from the project manager first. |
+| 2026-04-19T19:22:08 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Deploy to production | Task 'Deploy to production' does not match any planned task.
+Planned tasks: ['Build authentication module', 'Create user database schema', 'Write API endpoints'] |
+| 2026-04-19T19:22:08 | test-session | build | N/A | Pending... | write-tests | TaskCreate |  | Task must have a non-empty subject. |
+| 2026-04-19T19:22:08 | test-session | build | N/A | Pending... | write-tests | TaskCreate |     | Task must have a non-empty subject. |
+| 2026-04-19T19:22:08 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Build authentication module | Task must have a non-empty description. |
+| 2026-04-19T19:22:09 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Build authentication module | Task must have a non-empty description. |
+| 2026-04-19T19:22:09 | test-session | build | N/A | Pending... | write-tests | TaskCreate | Some task | No planned tasks found in state. Create a plan with ## Tasks first. |
+| 2026-04-19T19:22:10 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Deploy to production | Task 'Deploy to production' does not match any project task.
+Project tasks: ['Build login', 'Create schema'] |
+| 2026-04-19T19:22:11 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Some task | No project tasks found in state. The create-tasks phase must load tasks from the project manager first. |
+| 2026-04-19T19:50:07 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Deploy to production | Task 'Deploy to production' does not match any project task.
+Project tasks: ['Build login', 'Create schema'] |
+| 2026-04-19T19:50:07 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate |  | Task must have a non-empty subject. |
+| 2026-04-19T19:50:08 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Build login | Task must have a non-empty description. |
+| 2026-04-19T19:50:09 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Some task | No project tasks found in state. The create-tasks phase must load tasks from the project manager first. |
+| 2026-04-19T19:52:03 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Deploy to production | Task 'Deploy to production' does not match any project task.
+Project tasks: ['Build login', 'Create schema'] |
+| 2026-04-19T19:52:03 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate |  | Task must have a non-empty subject. |
+| 2026-04-19T19:52:04 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Build login | Task must have a non-empty description. |
+| 2026-04-19T19:52:04 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Some task | No project tasks found in state. The create-tasks phase must load tasks from the project manager first. |
+| 2026-04-19T19:53:34 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Deploy to production | Task 'Deploy to production' does not match any project task.
+Project tasks: ['Build login', 'Create schema'] |
+| 2026-04-19T19:53:35 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate |  | Task must have a non-empty subject. |
+| 2026-04-19T19:53:35 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Build login | Task must have a non-empty description. |
+| 2026-04-19T19:53:36 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Some task | No project tasks found in state. The create-tasks phase must load tasks from the project manager first. |
+| 2026-04-19T19:54:50 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Deploy to production | Task 'Deploy to production' does not match any project task.
+Project tasks: ['Build login', 'Create schema'] |
+| 2026-04-19T19:54:50 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate |  | Task must have a non-empty subject. |
+| 2026-04-19T19:54:51 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Build login | Task must have a non-empty description. |
+| 2026-04-19T19:54:52 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Some task | No project tasks found in state. The create-tasks phase must load tasks from the project manager first. |
+| 2026-04-20T01:49:42 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Deploy to production | Task 'Deploy to production' does not match any project task.
+Project tasks: ['Build login', 'Create schema'] |
+| 2026-04-20T01:49:43 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate |  | Task must have a non-empty subject. |
+| 2026-04-20T01:49:43 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Build login | Task must have a non-empty description. |
+| 2026-04-20T01:49:44 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Some task | No project tasks found in state. The create-tasks phase must load tasks from the project manager first. |
+| 2026-04-20T01:51:21 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Deploy to production | Task 'Deploy to production' does not match any project task.
+Project tasks: ['Build login', 'Create schema'] |
+| 2026-04-20T01:51:22 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate |  | Task must have a non-empty subject. |
+| 2026-04-20T01:51:22 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Build login | Task must have a non-empty description. |
+| 2026-04-20T01:51:22 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Some task | No project tasks found in state. The create-tasks phase must load tasks from the project manager first. |
+| 2026-04-20T01:52:23 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Deploy to production | Task 'Deploy to production' does not match any project task.
+Project tasks: ['Build login', 'Create schema'] |
+| 2026-04-20T01:52:23 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate |  | Task must have a non-empty subject. |
+| 2026-04-20T01:52:23 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Build login | Task must have a non-empty description. |
+| 2026-04-20T01:52:24 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Some task | No project tasks found in state. The create-tasks phase must load tasks from the project manager first. |
+| 2026-04-20T01:53:35 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Deploy to production | Task 'Deploy to production' does not match any project task.
+Project tasks: ['Build login', 'Create schema'] |
+| 2026-04-20T01:53:34 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate |  | Task must have a non-empty subject. |
+| 2026-04-20T01:53:34 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Build login | Task must have a non-empty description. |
+| 2026-04-20T01:53:35 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Some task | No project tasks found in state. The create-tasks phase must load tasks from the project manager first. |
+| 2026-04-22T00:29:00 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Deploy to production | Task 'Deploy to production' does not match any project task.
+Project tasks: ['Build login', 'Create schema'] |
+| 2026-04-22T00:29:00 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate |  | Task must have a non-empty subject. |
+| 2026-04-22T00:29:00 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Build login | Task must have a non-empty description. |
+| 2026-04-22T00:29:01 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Some task | No project tasks found in state. The create-tasks phase must load tasks from the project manager first. |
+| 2026-04-22T00:30:02 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Deploy to production | Task 'Deploy to production' does not match any project task.
+Project tasks: ['Build login', 'Create schema'] |
+| 2026-04-22T00:30:02 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate |  | Task must have a non-empty subject. |
+| 2026-04-22T00:30:03 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Build login | Task must have a non-empty description. |
+| 2026-04-22T00:30:03 | test-session | implement | SK-001 | N/A | create-tasks | TaskCreate | Some task | No project tasks found in state. The create-tasks phase must load tasks from the project manager first. |

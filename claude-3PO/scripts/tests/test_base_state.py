@@ -1,13 +1,13 @@
 """Tests for :class:`BaseState` and the :class:`StateStore` facade composition.
 
-These tests prove the slice-1 invariants:
+These tests prove the slice invariants:
 
 1. :class:`BaseState` instantiates standalone (no facade required) and its
    shared-method surface round-trips through the single ``state.json`` file.
-2. The facade :class:`StateStore` exposes the three workflow slices as
-   explicit named sub-attributes that are always present (workflow-agnostic).
-3. All slices share a single :class:`BaseState` — one file, one lock — so a
-   write through one slice is visible through every other accessor.
+2. The facade :class:`StateStore` exposes the implement workflow slice as
+   an explicit named sub-attribute.
+3. The slice shares a single :class:`BaseState` — one file, one lock — so a
+   write through one path is visible through every other accessor.
 """
 
 from __future__ import annotations
@@ -19,9 +19,7 @@ import pytest
 
 from lib.state_store import (
     BaseState,
-    BuildState,
     ImplementState,
-    SpecsState,
     StateStore,
 )
 
@@ -44,29 +42,21 @@ class TestBaseStateStandalone:
 
 
 class TestStateStoreFacade:
-    """:class:`StateStore` exposes every workflow slice regardless of type."""
+    """:class:`StateStore` exposes the implement workflow slice."""
 
     @pytest.fixture
     def store(self, tmp_path: Path) -> StateStore:
         # Fresh StateStore per test — no prior workflow_type set.
         return StateStore(tmp_path / "state.json")
 
-    def test_slices_are_named_sub_attrs(self, store: StateStore):
-        # Explicit named sub-attrs — no __getattr__ fallback.
-        assert isinstance(store.build, BuildState)
+    def test_implement_slice_is_named_sub_attr(self, store: StateStore):
+        # Explicit named sub-attr — no __getattr__ fallback.
         assert isinstance(store.implement, ImplementState)
-        assert isinstance(store.specs, SpecsState)
 
-    def test_slices_present_for_every_workflow_type(self, tmp_path: Path):
-        # All three slices exist regardless of workflow_type (facade is agnostic).
-        for wf in ("build", "implement", "specs"):
-            store = StateStore(
-                tmp_path / f"{wf}.json",
-                default_state={"workflow_type": wf},
-            )
-            assert store.build is not None
-            assert store.implement is not None
-            assert store.specs is not None
+    def test_legacy_slices_removed(self, store: StateStore):
+        # build / specs slices are gone after the implement-only refactor.
+        assert not hasattr(store, "build")
+        assert not hasattr(store, "specs")
 
     def test_shared_methods_reachable_on_facade(self, store: StateStore):
         # Facade inherits BaseState → shared accessors unchanged for callers.
@@ -77,22 +67,18 @@ class TestStateStoreFacade:
 
 
 class TestSharedFileAndLock:
-    """All slices share one :class:`BaseState` — one file, one lock."""
+    """The implement slice shares one :class:`BaseState` — one file, one lock."""
 
-    def test_slices_share_base_reference(self, tmp_path: Path):
-        # Ownership test: every slice's _base is the owning StateStore.
+    def test_slice_shares_base_reference(self, tmp_path: Path):
+        # Ownership test: implement slice's _base is the owning StateStore.
         store = StateStore(tmp_path / "state.json")
-        assert store.build._base is store
         assert store.implement._base is store
-        assert store.specs._base is store
 
-    def test_write_through_base_visible_to_slices(self, tmp_path: Path):
+    def test_write_through_base_visible_to_slice(self, tmp_path: Path):
         # Slice wrappers read through _base so any write is visible everywhere.
         store = StateStore(tmp_path / "state.json")
         store.set("marker", "hello")
-        assert store.build._base.load()["marker"] == "hello"
         assert store.implement._base.load()["marker"] == "hello"
-        assert store.specs._base.load()["marker"] == "hello"
 
     def test_single_json_document(self, tmp_path: Path):
         # Two writes through the facade should produce one JSON document on disk.

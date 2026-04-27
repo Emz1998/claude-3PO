@@ -15,7 +15,7 @@ ReviewResult = Literal["Pass", "Fail"]
 DONE_STATUSES: tuple[str, ...] = ("completed", "skipped")
 """Phase statuses that count as finished for auto-advance and completion checks."""
 
-TDD_PHASES: tuple[str, ...] = ("write-tests", "test-review", "tests-review")
+TDD_PHASES: tuple[str, ...] = ("write-tests",)
 """Phases that are skipped from workflow progression when TDD is disabled."""
 
 

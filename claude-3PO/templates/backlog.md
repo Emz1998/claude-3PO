@@ -18,7 +18,6 @@
 | US-NNN | User Story      | US-001  | Backlog → Sprint |
 | TS-NNN | Technical Story | TS-001  | Backlog → Sprint |
 | SK-NNN | Spike           | SK-001  | Backlog → Sprint |
-| BG-NNN | Bug             | BG-001  | Backlog → Sprint |
 
 - All IDs are global and sequential within their prefix
 - IDs are permanent — they follow a story from backlog through sprint to completion

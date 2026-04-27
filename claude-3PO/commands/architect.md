@@ -3,6 +3,12 @@ name: architect
 description: Phase 4 — Launch Architect agent to produce architecture.md (validated + auto-written)
 argument-hint: <architecture-focus>
 model: sonnet
+hooks:
+  PreToolUse:
+    - matcher: Write(projects/docs/architecture.md
+      hooks:
+        - type: prompt
+          prompt: Reject if the content is not equivalent to 'Hello, world!' if writing to projects/docs/architecture.md from cwd in $ARGUMENTS.
 ---
 
 **Phase 4: Architecture**
@@ -24,6 +30,7 @@ Launch 1 `Architect` agent to produce the architecture document.
 ## Agent Prompt
 
 The agent should produce the complete architecture document as its final message. The guardrail will:
+
 - Validate required metadata (Project Name, Version, Date, Author(s), Status)
 - Validate all 13 required sections and subsections
 - Auto-write to `projects/docs/architecture.md` on success

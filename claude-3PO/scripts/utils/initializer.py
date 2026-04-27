@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
-"""initializer.py — Pre-workflow initialization for /implement and /build commands.
+"""initializer.py — Pre-workflow initialization for the /implement command.
 
-Called via bash injection in skill .md before Claude sees the prompt.
+Called via bash injection in the skill .md before Claude sees the prompt.
 Handles arg parsing and state initialization.
 
 Usage:
     python3 initializer.py <workflow_type> <session_id> [args...]
     python3 initializer.py implement abc-123 SK-001
-    python3 initializer.py build abc-123 --tdd build a login form
 """
 
 import re
@@ -23,14 +22,13 @@ from constants.paths import SCRIPTS_DIR
 from lib.extractors import extract_frontmatter
 from lib.extractors.commands import strip_flags_and_ids
 from lib.state_store import StateStore
-from lib import subprocess_agents
 from config import Config
 
 STATE_PATH = SCRIPTS_DIR / "state.json"
 
 
 # ---------------------------------------------------------------------------
-# /build arg + frontmatter parsers (formerly lib/parser.py)
+# /implement arg + frontmatter parsers
 # ---------------------------------------------------------------------------
 
 
@@ -39,43 +37,38 @@ parse_frontmatter = extract_frontmatter
 
 def parse_skip(args: str) -> list[str]:
     """
-    Translate ``--skip-*`` flags in a ``/build`` arg string into phase names.
+    Translate ``--skip-*`` flags in an ``/implement`` arg string into phase names.
 
     ``--skip-all`` is shorthand for ``--skip-explore`` and ``--skip-research``
-    together; ``--skip-vision`` and ``--skip-clarify`` stand alone. Returns
-    the list rather than a set because downstream code occasionally cares
-    about insertion order.
+    together. Returns the list rather than a set because downstream code
+    occasionally cares about insertion order.
 
     Args:
-        args (str): Raw arg portion of a ``/build`` invocation.
+        args (str): Raw arg portion of an ``/implement`` invocation.
 
     Returns:
-        list[str]: Subset of ``["clarify", "explore", "research", "vision"]``.
+        list[str]: Subset of ``["explore", "research"]``.
 
     Example:
         >>> parse_skip("--skip-all --tdd")
         ['explore', 'research']
-        >>> parse_skip("--skip-clarify build login")
-        ['clarify']
+        >>> parse_skip("--skip-explore add login")
+        ['explore']
     """
     skip: list[str] = []
-    if "--skip-clarify" in args:
-        skip.append("clarify")
     if "--skip-explore" in args or "--skip-all" in args:
         skip.append("explore")
     if "--skip-research" in args or "--skip-all" in args:
         skip.append("research")
-    if "--skip-vision" in args:
-        skip.append("vision")
     return skip
 
 
 def parse_story_id(args: str) -> str | None:
     """
-    Pull the first story ID (e.g. ``US-001``) from a ``/build`` arg string.
+    Pull the first story ID (e.g. ``US-001``) from an ``/implement`` arg string.
 
     Args:
-        args (str): Raw arg portion of a ``/build`` invocation.
+        args (str): Raw arg portion of an ``/implement`` invocation.
 
     Returns:
         str | None: Matched story ID, or ``None`` if none is present.
@@ -137,69 +130,24 @@ def archive_plan(config: Config) -> None:
 # ---------------------------------------------------------------------------
 
 
-def _build_specs_state(session_id: str, args: str) -> dict:
-    """Build the initial state dict for a ``specs`` workflow.
+def build_initial_state(workflow_type: str, session_id: str, args: str) -> dict:
+    """Build the initial state dict for an ``implement`` workflow.
 
-    Specs state tracks four documents (product_vision, decisions,
-    architecture, backlog) rather than the per-task plan/test/code
-    layout used by build workflows. Each ``docs`` entry is a uniform
-    ``{written, path}`` pair so resolvers can check completion the
-    same way for every doc type.
+    All review/revision lists start empty so resolvers can append without
+    checking for the key.
 
     Args:
-        session_id (str): Hook session id; becomes ``state.session_id``.
-        args (str): Joined command args; parsed for ``--skip`` and the
-            free-form instruction tail.
-
-    Returns:
-        dict: Fresh specs-workflow state ready for ``StateStore.reinitialize``.
-
-    Example:
-        >>> s = _build_specs_state("sess-1", "")
-        >>> s["workflow_type"]
-        'specs'
-    """
-    skip = parse_skip(args)
-    test_mode = "--test" in args
-    instructions = parse_instructions(args)
-    return {
-        "session_id": session_id,
-        "workflow_active": True,
-        "status": "in_progress",
-        "workflow_type": "specs",
-        "test_mode": test_mode,
-        "phases": [],
-        "agents": [],
-        "skip": skip,
-        "instructions": instructions,
-        "docs": {
-            "product_vision": {"written": False, "path": ""},
-            "decisions": {"written": False, "path": ""},
-            "architecture": {"written": False, "path": ""},
-            "backlog": {"written": False, "md_path": "", "json_path": ""},
-        },
-    }
-
-
-def _build_build_state(workflow_type: str, session_id: str, args: str) -> dict:
-    """Build the initial state dict for a ``build`` or ``implement`` workflow.
-
-    The two workflow types share the same state shape; ``workflow_type`` is
-    stored verbatim so resolvers can branch on it (e.g. ``implement`` requires
-    project-task subtasks rather than flat tasks). All review/revision lists
-    start empty so resolvers can append without checking for the key.
-
-    Args:
-        workflow_type (str): Either ``"build"`` or ``"implement"``.
+        workflow_type (str): The workflow identifier — currently only
+            ``"implement"``; recorded verbatim for downstream branching.
         session_id (str): Hook session id.
         args (str): Joined command args; parsed for ``--tdd``, ``--test``,
             ``--skip``, story id, and instruction tail.
 
     Returns:
-        dict: Fresh build/implement state ready for ``StateStore.reinitialize``.
+        dict: Fresh implement state ready for ``StateStore.reinitialize``.
 
     Example:
-        >>> s = _build_build_state("build", "sess-1", "--tdd")
+        >>> s = build_initial_state("implement", "sess-1", "--tdd")
         >>> s["tdd"]
         True
     """
@@ -228,47 +176,9 @@ def _build_build_state(workflow_type: str, session_id: str, args: str) -> dict:
             "reviews": [],
         },
         "tasks": [],
-        "tests": {
-            "file_paths": [],
-            "executed": False,
-            "reviews": [],
-            "files_to_revise": [],
-            "files_revised": [],
-        },
-        "code_files_to_write": [],
-        "code_files": {
-            "file_paths": [],
-            "reviews": [],
-            "files_to_revise": [],
-            "files_revised": [],
-        },
-        "quality_check_result": None,
-        "pr": {"status": "pending", "number": None},
-        "ci-check": {"status": "pending", "results": []},
+        "validation_result": None,
         "report_written": False,
     }
-
-
-def build_initial_state(workflow_type: str, session_id: str, args: str) -> dict:
-    """Dispatch to the per-workflow state builder.
-
-    Args:
-        workflow_type (str): One of ``"specs"``, ``"build"``, ``"implement"``.
-            Anything other than ``"specs"`` is treated as a build-style workflow.
-        session_id (str): Hook session id.
-        args (str): Joined command-line args.
-
-    Returns:
-        dict: A fresh state dict for the chosen workflow type.
-
-    Example:
-        >>> s = build_initial_state("specs", "sess-1", "")
-        >>> s["workflow_type"]
-        'specs'
-    """
-    if workflow_type == "specs":
-        return _build_specs_state(session_id, args)
-    return _build_build_state(workflow_type, session_id, args)
 
 
 # ---------------------------------------------------------------------------
@@ -284,20 +194,20 @@ def initialize(
 ) -> None:
     """Initialize state for a new workflow session in single-file ``state.json``.
 
-    For non-specs workflows, also archives the previous plan so the fresh
-    session starts clean. ``--takeover`` short-circuits when the file already
-    has content (the existing state is preserved verbatim); every other path
-    overwrites with a fresh dict from :func:`build_initial_state`.
+    Also archives the previous plan so the fresh session starts clean.
+    ``--takeover`` short-circuits when the file already has content (the
+    existing state is preserved verbatim); every other path overwrites with
+    a fresh dict from :func:`build_initial_state`.
 
     Args:
-        workflow_type (str): ``"specs"``, ``"build"``, or ``"implement"``.
+        workflow_type (str): Workflow identifier (currently ``"implement"``).
         session_id (str): Hook session id; recorded inside the state body.
         args (str): Joined command-line args (flags + story id + instructions).
         state_path (Path): Path to the single state.json store. Defaults to
             the module-level STATE_PATH; overridable for tests.
 
     Example:
-        >>> initialize("specs", "sess-abc", "--test")  # doctest: +SKIP
+        >>> initialize("implement", "sess-abc", "--test")  # doctest: +SKIP
     """
     # --takeover with existing content: preserve in place, no reinit.
     if "--takeover" in args and _has_existing_state(state_path):
@@ -305,18 +215,11 @@ def initialize(
 
     store = StateStore(state_path)
 
-    if workflow_type == "specs":
-        state = build_initial_state(workflow_type, session_id, args)
-        store.reinitialize(state)
-        return
-
-    # Non-specs workflows: archive the prior plan before overwriting.
+    # Archive the prior plan before overwriting.
     archive_plan(Config())
 
     state = build_initial_state(workflow_type, session_id, args)
     store.reinitialize(state)
-    if workflow_type == "build":
-        _seed_clarify_phase(store, args)
 
 
 def _has_existing_state(state_path: Path) -> bool:
@@ -339,55 +242,6 @@ def _has_existing_state(state_path: Path) -> bool:
     if not state_path.exists():
         return False
     return bool(state_path.read_text(encoding="utf-8").strip())
-
-
-def _seed_clarify_phase(store: StateStore, args: str) -> None:
-    """Add the ``clarify`` phase to fresh build state, gated by headless review.
-
-    Skips the headless call entirely when ``--skip-clarify`` is in args
-    (clarify gets ``status="skipped"``). Otherwise runs
-    ``subprocess_agents.run_initial`` against the user's prompt and either
-    marks clarify skipped (verdict=clear) or in-progress with the captured
-    headless session id (verdict=vague).
-
-    Args:
-        store (StateStore): The freshly-initialized state store.
-        args (str): Joined command-line args (parsed for ``--skip-clarify``
-            and the user's instruction tail).
-
-    Example:
-        >>> _seed_clarify_phase(store, "--skip-clarify add login")  # doctest: +SKIP
-    """
-    if "--skip-clarify" in args:
-        _add_clarify(store, status="skipped")
-        return
-    prompt = parse_instructions(args)
-    sid, verdict = subprocess_agents.run_initial(prompt)
-    if verdict == "clear":
-        _add_clarify(store, status="skipped")
-    else:
-        _add_clarify(store, status="in_progress", session_id=sid)
-
-
-def _add_clarify(store: StateStore, status: str, session_id: str = "") -> None:
-    """Append the clarify phase entry with the given status (and optional session).
-
-    Args:
-        store (StateStore): Target state store.
-        status (str): One of ``"skipped"`` or ``"in_progress"``.
-        session_id (str): Headless session id; ignored when status is skipped.
-
-    Example:
-        >>> _add_clarify(store, "in_progress", "sess_x")  # doctest: +SKIP
-    """
-    def _add(d: dict) -> None:
-        entry = {"name": "clarify", "status": status}
-        if status == "in_progress":
-            entry["headless_session_id"] = session_id
-            entry["iteration_count"] = 0
-        d.setdefault("phases", []).append(entry)
-
-    store.update(_add)
 
 
 def main() -> None:

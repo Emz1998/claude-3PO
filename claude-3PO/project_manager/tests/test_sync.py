@@ -49,29 +49,23 @@ SAMPLE_BACKLOG = {
                 {
                     "id": "T-001",
                     "type": "task",
-                    "issue_number": 201,
                     "labels": ["analysis"],
                     "title": "Analyze features",
                     "description": "Perform analysis",
                     "status": "In progress",
                     "priority": "P1",
                     "complexity": "M",
-                    "is_blocking": [],
-                    "blocked_by": [],
                     "acceptance_criteria": ["Analysis done"],
                 },
                 {
                     "id": "T-002",
                     "type": "task",
-                    "issue_number": 202,
                     "labels": ["docs"],
                     "title": "Document findings",
                     "description": "Write docs",
                     "status": "Ready",
                     "priority": "P2",
                     "complexity": "S",
-                    "is_blocking": ["T-001"],
-                    "blocked_by": ["T-001"],
                     "acceptance_criteria": ["Docs written"],
                 },
             ],
@@ -96,15 +90,12 @@ SAMPLE_BACKLOG = {
                 {
                     "id": "T-003",
                     "type": "task",
-                    "issue_number": 203,
                     "labels": ["infra"],
                     "title": "Create repo",
                     "description": "Create the repository",
                     "status": "Done",
                     "priority": "P0",
                     "complexity": "S",
-                    "is_blocking": [],
-                    "blocked_by": [],
                     "acceptance_criteria": ["Repo created"],
                 },
             ],
@@ -237,7 +228,7 @@ class TestBuildIdToIssueNumberMap:
 
 
 class TestSaveFlatData:
-    def test_writes_issue_numbers(self, tmp_path):
+    def test_writes_story_issue_numbers_only(self, tmp_path):
         p = tmp_path / "b.json"
         backlog = {
             "stories": [
@@ -246,19 +237,15 @@ class TestSaveFlatData:
         }
         p.write_text(json.dumps(backlog), encoding="utf-8")
         _, _, _, backlog_data = sp.load_flat_data(p)
-        # Simulate sync assigning issue numbers
+        # Simulate sync assigning a story issue number; tasks are decoupled
+        # from GitHub now and never get one.
         backlog_data["stories"][0]["issue_number"] = 999
-        backlog_data["stories"][0]["tasks"][0]["issue_number"] = 1000
-        stories, tasks, _, _ = sp.load_flat_data(p)
-        # Rebuild with updated refs from our already-loaded data
         sp.save_flat_data(
-            [backlog_data["stories"][0]],
-            [backlog_data["stories"][0]["tasks"][0]],
-            p, backlog_data,
+            [backlog_data["stories"][0]], [], p, backlog_data,
         )
         reloaded = json.loads(p.read_text(encoding="utf-8"))
         assert reloaded["stories"][0]["issue_number"] == 999
-        assert reloaded["stories"][0]["tasks"][0]["issue_number"] == 1000
+        assert "issue_number" not in reloaded["stories"][0]["tasks"][0]
 
     def test_preserves_other_fields(self, tmp_path, backlog_file):
         stories, tasks, _, backlog_data = sp.load_flat_data(backlog_file)
@@ -275,7 +262,8 @@ class TestSaveFlatData:
 
 
 class TestSetBlockingRelationship:
-    @patch.object(sp, "_fetch_node_ids", return_value={100: "NODE-100", 200: "NODE-200"})
+    @patch.object(sp, "_fetch_node_ids_and_edges",
+                  return_value=({100: "NODE-100", 200: "NODE-200"}, set(), {}))
     @patch.object(sp, "execute_batched_mutations")
     def test_calls_addBlockedBy(self, mock_exec, mock_fetch):
         items = [{"id": "T-001", "issue_number": 100, "blocked_by": ["SK-001"]}]
@@ -285,14 +273,14 @@ class TestSetBlockingRelationship:
         assert any("addBlockedBy" in m for m in mutations)
         assert len(mutations) == 1
 
-    @patch.object(sp, "_fetch_node_ids", return_value={})
+    @patch.object(sp, "_fetch_node_ids_and_edges", return_value=({}, set(), {}))
     @patch.object(sp, "execute_batched_mutations")
     def test_skips_empty(self, mock_exec, mock_fetch, capsys):
         sp.set_blocking_relationships("org/repo", [], {})
         assert "No blocking" in capsys.readouterr().out
         mock_exec.assert_not_called()
 
-    @patch.object(sp, "_fetch_node_ids", return_value={})
+    @patch.object(sp, "_fetch_node_ids_and_edges", return_value=({}, set(), {}))
     @patch.object(sp, "execute_batched_mutations")
     def test_skips_when_node_id_missing(self, mock_exec, mock_fetch, capsys):
         items = [{"id": "T-001", "issue_number": 100, "blocked_by": ["SK-001"]}]
@@ -303,7 +291,8 @@ class TestSetBlockingRelationship:
         mutations = mock_exec.call_args[0][0]
         assert mutations == []
 
-    @patch.object(sp, "_fetch_node_ids", return_value={100: "NODE-100"})
+    @patch.object(sp, "_fetch_node_ids_and_edges",
+                  return_value=({100: "NODE-100"}, set(), {}))
     @patch.object(sp, "execute_batched_mutations")
     def test_skips_unresolved_ids(self, mock_exec, mock_fetch):
         items = [{"id": "T-001", "issue_number": 100, "blocked_by": ["MISSING"]}]
@@ -311,14 +300,84 @@ class TestSetBlockingRelationship:
         # No pairs collected → no mutations produced → exec not called
         mock_exec.assert_not_called()
 
+    @patch.object(sp, "_fetch_node_ids_and_edges",
+                  return_value=({100: "NODE-100", 200: "NODE-200"}, set(), {}))
     @patch.object(sp, "execute_batched_mutations")
-    def test_reuses_node_ids_when_provided(self, mock_exec):
+    def test_reuses_node_ids_when_provided(self, mock_exec, mock_fetch):
         items = [{"id": "T-001", "issue_number": 100, "blocked_by": ["SK-001"]}]
         id_map = {"SK-001": 200}
         node_ids = {100: "NODE-100", 200: "NODE-200"}
-        sp.set_blocking_relationships("org/repo", items, id_map, node_ids=node_ids)
+        sp.set_blocking_relationships(
+            "org/repo", items, id_map, node_ids=node_ids, existing_edges=set()
+        )
         mutations = mock_exec.call_args[0][0]
         assert any("addBlockedBy" in m for m in mutations)
+
+    @patch.object(sp, "_fetch_node_ids_and_edges",
+                  return_value=({100: "NODE-100", 200: "NODE-200"}, {(100, 200)}, {}))
+    @patch.object(sp, "execute_batched_mutations")
+    def test_skips_pairs_already_set_on_github(self, mock_exec, mock_fetch):
+        # The (blocked=100, blocker=200) edge already exists remotely.
+        # Pass 4 must not re-assert it — GitHub rejects the whole batch
+        # with "Target issue has already been taken" when it does.
+        items = [{"id": "T-001", "issue_number": 100, "blocked_by": ["SK-001"]}]
+        id_map = {"SK-001": 200}
+        sp.set_blocking_relationships("org/repo", items, id_map)
+        mutations = mock_exec.call_args[0][0]
+        assert mutations == []
+
+    @patch.object(sp, "_fetch_node_ids_and_edges",
+                  return_value=({100: "NODE-100", 200: "NODE-200", 300: "NODE-300"},
+                                {(100, 200)}, {}))
+    @patch.object(sp, "execute_batched_mutations")
+    def test_sends_only_new_edges(self, mock_exec, mock_fetch):
+        # One edge exists (100→200), another is new (100→300).
+        items = [{
+            "id": "T-001", "issue_number": 100,
+            "blocked_by": ["SK-001", "SK-002"],
+        }]
+        id_map = {"SK-001": 200, "SK-002": 300}
+        sp.set_blocking_relationships("org/repo", items, id_map)
+        mutations = mock_exec.call_args[0][0]
+        assert len(mutations) == 1
+        # The remaining mutation is for the *new* blocker (NODE-300).
+        assert "NODE-300" in mutations[0]
+
+
+class TestFetchNodeIdsAndEdges:
+    @patch.object(sp, "gh_json")
+    def test_parses_ids_edges_and_parents(self, mock_gh):
+        # Simulate the GraphQL shape: each issue alias returns id, number,
+        # `blockedBy`, and `parent`. The helper must collapse that into
+        # (num->node_id, {(blocked_num, blocker_num)}, {child_num: parent_num}).
+        mock_gh.return_value = {
+            "data": {"repository": {
+                "i100": {"id": "NODE-100", "number": 100,
+                         "blockedBy": {"nodes": [{"number": 200}]},
+                         "parent": {"number": 300}},
+                "i200": {"id": "NODE-200", "number": 200,
+                         "blockedBy": {"nodes": []}, "parent": None},
+            }}
+        }
+        ids, edges, parents = sp._fetch_node_ids_and_edges("org/repo", {100, 200})
+        assert ids == {100: "NODE-100", 200: "NODE-200"}
+        assert edges == {(100, 200)}
+        assert parents == {100: 300}
+
+    @patch.object(sp, "gh_json")
+    def test_empty_input_skips_query(self, mock_gh):
+        ids, edges, parents = sp._fetch_node_ids_and_edges("org/repo", set())
+        assert ids == {} and edges == set() and parents == {}
+        mock_gh.assert_not_called()
+
+    def test_query_uses_blockedBy_field(self):
+        # Regression guard: GitHub renamed `blockedByIssues` → `blockedBy`
+        # on the Issue type. The old name triggers a hard query failure
+        # ("Field 'blockedByIssues' doesn't exist on type 'Issue'") that
+        # takes down every sync before Pass 2 even runs.
+        query = sp._build_node_id_edges_query("org/repo", [100])
+        assert "blockedBy(" in query
+        assert "blockedByIssues" not in query
 
 
 # ---------------------------------------------------------------------------
@@ -481,7 +540,7 @@ class TestCollectMutations:
             "Start date": {"id": "FSD"},
             "Target date": {"id": "FTD"},
         }
-        mutations = sp._collect_mutations([story], items, "PID", field_map)
+        mutations = sp._collect_mutations([story], items, "PID", field_map, {})
         flat = " ".join(mutations)
         assert "FPts" in flat
         assert "FC" not in flat
@@ -500,13 +559,266 @@ class TestCollectMutations:
             "Start date": {"id": "FSD"},
             "Target date": {"id": "FTD"},
         }
-        mutations = sp._collect_mutations([task], items, "PID", field_map)
+        mutations = sp._collect_mutations([task], items, "PID", field_map, {})
         flat = " ".join(mutations)
         assert "FC" in flat
         assert "FPts" not in flat
 
     def test_empty(self):
-        assert sp._collect_mutations([], [], "PID", {}) == []
+        assert sp._collect_mutations([], [], "PID", {}, {}) == []
+
+
+# ---------------------------------------------------------------------------
+# _extract_item_field_values + _build_remote_values_map
+# ---------------------------------------------------------------------------
+
+
+_PASS2_FIELD_MAP = {
+    "Status": {"id": "FS", "options": {"In progress": "OS_IP", "Ready": "OS_R"}},
+    "Priority": {"id": "FP", "options": {"P0": "OP0", "P1": "OP1"}},
+    "Points": {"id": "FPts"},
+    "Complexity": {"id": "FC", "options": {"M": "OM", "S": "OS_S"}},
+    "Start date": {"id": "FSD"},
+    "Target date": {"id": "FTD"},
+}
+
+
+class TestExtractItemFieldValues:
+    def test_single_select_fields(self):
+        raw = {
+            "id": "PVT1", "status": "In progress", "priority": "P0",
+            "complexity": "M",
+        }
+        result = sp._extract_item_field_values(raw)
+        assert result["Status"] == "In progress"
+        assert result["Priority"] == "P0"
+        assert result["Complexity"] == "M"
+
+    def test_number_field(self):
+        result = sp._extract_item_field_values({"id": "X", "points": 3})
+        assert result["Points"] == 3
+
+    def test_date_fields(self):
+        raw = {
+            "id": "X", "start date": "2026-02-17", "target date": "2026-02-28",
+        }
+        result = sp._extract_item_field_values(raw)
+        assert result["Start date"] == "2026-02-17"
+        assert result["Target date"] == "2026-02-28"
+
+    def test_iso_timestamp_date_normalized(self):
+        raw = {"id": "X", "start date": "2026-02-17T00:00:00Z"}
+        result = sp._extract_item_field_values(raw)
+        assert result["Start date"] == "2026-02-17"
+
+    def test_missing_fields_excluded(self):
+        result = sp._extract_item_field_values({"id": "X", "status": "Ready"})
+        assert "Status" in result
+        assert "Priority" not in result
+        assert "Points" not in result
+
+    def test_empty(self):
+        assert sp._extract_item_field_values({"id": "X"}) == {}
+
+
+class TestBuildRemoteValuesMap:
+    def test_builds_map(self):
+        items = [
+            {"id": "I1", "status": "In progress", "points": 5},
+            {"id": "I2", "priority": "P0"},
+        ]
+        result = sp._build_remote_values_map(items)
+        assert result["I1"] == {"Status": "In progress", "Points": 5}
+        assert result["I2"] == {"Priority": "P0"}
+
+    def test_skips_items_without_id(self):
+        assert sp._build_remote_values_map([{"status": "Ready"}]) == {}
+
+
+class TestBuildIssueMilestoneMap:
+    def test_maps_milestones(self):
+        issues = [
+            {"number": 1, "title": "A", "milestone": {"title": "v0.1.0"}},
+            {"number": 2, "title": "B", "milestone": {"title": "v0.2.0"}},
+        ]
+        assert sp.build_issue_milestone_map(issues) == {1: "v0.1.0", 2: "v0.2.0"}
+
+    def test_none_milestone(self):
+        issues = [{"number": 1, "title": "A", "milestone": None}]
+        assert sp.build_issue_milestone_map(issues) == {1: ""}
+
+    def test_missing_milestone(self):
+        assert sp.build_issue_milestone_map([{"number": 1, "title": "A"}]) == {1: ""}
+
+
+# ---------------------------------------------------------------------------
+# Pass 2 diff: field updates skipped when remote already matches
+# ---------------------------------------------------------------------------
+
+
+class TestPass2Diffing:
+    def _single_story_items(self):
+        items = [{"id": "ITEM-1", "content": {"number": 1}}]
+        return items
+
+    def test_skips_field_when_value_unchanged(self):
+        story = {
+            "id": "SK-001", "item_type": "story", "issue_number": 1,
+            "status": "In progress",
+        }
+        remote_by_item = {"ITEM-1": {"Status": "In progress"}}
+        mutations = sp._collect_mutations(
+            [story], self._single_story_items(), "PID", _PASS2_FIELD_MAP, remote_by_item,
+        )
+        assert mutations == []
+
+    def test_emits_mutation_when_status_changes(self):
+        story = {
+            "id": "SK-001", "item_type": "story", "issue_number": 1,
+            "status": "In progress",
+        }
+        remote_by_item = {"ITEM-1": {"Status": "Ready"}}
+        mutations = sp._collect_mutations(
+            [story], self._single_story_items(), "PID", _PASS2_FIELD_MAP, remote_by_item,
+        )
+        assert len(mutations) == 1
+        assert "FS" in mutations[0]
+
+    def test_normalizes_dates_before_comparing(self):
+        story = {
+            "id": "SK-001", "item_type": "story", "issue_number": 1,
+            "start_date": "2026-02-17",
+        }
+        remote_by_item = {
+            "ITEM-1": sp._extract_item_field_values(
+                {"id": "ITEM-1", "start date": "2026-02-17T00:00:00Z"}
+            ),
+        }
+        mutations = sp._collect_mutations(
+            [story], self._single_story_items(), "PID", _PASS2_FIELD_MAP, remote_by_item,
+        )
+        assert mutations == []
+
+    def test_story_vs_task_field_diff_independent(self):
+        story = {
+            "id": "SK-001", "item_type": "story", "issue_number": 1,
+            "points": 5, "priority": "P0",
+        }
+        remote_by_item = {"ITEM-1": {"Priority": "P0", "Points": 3}}
+        mutations = sp._collect_mutations(
+            [story], self._single_story_items(), "PID", _PASS2_FIELD_MAP, remote_by_item,
+        )
+        assert len(mutations) == 1
+        assert "FPts" in mutations[0]
+
+    def test_all_fields_match_emits_zero_mutations(self):
+        story = {
+            "id": "SK-001", "item_type": "story", "issue_number": 1,
+            "status": "In progress", "priority": "P0", "points": 3,
+            "start_date": "2026-02-17", "target_date": "2026-02-28",
+        }
+        remote_by_item = {"ITEM-1": {
+            "Status": "In progress", "Priority": "P0", "Points": 3,
+            "Start date": "2026-02-17", "Target date": "2026-02-28",
+        }}
+        mutations = sp._collect_mutations(
+            [story], self._single_story_items(), "PID", _PASS2_FIELD_MAP, remote_by_item,
+        )
+        assert mutations == []
+
+
+# ---------------------------------------------------------------------------
+# Issue-level edit: milestone diff
+# ---------------------------------------------------------------------------
+
+
+class TestIssueLevelDiff:
+    @patch.object(sp, "create_branch_for_issue")
+    @patch.object(sp, "set_parent_issue")
+    @patch.object(sp, "run")
+    def test_skips_gh_edit_when_milestone_matches(self, mock_run, *_):
+        task = {"id": "T-001", "issue_number": 42, "milestone": "v0.1.0"}
+        sp._issue_level_edit(task, "org/repo", remote_milestone="v0.1.0")
+        edit_calls = [
+            c for c in mock_run.call_args_list
+            if "issue" in c[0][0] and "edit" in c[0][0]
+        ]
+        assert edit_calls == []
+
+    @patch.object(sp, "create_branch_for_issue")
+    @patch.object(sp, "set_parent_issue")
+    @patch.object(sp, "run")
+    def test_runs_gh_edit_when_milestone_differs(self, mock_run, *_):
+        task = {"id": "T-001", "issue_number": 42, "milestone": "v0.2.0"}
+        sp._issue_level_edit(task, "org/repo", remote_milestone="v0.1.0")
+        cmds = [c[0][0] for c in mock_run.call_args_list]
+        edit_cmd = next((c for c in cmds if "edit" in c), None)
+        assert edit_cmd is not None
+        assert "--milestone" in edit_cmd
+        assert "v0.2.0" in edit_cmd
+
+    @patch.object(sp, "create_branch_for_issue")
+    @patch.object(sp, "set_parent_issue")
+    @patch.object(sp, "run")
+    def test_runs_gh_edit_when_remote_milestone_absent(self, mock_run, *_):
+        task = {"id": "T-001", "issue_number": 42, "milestone": "v0.1.0"}
+        sp._issue_level_edit(task, "org/repo", remote_milestone=None)
+        cmds = [c[0][0] for c in mock_run.call_args_list]
+        edit_cmd = next((c for c in cmds if "edit" in c), None)
+        assert edit_cmd is not None
+        assert "--milestone" in edit_cmd
+
+
+# ---------------------------------------------------------------------------
+# run_pass2_batched integration
+# ---------------------------------------------------------------------------
+
+
+class TestRunPass2Batched:
+    _FIELD_MAP = _PASS2_FIELD_MAP
+
+    def _matching_item(self, item_id: str, num: int) -> dict:
+        return {
+            "id": item_id, "content": {"number": num},
+            "status": "In progress", "priority": "P0", "points": 3,
+        }
+
+    def _matching_story(self, sid: str, num: int) -> dict:
+        return {
+            "id": sid, "item_type": "story", "issue_number": num,
+            "status": "In progress", "priority": "P0", "points": 3,
+        }
+
+    @patch.object(sp, "ensure_milestone")
+    @patch.object(sp, "_apply_issue_level_parallel")
+    @patch.object(sp, "execute_batched_mutations")
+    def test_no_mutations_when_all_match(self, mock_exec, mock_parallel, _):
+        items = [self._matching_item(f"ITEM-{i}", i) for i in range(21)]
+        tasks = [self._matching_story(f"SK-{i:03d}", i) for i in range(21)]
+        remote_by_item = sp._build_remote_values_map(items)
+        sp.run_pass2_batched(
+            tasks, items, "PID", self._FIELD_MAP, "org/repo",
+            remote_by_item=remote_by_item, remote_milestones={},
+        )
+        assert mock_exec.call_args[0][0] == []
+
+    @patch.object(sp, "ensure_milestone")
+    @patch.object(sp, "_apply_issue_level_parallel")
+    @patch.object(sp, "execute_batched_mutations")
+    def test_exactly_one_mutation_when_single_status_differs(
+        self, mock_exec, mock_parallel, _,
+    ):
+        items = [self._matching_item(f"ITEM-{i}", i) for i in range(21)]
+        items[0]["status"] = "Ready"
+        tasks = [self._matching_story(f"SK-{i:03d}", i) for i in range(21)]
+        remote_by_item = sp._build_remote_values_map(items)
+        sp.run_pass2_batched(
+            tasks, items, "PID", self._FIELD_MAP, "org/repo",
+            remote_by_item=remote_by_item, remote_milestones={},
+        )
+        mutations = mock_exec.call_args[0][0]
+        assert len(mutations) == 1
+        assert "FS" in mutations[0]
 
 
 # ---------------------------------------------------------------------------
@@ -690,23 +1002,23 @@ class TestSyncerClass:
         assert "delete-all" in sp.Syncer._MODE_MAP
         assert "delete_all" in sp.Syncer._MODE_MAP
 
+    def test_run_clears_created_titles(self, tmp_path):
+        # The module-global _created_titles guards against creating two
+        # issues with the same title in parallel *within one sync*. The
+        # watcher keeps the process alive across many syncs, so the set
+        # must be reset at the start of each run — otherwise a stale
+        # title from a prior run trips the guard on the next run even
+        # when there's no actual concurrency.
+        sp._created_titles.add("SK-STALE: leftover from previous run")
+        s = sp.Syncer(backlog_path=tmp_path / "b.json")
+        with patch.object(s, "sync", return_value=0) as mock_sync:
+            # Capture the state of the set *at the moment sync was called*.
+            def record_and_return(**kwargs):
+                captured["at_dispatch"] = set(sp._created_titles)
+                return 0
+            captured: dict = {}
+            mock_sync.side_effect = record_and_return
+            s.run("sync")
+        assert captured["at_dispatch"] == set()
 
-# ---------------------------------------------------------------------------
-# _apply_sync_scope
-# ---------------------------------------------------------------------------
 
-
-class TestApplySyncScope:
-    def test_all(self):
-        s, t = sp._apply_sync_scope([{"id": "A"}], [{"id": "T"}], "all")
-        assert s and t
-
-    def test_stories_only(self):
-        s, t = sp._apply_sync_scope([{"id": "A"}], [{"id": "T"}], "stories")
-        assert s == [{"id": "A"}]
-        assert t == []
-
-    def test_tasks_only(self):
-        s, t = sp._apply_sync_scope([{"id": "A"}], [{"id": "T"}], "tasks")
-        assert s == []
-        assert t == [{"id": "T"}]

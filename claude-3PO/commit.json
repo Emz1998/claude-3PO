@@ -1,0 +1,12 @@
+{
+  "batches": [
+    {
+      "batch_id": "1",
+      "task_id": "test-id",
+      "task_subject": "test task",
+      "files": ["foo.py"],
+      "status": "pending",
+      "created_at": "2026-04-26T02:36:58.536895"
+    }
+  ]
+}

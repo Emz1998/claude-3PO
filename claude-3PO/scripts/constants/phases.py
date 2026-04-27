@@ -1,14 +1,8 @@
-"""Phase-name constants shared across guards and dispatchers."""
+"""Phase-name constants shared across guards and dispatchers.
 
-# Phases where SubagentStop validates an agent report against the expected
-# template before the workflow is allowed to advance to the next phase.
-REVIEW_PHASES: frozenset[str] = frozenset({
-    "plan-review",
-    "test-review",
-    "tests-review",
-    "code-review",
-    "quality-check",
-    "validate",
-    "architect",
-    "backlog",
-})
+``REVIEW_PHASES`` is kept as an empty stub for forward-compat consumers; the
+trimmed 7-phase MVP no longer has any agent-report review phases.
+"""
+
+# Stub kept for forward-compat — no review phases in the trimmed workflow.
+REVIEW_PHASES: frozenset[str] = frozenset()

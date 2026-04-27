@@ -9,7 +9,7 @@ Sub-modules:
     * :mod:`lib.extractors.review` — reviewer scores and Pass/Fail verdicts.
     * :mod:`lib.extractors.markdown` — sections, tables, bullets, bold metadata.
     * :mod:`lib.extractors.plans` — plan-file dependencies / tasks / file tables.
-    * :mod:`lib.extractors.commands` — ``/build`` prompt and ``gh pr checks`` parsers.
+    * :mod:`lib.extractors.commands` — slash-command arg + ``gh pr checks`` parsers.
 """
 
 from .hooks import (
@@ -39,7 +39,6 @@ from .plans import (
     extract_plan_files_to_modify,
 )
 from .commands import (
-    extract_build_instructions,
     extract_ci_status,
 )
 
@@ -67,6 +66,5 @@ __all__ = [
     "extract_plan_tasks",
     "extract_plan_files_to_modify",
     # commands
-    "extract_build_instructions",
     "extract_ci_status",
 ]

@@ -125,23 +125,6 @@ class TestPlan:
         state.set_plan_written(True)
         assert state.plan["written"] is True
 
-    def test_add_plan_review(self, state):
-        scores = {"confidence_score": 85, "quality_score": 90}
-        state.add_plan_review(scores)
-        assert state.plan_review_count == 1
-        assert state.last_plan_review["scores"] == scores
-        assert state.last_plan_review["status"] is None
-
-    def test_set_last_plan_review_status(self, state):
-        state.add_plan_review({"confidence_score": 85, "quality_score": 90})
-        state.set_last_plan_review_status("Pass")
-        assert state.last_plan_review["status"] == "Pass"
-
-    def test_plan_review_count(self, state):
-        state.add_plan_review({"confidence_score": 50, "quality_score": 50})
-        state.add_plan_review({"confidence_score": 85, "quality_score": 90})
-        assert state.plan_review_count == 2
-
 
 class TestTests:
     def test_add_test_file(self, state):
@@ -156,21 +139,6 @@ class TestTests:
     def test_set_tests_executed(self, state):
         state.set_tests_executed(True)
         assert state.tests["executed"] is True
-
-    def test_add_test_review(self, state):
-        state.add_test_review("Fail")
-        assert state.test_review_count == 1
-        assert state.last_test_review["verdict"] == "Fail"
-
-    def test_test_review_count(self, state):
-        state.add_test_review("Fail")
-        state.add_test_review("Pass")
-        assert state.test_review_count == 2
-
-    def test_last_test_review(self, state):
-        state.add_test_review("Fail")
-        state.add_test_review("Pass")
-        assert state.last_test_review["verdict"] == "Pass"
 
 
 class TestTestRevision:
@@ -216,92 +184,12 @@ class TestCodeFiles:
         state.add_code_file_to_write("app.py")
         assert "app.py" in state.code_files_to_write
 
-    def test_add_code_review(self, state):
-        scores = {"confidence_score": 95, "quality_score": 92}
-        state.add_code_review(scores)
-        assert state.code_review_count == 1
-        assert state.last_code_review["scores"] == scores
-        assert state.last_code_review["status"] is None
-
-    def test_set_last_code_review_status(self, state):
-        state.add_code_review({"confidence_score": 95, "quality_score": 92})
-        state.set_last_code_review_status("Pass")
-        assert state.last_code_review["status"] == "Pass"
-
-    def test_code_review_count(self, state):
-        state.add_code_review({"confidence_score": 50, "quality_score": 50})
-        state.add_code_review({"confidence_score": 95, "quality_score": 92})
-        assert state.code_review_count == 2
-
-
-class TestPR:
-    def test_pr_status(self, state):
-        assert state.pr_status == "pending"
-        state.set_pr_status("created")
-        assert state.pr_status == "created"
-
-    def test_pr_number(self, state):
-        assert state.pr_number is None
-        state.set_pr_number(42)
-        assert state.pr_number == 42
-
-
-class TestCI:
-    def test_ci_status(self, state):
-        assert state.ci_status == "pending"
-        state.set_ci_status("passed")
-        assert state.ci_status == "passed"
-
-    def test_ci_results(self, state):
-        results = [{"name": "build", "conclusion": "SUCCESS"}]
-        state.set_ci_results(results)
-        assert state.ci_results == results
-
 
 class TestReport:
     def test_report_written(self, state):
         assert state.report_written is False
         state.set_report_written(True)
         assert state.report_written is True
-
-
-class TestQualityCheck:
-    def test_quality_check_result(self, state):
-        assert state.quality_check_result is None
-        state.set_quality_check_result("Pass")
-        assert state.quality_check_result == "Pass"
-
-
-# ═══════════════════════════════════════════════════════════════════
-# Clarify phase fields (headless_session_id + iteration_count)
-# ═══════════════════════════════════════════════════════════════════
-
-
-class TestClarifyPhaseFields:
-    def test_get_clarify_phase_returns_none_initially(self, state):
-        assert state.build.get_clarify_phase() is None
-
-    def test_get_clarify_phase_returns_dict_after_add(self, state):
-        state.add_phase("clarify")
-        phase = state.build.get_clarify_phase()
-        assert phase is not None
-        assert phase["name"] == "clarify"
-        assert phase["status"] == "in_progress"
-
-    def test_set_clarify_session_persists_id(self, state):
-        state.add_phase("clarify")
-        state.build.set_clarify_session("sess_abc123")
-        phase = state.build.get_clarify_phase()
-        assert phase["headless_session_id"] == "sess_abc123"
-        assert phase["iteration_count"] == 0
-
-    def test_bump_clarify_iteration(self, state):
-        state.add_phase("clarify")
-        state.build.set_clarify_session("sess_abc123")
-        state.build.bump_clarify_iteration()
-        state.build.bump_clarify_iteration()
-        phase = state.build.get_clarify_phase()
-        assert phase["iteration_count"] == 2
 
 
 # ═══════════════════════════════════════════════════════════════════

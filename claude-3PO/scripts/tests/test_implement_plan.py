@@ -86,20 +86,6 @@ class TestImplementPlanValidation:
         assert decision == "block"
         assert "Verification" in msg
 
-    def test_build_plan_still_validates_build_format(self, config, state):
-        """Build plan requires Dependencies, Tasks, Files to Modify."""
-        state.set("workflow_type", "build")
-        state.add_phase("plan")
-        state.add_agent(Agent(name="Plan", status="completed", tool_use_id="p-1"))
-        content = "# Plan\n\n## Dependencies\n- flask\n\n## Tasks\n- Build login\n\n## Files to Modify\n\n| Action | Path |\n|--------|------|\n| Create | src/app.py |\n"
-        hook = make_hook_input("Write", {
-            "file_path": ".claude/plans/latest-plan.md",
-            "content": content,
-        })
-        decision, _ = write_guard(hook, config, state)
-        assert decision == "allow"
-
-
 # ═══════════════════════════════════════════════════════════════════
 # extract_plan_files_to_modify
 # ═══════════════════════════════════════════════════════════════════

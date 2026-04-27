@@ -9,12 +9,6 @@ Serves the Claude Code ``PostToolUse`` event. Flow:
     3. ``resolve`` advances the workflow (e.g. mark a phase complete, auto-start
        the next phase) based on the freshly recorded state.
 
-Special-case: when the tool is ``AskUserQuestion`` and the current phase is
-``clarify``, the resumed headless-Claude session is invoked with the latest
-Q&A so the model can re-evaluate clarity. A verdict of ``clear`` completes
-the phase; ``vague`` increments ``iteration_count`` and the loop continues
-(see :func:`utils.hooks.post_tool_use.handle_clarify_resume`).
-
 Exit code semantics:
 
 - ``Hook.block`` (``exit 2``) is used when ``Recorder.record`` raises
@@ -34,7 +28,6 @@ sys.path.insert(0, str(SCRIPTS_DIR))
 
 from lib.hook import Hook
 from lib.state_store import StateStore
-from utils.hooks.post_tool_use import handle_clarify_resume
 from utils.recorder import Recorder
 from utils.resolver import resolve
 from config import Config
@@ -62,9 +55,6 @@ def main() -> None:
         sys.exit(0)
 
     config = Config()
-
-    if hook_input.get("tool_name") == "AskUserQuestion":
-        handle_clarify_resume(hook_input, state)
 
     try:
         Recorder(state).record(hook_input, config)

@@ -6,16 +6,15 @@
 
 ## Rules
 
-- **IMPORTANT**:If not in plan mode, present a miniplan first to the user before implementing changes. If the user specify no pla
-- **IMPORTANT**: Stop and ask the user first for plan approval.
+- **IMPORTANT**:If not in plan mode and the user's request/task is too complex, present a miniplan first to the user before implementing changes. If the user's request/task is simple or trivial, skip the plan and implement changes directly.
+- **IMPORTANT**: Stop and ask the user first for approval if any plan is present.
 - **IMPORTANT**: Always do TDD when coding. Write/Revise tests first before implementing changes
 - **IMPORTANT** Plan should always be higher level.
 - **IMPORTANT**: Questions should be always asked using `AskUserQuestion` tool.
-- Do not proceed on implementing changes without a plan and without user approval
 - Do not implement tasks that are beyond the scope of your plan
 - If you are not sure, stop and say "I'm not sure about this task"
 - Do not overcomplicate stuff. Simple/Lean approach is better than complex one
-- Find and create solutions based on the complexity of the task.
+- Find and create solutions that are simple and effective.
 - Always validate your work either through tests, sample ui, running a bash command, etc. Never skip any review
 - Identify the README in claude-3PO that is part of your task scope and update it.
 - Always make task list to track your tasks

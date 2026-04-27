@@ -173,15 +173,3 @@ class TestTaskCreateGuard:
         decision, msg = guard(hook, config, state)
         assert decision == "allow"
 
-    def test_build_workflow_skips_metadata_check(self, config, state):
-        from handlers.guardrails import TOOL_GUARDS
-        state.set("workflow_type", "build")
-        state.add_phase("write-tests")
-        state.set_tasks(["Build login"])
-        hook = make_hook_input("TaskCreate", {
-            "subject": "Build login",
-            "description": "Do it",
-        })
-        guard = TOOL_GUARDS["TaskCreate"]
-        decision, _ = guard(hook, config, state)
-        assert decision == "allow"

@@ -3,6 +3,12 @@ name: vision
 description: Phase 1 — Ask 10 discovery questions and write product-vision.md
 argument-hint: <project-description>
 model: sonnet
+hooks:
+  PreToolUse:
+    - matcher: Edit|Write
+      hooks:
+        - type: prompt
+          prompt: Reject if the content does not have the following level 2 headings: Vision Statement, The Problem, The Solution, Core Value Propositions in $ARGUMENTS. Evaluate for every PreToolUse (Edit|Write) hook invocation.
 ---
 
 **Phase 1: Vision**

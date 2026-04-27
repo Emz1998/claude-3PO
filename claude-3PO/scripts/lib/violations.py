@@ -46,17 +46,14 @@ def log_violation(
     Append one violation row to the violations log, creating the file if needed.
 
     The first ever write seeds the markdown header + separator so the file is
-    immediately rendered as a table. ``prompt_summary`` is recorded as
-    ``"Pending..."`` for build workflows (the user prompt isn't yet condensed
-    when the first block fires) and as ``"N/A"`` for implement workflows. A
-    later call to :func:`resolve_pending_summaries` rewrites the placeholder.
+    immediately rendered as a table. Missing ``story_id`` / ``prompt_summary``
+    are recorded as ``"N/A"``.
 
     Args:
         session_id (str): Unique session identifier.
-        workflow_type (str): ``"build"``, ``"implement"``, ``"specs"``, etc.
+        workflow_type (str): Workflow identifier (e.g. ``"implement"``).
         story_id (str | None): Story being worked, or ``None``.
-        prompt_summary (str | None): Short user-prompt summary; placeholders
-            applied if ``None``.
+        prompt_summary (str | None): Short user-prompt summary; ``"N/A"`` if missing.
         phase (str): Workflow phase name when the block fired.
         tool (str): Tool that triggered the block (``Write``, ``Bash``, …).
         action (str): Tool-specific action string (file path, command, …).
@@ -66,14 +63,14 @@ def log_violation(
         None: Side-effects only — appends to the violations file.
 
     Example:
-        >>> log_violation("s1", "build", "US-001", "add login",
+        >>> log_violation("s1", "implement", "US-001", "add login",
         ...               "plan", "Write", "/x.py", "blocked")  # doctest: +SKIP
     """
     path = VIOLATIONS_PATH
     lock = FileLock(path.with_suffix(".lock"))
 
     story = story_id or "N/A"
-    summary = prompt_summary or ("N/A" if workflow_type == "implement" else "Pending...")
+    summary = prompt_summary or "N/A"
     timestamp = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
 
     row = (
@@ -96,44 +93,6 @@ def log_violation(
         else:
             with open(path, "a", encoding="utf-8") as f:
                 f.write(row + "\n")
-
-
-def resolve_pending_summaries(path: Path, session_id: str, summary: str) -> None:
-    """
-    Replace ``Pending...`` placeholders for *session_id* with the real summary.
-
-    Build workflows can't compute a prompt summary until well after early
-    blocks have already been logged with the placeholder. Once the summary is
-    available, this rewrites every matching row in place under the file lock
-    so concurrent appends don't get clobbered.
-
-    Args:
-        path (Path): Violations log path.
-        session_id (str): Session whose placeholders should be resolved.
-        summary (str): Final summary text to substitute in.
-
-    Returns:
-        None: Side-effects only — rewrites the file in place. No-op if the
-        file doesn't exist yet.
-
-    Example:
-        >>> resolve_pending_summaries(Path("/tmp/v.md"), "s1", "add login")  # doctest: +SKIP
-    """
-    if not path.exists():
-        return
-
-    lock = FileLock(path.with_suffix(".lock"))
-    with lock:
-        content = path.read_text(encoding="utf-8")
-        lines = content.splitlines()
-        updated = []
-
-        for line in lines:
-            if f"| {session_id} " in line and "| Pending... |" in line:
-                line = line.replace("| Pending... |", f"| {_escape_pipe(summary)} |")
-            updated.append(line)
-
-        path.write_text("\n".join(updated) + "\n", encoding="utf-8")
 
 
 def extract_action(tool_name: str, hook_input: dict) -> str:

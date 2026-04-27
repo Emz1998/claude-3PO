@@ -85,21 +85,17 @@ _SAMPLE_BACKLOG: dict = {
                     "status": "Ready",
                     "priority": "P1",
                     "complexity": "S",
-                    "is_blocking": [],
-                    "blocked_by": [],
                     "acceptance_criteria": [],
                 },
                 {
                     "id": "T-E2E-002",
                     "type": "task",
                     "labels": ["e2e"],
-                    "title": "[E2E] Task A2 (blocked by A1)",
+                    "title": "[E2E] Task A2",
                     "description": "E2E task A2",
                     "status": "Backlog",
                     "priority": "P2",
                     "complexity": "M",
-                    "is_blocking": [],
-                    "blocked_by": ["T-E2E-001"],
                     "acceptance_criteria": [],
                 },
             ],
@@ -129,8 +125,6 @@ _SAMPLE_BACKLOG: dict = {
                     "status": "Backlog",
                     "priority": "P2",
                     "complexity": "S",
-                    "is_blocking": [],
-                    "blocked_by": [],
                     "acceptance_criteria": [],
                 },
             ],
@@ -176,12 +170,11 @@ def syncer(backlog_path: Path):
 
 
 def _has_issue_numbers(backlog_data: dict) -> bool:
+    # Only stories sync to GitHub — tasks are local-only and never carry
+    # an `issue_number` field after sync.
     for story in backlog_data.get("stories", []):
         if not story.get("issue_number"):
             return False
-        for task in story.get("tasks", []):
-            if not task.get("issue_number"):
-                return False
     return True
 
 
@@ -189,6 +182,11 @@ def _no_issue_numbers(backlog_data: dict) -> bool:
     for story in backlog_data.get("stories", []):
         if "issue_number" in story:
             return False
+    return True
+
+
+def _tasks_have_no_issue_numbers(backlog_data: dict) -> bool:
+    for story in backlog_data.get("stories", []):
         for task in story.get("tasks", []):
             if "issue_number" in task:
                 return False
@@ -204,13 +202,16 @@ class TestSyncerE2E:
         assert syncer.run("sync") == 0
         data = json.loads(backlog_path.read_text(encoding="utf-8"))
         assert _has_issue_numbers(data), (
-            f"Expected issue_numbers on every story and task; got: {data}"
+            f"Expected issue_numbers on every story; got: {data}"
         )
-        # Verify items actually landed in the GitHub project (not just repo)
+        assert _tasks_have_no_issue_numbers(data), (
+            f"Tasks must not be registered as GitHub issues; got: {data}"
+        )
+        # Only stories sync — backlog has 2 stories.
         project_issues = sp._project_issues(syncer.project, syncer.owner)
-        assert len(project_issues) == 5, (
-            f"Expected 5 project items after sync; found {len(project_issues)}: "
-            f"{[iss['title'] for iss in project_issues]}"
+        assert len(project_issues) == 2, (
+            f"Expected 2 project items after sync (stories only); found "
+            f"{len(project_issues)}: {[iss['title'] for iss in project_issues]}"
         )
 
     def test_delete_all_clears_issue_numbers(

@@ -16,9 +16,8 @@ class Config:
     in JSON immediately updates every consumer — guards, hooks, and validators
     never hard-code phase names.
 
-    Plan templates, score thresholds, safe domains, file paths, and specs
-    settings are read from sibling top-level keys with the same JSON-as-truth
-    pattern.
+    Plan templates, score thresholds, safe domains, and file paths are read
+    from sibling top-level keys with the same JSON-as-truth pattern.
 
     Example:
         >>> cfg = Config()  # doctest: +SKIP — reads scripts/config/config.json
@@ -72,28 +71,22 @@ class Config:
         Return phases that participate in a given workflow type.
 
         Args:
-            workflow_type (str): Workflow identifier (e.g. ``"build"``,
-                ``"implement"``) matched against each phase's ``workflows`` list.
+            workflow_type (str): Workflow identifier (e.g. ``"implement"``)
+                matched against each phase's ``workflows`` list.
 
         Returns:
             list[str]: Phase names whose ``workflows`` array contains
             ``workflow_type``, in JSON declaration order.
 
         Example:
-            >>> get_config().get_phases("build")  # doctest: +SKIP
-            ['clarify', 'explore', 'research', 'decision', 'plan', 'plan-review', 'create-tasks', 'write-tests', 'test-review', 'write-code', 'quality-check', 'code-review', 'pr-create', 'ci-check', 'write-report']
+            >>> get_config().get_phases("implement")  # doctest: +SKIP
+            ['explore', 'research', 'plan', 'create-tasks', ...]
         """
-        return [p["name"] for p in self._phase_list if workflow_type in p.get("workflows", [])]
-
-    @property
-    def build_phases(self) -> list[str]:
-        """Phases participating in the ``build`` workflow.
-
-        Example:
-            >>> get_config().build_phases  # doctest: +SKIP
-            ['clarify', 'explore', 'research', 'decision', 'plan', 'plan-review', 'create-tasks', 'write-tests', 'test-review', 'write-code', 'quality-check', 'code-review', 'pr-create', 'ci-check', 'write-report']
-        """
-        return self.get_phases("build")
+        return [
+            p["name"]
+            for p in self._phase_list
+            if workflow_type in p.get("workflows", [])
+        ]
 
     @property
     def implement_phases(self) -> list[str]:
@@ -101,19 +94,19 @@ class Config:
 
         Example:
             >>> get_config().implement_phases  # doctest: +SKIP
-            ['plan', 'write-code', 'write-report']
+            ['explore', 'research', 'plan', 'create-tasks', 'write-tests', ...]
         """
         return self.get_phases("implement")
 
     @property
     def main_phases(self) -> list[str]:
-        """Alias of :attr:`build_phases` (the canonical "main" pipeline).
+        """Alias of :attr:`implement_phases` (the canonical "main" pipeline).
 
         Example:
-            >>> get_config().main_phases == get_config().build_phases  # doctest: +SKIP
+            >>> get_config().main_phases == get_config().implement_phases  # doctest: +SKIP
             True
         """
-        return self.build_phases
+        return self.implement_phases
 
     @property
     def auto_phases(self) -> list[str]:
@@ -131,7 +124,7 @@ class Config:
 
         Example:
             >>> get_config().read_only_phases  # doctest: +SKIP
-            ['plan-review', 'code-review']
+            ['explore', 'research']
         """
         return self._phases_with("read_only")
 
@@ -181,7 +174,7 @@ class Config:
 
         Example:
             >>> get_config().checkpoint_phase  # doctest: +SKIP
-            ['plan-review']
+            ['plan']
         """
         return self._phases_with("checkpoint")
 
@@ -195,7 +188,7 @@ class Config:
         return self._phase_map.get(phase, {}).get("auto", False)
 
     def is_main_phase(self, phase: str) -> bool:
-        """Return whether ``phase`` is in the main (build) pipeline.
+        """Return whether ``phase`` is in the main (implement) pipeline.
 
         Example:
             >>> get_config().is_main_phase("plan")  # doctest: +SKIP
@@ -207,7 +200,7 @@ class Config:
         """Return whether ``phase`` is flagged ``read_only``.
 
         Example:
-            >>> get_config().is_read_only_phase("plan-review")  # doctest: +SKIP
+            >>> get_config().is_read_only_phase("explore")  # doctest: +SKIP
             True
         """
         return self._phase_map.get(phase, {}).get("read_only", False)
@@ -252,7 +245,7 @@ class Config:
         """Return whether ``phase`` is flagged ``checkpoint``.
 
         Example:
-            >>> get_config().is_checkpoint_phase("plan-review")  # doctest: +SKIP
+            >>> get_config().is_checkpoint_phase("plan")  # doctest: +SKIP
             True
         """
         return self._phase_map.get(phase, {}).get("checkpoint", False)
@@ -307,48 +300,19 @@ class Config:
         """Return the raw ``plan_templates[workflow_type]`` block (or ``{}``).
 
         Example:
-            >>> get_config()._plan_template("build")  # doctest: +SKIP
-            {'required_sections': [...], 'bullet_sections': [...]}
+            >>> get_config()._plan_template("implement")  # doctest: +SKIP
+            {'required_sections': [...]}
         """
         return self._data.get("plan_templates", {}).get(workflow_type, {})
 
-    def get_plan_required_sections(self, workflow_type: str) -> list[str]:
+    def get_plan_required_sections(self, workflow_type: str = "implement") -> list[str]:
         """Required H2 sections in the plan markdown for ``workflow_type``.
 
         Example:
-            >>> get_config().get_plan_required_sections("build")  # doctest: +SKIP
-            ['Goal', 'Tasks', 'Acceptance Criteria']
+            >>> get_config().get_plan_required_sections()  # doctest: +SKIP
+            ['## Context', '## Approach', '## Files to Create/Modify', '## Verification']
         """
         return self._plan_template(workflow_type).get("required_sections", [])
-
-    def get_plan_bullet_sections(self, workflow_type: str) -> list[str]:
-        """Plan sections that must be expressed as bullet lists.
-
-        Example:
-            >>> get_config().get_plan_bullet_sections("build")  # doctest: +SKIP
-            ['Tasks', 'Acceptance Criteria']
-        """
-        return self._plan_template(workflow_type).get("bullet_sections", [])
-
-    @property
-    def build_plan_required_sections(self) -> list[str]:
-        """Required plan sections for the ``build`` workflow.
-
-        Example:
-            >>> get_config().build_plan_required_sections  # doctest: +SKIP
-            ['Goal', 'Tasks', 'Acceptance Criteria']
-        """
-        return self.get_plan_required_sections("build")
-
-    @property
-    def build_plan_bullet_sections(self) -> list[str]:
-        """Bullet-only plan sections for the ``build`` workflow.
-
-        Example:
-            >>> get_config().build_plan_bullet_sections  # doctest: +SKIP
-            ['Tasks', 'Acceptance Criteria']
-        """
-        return self.get_plan_bullet_sections("build")
 
     @property
     def implement_plan_required_sections(self) -> list[str]:
@@ -356,7 +320,7 @@ class Config:
 
         Example:
             >>> get_config().implement_plan_required_sections  # doctest: +SKIP
-            ['Goal', 'Tasks']
+            ['## Context', '## Approach', '## Files to Create/Modify', '## Verification']
         """
         return self.get_plan_required_sections("implement")
 
@@ -455,16 +419,6 @@ class Config:
         return self._paths().get("report_file", "")
 
     @property
-    def clarity_review_prompt_file_path(self) -> str:
-        """Path to the headless-Claude clarity-review prompt template.
-
-        Example:
-            >>> get_config().clarity_review_prompt_file_path  # doctest: +SKIP
-            'templates/clarity-review.md'
-        """
-        return self._paths().get("clarity_review_prompt_file", "")
-
-    @property
     def log_file(self) -> str:
         """Path to the standard workflow log file.
 
@@ -494,36 +448,6 @@ class Config:
         """
         return self._paths().get("state_json", "")
 
-    # ── Clarify safety ceiling ────────────────────────────────────
-
-    @property
-    def clarify_max_iterations(self) -> int:
-        """Max number of AskUserQuestion iterations allowed in clarify.
-
-        Defaults to 10 — beyond that, the guardrail blocks further
-        AskUserQuestion calls so an unbounded prompt clarification
-        loop can't run forever.
-
-        Example:
-            >>> get_config().clarify_max_iterations  # doctest: +SKIP
-            10
-        """
-        return int(self._data.get("clarify", {}).get("max_iterations", 10))
-
-    # ── Specs review cap ──────────────────────────────────────────
-
-    @property
-    def specs_max_report_retries(self) -> int:
-        """Max times a specs reviewer may re-request an agent report (default 3).
-
-        Example:
-            >>> get_config().specs_max_report_retries  # doctest: +SKIP
-            3
-        """
-        return int(
-            self._data.get("specs_phases", {}).get("max_report_retries", 3)
-        )
-
     # ── Templates directory ───────────────────────────────────────
 
     @property
@@ -535,55 +459,3 @@ class Config:
             'templates'
         """
         return self._path.parent.parent.parent / "templates"
-
-    # ── Specs paths ───────────────────────────────────────────────
-
-    @property
-    def product_vision_file_path(self) -> str:
-        """Path to the project's product-vision markdown file.
-
-        Example:
-            >>> get_config().product_vision_file_path  # doctest: +SKIP
-            'docs/product-vision.md'
-        """
-        return self._paths().get("product_vision_file", "")
-
-    @property
-    def decisions_file_path(self) -> str:
-        """Path to the architecture-decisions log file.
-
-        Example:
-            >>> get_config().decisions_file_path  # doctest: +SKIP
-            'docs/decisions.md'
-        """
-        return self._paths().get("decisions_file", "")
-
-    @property
-    def architecture_file_path(self) -> str:
-        """Path to the project's architecture markdown file.
-
-        Example:
-            >>> get_config().architecture_file_path  # doctest: +SKIP
-            'docs/architecture.md'
-        """
-        return self._paths().get("architecture_file", "")
-
-    @property
-    def backlog_md_file_path(self) -> str:
-        """Path to the human-edited backlog markdown file.
-
-        Example:
-            >>> get_config().backlog_md_file_path  # doctest: +SKIP
-            'docs/backlog.md'
-        """
-        return self._paths().get("backlog_md_file", "")
-
-    @property
-    def backlog_json_file_path(self) -> str:
-        """Path to the machine-generated backlog JSON file.
-
-        Example:
-            >>> get_config().backlog_json_file_path  # doctest: +SKIP
-            '.claude/backlog.json'
-        """
-        return self._paths().get("backlog_json_file", "")

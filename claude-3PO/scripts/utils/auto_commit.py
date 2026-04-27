@@ -28,7 +28,7 @@ from pathlib import Path
 from constants.paths import COMMIT_BATCH_PATH, STALE_THRESHOLD_MINUTES
 from lib.hook import Hook
 from lib.json_store import load_file, save_file
-from lib.subprocess_agents import run_git, invoke_headless_agent
+from lib.subprocess_agents import run_git, invoke_headless_agent, ClaudeOptions
 
 # Patterns to exclude from auto-commits
 EXCLUDE_PATTERNS = [
@@ -341,7 +341,9 @@ def claim_files(dirty_files: list[str], ledger: dict) -> list[str]:
 # ---------------------------------------------------------------------------
 
 
-def _build_commit_prompt(files: list[str], task_subject: str, task_description: str) -> str:
+def _build_commit_prompt(
+    files: list[str], task_subject: str, task_description: str
+) -> str:
     """Render the headless-Claude prompt for commit message generation.
 
     Example:
@@ -361,7 +363,10 @@ def _build_commit_prompt(files: list[str], task_subject: str, task_description: 
 
 
 def generate_commit_message(
-    files: list[str], task_subject: str, task_description: str, project_dir: Path,
+    files: list[str],
+    task_subject: str,
+    task_description: str,
+    project_dir: Path,
 ) -> str:
     """Generate a conventional-commit message via headless Claude.
 
@@ -383,7 +388,9 @@ def generate_commit_message(
         >>> generate_commit_message(["a.py"], "task", "desc", Path("/repo"))  # doctest: +SKIP
     """
     prompt = _build_commit_prompt(files, task_subject, task_description)
-    output = invoke_headless_agent("claude", prompt, timeout=120, cwd=project_dir)
+    output = invoke_headless_agent(
+        prompt, ClaudeOptions(), timeout=120, cwd=project_dir
+    )
     return output or f"chore: auto-commit after task ({task_subject})"
 
 
@@ -424,7 +431,11 @@ def _get_unclaimed_files(project_dir: Path, ledger: dict) -> list[str] | None:
 
 
 def _add_pending_batch(
-    ledger: dict, batch_id: str, task_id: str, task_subject: str, files: list[str],
+    ledger: dict,
+    batch_id: str,
+    task_id: str,
+    task_subject: str,
+    files: list[str],
 ) -> None:
     """Append a new ``pending`` batch entry to the ledger.
 
@@ -444,15 +455,22 @@ def _add_pending_batch(
     from models.batch import BatchEntry
 
     entry = BatchEntry(
-        batch_id=batch_id, task_id=task_id, task_subject=task_subject,
-        files=files, status="pending",
+        batch_id=batch_id,
+        task_id=task_id,
+        task_subject=task_subject,
+        files=files,
+        status="pending",
     )
     ledger["batches"].append(entry.model_dump(exclude_none=True))
 
 
 def _claim_phase(
-    batch_id: str, task_id: str, task_subject: str,
-    project_dir: Path, ledger_path: Path, lock,
+    batch_id: str,
+    task_id: str,
+    task_subject: str,
+    project_dir: Path,
+    ledger_path: Path,
+    lock,
 ) -> list[str] | None:
     """Phase 1: acquire the lock and claim dirty files.
 
@@ -484,8 +502,11 @@ def _claim_phase(
 
 
 def _claim_under_lock(
-    batch_id: str, task_id: str, task_subject: str,
-    project_dir: Path, ledger_path: Path,
+    batch_id: str,
+    task_id: str,
+    task_subject: str,
+    project_dir: Path,
+    ledger_path: Path,
 ) -> list[str] | None:
     """Inner body of Phase 1, executed while the file lock is held.
 
@@ -512,7 +533,9 @@ def _claim_under_lock(
     return claimed
 
 
-def _update_batch_status(ledger: dict, batch_id: str, success: bool, message: str) -> None:
+def _update_batch_status(
+    ledger: dict, batch_id: str, success: bool, message: str
+) -> None:
     """Flip a batch entry to ``committed`` or ``failed`` and stash its message.
 
     Args:
@@ -536,8 +559,12 @@ def _update_batch_status(ledger: dict, batch_id: str, success: bool, message: st
 
 
 def _commit_phase(
-    batch_id: str, claimed: list[str], message: str,
-    project_dir: Path, ledger_path: Path, lock,
+    batch_id: str,
+    claimed: list[str],
+    message: str,
+    project_dir: Path,
+    ledger_path: Path,
+    lock,
 ) -> bool:
     """Phase 3: re-acquire the lock, commit, and update the ledger.
 
@@ -603,10 +630,14 @@ def main() -> None:
     ledger_path = COMMIT_BATCH_PATH
     lock = FileLock(ledger_path.with_suffix(".lock"), timeout=30)
     batch_id = _make_batch_id()
-    claimed = _claim_phase(batch_id, task_id, task_subject, project_dir, ledger_path, lock)
+    claimed = _claim_phase(
+        batch_id, task_id, task_subject, project_dir, ledger_path, lock
+    )
     if not claimed:
         return
-    message = generate_commit_message(claimed, task_subject, task_description, project_dir)
+    message = generate_commit_message(
+        claimed, task_subject, task_description, project_dir
+    )
     if _commit_phase(batch_id, claimed, message, project_dir, ledger_path, lock):
         Hook.system_message(f"Auto-committed {len(claimed)} file(s): {message}")
 

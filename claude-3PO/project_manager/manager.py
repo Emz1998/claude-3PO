@@ -121,6 +121,9 @@ def _next_id(prefix: str, existing_ids: list[str]) -> str:
 
 
 def _base_item_fields(item: dict) -> dict:
+    # `blocked_by` is story-only — tasks are local-only sub-items now and
+    # gain no GitHub-level dependencies. Adding it to the base would
+    # silently re-introduce empty blocking arrays on every task row.
     return {
         "id": item.get("id", ""),
         "title": item.get("title", ""),
@@ -134,7 +137,6 @@ def _base_item_fields(item: dict) -> dict:
         "assignees": item.get("assignees", []),
         "description": item.get("description", ""),
         "acceptance_criteria": item.get("acceptance_criteria", []),
-        "blocked_by": item.get("blocked_by", []),
     }
 
 
@@ -146,6 +148,7 @@ def _normalize_story(story: dict) -> dict:
         "type": story.get("type", ""),
         "parent_id": "",
         "tdd": story.get("tdd", False),
+        "blocked_by": story.get("blocked_by", []),
     }
 
 
@@ -224,17 +227,23 @@ def _validate_transition(current: str, new: str) -> str | None:
     return None
 
 
-def _is_unblocked(item_blocked_by: list[str], status_by_id: dict[str, str]) -> bool:
+def is_unblocked(item_blocked_by: list[str], status_by_id: dict[str, str]) -> bool:
     return all(status_by_id.get(dep, "") == "Done" for dep in item_blocked_by)
 
 
-def _build_status_map_from_backlog(backlog: dict) -> dict[str, str]:
+def build_status_map_from_backlog(backlog: dict) -> dict[str, str]:
     status: dict[str, str] = {}
     for story in backlog.get("stories", []):
         status[story.get("id", "")] = story.get("status", "")
         for task in story.get("tasks", []):
             status[task.get("id", "")] = task.get("status", "")
     return status
+
+
+# Back-compat aliases — the `_`-prefixed names are used elsewhere in this
+# module and by external callers; resolver.py imports the public names.
+_is_unblocked = is_unblocked
+_build_status_map_from_backlog = build_status_map_from_backlog
 
 
 # ---------------------------------------------------------------------------
@@ -419,12 +428,11 @@ def _list_output(
 
 
 def _view_ready_tasks(items: list[dict], key: str, as_json: bool) -> int:
-    status_by_key = {t.get("id", ""): t.get("status", "") for t in items}
+    # Tasks no longer carry blockers — eligibility is just status + parent.
     children = [
         t for t in items
         if t.get("parent_id") == key
         and t.get("status") in ACTIVE_STATUSES
-        and _is_unblocked(t.get("blocked_by", []), status_by_key)
     ]
     if as_json:
         print(_json.dumps(children, indent=2))
@@ -675,22 +683,6 @@ def _filter_unblocked_stories(
     ]
 
 
-def _filter_unblocked_tasks(
-    backlog: dict, status_by_id: dict[str, str], story_filter: str | None
-) -> list[tuple[dict, dict]]:
-    upper = story_filter.upper() if story_filter else None
-    pairs: list[tuple[dict, dict]] = []
-    for story in backlog.get("stories", []):
-        if upper is not None and story.get("id", "").upper() != upper:
-            continue
-        for task in story.get("tasks", []):
-            if task.get("status") in ACTIVE_STATUSES and _is_unblocked(
-                task.get("blocked_by", []), status_by_id
-            ):
-                pairs.append((story, task))
-    return pairs
-
-
 def _story_unblocked_json(item: dict) -> dict:
     return {
         "id": item.get("id", ""),
@@ -702,18 +694,8 @@ def _story_unblocked_json(item: dict) -> dict:
     }
 
 
-def _task_unblocked_json(story: dict, task: dict) -> dict:
-    return {
-        **_story_unblocked_json(task),
-        "type": task.get("type", "task"),
-        "parent_story_id": story.get("id", ""),
-    }
-
-
-def _unblocked_to_json(stories: list[dict], task_pairs: list[tuple[dict, dict]]) -> list[dict]:
-    return [_story_unblocked_json(s) for s in stories] + [
-        _task_unblocked_json(s, t) for s, t in task_pairs
-    ]
+def _unblocked_to_json(stories: list[dict]) -> list[dict]:
+    return [_story_unblocked_json(s) for s in stories]
 
 
 def _print_unblocked_row(item: dict) -> None:
@@ -723,16 +705,11 @@ def _print_unblocked_row(item: dict) -> None:
     )
 
 
-def _print_unblocked_list(
-    stories: list[dict], task_pairs: list[tuple[dict, dict]]
-) -> None:
-    total = len(stories) + len(task_pairs)
-    print(f"Unblocked items ({total}):")
+def _print_unblocked_list(stories: list[dict]) -> None:
+    print(f"Unblocked items ({len(stories)}):")
     print("-" * 50)
     for item in stories:
         _print_unblocked_row(item)
-    for _, t in task_pairs:
-        _print_unblocked_row(t)
 
 
 def _promote_story(story: dict) -> int:
@@ -742,15 +719,8 @@ def _promote_story(story: dict) -> int:
     return 0
 
 
-def _promote_unblocked_in_place(
-    unblocked_stories: list[dict], task_pairs: list[tuple[dict, dict]]
-) -> int:
-    promoted = 0
-    for story in unblocked_stories:
-        promoted += _promote_story(story)
-    for _, task in task_pairs:
-        promoted += _promote_story(task)
-    return promoted
+def _promote_unblocked_in_place(unblocked_stories: list[dict]) -> int:
+    return sum(_promote_story(s) for s in unblocked_stories)
 
 
 # ---------------------------------------------------------------------------
@@ -758,11 +728,21 @@ def _promote_unblocked_in_place(
 # ---------------------------------------------------------------------------
 
 
-def _new_item_defaults() -> dict:
+def _new_story_defaults() -> dict:
+    # Stories own GitHub-level dependencies — keep blocking arrays.
     return {
         "status": "Backlog",
         "is_blocking": [],
         "blocked_by": [],
+        "acceptance_criteria": [],
+    }
+
+
+def _new_task_defaults() -> dict:
+    # Tasks are local-only sub-items; no `is_blocking`/`blocked_by` since
+    # they are decoupled from GitHub issues now.
+    return {
+        "status": "Backlog",
         "acceptance_criteria": [],
     }
 
@@ -779,7 +759,7 @@ def _build_new_story(
     tdd: bool,
 ) -> dict:
     return {
-        **_new_item_defaults(),
+        **_new_story_defaults(),
         "id": new_id,
         "type": type,
         "labels": [],
@@ -805,7 +785,7 @@ def _build_new_task(
     labels: list[str] | None,
 ) -> dict:
     return {
-        **_new_item_defaults(),
+        **_new_task_defaults(),
         "id": new_id,
         "type": "task",
         "labels": labels or [],
@@ -1043,27 +1023,26 @@ class ProjectManager:
         backlog = self.load_backlog()
         stories = backlog.get("stories", [])
         status_by_id = _build_status_map_from_backlog(backlog)
+        # Tasks are local-only now and never appear in unblocked output.
         unblocked_stories = _filter_unblocked_stories(stories, status_by_id, story)
-        task_pairs = _filter_unblocked_tasks(backlog, status_by_id, story)
-        return self._render_unblocked(unblocked_stories, task_pairs, backlog, promote, json)
+        return self._render_unblocked(unblocked_stories, backlog, promote, json)
 
     def _render_unblocked(
         self,
         stories: list[dict],
-        task_pairs: list[tuple[dict, dict]],
         backlog: dict,
         promote: bool,
         as_json: bool,
     ) -> int:
-        if not (stories or task_pairs):
+        if not stories:
             print("No unblocked items found.")
             return 0
         if as_json:
-            print(_json.dumps(_unblocked_to_json(stories, task_pairs), indent=2))
+            print(_json.dumps(_unblocked_to_json(stories), indent=2))
             return 0
-        _print_unblocked_list(stories, task_pairs)
+        _print_unblocked_list(stories)
         if promote:
-            promoted = _promote_unblocked_in_place(stories, task_pairs)
+            promoted = _promote_unblocked_in_place(stories)
             self.save_backlog(backlog)
             print(f"\nPromoted {promoted} item(s) to Ready.")
         return 0
@@ -1074,7 +1053,6 @@ class ProjectManager:
         self,
         *,
         dry_run: bool = False,
-        sync_scope: str = "all",
         delete_all: bool = False,
         repo: str | None = None,
         project: int | None = None,
@@ -1088,4 +1066,4 @@ class ProjectManager:
         )
         if delete_all:
             return syncer.run("delete-all", dry_run=dry_run)
-        return syncer.run("sync", dry_run=dry_run, sync_scope=sync_scope)
+        return syncer.run("sync", dry_run=dry_run)

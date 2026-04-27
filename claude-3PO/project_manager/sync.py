@@ -58,10 +58,13 @@ def ensure_label(label: str, repo: str) -> None:
 
 
 def _gh_issue_list(repo: str, state: str, limit: int = 500) -> list[dict[str, Any]]:
+    # `milestone` is included so the caller can diff each issue's
+    # current milestone against the in-memory value and skip a
+    # redundant `gh issue edit` subprocess in Pass 2.
     out = run(
         [
             "gh", "issue", "list", "--repo", repo, "--state", state,
-            "--json", "title,number", "--limit", str(limit),
+            "--json", "title,number,milestone", "--limit", str(limit),
         ],
         check=False,
     )
@@ -74,8 +77,40 @@ def fetch_all_open_issues(repo: str) -> dict[str, int]:
 
 
 def fetch_all_open_issues_full(repo: str) -> list[dict[str, Any]]:
-    """Fetch all open issues with title and number."""
+    """Fetch all open issues with title, number, and milestone."""
     return _gh_issue_list(repo, "open")
+
+
+def build_issue_milestone_map(issues: list[dict[str, Any]]) -> dict[int, str]:
+    """Derive ``{issue_number: milestone_title}`` from a ``gh issue list`` payload.
+
+    Used so Pass 2 can skip the ``gh issue edit --milestone`` subprocess when
+    the remote value already matches the in-memory one.
+
+    Args:
+        issues (list[dict]): Raw ``gh issue list`` entries carrying
+            ``number`` and ``milestone`` keys.
+
+    Returns:
+        dict[int, str]: Mapping of issue number to milestone title; missing
+        or null milestones collapse to an empty string.
+
+    Example:
+        >>> build_issue_milestone_map([
+        ...     {"number": 1, "milestone": {"title": "v0.1.0"}},
+        ...     {"number": 2, "milestone": None},
+        ... ])
+        {1: 'v0.1.0', 2: ''}
+    """
+    result: dict[int, str] = {}
+    for issue in issues:
+        num = issue.get("number")
+        if num is None:
+            continue
+        milestone = issue.get("milestone") or {}
+        title = milestone.get("title") if isinstance(milestone, dict) else None
+        result[num] = title or ""
+    return result
 
 
 def find_existing_issue(repo: str, title: str) -> int | None:
@@ -192,12 +227,16 @@ def save_flat_data(
     backlog_path: Path,
     backlog_data: dict[str, Any],
 ) -> None:
-    """Write updated issue_number values back into the backlog file."""
-    id_to_num = build_id_to_issue_number_map(stories, tasks)
+    """Write updated story issue_number values back into the backlog file.
+
+    Tasks are decoupled from GitHub now and never carry an
+    ``issue_number`` — only stories' numbers are persisted. The ``tasks``
+    parameter is retained for signature compatibility with prior callers.
+    """
+    id_to_num = build_id_to_issue_number_map(stories, [])
     for story in backlog_data.get("stories", []):
         if story["id"] in id_to_num:
             story["issue_number"] = id_to_num[story["id"]]
-        _apply_issue_numbers(story.get("tasks", []), id_to_num)
     backlog_path.write_text(json.dumps(backlog_data, indent=2), encoding="utf-8")
 
 
@@ -225,27 +264,94 @@ def _collect_blocking_pairs(
 
 def _fetch_node_ids(repo: str, issue_nums: set[int]) -> dict[int, str]:
     """Batched node-ID lookup via a single GraphQL query (instead of N REST calls)."""
+    ids, _, _ = _fetch_node_ids_and_edges(repo, issue_nums)
+    return ids
+
+
+def _fetch_node_ids_and_edges(
+    repo: str, issue_nums: set[int]
+) -> tuple[dict[int, str], set[tuple[int, int]], dict[int, int]]:
+    """Fetch node IDs, blocker edges, and parent links in one GraphQL call.
+
+    Folding the lookups into a single query lets Pass 4 skip already-present
+    blocker pairs (``addBlockedBy`` isn't idempotent and rejects the whole
+    batch with "Target issue has already been taken"). The ``parent`` link
+    in the response is retained for backwards compatibility with the tuple
+    shape but is no longer consumed by any sync pass.
+
+    Args:
+        repo (str): ``owner/name`` slug.
+        issue_nums (set[int]): Issue numbers to resolve.
+
+    Returns:
+        tuple[dict[int, str], set[tuple[int, int]], dict[int, int]]:
+            ``(num→node_id, {(blocked_num, blocker_num)},
+            {child_num: parent_num})``.
+
+    Example:
+        >>> _fetch_node_ids_and_edges("o/r", {100})  # doctest: +SKIP
+        Return: ({100: "NODE-100"}, {(100, 200)}, {100: 300})
+    """
     nums = sorted(set(issue_nums))
     if not nums:
-        return {}
-    owner, name = repo.split("/", 1)
-    aliases = " ".join(f"i{n}: issue(number: {n}) {{ id number }}" for n in nums)
-    query = f'{{ repository(owner: "{owner}", name: "{name}") {{ {aliases} }} }}'
+        return {}, set(), {}
+    query = _build_node_id_edges_query(repo, nums)
     result = gh_json(["gh", "api", "graphql", "-f", f"query={query}"])
     repo_data = (result or {}).get("data", {}).get("repository") or {}
-    out: dict[int, str] = {}
+    return _parse_node_id_edges_response(repo_data)
+
+
+def _build_node_id_edges_query(repo: str, nums: list[int]) -> str:
+    """Build the batched GraphQL query for id + blockedBy + parent per issue."""
+    owner, name = repo.split("/", 1)
+    # ``blockedBy(first: 100)`` covers the practical fan-in; any issue
+    # with >100 blockers is a data-model problem, not an API one.
+    # (GitHub renamed this field from ``blockedByIssues`` → ``blockedBy``;
+    # the old name now fails the query with "Field doesn't exist".)
+    # ``parent { number }`` is retained in the response shape but no
+    # longer drives a sync pass (sub-issue Pass 3 was retired).
+    aliases = " ".join(
+        f"i{n}: issue(number: {n}) {{ id number "
+        f"blockedBy(first: 100) {{ nodes {{ number }} }} "
+        f"parent {{ number }} }}"
+        for n in nums
+    )
+    return f'{{ repository(owner: "{owner}", name: "{name}") {{ {aliases} }} }}'
+
+
+def _parse_node_id_edges_response(
+    repo_data: dict,
+) -> tuple[dict[int, str], set[tuple[int, int]], dict[int, int]]:
+    """Extract node-id map, existing (blocked, blocker) edges, and parent links."""
+    ids: dict[int, str] = {}
+    edges: set[tuple[int, int]] = set()
+    parents: dict[int, int] = {}
     for val in repo_data.values():
-        if val and val.get("id"):
-            out[val["number"]] = val["id"]
-    return out
+        if not (val and val.get("id")):
+            continue
+        num = val["number"]
+        ids[num] = val["id"]
+        for b in (val.get("blockedBy") or {}).get("nodes") or []:
+            if b.get("number"):
+                edges.add((num, b["number"]))
+        parent = val.get("parent") or {}
+        if isinstance(parent, dict) and parent.get("number"):
+            parents[num] = parent["number"]
+    return ids, edges, parents
 
 
 def _blocking_mutations(
     num_to_node: dict[int, str],
     pairs: list[tuple[int, int, str, str]],
+    existing_edges: set[tuple[int, int]],
 ) -> list[str]:
     mutations: list[str] = []
     for bn, kn, bid, kid in pairs:
+        # Skip pairs already set on GitHub — addBlockedBy isn't idempotent
+        # and re-asserting fails the whole batch with "already been taken".
+        if (bn, kn) in existing_edges:
+            print(f"  #{bn} ({bid}) already blocked by #{kn} ({kid}) — skipped")
+            continue
         b, k = num_to_node.get(bn), num_to_node.get(kn)
         if not b or not k:
             print(f"  ⚠ Missing node ID for #{bn} or #{kn}")
@@ -264,20 +370,25 @@ def set_blocking_relationships(
     items: list[dict],
     id_map: dict[str, int],
     node_ids: dict[int, str] | None = None,
+    existing_edges: set[tuple[int, int]] | None = None,
 ) -> None:
     """Set blocking relationships via batched ``addBlockedBy`` GraphQL mutations.
 
-    If ``node_ids`` is provided, it's reused as the issue-number -> node-id map;
-    otherwise this function fetches it.
+    If ``node_ids`` / ``existing_edges`` are provided, they're reused as-is;
+    otherwise this function fetches both in one GraphQL call. Pairs whose
+    edge already exists on GitHub are filtered out before mutating to
+    keep ``addBlockedBy`` (non-idempotent) from rejecting the batch.
     """
     pairs, involved = _collect_blocking_pairs(items, id_map)
     if not pairs:
         print("  No blocking relationships to set.")
         return
-    if node_ids is None:
-        print(f"  Fetching node IDs for {len(involved)} issues...")
-        node_ids = _fetch_node_ids(repo, involved)
-    execute_batched_mutations(_blocking_mutations(node_ids, pairs))
+    if node_ids is None or existing_edges is None:
+        print(f"  Fetching node IDs + existing edges for {len(involved)} issues...")
+        node_ids, existing_edges, _ = _fetch_node_ids_and_edges(repo, involved)
+    execute_batched_mutations(
+        _blocking_mutations(node_ids, pairs, existing_edges)
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -658,10 +769,112 @@ _BASE_FIELD_SPECS: list[tuple[str, str]] = [
 ]
 
 
+# Keys `gh project item-list --format json` emits alongside `id`/`content`
+# when the corresponding project field is set; mapped to the canonical
+# field names used in the mutation builder's `_BASE_FIELD_SPECS`.
+_REMOTE_RAW_KEYS: list[tuple[str, str]] = [
+    ("Status", "status"),
+    ("Priority", "priority"),
+    ("Points", "points"),
+    ("Complexity", "complexity"),
+    ("Start date", "start date"),
+    ("Target date", "target date"),
+]
+
+
 def _field_specs_for_item(item: dict[str, Any]) -> list[tuple[str, str]]:
     specs = list(_BASE_FIELD_SPECS)
     specs.append(("Points", "points") if item.get("item_type") == "story" else ("Complexity", "complexity"))
     return specs
+
+
+def _normalize_field_value(field_name: str, raw: Any) -> Any:
+    """Coerce a field value to its canonical comparison form.
+
+    Date fields get truncated to ``YYYY-MM-DD`` so an ISO timestamp from
+    remote (``"2026-02-17T00:00:00Z"``) compares equal to the 10-char
+    in-memory form. Other types pass through untouched — Python's ``==``
+    already bridges ``int``/``float`` and string equality.
+
+    Args:
+        field_name (str): Canonical project field name (e.g. ``"Start date"``).
+        raw (Any): Value as it arrived from remote or in-memory.
+
+    Returns:
+        Any: Normalized value ready for equality comparison.
+
+    Example:
+        >>> _normalize_field_value("Start date", "2026-02-17T00:00:00Z")
+        '2026-02-17'
+    """
+    if raw is None:
+        return None
+    if field_name in ("Start date", "Target date") and isinstance(raw, str):
+        return raw[:10]
+    return raw
+
+
+def _extract_item_field_values(raw_item: dict[str, Any]) -> dict[str, Any]:
+    """Pull known project-field values from a ``gh project item-list`` entry.
+
+    Reads the top-level keys the CLI emits (``status``, ``priority``,
+    ``points``, ``complexity``, ``start date``, ``target date``) and
+    translates them to the canonical field names the mutation builder
+    uses. Absent / empty values are dropped so the caller can treat
+    ``key in result`` as "remote has a value for this field".
+
+    Args:
+        raw_item (dict): One item dict from ``gh project item-list``.
+
+    Returns:
+        dict[str, Any]: ``{canonical_field_name: normalized_value}``.
+
+    Example:
+        >>> _extract_item_field_values(
+        ...     {"id": "X", "status": "Ready", "start date": "2026-02-17"}
+        ... )
+        {'Status': 'Ready', 'Start date': '2026-02-17'}
+    """
+    result: dict[str, Any] = {}
+    for canonical, raw_key in _REMOTE_RAW_KEYS:
+        val = raw_item.get(raw_key)
+        if val is None or val == "":
+            continue
+        result[canonical] = _normalize_field_value(canonical, val)
+    return result
+
+
+def _build_remote_values_map(items: list[dict]) -> dict[str, dict[str, Any]]:
+    """Build ``{item_id: {field_name: current_value}}`` for all project items.
+
+    The outer key matches the ``item_id`` used as the mutation target in
+    ``_mutations_for_item``, so the diff filter can look up the remote
+    snapshot in O(1) per field.
+
+    Args:
+        items (list[dict]): Items from :func:`get_project_items`.
+
+    Returns:
+        dict[str, dict[str, Any]]: Nested map of project-item id to
+        per-field normalized remote value.
+
+    Example:
+        >>> _build_remote_values_map([{"id": "I1", "status": "Ready"}])
+        {'I1': {'Status': 'Ready'}}
+    """
+    return {
+        item["id"]: _extract_item_field_values(item)
+        for item in items if item.get("id")
+    }
+
+
+def _should_skip_field(
+    field_name: str, raw: Any, remote_values: dict[str, Any]
+) -> bool:
+    """True when the in-memory value already matches the remote snapshot."""
+    if field_name not in remote_values:
+        return False
+    return remote_values[field_name] == _normalize_field_value(field_name, raw)
 
 
 def _mutation_for_field(
@@ -684,6 +897,7 @@ def _mutations_for_item(
     project_id: str,
     field_map: dict[str, dict],
     start_idx: int,
+    remote_values: dict[str, Any],
 ) -> tuple[list[str], int]:
     mutations: list[str] = []
     idx = start_idx
@@ -691,6 +905,11 @@ def _mutations_for_item(
         raw = task.get(task_key)
         field = field_map.get(field_name)
         if not field or raw is None or raw == "":
+            continue
+        # Skip the write if the remote snapshot already matches — cheaper
+        # than letting GitHub accept the redundant mutation silently.
+        if _should_skip_field(field_name, raw, remote_values):
+            print(f"  {task.get('id', '')} {field_name} already {raw!r} — skipped")
             continue
         gql = _build_field_value(field_map, field_name, raw)
         if gql is None:
@@ -705,8 +924,14 @@ def _collect_mutations(
     items: list[dict],
     project_id: str,
     field_map: dict[str, dict],
+    remote_by_item: dict[str, dict[str, Any]],
 ) -> list[str]:
-    """Build GraphQL mutation aliases for all tasks with known project items."""
+    """Build GraphQL mutation aliases for all tasks with known project items.
+
+    ``remote_by_item`` is the ``{item_id: {field_name: value}}`` map produced
+    by :func:`_build_remote_values_map`; fields whose in-memory value already
+    matches the remote snapshot are filtered out before a mutation is built.
+    """
     mutations: list[str] = []
     idx = 0
     for t in tasks:
@@ -717,7 +942,10 @@ def _collect_mutations(
                 file=sys.stderr,
             )
             continue
-        new_mutations, idx = _mutations_for_item(t, item_id, project_id, field_map, idx)
+        per_item_remote = remote_by_item.get(item_id, {})
+        new_mutations, idx = _mutations_for_item(
+            t, item_id, project_id, field_map, idx, per_item_remote
+        )
         mutations.extend(new_mutations)
     return mutations
 
@@ -827,10 +1055,14 @@ def create_branch_for_issue(repo: str, issue_num: int, branch_name: str) -> str 
 # ---------------------------------------------------------------------------
 
 
-def _issue_level_edit(task: dict[str, Any], repo: str) -> None:
+def _issue_level_edit(
+    task: dict[str, Any], repo: str, remote_milestone: str | None = None,
+) -> None:
     num = task["issue_number"]
     milestone = task.get("milestone") or ""
-    if milestone:
+    if milestone and milestone != remote_milestone:
+        # Skip the fresh `gh` subprocess (~200–500ms per call) when the
+        # remote already holds this milestone; only fire on a genuine diff.
         run(
             [
                 "gh", "issue", "edit", str(num), "--repo", repo,
@@ -838,13 +1070,28 @@ def _issue_level_edit(task: dict[str, Any], repo: str) -> None:
             ],
             check=False,
         )
+    elif milestone:
+        print(f"  {task.get('id', '')} milestone already {milestone!r} — skipped")
     set_parent_issue(repo, num, task.get("parent_issue") or "")
     create_branch_for_issue(repo, num, task.get("branch") or "")
 
 
-def _apply_issue_level_parallel(tasks: list[dict[str, Any]], repo: str) -> None:
+def _apply_issue_level_parallel(
+    tasks: list[dict[str, Any]],
+    repo: str,
+    remote_milestones: dict[int, str] | None = None,
+) -> None:
+    # Keep the per-task remote lookup out of the worker closure so each
+    # future gets a plain string (or None) rather than a shared dict ref.
+    remote_milestones = remote_milestones or {}
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as pool:
-        futures = {pool.submit(_issue_level_edit, t, repo): t for t in tasks}
+        futures = {
+            pool.submit(
+                _issue_level_edit, t, repo,
+                remote_milestones.get(t.get("issue_number")),
+            ): t
+            for t in tasks
+        }
         for fut in as_completed(futures):
             t = futures[fut]
             fut.result()
@@ -858,13 +1105,25 @@ def run_pass2_batched(
     project_id: str,
     field_map: dict[str, dict],
     repo: str,
+    remote_by_item: dict[str, dict[str, Any]] | None = None,
+    remote_milestones: dict[int, str] | None = None,
 ) -> None:
-    """Pass 2: batched GraphQL field updates, then parallel issue-level edits."""
-    execute_batched_mutations(_collect_mutations(tasks, items, project_id, field_map))
+    """Pass 2: batched GraphQL field updates, then parallel issue-level edits.
+
+    When ``remote_by_item`` / ``remote_milestones`` are provided, fields and
+    milestone edits that already match the remote snapshot are skipped — the
+    common case for a no-op re-sync (e.g. the watcher echoing its own
+    writeback) collapses to zero API calls.
+    """
+    remote_by_item = remote_by_item or {}
+    remote_milestones = remote_milestones or {}
+    execute_batched_mutations(
+        _collect_mutations(tasks, items, project_id, field_map, remote_by_item)
+    )
     for ms in {t["milestone"] for t in tasks if t.get("milestone")}:
         ensure_milestone(repo, ms)
     print("  Setting issue-level fields (parallel)...")
-    _apply_issue_level_parallel(tasks, repo)
+    _apply_issue_level_parallel(tasks, repo, remote_milestones)
 
 
 # ---------------------------------------------------------------------------
@@ -979,10 +1238,10 @@ def _delete_issues_batched(repo: str, issues: list[dict[str, Any]]) -> None:
 
 
 def _clear_issue_numbers(backlog_data: dict[str, Any], backlog_path: Path) -> None:
+    # Tasks are decoupled from GitHub now — only stories carry an
+    # `issue_number`, so only stories need clearing on `delete-all`.
     for story in backlog_data.get("stories", []):
         story.pop("issue_number", None)
-        for task in story.get("tasks", []):
-            task.pop("issue_number", None)
     backlog_path.write_text(json.dumps(backlog_data, indent=2), encoding="utf-8")
     print(f"\nCleared issue numbers from {backlog_path}")
 
@@ -990,16 +1249,6 @@ def _clear_issue_numbers(backlog_data: dict[str, Any], backlog_path: Path) -> No
 # ---------------------------------------------------------------------------
 # Sync workflow helpers
 # ---------------------------------------------------------------------------
-
-
-def _apply_sync_scope(
-    stories: list[dict], tasks: list[dict], scope: str
-) -> tuple[list[dict], list[dict]]:
-    if scope == "stories":
-        return stories, []
-    if scope == "tasks":
-        return [], tasks
-    return stories, tasks
 
 
 def _ensure_titles_present(items: list[dict], label: str) -> None:
@@ -1061,76 +1310,20 @@ def _add_to_project_mutations(
 
 def _add_all_to_project_batched(
     all_items: list[dict], project_id: str, repo: str
-) -> dict[int, str]:
-    """Batched addProjectV2ItemById. Returns node_id map for reuse downstream."""
+) -> tuple[dict[int, str], set[tuple[int, int]], dict[int, int]]:
+    """Batched addProjectV2ItemById; also returns blocker edges + parents.
+
+    The single node-id fetch here also surfaces each issue's current
+    ``blockedBy`` edges (Pass 4 diff). The ``parent`` link is also
+    returned for tuple compatibility but is no longer consumed.
+    """
     print("\nAdding issues to project (batched)...")
     nums = {t["issue_number"] for t in all_items if t.get("issue_number")}
-    node_ids = _fetch_node_ids(repo, nums)
+    node_ids, existing_edges, existing_parents = _fetch_node_ids_and_edges(repo, nums)
     mutations = _add_to_project_mutations(project_id, node_ids, all_items)
     execute_batched_mutations(mutations)
     print(f"  ✓ {len(mutations)} items added/verified")
-    return node_ids
-
-
-def _fetch_rest_ids_parallel(repo: str, issue_nums: list[int]) -> dict[int, int]:
-    """Parallel REST-ID lookups (reads only — safe to fan out)."""
-    nums = list({n for n in issue_nums if n})
-    if not nums:
-        return {}
-    result: dict[int, int] = {}
-    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as pool:
-        futures = {pool.submit(_get_issue_rest_id, repo, n): n for n in nums}
-        for fut in as_completed(futures):
-            rid = fut.result()
-            if rid:
-                result[futures[fut]] = rid
-    return result
-
-
-def _post_sub_issue(repo: str, parent_num: int | str, child_rest_id: int) -> None:
-    run(
-        [
-            "gh", "api", f"repos/{repo}/issues/{parent_num}/sub_issues",
-            "-F", f"sub_issue_id={child_rest_id}", "--method", "POST",
-        ],
-        check=False,
-    )
-
-
-_SUB_ISSUE_WORKERS = 3
-
-
-def _apply_parent_child(
-    tasks: list[dict], id_map: dict[str, int], repo: str
-) -> None:
-    print("\nPass 3: Setting parent-child relationships...")
-    pending = [
-        (t, id_map[t["parent_story_id"]])
-        for t in tasks
-        if t.get("parent_story_id") and t.get("issue_number")
-        and id_map.get(t.get("parent_story_id"))
-    ]
-    rest_ids = _fetch_rest_ids_parallel(repo, [t["issue_number"] for t, _ in pending])
-    # 3-way parallel stays under GitHub's secondary rate limits for REST POSTs.
-    with ThreadPoolExecutor(max_workers=_SUB_ISSUE_WORKERS) as pool:
-        futs = [pool.submit(_commit_sub_issue, repo, t, p, rest_ids) for t, p in pending]
-        for fut in as_completed(futs):
-            fut.result()
-
-
-def _commit_sub_issue(
-    repo: str, task: dict, parent_num: int, rest_ids: dict[int, int]
-) -> None:
-    child_num = task["issue_number"]
-    rid = rest_ids.get(child_num)
-    if rid is None:
-        print(f"  ⚠ Could not get REST ID for #{child_num}", file=sys.stderr)
-        return
-    print(
-        f"  Setting #{child_num} ({task['id']}) as sub-issue of "
-        f"#{parent_num} ({task['parent_story_id']})"
-    )
-    _post_sub_issue(repo, parent_num, rid)
+    return node_ids, existing_edges, existing_parents
 
 
 def _writeback_numbers(
@@ -1180,16 +1373,22 @@ class Syncer:
         method_name = self._MODE_MAP.get(mode)
         if method_name is None:
             raise ValueError(f"Unknown sync mode: {mode}")
+        # Reset the process-global title dedup set so a long-running
+        # watcher doesn't carry forward claims from earlier syncs.
+        _created_titles.clear()
         return getattr(self, method_name)(**kwargs)
 
-    def sync(self, *, dry_run: bool = False, sync_scope: str = "all") -> int:
+    def sync(self, *, dry_run: bool = False) -> int:
+        # Tasks are loaded so the writeback file structure is preserved,
+        # but only stories are pushed to GitHub — sub-issue / per-task
+        # syncing was retired.
         stories, tasks, _, backlog_data = load_flat_data(self.backlog_path)
-        stories, tasks = _apply_sync_scope(stories, tasks, sync_scope)
-        print(f"Sync mode: {sync_scope} ({len(stories)} stories, {len(tasks)} tasks)")
-        all_items = stories + tasks
+        print(f"Sync mode: stories ({len(stories)} stories)")
         project_id, field_map = self._fetch_project_metadata()
-        changed = self._ensure_all_issues(stories, tasks)
-        self._run_remote_passes(stories, tasks, all_items, project_id, field_map, backlog_data)
+        changed, remote_milestones = self._ensure_all_issues(stories)
+        self._run_remote_passes(
+            stories, project_id, field_map, backlog_data, remote_milestones,
+        )
         self._maybe_writeback(stories, tasks, backlog_data, changed, dry_run)
         return 0
 
@@ -1249,35 +1448,63 @@ class Syncer:
             print("  Re-fetching fields after creation...")
         return created
 
-    def _ensure_all_issues(self, stories: list[dict], tasks: list[dict]) -> bool:
+    def _ensure_all_issues(
+        self, stories: list[dict]
+    ) -> tuple[bool, dict[int, str]]:
         print("\nFetching existing issues...")
-        existing = fetch_all_open_issues(self.repo)
+        # Single `gh issue list` fetch feeds both the title→number cache
+        # (used to resolve existing issues) and the number→milestone map
+        # (used by Pass 2 to skip redundant `gh issue edit` calls).
+        issues = fetch_all_open_issues_full(self.repo)
+        existing = {issue["title"]: issue["number"] for issue in issues}
+        remote_milestones = build_issue_milestone_map(issues)
         print(f"  Found {len(existing)} open issues")
-        changed = False
-        for label, items in [("stories", stories), ("tasks", tasks)]:
-            if _resolve_or_create(items, existing, self.repo, label):
-                changed = True
-        return changed
+        changed = _resolve_or_create(stories, existing, self.repo, "stories")
+        return changed, remote_milestones
 
     def _run_remote_passes(
         self,
         stories: list[dict],
-        tasks: list[dict],
-        all_items: list[dict],
         project_id: str,
         field_map: dict[str, dict],
         backlog_data: dict,
+        remote_milestones: dict[int, str],
     ) -> None:
-        node_ids = _add_all_to_project_batched(all_items, project_id, self.repo)
+        node_ids, existing_edges, _ = _add_all_to_project_batched(
+            stories, project_id, self.repo
+        )
+        items = self._fetch_project_items_for_pass2()
+        remote_by_item = _build_remote_values_map(items)
+        self._run_pass2(
+            stories, items, project_id, field_map, remote_by_item, remote_milestones,
+        )
+        # Build the id->issue_number map from in-memory stories (disk isn't
+        # written back until the end of sync, so reading the file here
+        # would miss newly created numbers).
+        full_id_map = build_id_to_issue_number_map(stories, [])
+        print("\nPass 4: Setting blocking relationships...")
+        set_blocking_relationships(
+            self.repo, stories, full_id_map,
+            node_ids=node_ids, existing_edges=existing_edges,
+        )
+
+    def _fetch_project_items_for_pass2(self) -> list[dict]:
         print("\nFetching project items...")
         items = get_project_items(self.project, self.owner)
         print(f"  Found {len(items)} items in project")
+        return items
+
+    def _run_pass2(
+        self,
+        stories: list[dict],
+        items: list[dict],
+        project_id: str,
+        field_map: dict[str, dict],
+        remote_by_item: dict[str, dict[str, Any]],
+        remote_milestones: dict[int, str],
+    ) -> None:
         print("\nPass 2: Setting project fields (batched GraphQL)...")
-        run_pass2_batched(all_items, items, project_id, field_map, self.repo)
-        # Build the id->issue_number map from in-memory items (disk isn't
-        # written back until the end of sync, so reading the file here
-        # would miss newly created numbers).
-        full_id_map = build_id_to_issue_number_map(stories, tasks)
-        _apply_parent_child(tasks, full_id_map, self.repo)
-        print("\nPass 4: Setting blocking relationships...")
-        set_blocking_relationships(self.repo, all_items, full_id_map, node_ids=node_ids)
+        run_pass2_batched(
+            stories, items, project_id, field_map, self.repo,
+            remote_by_item=remote_by_item, remote_milestones=remote_milestones,
+        )
