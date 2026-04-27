@@ -54,7 +54,7 @@ def view_pr_content(pr_number: int) -> str:
 
 def get_pr_number() -> int:
     result = subprocess.run(
-        ["gh", "pr", "view", "--json", "-q", ".number"],
+        ["gh", "pr", "view", "--json", "number", "-q", ".number"],
         check=True,
         capture_output=True,
         text=True,

@@ -18,7 +18,6 @@ from pathlib import Path
 from typing import Callable
 from typing_extensions import Literal
 
-from lib.subprocess_agents import invoke_headless_agent  # type: ignore
 from lib.template_diff import trees_identical, build_md_tree  # type: ignore
 
 
