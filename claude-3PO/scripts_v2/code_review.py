@@ -277,12 +277,12 @@ def run_review_test_mode() -> None:
 
 
 def create_pr_review_test_mode() -> bool:
-    # static body avoids the /create-pr-review agent call; gh posts as usual
-    saved_paths = [CODE_REVIEW_DIR / f"{key}.md" for key in REVIEW_CONFIG_MAP]
-    action = decide_pr_review_action(saved_paths)
+    # Use --comment because GITHUB_TOKEN can't post --approve/--request-changes
+    # (GitHub blocks bot-token approvals). For a real run with verdict-based
+    # actions you'd need a PAT secret; test mode just proves the wiring works.
     pr_number = get_pr_number()
     subprocess.run(
-        ["gh", "pr", "review", str(pr_number), action, "--body", TEST_MODE_PR_BODY],
+        ["gh", "pr", "review", str(pr_number), "--comment", "--body", TEST_MODE_PR_BODY],
         check=True, capture_output=True, text=True,
     )
     return True
