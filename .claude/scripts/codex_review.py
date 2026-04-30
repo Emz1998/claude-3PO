@@ -135,7 +135,7 @@ def run_pr_review(
 
 
 def main() -> None:
-    code_review = CodeReview(pr=PR_CONTENT, test_mode=TEST_MODE)
+    code_review = CodexReview(pr=PR_CONTENT, test_mode=TEST_MODE)
     output = code_review.run()
 
     for result in output:
