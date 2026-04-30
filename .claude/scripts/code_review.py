@@ -47,7 +47,7 @@ CONFIG_MAP: dict[str, dict[str, Any]] = {
     },
 }
 
-PR_CONTEXT = os.environ.get("PR_CONTENT", "")
+PR_CONTENT = os.environ.get("PR_CONTENT", "")
 
 PR_NUMBER = os.environ.get("PR_NUMBER", "")
 
@@ -143,7 +143,7 @@ def run_pr_review(decision: Literal["approve", "request-changes"], body: str) ->
 
 
 def main() -> None:
-    code_review = CodeReview(pr=PR_CONTEXT)
+    code_review = CodeReview(pr=PR_CONTENT)
 
     output = code_review.run()
     report = get_report(output)

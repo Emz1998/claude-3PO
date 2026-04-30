@@ -3,6 +3,17 @@ name: Code Review
 on:
   pull_request:
     types: [opened, synchronize, ready_for_review, reopened]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "PR number to review"
+        required: true
+        type: string
+      pr_body:
+        description: "PR body (paste anything for manual testing)"
+        required: false
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -33,7 +44,7 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_CONTENT: ${{ github.event.pull_request.body }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr_number }}
+          PR_CONTENT: ${{ github.event.pull_request.body || inputs.pr_body }}
 
         run: python3 .claude/scripts/code_review.py
