@@ -69,7 +69,8 @@ class CodeReview:
     @property
     def test_mode_prompt(self) -> str:
         prompt = f"""
-        We are in test mode. Create a mock review. Please inform if 'THIS IS A TEST. NO PR BODY' is present as a PR BODY and if PR NUMBER is 1
+        We are in test mode. Create a mock review. Please inform if 'THIS IS A TEST. NO PR BODY' is present as a PR BODY and if PR NUMBER is 1.
+        Please follow the structured_output schema when creating a mock review.
         """
         return prompt
 
@@ -77,7 +78,11 @@ class CodeReview:
         argv: list[list[str]] = []
         for cfg in CONFIG_MAP.values():
             owner = cfg.get("owner", "").lower()
-            prompt = cfg.get("prompt", "").read_text()
+            prompt = (
+                cfg.get("prompt", "").read_text()
+                if not self.test_mode
+                else self.test_mode_prompt
+            )
             schema_path = cfg.get("schema", "")
             schema = json.loads(schema_path.read_text()) if schema_path else {}
 
