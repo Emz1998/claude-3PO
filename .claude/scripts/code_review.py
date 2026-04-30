@@ -69,8 +69,7 @@ class CodeReview:
     @property
     def test_mode_prompt(self) -> str:
         prompt = f"""
-        We are in test mode. Create a mock review for the following PR:
-        {self.pr}
+        We are in test mode. Create a mock review. Please inform if 'THIS IS A TEST. NO PR BODY' is present as a PR BODY and if PR NUMBER is 1
         """
         return prompt
 
