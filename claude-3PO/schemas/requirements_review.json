@@ -1,5 +1,6 @@
 {
   "type": "object",
+  "additionalProperties": false,
   "required": ["confidence_score", "report"],
   "properties": {
     "confidence_score": {
