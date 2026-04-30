@@ -43,7 +43,9 @@ jobs:
         run: npm i -g @openai/codex
 
       - name: Login Codex
-        run: codex login --api-key ${{ secrets.OPENAI_API_KEY }}
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: printenv OPENAI_API_KEY | codex login --with-api-key
 
       - name: Run Review Script
         id: review_script
