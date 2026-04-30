@@ -38,27 +38,9 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Install Codex
-        id: install_codex
-        run: npm i -g @openai/codex
-
-      - name: Login Codex
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        run: printenv OPENAI_API_KEY | codex login --with-api-key
       - name: Run Codex
         id: run_codex
         uses: openai/codex-action@v1
         with:
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
-
-      - name: Run Review Script
-        id: review_script
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr_number }}
-          PR_CONTENT: ${{ github.event.pull_request.body || inputs.pr_body }}
-          TEST_MODE: ${{ inputs.test_mode }}
-
-        run: python3 .claude/scripts/codex_review.py
+          prompt: Hello claude!
