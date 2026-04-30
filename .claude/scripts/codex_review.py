@@ -77,9 +77,14 @@ def run_headless_codex(commands: list[list[str]]) -> list[str]:
         for cmd in commands
     ]
     results = [(p.wait(), *p.communicate()) for p in procs]
-    for cmd, (rc, _stdout, stderr) in zip(commands, results):
+    for cmd, (rc, stdout, stderr) in zip(commands, results):
         if rc != 0:
-            raise RuntimeError(f"codex exited {rc} for {cmd!r}\nstderr:\n{stderr}")
+            # codex sometimes writes the failure on stdout (json mode) and
+            # sometimes on stderr — surface both so CI never silently truncates.
+            raise RuntimeError(
+                f"codex exited {rc} for {cmd!r}\n"
+                f"stdout:\n{stdout}\nstderr:\n{stderr}"
+            )
     return [stdout for (_rc, stdout, _stderr) in results]
 
 
