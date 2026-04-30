@@ -1,6 +1,6 @@
-"""Research handler — thin handler that delegates to lib.reviewer.
+"""Code review script.
 
-Runs the research phase of the workflow.
+Runs the code review phase of the workflow.
 """
 
 import sys
@@ -51,17 +51,28 @@ PR_CONTENT = os.environ.get("PR_CONTENT", "")
 
 PR_NUMBER = os.environ.get("PR_NUMBER", "")
 
+TEST_MODE = os.environ.get("TEST_MODE", "false").lower() == "true"
+
 
 class CodeReview:
 
-    def __init__(self, pr: str):
+    def __init__(self, pr: str, test_mode: bool = False):
         self.pr = pr
+        self.test_mode = test_mode
 
     def build_review_prompt(
         self, review_type: Literal["code_review", "security", "requirements"]
     ) -> str:
         pr = CONFIG_MAP[review_type]["prompt"].read_text()
         return pr.format(pr=pr)
+
+    @property
+    def test_mode_prompt(self) -> str:
+        prompt = f"""
+        We are in test mode. Create a mock review for the following PR:
+        {self.pr}
+        """
+        return prompt
 
     def build_argv(self) -> list[list[str]]:
         argv: list[list[str]] = []
@@ -130,20 +141,28 @@ def get_report(structured_output: dict[str, Any]) -> str:
     return structured_output.get("report", "")
 
 
-def run_pr_review(decision: Literal["approve", "request-changes"], body: str) -> None:
+def run_pr_review(
+    decision: Literal["approve", "request-changes"], body: str, test_mode: bool = False
+) -> None:
+
     if decision == "approve":
+        print("Simulating approve review") if test_mode else None
         command = ["gh", "pr", "review", PR_NUMBER, "--approve", "-b", body]
     elif decision == "request-changes":
+        print("Simulating request changes review") if test_mode else None
         command = ["gh", "pr", "review", PR_NUMBER, "--request-changes", "-b", body]
 
     def _run_command(command: list[str]) -> None:
         subprocess.run(command, capture_output=True, text=True)
 
+    if test_mode:
+        return
+
     _run_command(command)
 
 
 def main() -> None:
-    code_review = CodeReview(pr=PR_CONTENT)
+    code_review = CodeReview(pr=PR_CONTENT, test_mode=TEST_MODE)
 
     output = code_review.run()
     report = get_report(output)
