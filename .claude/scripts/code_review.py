@@ -3,17 +3,12 @@
 Runs the code review phase of the workflow.
 """
 
-import sys
-
-from pathlib import Path
-
 import json
 import os
-from pathlib import Path  # type: ignore
-from typing import Any
-from typing import Literal
-
 import subprocess
+import sys
+from pathlib import Path
+from typing import Any, Literal
 
 sys.path.insert(0, str(Path(__file__).parent))
 
@@ -24,8 +19,6 @@ from agent_headless import (
     ClaudeConfig,
     CodexConfig,
 )
-
-DEFAULT_SETTINGS_PATH = Path.cwd() / "settings.json"
 
 PROMPTS_DIR = Path.cwd() / "claude-3PO" / "prompts" / "claude"
 
@@ -60,12 +53,6 @@ class CodeReview:
         self.pr = pr
         self.test_mode = test_mode
 
-    def build_review_prompt(
-        self, review_type: Literal["code_review", "security", "requirements"]
-    ) -> str:
-        pr = CONFIG_MAP[review_type]["prompt"].read_text()
-        return pr.format(pr=pr)
-
     @property
     def test_mode_prompt(self) -> str:
         prompt = f"""
@@ -79,7 +66,7 @@ class CodeReview:
         for cfg in CONFIG_MAP.values():
             owner = cfg.get("owner", "").lower()
             prompt = (
-                cfg.get("prompt", "").read_text()
+                cfg.get("prompt", "").read_text().format(pr=self.pr)
                 if not self.test_mode
                 else self.test_mode_prompt
             )
@@ -93,7 +80,7 @@ class CodeReview:
                 argv.append(build_claude_argv(prompt, claude_config))
 
             elif owner == "codex":
-                codex_config = CodexConfig(model="codex", output_schema=schema_path)
+                codex_config = CodexConfig(model="gpt-5.4", output_schema=schema_path)
                 argv.append(build_codex_argv(prompt, codex_config))
 
         return argv
@@ -101,7 +88,7 @@ class CodeReview:
     def fallback_claude(self, cmd: list[str], rc: int) -> list[str] | None:
         if cmd[0] != "claude":
             return None
-        if not "--bare" in cmd:
+        if "--bare" not in cmd:
             return None
 
         cmd.remove("--bare")
@@ -133,14 +120,6 @@ def get_structured_output(response: str) -> dict[str, Any]:
     return json_result.get("structured_output", {})
 
 
-def get_session_id(response: str) -> str:
-    json_result = json.loads(response)
-    return json_result.get("session_id", "")
-
-
-MAX_REVIEW_ATTEMPTS = 3
-
-
 def get_report(structured_output: dict[str, Any]) -> str:
     return structured_output.get("report", "")
 
@@ -148,40 +127,29 @@ def get_report(structured_output: dict[str, Any]) -> str:
 def run_pr_review(
     decision: Literal["approve", "request-changes"], body: str, test_mode: bool = False
 ) -> None:
-
-    if decision == "approve":
-        print("Simulating approve review") if test_mode else None
-        command = ["gh", "pr", "review", PR_NUMBER, "--approve", "-b", body]
-    elif decision == "request-changes":
-        print("Simulating request changes review") if test_mode else None
-        command = ["gh", "pr", "review", PR_NUMBER, "--request-changes", "-b", body]
-
-    def _run_command(command: list[str]) -> None:
-        subprocess.run(command, capture_output=True, text=True)
+    flag = "--approve" if decision == "approve" else "--request-changes"
+    command = ["gh", "pr", "review", PR_NUMBER, flag, "-b", body]
 
     if test_mode:
+        print(f"Simulating {decision} review")
         return
 
-    _run_command(command)
+    subprocess.run(command, check=True, text=True)
 
 
 def main() -> None:
     code_review = CodeReview(pr=PR_CONTENT, test_mode=TEST_MODE)
-
     output = code_review.run()
-    report = get_report(output)
 
-    for value in output.values():
-        owner = value.get("owner", "").lower()
+    for key, value in output.items():
         result = value.get("result", "")
-        if owner == "claude":
-            structured_output = get_structured_output(result)
-            confidence_score = get_confidence_score(structured_output)
-            if confidence_score < 80:
-                run_pr_review(decision="request-changes", body=report)
-                return
-
-            run_pr_review(decision="approve", body=report)
+        structured_output = get_structured_output(result)
+        confidence_score = get_confidence_score(structured_output)
+        report = get_report(structured_output)
+        decision: Literal["approve", "request-changes"] = (
+            "request-changes" if confidence_score < 80 else "approve"
+        )
+        run_pr_review(decision=decision, body=report, test_mode=TEST_MODE)
 
 
 if __name__ == "__main__":

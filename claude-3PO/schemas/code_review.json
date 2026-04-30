@@ -1,0 +1,16 @@
+{
+  "type": "object",
+  "required": ["confidence_score", "report"],
+  "properties": {
+    "confidence_score": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100,
+      "description": "Confidence in the review (0-100). Used by the workflow to gate auto-approval at 80."
+    },
+    "report": {
+      "type": "string",
+      "description": "Markdown review body posted as the PR review comment."
+    }
+  }
+}
