@@ -13,10 +13,6 @@ split is type-visible at call sites.
 
 import json
 import subprocess
-from concurrent.futures import ThreadPoolExecutor, FIRST_COMPLETED, wait
-from typing import Callable
-
-
 from typing import Annotated, Type, TypeVar, overload
 from dataclasses import dataclass, replace
 from pathlib import Path
@@ -47,7 +43,7 @@ ConformanceCheck = Callable[[str], tuple[bool, str]]
 class ClaudeConfig:
 
     model: str = "haiku"
-    bare: bool = True
+    bare: bool = False
     tools: tuple[str, ...] = DEFAULT_TOOLS
     allowed_tools: tuple[str, ...] | None = None
     output_format: str = "text"
@@ -175,41 +171,13 @@ CONFIG_MAP: dict[Literal["codex", "claude"], Type[AgentConfig]] = {
 }
 
 
-def run_headless_parallel(
-    commands: list[list[str]],
-    get_retry: Callable[[list[str], int], list[str] | None],
-) -> list[str]:
+def run_headless_parallel(commands: list[list[str]]) -> list[str]:
+    """Start all commands, wait for all, return list of (returncode, stdout, stderr)."""
     procs = [
         subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         for cmd in commands
     ]
-    cmds = list(commands)  # mutable copy: the command currently running in each slot
-    results: list[str | None] = [None] * len(procs)
-
-    def wait_for(i: int) -> tuple[int, int, str]:
-        stdout, _ = procs[i].communicate()
-        return i, procs[i].returncode, stdout
-
-    with ThreadPoolExecutor(max_workers=len(procs)) as ex:
-        pending = {ex.submit(wait_for, i) for i in range(len(procs))}
-        while pending:
-            done, pending = wait(pending, return_when=FIRST_COMPLETED)
-            for fut in done:
-                i, rc, stdout = fut.result()
-                if rc == 0:
-                    results[i] = stdout
-                    continue
-
-                new_cmd = get_retry(cmds[i], rc)
-                if new_cmd is None:
-                    raise RuntimeError(
-                        f"command {cmds[i]} failed with rc={rc}, no retry"
-                    )
-
-                cmds[i] = new_cmd
-                procs[i] = subprocess.Popen(
-                    new_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
-                )
-                pending.add(ex.submit(wait_for, i))
-
-    return results  # type: ignore[return-value]
+    results = [(p.wait(), *p.communicate()) for p in procs]
+    if any(result[0] != 0 for result in results):
+        return []
+    return [result[1] for result in results]

@@ -218,3 +218,15 @@ def run_headless_parallel(
                 pending.add(ex.submit(wait_for, i))
 
     return results  # type: ignore[return-value]
+
+
+def run_codex_parallel(commands: list[list[str]]) -> list[str]:
+    """Start all commands, wait for all, return list of (returncode, stdout, stderr)."""
+    procs = [
+        subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        for cmd in commands
+    ]
+    results = [(p.wait(), *p.communicate()) for p in procs]
+    if any(result[0] != 0 for result in results):
+        return []
+    return [result[1] for result in results]
