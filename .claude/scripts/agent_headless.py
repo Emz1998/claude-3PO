@@ -186,16 +186,16 @@ def run_headless_parallel(
     cmds = list(commands)  # mutable copy: the command currently running in each slot
     results: list[str | None] = [None] * len(procs)
 
-    def wait_for(i: int) -> tuple[int, int, str]:
-        stdout, _ = procs[i].communicate()
-        return i, procs[i].returncode, stdout
+    def wait_for(i: int) -> tuple[int, int, str, str]:
+        stdout, stderr = procs[i].communicate()
+        return i, procs[i].returncode, stdout, stderr
 
     with ThreadPoolExecutor(max_workers=len(procs)) as ex:
         pending = {ex.submit(wait_for, i) for i in range(len(procs))}
         while pending:
             done, pending = wait(pending, return_when=FIRST_COMPLETED)
             for fut in done:
-                i, rc, stdout = fut.result()
+                i, rc, stdout, stderr = fut.result()
                 if rc == 0:
                     results[i] = stdout
                     continue
@@ -203,7 +203,7 @@ def run_headless_parallel(
                 new_cmd = get_retry(cmds[i], rc)
                 if new_cmd is None:
                     raise RuntimeError(
-                        f"command {cmds[i]} failed with rc={rc}, no retry"
+                        f"command {cmds[i]} failed with rc={rc}\nstderr:\n{stderr}"
                     )
 
                 cmds[i] = new_cmd
