@@ -35,15 +35,16 @@ jobs:
 
       - name: Install Claude Code
         id: install_claude_code
-        uses: anthropics/claude-code-action@main
+        run: curl -fsSL https://claude.ai/install.sh | bash
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          node-version: "20"
 
       - name: Install Codex
         id: install_codex
-        uses: openai/codex-action@v1
-        with:
-          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+        run: npm i -g @openai/codex
 
       - name: Run Review Script
         id: review_script
