@@ -45,33 +45,42 @@ class CodexConfig:
     output_schema: Path | None = None
     json_output: bool = False
     model: str | None = None
+    skip_git_repo_check: bool = True
 
 
 def build_codex_argv(prompt: str, options: CodexConfig) -> list[str]:
-    argv = ["codex", "exec", "--skip-git-repo-check"]
+    argv = ["codex", "exec"]
+    # `codex exec resume <id>` — the resume subcommand must come right after `exec`,
+    # before any flags or the prompt.
+    if options.session_id:
+        argv.extend(["resume", options.session_id])
+    if options.skip_git_repo_check:
+        argv.append("--skip-git-repo-check")
     if options.model:
         argv.extend(["--model", options.model])
     if options.json_output:
         argv.append("--json")
     if options.output_schema:
         argv.extend(["--output-schema", str(options.output_schema)])
-    if options.session_id:
-        argv.extend(["resume", options.session_id])
-
     argv.append(prompt)
     return argv
 
 
 def run_headless_codex(commands: list[list[str]]) -> list[str]:
-    """Start all commands, wait for all, return list of (returncode, stdout, stderr)."""
+    """Run commands in parallel, return their stdouts; raise on any non-zero exit.
+
+    Raises RuntimeError with argv, returncode and stderr of the first failing
+    command so CI logs surface the real error instead of a generic "failed".
+    """
     procs = [
         subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         for cmd in commands
     ]
     results = [(p.wait(), *p.communicate()) for p in procs]
-    if any(result[0] != 0 for result in results):
-        return []
-    return [result[1] for result in results]
+    for cmd, (rc, _stdout, stderr) in zip(commands, results):
+        if rc != 0:
+            raise RuntimeError(f"codex exited {rc} for {cmd!r}\nstderr:\n{stderr}")
+    return [stdout for (_rc, stdout, _stderr) in results]
 
 
 class CodexReview:
