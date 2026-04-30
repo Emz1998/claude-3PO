@@ -13,6 +13,7 @@ split is type-visible at call sites.
 
 import json
 import subprocess
+import sys
 from concurrent.futures import ThreadPoolExecutor, FIRST_COMPLETED, wait
 from typing import Callable
 
@@ -202,9 +203,13 @@ def run_headless_parallel(
 
                 new_cmd = get_retry(cmds[i], rc)
                 if new_cmd is None:
-                    raise RuntimeError(
-                        f"command {cmds[i]} failed with rc={rc}\nstderr:\n{stderr}"
+                    sys.stderr.write(
+                        f"\n--- {cmds[i][0]} failed (rc={rc}) ---\n"
+                        f"stderr:\n{stderr}\n"
+                        f"stdout:\n{stdout}\n"
+                        f"--- end ---\n"
                     )
+                    raise RuntimeError(f"{cmds[i][0]} failed with rc={rc}")
 
                 cmds[i] = new_cmd
                 procs[i] = subprocess.Popen(
