@@ -1,0 +1,80 @@
+{
+  "type": "object",
+  "required": ["project", "date", "reviewer", "decision", "summary"],
+  "properties": {
+    "project": {
+      "type": "string",
+      "description": "Name of the project, system, or proposal being reviewed."
+    },
+    "date": {
+      "type": "string",
+      "description": "Date the review was conducted, in YYYY-MM-DD format."
+    },
+    "reviewer": {
+      "type": "string",
+      "description": "Name of the person (or team) responsible for the review."
+    },
+    "decision": {
+      "type": "string",
+      "description": "Outcome of the review. Use 'approved' to proceed as-is, 'needs_changes' if changes are required before approval, or 'rejected' if the proposal should not move forward."
+    },
+    "summary": {
+      "type": "string",
+      "description": "Short narrative covering what was reviewed, the key findings, and the reasoning behind the decision."
+    },
+    "components": {
+      "type": "array",
+      "description": "Major components or services that make up the architecture under review.",
+      "items": {
+        "type": "object",
+        "required": ["name", "purpose"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Component or service name."
+          },
+          "purpose": {
+            "type": "string",
+            "description": "What this component is responsible for and why it exists."
+          }
+        }
+      }
+    },
+    "concerns": {
+      "type": "array",
+      "description": "Issues, risks, or open questions raised during the review. Each entry is a single concern.",
+      "items": {
+        "type": "string",
+        "description": "A single concern, phrased clearly enough to stand alone."
+      }
+    },
+    "action_items": {
+      "type": "array",
+      "description": "Concrete tasks that resulted from the review and need follow-up.",
+      "items": {
+        "type": "object",
+        "required": ["task", "owner"],
+        "properties": {
+          "task": {
+            "type": "string",
+            "description": "What needs to be done."
+          },
+          "owner": {
+            "type": "string",
+            "description": "Person or team accountable for completing the task."
+          },
+          "due": {
+            "type": "string",
+            "description": "Optional target completion date, in YYYY-MM-DD format."
+          }
+        }
+      }
+    },
+    "confidence_score": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100,
+      "description": "A score between 0 and 100 indicating the confidence in the review."
+    }
+  }
+}

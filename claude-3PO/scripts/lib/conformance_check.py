@@ -18,8 +18,8 @@ from pathlib import Path
 from typing import Callable
 from typing_extensions import Literal
 
-from lib.subprocess_agents import invoke_headless_agent  # type: ignore
-from lib.extractors.markdown import trees_identical, build_md_tree  # type: ignore
+
+from lib.template_diff import trees_identical, build_md_tree  # type: ignore
 
 
 # ---------------------------------------------------------------------------
@@ -38,7 +38,7 @@ _DIFF_SEPARATOR = "\n\n------------------------------------\n\n"
 # ---------------------------------------------------------------------------
 
 
-def template_conformance_check(actual_content: str, template: Path) -> tuple[bool, str]:
+def template_conformance_check(actual_content: str, template: str) -> tuple[bool, str]:
     """
     Build a ConformanceCheck that matches responses against *template*'s md tree.
 
@@ -62,7 +62,7 @@ def template_conformance_check(actual_content: str, template: Path) -> tuple[boo
         Return: (False, '...')
     """
 
-    template_tree = build_md_tree(template.read_text())
+    template_tree = build_md_tree(template)
     response_tree = build_md_tree(actual_content)
     ok, diff = trees_identical(template_tree, response_tree)
 
@@ -108,3 +108,16 @@ def verdict_present(actual_content: str) -> tuple[bool, str]:
         return False, ""
 
     return True, verdict
+
+
+def template_conformance_check_fn(template: str) -> ConformanceCheck:
+
+    def _check(response: str) -> tuple[bool, str]:
+        # Tree-level compare so trivial whitespace/wording drift doesn't retrigger a round.
+        ok, diff = trees_identical(
+            build_md_tree(template),
+            build_md_tree(response),
+        )
+        return ok, _DIFF_SEPARATOR.join(diff)
+
+    return _check

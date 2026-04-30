@@ -1,78 +1,22 @@
 import sys
-import json
+import types
 from pathlib import Path
 
-import pytest
-
-# Add scripts/ and tests/ to path
+# Make scripts_v2/ importable so `code_review`, `utils.*`, `lib.*` resolve.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from lib.state_store import StateStore
-from config import Config, get_config
-
-
-DEFAULT_STATE: dict = {
-    "session_id": "test-session",
-    "workflow_active": True,
-    "status": "in_progress",
-    "workflow_type": "implement",
-    "phases": [],
-    "tdd": False,
-    "story_id": "TEST-001",
-    "skip": [],
-    "instructions": "",
-    "agents": [],
-    "plan": {
-        "file_path": None,
-        "written": False,
-        "revised": None,
-        "reviews": [],
-    },
-    "tasks": [],
-    "project_tasks": [],
-    "tests": {
-        "file_paths": [],
-        "executed": False,
-        "reviews": [],
-        "files_to_revise": [],
-        "files_revised": [],
-    },
-    "code_files_to_write": [],
-    "code_files": {
-        "file_paths": [],
-        "reviews": [],
-        "tests_to_revise": [],
-        "tests_revised": [],
-        "files_to_revise": [],
-        "files_revised": [],
-    },
-    "quality_check_result": None,
-    "pr": {"status": "pending", "number": None},
-    "ci": {"status": "pending", "results": None},
-    "report_written": False,
-    "plan_files_to_modify": [],
-}
-
-SESSION_ID = "test-session"
+# scripts_v2/lib has no subprocess_agents; conformance_check imports it from
+# the older scripts/lib tree. Stub it so code_review imports cleanly without
+# pulling in that tree.
+if "lib.subprocess_agents" not in sys.modules:
+    stub = types.ModuleType("lib.subprocess_agents")
+    stub.invoke_headless_agent = lambda *a, **kw: None  # type: ignore[attr-defined]
+    sys.modules["lib.subprocess_agents"] = stub
 
 
-@pytest.fixture
-def state_path(tmp_path: Path) -> Path:
-    # Single JSON object, no JSONL wrapping — the new single-session layout.
-    p = tmp_path / "state.json"
-    p.write_text(json.dumps(DEFAULT_STATE, separators=(",", ":")))
-    return p
-
-
-@pytest.fixture
-def state(state_path: Path) -> StateStore:
-    return StateStore(state_path)
-
-
-@pytest.fixture
-def config() -> Config:
-    get_config.cache_clear()
-    cfg = get_config()
-    yield cfg
-    get_config.cache_clear()
+def pytest_configure(config):
+    # `live` tests actually invoke the claude/codex CLIs. They are opt-in via
+    # RUN_LIVE_TESTS=1 and skipped by default to avoid waste/auth requirements.
+    config.addinivalue_line(
+        "markers", "live: hits real claude/codex CLIs; opt-in via RUN_LIVE_TESTS=1"
+    )

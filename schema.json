@@ -1,0 +1,850 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schemas/dev-architecture-document.schema.json",
+  "title": "Development Architecture Document (Lean MVP)",
+  "description": "Schema for a lean MVP development architecture document covering project overview, decisions, components, security, observability, deployment, and operational concerns.",
+  "type": "object",
+  "required": [
+    "metadata",
+    "projectOverview",
+    "architecturalDecisions",
+    "systemContext",
+    "systemComponents",
+    "dataFlowAndIntegration",
+    "securityArchitecture",
+    "testingStrategy",
+    "observability",
+    "devOpsAndDeployment",
+    "reliabilityAndDisasterRecovery",
+    "costAndOperationalConsiderations",
+    "risksAssumptionsConstraints"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "metadata": {
+      "type": "object",
+      "description": "Document-level metadata.",
+      "required": ["projectName", "version", "date", "authors", "status"],
+      "additionalProperties": false,
+      "properties": {
+        "projectName": { "type": "string" },
+        "version": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "authors": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": ["Draft", "In Review", "Approved"]
+        },
+        "lastReviewed": { "type": "string", "format": "date" },
+        "approvedBy": { "type": "string" }
+      }
+    },
+
+    "projectOverview": {
+      "type": "object",
+      "required": ["purposeAndBusinessContext", "scope"],
+      "additionalProperties": false,
+      "properties": {
+        "purposeAndBusinessContext": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "businessProblem": { "type": "string" },
+            "stakeholdersAndValue": { "type": "string" },
+            "successCriteria": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "fitInLandscape": { "type": "string" },
+            "purposeStatement": { "type": "string" }
+          }
+        },
+        "scope": {
+          "type": "object",
+          "required": ["inScope", "outOfScope"],
+          "additionalProperties": false,
+          "properties": {
+            "inScope": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "outOfScope": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "futureConsiderations": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          }
+        },
+        "definitionsAndAcronyms": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["term", "definition"],
+            "additionalProperties": false,
+            "properties": {
+              "term": { "type": "string" },
+              "definition": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+
+    "architecturalDecisions": {
+      "type": "object",
+      "required": ["architectureStyle"],
+      "additionalProperties": false,
+      "properties": {
+        "architectureStyle": {
+          "type": "object",
+          "required": ["style", "rationale"],
+          "additionalProperties": false,
+          "properties": {
+            "style": {
+              "type": "string",
+              "enum": [
+                "Modular Monolith",
+                "Microservices",
+                "Serverless",
+                "Event-Driven",
+                "Hybrid",
+                "Other"
+              ]
+            },
+            "styleOther": { "type": "string" },
+            "rationale": { "type": "string" },
+            "alternativesConsidered": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["alternative", "reasonRejected"],
+                "additionalProperties": false,
+                "properties": {
+                  "alternative": { "type": "string" },
+                  "reasonRejected": { "type": "string" }
+                }
+              }
+            },
+            "tradeoffsAccepted": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          }
+        },
+        "adrs": {
+          "type": "array",
+          "description": "Architecture Decision Records.",
+          "items": {
+            "type": "object",
+            "required": ["id", "decision", "rationale", "status"],
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^ADR-[0-9]{3,}$"
+              },
+              "decision": { "type": "string" },
+              "rationale": { "type": "string" },
+              "consequences": { "type": "string" },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "Proposed",
+                  "Accepted",
+                  "Rejected",
+                  "Superseded",
+                  "Deprecated"
+                ]
+              },
+              "supersededBy": {
+                "type": "string",
+                "pattern": "^ADR-[0-9]{3,}$"
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "systemContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "context": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "primaryUsers": { "type": "string" },
+            "externalSystems": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "downstreamConsumers": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "systemBoundary": { "type": "string" }
+          }
+        },
+        "architectureDiagram": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "url": { "type": "string", "format": "uri" },
+            "path": { "type": "string" },
+            "description": { "type": "string" },
+            "format": {
+              "type": "string",
+              "enum": ["C4", "Mermaid", "PlantUML", "Image", "Other"]
+            }
+          }
+        }
+      }
+    },
+
+    "systemComponents": {
+      "type": "object",
+      "required": ["projectStructure"],
+      "additionalProperties": false,
+      "properties": {
+        "projectStructure": {
+          "type": "object",
+          "required": ["layout", "rules"],
+          "additionalProperties": false,
+          "properties": {
+            "layout": {
+              "type": "string",
+              "description": "Project folder/module layout, often as a tree or descriptive string."
+            },
+            "rules": {
+              "type": "array",
+              "items": { "type": "string" },
+              "minItems": 1
+            }
+          }
+        },
+        "frontendLayer": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "framework": { "type": "string" },
+            "language": { "type": "string" },
+            "stateManagement": { "type": "string" },
+            "uiLibrary": { "type": "string" },
+            "renderingStrategy": {
+              "type": "string",
+              "enum": ["SSR", "SSG", "CSR", "ISR", "Hybrid"]
+            },
+            "renderingRationale": { "type": "string" },
+            "hosting": { "type": "string" },
+            "errorHandling": { "type": "string" },
+            "accessibilityTarget": {
+              "type": "string",
+              "description": "e.g., WCAG 2.1 AA"
+            }
+          }
+        },
+        "apiLayer": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "framework": { "type": "string" },
+            "language": { "type": "string" },
+            "apiType": {
+              "type": "string",
+              "enum": ["REST", "GraphQL", "gRPC", "Server Actions", "Hybrid"]
+            },
+            "validation": { "type": "string" },
+            "errorFormat": { "type": "string" },
+            "authEnforcement": { "type": "string" }
+          }
+        },
+        "databaseLayer": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "database": { "type": "string" },
+            "hosting": { "type": "string" },
+            "ormOrQueryBuilder": { "type": "string" },
+            "connectionPooling": { "type": "string" },
+            "storage": { "type": "string" }
+          }
+        },
+        "databaseClientPattern": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "clients": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["name", "permissionLevel", "whenToUse"],
+                "additionalProperties": false,
+                "properties": {
+                  "name": { "type": "string" },
+                  "permissionLevel": { "type": "string" },
+                  "whenToUse": { "type": "string" }
+                }
+              }
+            },
+            "elevatedClientRule": { "type": "string" }
+          }
+        },
+        "migrationStrategy": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "environments": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["environment", "method"],
+                "additionalProperties": false,
+                "properties": {
+                  "environment": {
+                    "type": "string",
+                    "enum": ["Local", "Staging", "Preview", "Production"]
+                  },
+                  "method": { "type": "string" },
+                  "tooling": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "cachingStrategy": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "rules": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["context", "strategy"],
+                "additionalProperties": false,
+                "properties": {
+                  "context": { "type": "string" },
+                  "strategy": { "type": "string" },
+                  "rationale": { "type": "string" }
+                }
+              }
+            },
+            "defaultPosture": { "type": "string" },
+            "vendorLockInNotes": { "type": "string" }
+          }
+        },
+        "serviceCommunication": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "syncCommunication": { "type": "string" },
+            "asyncCommunication": { "type": "string" },
+            "backgroundJobRunner": { "type": "string" },
+            "timeoutAndExecutionConstraints": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["constraint", "limit", "mitigation"],
+                "additionalProperties": false,
+                "properties": {
+                  "constraint": { "type": "string" },
+                  "limit": { "type": "string" },
+                  "mitigation": { "type": "string" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "dataFlowAndIntegration": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "primaryRequestFlow": {
+          "type": "array",
+          "description": "Ordered steps in the happy-path request lifecycle.",
+          "items": {
+            "type": "object",
+            "required": ["step", "description"],
+            "additionalProperties": false,
+            "properties": {
+              "step": { "type": "integer", "minimum": 1 },
+              "name": { "type": "string" },
+              "description": { "type": "string" }
+            }
+          }
+        },
+        "asynchronousFlows": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["flowName", "trigger", "producer", "consumer"],
+            "additionalProperties": false,
+            "properties": {
+              "flowName": { "type": "string" },
+              "trigger": {
+                "type": "string",
+                "enum": ["Event", "Cron", "Manual", "Webhook", "Other"]
+              },
+              "producer": { "type": "string" },
+              "consumer": { "type": "string" },
+              "failureHandling": { "type": "string" }
+            }
+          }
+        },
+        "thirdPartyIntegrations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["service", "purpose"],
+            "additionalProperties": false,
+            "properties": {
+              "service": { "type": "string" },
+              "purpose": { "type": "string" },
+              "protocol": {
+                "type": "string",
+                "enum": ["REST", "Webhook", "SDK", "GraphQL", "gRPC", "Other"]
+              },
+              "fallbackIfUnavailable": { "type": "string" }
+            }
+          }
+        },
+        "webhookStrategy": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "signatureVerification": { "type": "string" },
+            "idempotency": { "type": "string" },
+            "handlerLocation": { "type": "string" },
+            "auth": { "type": "string" },
+            "logging": { "type": "string" }
+          }
+        }
+      }
+    },
+
+    "securityArchitecture": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "authorizationModel": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "tenancyModel": {
+              "type": "string",
+              "enum": ["Single-tenant", "Multi-tenant", "Hybrid"]
+            },
+            "roleModel": { "type": "string" },
+            "sharingModel": { "type": "string" },
+            "enforcementLayer": {
+              "type": "string",
+              "enum": [
+                "Database (RLS)",
+                "Application Middleware",
+                "Service Layer",
+                "Combination"
+              ]
+            },
+            "adminAccessApproach": {
+              "type": "string",
+              "enum": [
+                "Admin role with explicit policies",
+                "Elevated database client / bypass",
+                "Other"
+              ]
+            },
+            "adminAccessNotes": { "type": "string" }
+          }
+        },
+        "authentication": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "authProvider": { "type": "string" },
+            "authMethod": { "type": "string" },
+            "sessionHandling": { "type": "string" },
+            "sessionValidationLocation": { "type": "string" },
+            "mfa": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "supported": { "type": "boolean" },
+                "methods": {
+                  "type": "array",
+                  "items": { "type": "string" }
+                },
+                "enforcementPolicy": { "type": "string" }
+              }
+            }
+          }
+        },
+        "apiAndNetworkProtection": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "rateLimiting": { "type": "string" },
+            "cors": { "type": "string" },
+            "csp": { "type": "string" },
+            "inputValidation": { "type": "string" },
+            "injectionPrevention": { "type": "string" }
+          }
+        },
+        "dataProtectionAndSecrets": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "encryptionInTransit": { "type": "string" },
+            "encryptionAtRest": { "type": "string" },
+            "secretsStorage": { "type": "string" },
+            "sensitiveKeyProtection": { "type": "string" },
+            "rotationPolicy": { "type": "string" }
+          }
+        },
+        "dataLifecycle": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "deletionStrategy": {
+              "type": "string",
+              "enum": ["Soft delete", "Hard delete", "Hybrid"]
+            },
+            "deletionRationale": { "type": "string" },
+            "dataRetention": { "type": "string" },
+            "userDataDeletion": { "type": "string" },
+            "orphanCleanup": { "type": "string" }
+          }
+        }
+      }
+    },
+
+    "testingStrategy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "testTypes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["testType", "scope", "runsWhen"],
+            "additionalProperties": false,
+            "properties": {
+              "testType": {
+                "type": "string",
+                "enum": [
+                  "Type Checking / Linting",
+                  "Unit Tests",
+                  "Integration Tests",
+                  "E2E Tests",
+                  "Security Scans",
+                  "Performance Tests",
+                  "Other"
+                ]
+              },
+              "tool": { "type": "string" },
+              "scope": { "type": "string" },
+              "runsWhen": { "type": "string" }
+            }
+          }
+        },
+        "authorizationTesting": { "type": "string" }
+      }
+    },
+
+    "observability": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "errorTracking": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "tool": { "type": "string" },
+            "scope": { "type": "string" },
+            "sourceMapsOrStackTraces": { "type": "string" }
+          }
+        },
+        "logging": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "tool": { "type": "string" },
+            "format": { "type": "string" },
+            "whatsLogged": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "piiRules": { "type": "string" }
+          }
+        },
+        "requestCorrelation": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "idGeneration": { "type": "string" },
+            "propagation": { "type": "string" },
+            "purpose": { "type": "string" }
+          }
+        },
+        "uptimeAndAlerting": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "uptimeMonitoring": { "type": "string" },
+            "alertChannels": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "alertTriggers": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+
+    "devOpsAndDeployment": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "sourceControlAndBranching": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "platform": { "type": "string" },
+            "strategy": {
+              "type": "string",
+              "enum": ["Trunk-based", "GitFlow", "GitHub Flow", "Other"]
+            },
+            "branchProtection": { "type": "string" }
+          }
+        },
+        "deployment": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "platform": { "type": "string" },
+            "deploymentTrigger": { "type": "string" },
+            "previewOrStaging": { "type": "string" },
+            "rollbackStrategy": { "type": "string" },
+            "databaseMigrations": { "type": "string" }
+          }
+        },
+        "environments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["environment", "purpose"],
+            "additionalProperties": false,
+            "properties": {
+              "environment": {
+                "type": "string",
+                "enum": ["Local", "Staging", "Preview", "Production"]
+              },
+              "purpose": { "type": "string" },
+              "data": { "type": "string" },
+              "notes": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+
+    "reliabilityAndDisasterRecovery": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "availabilityTarget": { "type": "string" },
+        "backups": { "type": "string" },
+        "rpo": {
+          "type": "string",
+          "description": "Recovery Point Objective — max acceptable data loss."
+        },
+        "rto": {
+          "type": "string",
+          "description": "Recovery Time Objective — max acceptable downtime."
+        },
+        "restoreTesting": { "type": "string" },
+        "failureScenarios": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["scenario", "impact", "mitigation"],
+            "additionalProperties": false,
+            "properties": {
+              "scenario": { "type": "string" },
+              "impact": { "type": "string" },
+              "mitigation": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+
+    "costAndOperationalConsiderations": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "monthlyCostEstimate": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "currency": {
+              "type": "string",
+              "default": "USD"
+            },
+            "lineItems": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["component", "service", "estimatedMonthlyCost"],
+                "additionalProperties": false,
+                "properties": {
+                  "component": { "type": "string" },
+                  "service": { "type": "string" },
+                  "estimatedMonthlyCost": { "type": "number", "minimum": 0 }
+                }
+              }
+            },
+            "total": { "type": "number", "minimum": 0 }
+          }
+        },
+        "scalingCostTriggers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["trigger", "threshold", "action"],
+            "additionalProperties": false,
+            "properties": {
+              "trigger": { "type": "string" },
+              "threshold": { "type": "string" },
+              "action": { "type": "string" }
+            }
+          }
+        },
+        "vendorLockInAssessment": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["component", "lockInRisk"],
+            "additionalProperties": false,
+            "properties": {
+              "component": { "type": "string" },
+              "lockInRisk": {
+                "type": "string",
+                "enum": ["Low", "Medium", "High"]
+              },
+              "portable": { "type": "string" },
+              "notPortable": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+
+    "risksAssumptionsConstraints": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "assumptions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["assumption", "impactIfWrong"],
+            "additionalProperties": false,
+            "properties": {
+              "assumption": { "type": "string" },
+              "impactIfWrong": { "type": "string" }
+            }
+          }
+        },
+        "constraints": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["constraint", "source", "impactOnArchitecture"],
+            "additionalProperties": false,
+            "properties": {
+              "constraint": { "type": "string" },
+              "source": {
+                "type": "string",
+                "enum": [
+                  "Business",
+                  "Legacy",
+                  "Regulatory",
+                  "Technical",
+                  "Team",
+                  "Other"
+                ]
+              },
+              "impactOnArchitecture": { "type": "string" }
+            }
+          }
+        },
+        "risks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["risk", "likelihood", "impact", "mitigation"],
+            "additionalProperties": false,
+            "properties": {
+              "risk": { "type": "string" },
+              "likelihood": {
+                "type": "string",
+                "enum": ["Low", "Medium", "High"]
+              },
+              "impact": {
+                "type": "string",
+                "enum": ["Low", "Medium", "High", "Critical"]
+              },
+              "mitigation": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+
+    "appendix": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "documents": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["document", "location"],
+            "additionalProperties": false,
+            "properties": {
+              "document": { "type": "string" },
+              "location": { "type": "string" }
+            }
+          }
+        },
+        "revisionHistory": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["version", "date", "author", "changes"],
+            "additionalProperties": false,
+            "properties": {
+              "version": { "type": "string" },
+              "date": { "type": "string", "format": "date" },
+              "author": { "type": "string" },
+              "changes": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

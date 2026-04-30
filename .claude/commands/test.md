@@ -5,6 +5,8 @@ argument-hint: <decision-context>
 model: opus
 ---
 
-@$0
-@$1
-@$2
+@"claude-code-guide (agent)"
+@"Explore (agent)"
+
+Please reserach about claude hooks
+Please explore the codebase

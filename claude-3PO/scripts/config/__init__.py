@@ -12,8 +12,8 @@ def get_config() -> Config:
 
     The ``lru_cache(maxsize=1)`` means ``config.json`` is read from disk
     exactly once per process, and every caller sees the same ``Config``
-    object — important because Config exposes phase lookups via
-    pre-built dicts (``_phase_map``, ``_phase_list``) that would be wasteful
+    object — important because Config exposes skill lookups via
+    pre-built dicts (``_skill_map``, ``_skill_list``) that would be wasteful
     to rebuild on every call. Tests that mutate config state or rely on
     isolated defaults must call ``get_config.cache_clear()`` so the next
     invocation re-reads the file; the conftest ``config`` fixture does this

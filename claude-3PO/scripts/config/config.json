@@ -4,6 +4,7 @@
       "name": "explore",
       "workflows": ["implement"],
       "read_only": true,
+      "modes": null,
       "agent": "Explore",
       "agent_count": 3
     },
@@ -11,59 +12,77 @@
       "name": "research",
       "workflows": ["implement"],
       "read_only": true,
-      "agent": "Research",
-      "agent_count": 2
+      "modes": null,
+      "agents": [
+        {
+          "name": "Research",
+          "count": 2
+        }
+      ],
+      "parallel_with": ["explore"]
     },
     {
       "name": "plan",
       "workflows": ["implement"],
       "docs_write": true,
       "docs_edit": true,
-      "agent": "Plan",
-      "agent_count": 1,
+      "modes": null,
+      "agents": [
+        {
+          "name": "Plan",
+          "count": 1
+        }
+      ],
       "checkpoint": true
     },
     {
       "name": "create-tasks",
       "workflows": ["implement"],
+      "modes": null,
       "auto": true
     },
     {
       "name": "write-tests",
       "workflows": ["implement"],
-      "code_write": true,
+      "modes": {
+        "edit-only": ["*.test.ts", "test_*.py", "*_test.py", etc.]
+      }
       "auto": true
+    },
+    {
+      "name": "test-review",
+      "workflows": ["implement"],
+      "modes": null
     },
     {
       "name": "write-code",
       "workflows": ["implement"],
-      "code_write": true,
       "auto": true
+    },
+    {
+      "name": "review",
+      "workflows": ["implement"],
+      "agents": [
+        {
+          "name": "code-review",
+          "count": 1
+        },
+        {
+          "name": "security-review",
+          "count": 1
+        },
+        {
+          "name": "requirements-review",
+          "count": 1
+        }
+      ]
     },
     {
       "name": "write-report",
       "workflows": ["implement"],
       "docs_write": true
-    },
-    {
-      "name": "refactor",
-      "workflows": [],
-      "code_write": true,
-      "code_edit": true
-    },
-    { "name": "plan-revision", "workflows": [], "code_edit": true }
-  ],
-
-  "plan_templates": {
-    "implement": {
-      "required_sections": [
-        "## Context",
-        "## Approach",
-        "## Files to Create/Modify",
-        "## Verification"
-      ]
     }
-  },
+  ],
 
   "safe_domains": [
     "docs.python.org",
@@ -91,14 +110,29 @@
     "css-tricks.com"
   ],
 
-  "paths": {
+  "score_thresholds": {
+    "plan": {
+      "confidence": 80,
+      "quality": 80
+    },
+    "test": {
+      "confidence": 80,
+      "quality": 80
+    },
+    "code": {
+      "confidence": 80,
+      "quality": 80
+    }
+  },
+
+  "file_paths": {
     "state_json": ".claude/state.json",
-    "log_file": "build.log",
-    "debug_log_file": "debug.log",
-    "plan_file": ".claude/plans/latest-plan.md",
-    "plan_archive_dir": ".claude/plans/archive",
-    "test_file": ".claude/tests/test.md",
-    "code_file": ".claude/code/code.md",
-    "report_file": ".claude/reports/report.md"
+    "log": "build.log",
+    "debug_log": "debug.log",
+    "plan": ".claude/plans/latest-plan.md",
+    "plan_archive": ".claude/plans/archive",
+    "test": ".claude/tests/test.md",
+    "code": ".claude/code/code.md",
+    "report": ".claude/reports/report.md"
   }
 }

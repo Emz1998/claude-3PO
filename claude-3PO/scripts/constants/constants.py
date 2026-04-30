@@ -13,7 +13,6 @@ Layout overview:
       test files.
 """
 
-
 CODE_EXTENSIONS = {
     ".py",
     ".ts",

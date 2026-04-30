@@ -1,1 +1,15 @@
-{"session_id":"","workflow_active":true,"status":null,"workflow_type":"implement","phases":[],"tdd":false,"test_mode":null,"story_id":null,"skip":[],"instructions":"","agents":[],"plan":{"file_path":null,"written":false,"revised":null,"reviews":[]},"tasks":[],"project_tasks":[],"tests":{"file_paths":[],"executed":false,"reviews":[],"files_to_revise":[],"files_revised":[]},"code_files_to_write":[],"code_files":{"file_paths":[],"reviews":[],"tests_to_revise":[],"tests_revised":[],"files_to_revise":[],"files_revised":[]},"quality_check_result":null,"pr":{"status":"pending","number":null},"ci":{"status":"pending","results":null},"report_written":false,"report_file_path":null,"plan_files_to_modify":[],"commands":[],"validations":[]}
+{
+  "session_id": "",
+  "workflow_active": true,
+  "workflow_type": "",
+  "status": null,
+  "story_id": null,
+  "test_mode": null,
+  "path": "",
+  "review": {
+    "confidence_score": null,
+    "quality_score": null,
+    "status": null,
+    "verdict": null
+  }
+}
