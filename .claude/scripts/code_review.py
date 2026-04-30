@@ -17,7 +17,7 @@ import subprocess
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from .agent_headless import (
+from agent_headless import (
     build_claude_argv,
     build_codex_argv,
     run_headless_parallel,
